@@ -1,0 +1,10 @@
+language: go
+src: /Users/jody/workspace/services/proto
+tag: latest
+pkg: gitlab.com/secondstarcavalier/controlplane/services/fleetwood
+backends:
+  - services/elvis.ClusterState:ro
+  - services/elvis.ServiceHealthState:rw
+frontends:
+  - services/fleetwood.FleetwoodService
+entry-point: internal.NewHandler
