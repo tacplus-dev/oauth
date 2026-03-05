@@ -8255,14 +8255,14 @@ func ValidateConfig(m *Config) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshTokenLifetimeSeconds must be positive (> 0), got: %d", m.RefreshTokenLifetimeSeconds)
 	}
 
-	// Validate KeyLifetimeSeconds (assert_duration: POSITIVE)
-	if m.KeyLifetimeSeconds <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field KeyLifetimeSeconds must be positive (> 0), got: %d", m.KeyLifetimeSeconds)
-	}
-
 	// Validate KeyLifetimeSeconds (assert_duration_min: 3600)
 	if m.KeyLifetimeSeconds < 3600 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field KeyLifetimeSeconds must be >= 3600, got: %d", m.KeyLifetimeSeconds)
+	}
+
+	// Validate KeyLifetimeSeconds (assert_duration: POSITIVE)
+	if m.KeyLifetimeSeconds <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field KeyLifetimeSeconds must be positive (> 0), got: %d", m.KeyLifetimeSeconds)
 	}
 
 	// Validate NonceExpireSeconds (assert_duration: POSITIVE)
@@ -8476,14 +8476,14 @@ func ValidateExternalJwk(m *ExternalJwk) error {
 		return nil
 	}
 
-	// Validate Kid (assert_required)
-	if m.Kid == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Kid is required")
-	}
-
 	// Validate Kid (assert_min_length: 1)
 	if len(m.Kid) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Kid must be at least 1 characters, got: %d", len(m.Kid))
+	}
+
+	// Validate Kid (assert_required)
+	if m.Kid == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Kid is required")
 	}
 
 	// Validate Key (assert_required)
@@ -8655,14 +8655,14 @@ func ValidateCallbackResponse(m *CallbackResponse) error {
 		return nil
 	}
 
-	// Validate RefreshToken (assert_min_length: 1)
-	if len(m.RefreshToken) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken must be at least 1 characters, got: %d", len(m.RefreshToken))
-	}
-
 	// Validate RefreshToken (assert_required)
 	if m.RefreshToken == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken is required")
+	}
+
+	// Validate RefreshToken (assert_min_length: 1)
+	if len(m.RefreshToken) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken must be at least 1 characters, got: %d", len(m.RefreshToken))
 	}
 
 	// Validate AccessToken (assert_required)

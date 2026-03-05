@@ -684,7 +684,6 @@ func OpenIdConfigurationToTOML(v *OpenIdConfiguration) ([]byte, error) {
 // MARKER: JSON helper struct generated from serial.go
 type credpairJSON struct {
 	PublicKey json.RawMessage `json:"public_key,omitempty"`
-	Principal string          `json:"principal,omitempty"`
 }
 
 // CredPairToJSON converts CredPair to JSON bytes.
@@ -702,7 +701,6 @@ func CredPairToJSON(v *CredPair) ([]byte, error) {
 			data, _ := JwkToJSON(v.PublicKey)
 			return data
 		}(),
-		Principal: v.Principal,
 	}
 	return json.Marshal(helper)
 }
@@ -774,7 +772,6 @@ func CredPairFromJSON(data []byte) (*CredPair, error) {
 			result.PublicKey = parsed
 		}
 	}
-	result.Principal = raw.Principal
 	return result, nil
 }
 
@@ -1148,7 +1145,6 @@ func CredPairToEnvVar(v *CredPair) map[string]string {
 			result[k] = val
 		}
 	}
-	result["PROTO_LIBS_JWK_CRED_PAIR_PRINCIPAL"] = v.Principal
 	return result
 }
 
@@ -1159,9 +1155,6 @@ func CredPairFromEnvVar(env map[string]string) (*CredPair, error) {
 		return nil, err
 	} else if sub != nil {
 		result.PublicKey = sub
-	}
-	if val, ok := env["PROTO_LIBS_JWK_CRED_PAIR_PRINCIPAL"]; ok && val != "" {
-		result.Principal = val
 	}
 	return result, nil
 }
@@ -1501,16 +1494,6 @@ func ValidateCredPair(m *CredPair) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field PublicKey is required")
 	}
 
-	// Validate Principal (assert_required)
-	if m.Principal == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Principal is required")
-	}
-
-	// Validate Principal (default max size: 32768 bytes)
-	if len(m.Principal) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Principal exceeds max size of 32768 bytes, got: %d", len(m.Principal))
-	}
-
 	return nil
 }
 
@@ -1550,7 +1533,6 @@ const (
 	MaxSizeOpenidconfigurationMsgraphHost                 int = 32768
 	MaxSizeOpenidconfigurationRbacUrl                     int = 32768
 	MaxSizeOpenidconfigurationMfaChallengeEndpoint        int = 32768
-	MaxSizeCredpairPrincipal                              int = 32768
 )
 
 // ============================================================
@@ -1746,8 +1728,5 @@ func MergeCredPair(dst, src *CredPair) {
 		dst.PublicKey = src.PublicKey
 	} else if src.PublicKey != nil {
 		MergeJwk(dst.PublicKey, src.PublicKey)
-	}
-	if dst.Principal == "" {
-		dst.Principal = src.Principal
 	}
 }

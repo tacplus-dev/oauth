@@ -21,7 +21,6 @@ import (
 
 	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 
-	presley_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -126,7 +125,7 @@ func (p *SentinelService) RegisterServices(grpcServer *grpc.Server) error {
 
 // gRPC method implementations with validation
 // GetClusterInfo implements SentinelService.GetClusterInfo with authorization and optional validation
-func (p *SentinelService) GetClusterInfo(ctx context.Context, req *emptypb.Empty) (*presley_pb.AdminClusterInfo, error) {
+func (p *SentinelService) GetClusterInfo(ctx context.Context, req *emptypb.Empty) (*types.AdminClusterInfo, error) {
 	// Authorize
 	if err := p.authorize(ctx, "/services"+types.SentinelService_GetClusterInfo_FullMethodName, req); err != nil {
 		return nil, err
@@ -140,7 +139,7 @@ func (p *SentinelService) GetClusterInfo(ctx context.Context, req *emptypb.Empty
 
 	// Validate response if validation is enabled
 	if p.validationEnabled() {
-		if err := presley_pb.ValidateAdminClusterInfo(resp); err != nil {
+		if err := types.ValidateAdminClusterInfo(resp); err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("response validation failed: %v", err))
 		}
 	}
@@ -149,7 +148,7 @@ func (p *SentinelService) GetClusterInfo(ctx context.Context, req *emptypb.Empty
 }
 
 // GetClusterHealth implements SentinelService.GetClusterHealth with authorization and optional validation
-func (p *SentinelService) GetClusterHealth(ctx context.Context, req *emptypb.Empty) (*presley_pb.AdminClusterHealth, error) {
+func (p *SentinelService) GetClusterHealth(ctx context.Context, req *emptypb.Empty) (*types.AdminClusterHealth, error) {
 	// Authorize
 	if err := p.authorize(ctx, "/services"+types.SentinelService_GetClusterHealth_FullMethodName, req); err != nil {
 		return nil, err
@@ -163,7 +162,7 @@ func (p *SentinelService) GetClusterHealth(ctx context.Context, req *emptypb.Emp
 
 	// Validate response if validation is enabled
 	if p.validationEnabled() {
-		if err := presley_pb.ValidateAdminClusterHealth(resp); err != nil {
+		if err := types.ValidateAdminClusterHealth(resp); err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("response validation failed: %v", err))
 		}
 	}

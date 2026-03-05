@@ -14,7 +14,7 @@ import (
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
 	healthreport_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
 	spec_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
-	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
+	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 	"google.golang.org/protobuf/proto"
 )
 

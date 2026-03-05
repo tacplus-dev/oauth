@@ -3,8 +3,8 @@ src: /Users/jody/workspace/services/proto
 tag: latest
 pkg: gitlab.com/secondstarcavalier/controlplane/services/sentinel
 backends:
-  - services/elvis.ClusterState:ro
-  - services/elvis.ServiceHealthState:rw
+  - services/kernel.ClusterState:ro
+  - services/kernel.ServiceHealthState:rw
 frontends:
   - services/sentinel.SentinelService
 entry-point: internal.NewHandler

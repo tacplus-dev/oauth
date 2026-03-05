@@ -13,8 +13,8 @@ import (
 	"sync"
 
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
-	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
-	presley_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
+	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
+	sentinel_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -28,24 +28,24 @@ type Backend struct {
 	mu sync.RWMutex
 
 	// Cached singleton state
-	cachedClusterInfo    *presley_pb.AdminClusterInfo
-	cachedClusterHealth  *presley_pb.AdminClusterHealth
+	cachedClusterInfo    *sentinel_pb.AdminClusterInfo
+	cachedClusterHealth  *sentinel_pb.AdminClusterHealth
 	cachedFrontendConfig *types.Config
 
 	// Cached collection state
-	cachedNodeMetrics        map[string]*presley_pb.AdminNodeMetrics
-	cachedGrpcStats          map[string]*presley_pb.AdminGrpcStats
-	cachedPersistenceStatus  map[string]*presley_pb.AdminPersistenceStatus
-	cachedNetworkStats       map[string]*presley_pb.AdminNetworkStats
-	cachedThreadInfo         map[string]*presley_pb.AdminThreadInfo
-	cachedTokenCacheStats    map[string]*presley_pb.AdminTokenCacheStats
-	cachedMapStats           map[string]*presley_pb.AdminMapStats
-	cachedGraphRegistry      map[string]*presley_pb.AdminGraphInfo
-	cachedServiceConnections map[string]*presley_pb.AdminServiceConnection
-	cachedQueueStats         map[string]*presley_pb.AdminQueueStats
-	cachedTopicStats         map[string]*presley_pb.AdminTopicStats
-	cachedWatchHealth        map[string]*presley_pb.AdminWatchHealth
-	cachedMutationRates      map[string]*presley_pb.AdminMutationRate
+	cachedNodeMetrics        map[string]*sentinel_pb.AdminNodeMetrics
+	cachedGrpcStats          map[string]*sentinel_pb.AdminGrpcStats
+	cachedPersistenceStatus  map[string]*sentinel_pb.AdminPersistenceStatus
+	cachedNetworkStats       map[string]*sentinel_pb.AdminNetworkStats
+	cachedThreadInfo         map[string]*sentinel_pb.AdminThreadInfo
+	cachedTokenCacheStats    map[string]*sentinel_pb.AdminTokenCacheStats
+	cachedMapStats           map[string]*sentinel_pb.AdminMapStats
+	cachedGraphRegistry      map[string]*sentinel_pb.AdminGraphInfo
+	cachedServiceConnections map[string]*sentinel_pb.AdminServiceConnection
+	cachedQueueStats         map[string]*sentinel_pb.AdminQueueStats
+	cachedTopicStats         map[string]*sentinel_pb.AdminTopicStats
+	cachedWatchHealth        map[string]*sentinel_pb.AdminWatchHealth
+	cachedMutationRates      map[string]*sentinel_pb.AdminMutationRate
 
 	// Boundary wrappers
 	wrapperClusterInfo    *ClusterInfoWrapper
@@ -65,19 +65,19 @@ func NewBackend(ctx context.Context, sc *servicemanager.ServiceManager,
 	c := &Backend{
 		sc:                       sc,
 		backendStub:              types.NewClusterStateBackendServiceClient(conn),
-		cachedNodeMetrics:        make(map[string]*presley_pb.AdminNodeMetrics),
-		cachedGrpcStats:          make(map[string]*presley_pb.AdminGrpcStats),
-		cachedPersistenceStatus:  make(map[string]*presley_pb.AdminPersistenceStatus),
-		cachedNetworkStats:       make(map[string]*presley_pb.AdminNetworkStats),
-		cachedThreadInfo:         make(map[string]*presley_pb.AdminThreadInfo),
-		cachedTokenCacheStats:    make(map[string]*presley_pb.AdminTokenCacheStats),
-		cachedMapStats:           make(map[string]*presley_pb.AdminMapStats),
-		cachedGraphRegistry:      make(map[string]*presley_pb.AdminGraphInfo),
-		cachedServiceConnections: make(map[string]*presley_pb.AdminServiceConnection),
-		cachedQueueStats:         make(map[string]*presley_pb.AdminQueueStats),
-		cachedTopicStats:         make(map[string]*presley_pb.AdminTopicStats),
-		cachedWatchHealth:        make(map[string]*presley_pb.AdminWatchHealth),
-		cachedMutationRates:      make(map[string]*presley_pb.AdminMutationRate),
+		cachedNodeMetrics:        make(map[string]*sentinel_pb.AdminNodeMetrics),
+		cachedGrpcStats:          make(map[string]*sentinel_pb.AdminGrpcStats),
+		cachedPersistenceStatus:  make(map[string]*sentinel_pb.AdminPersistenceStatus),
+		cachedNetworkStats:       make(map[string]*sentinel_pb.AdminNetworkStats),
+		cachedThreadInfo:         make(map[string]*sentinel_pb.AdminThreadInfo),
+		cachedTokenCacheStats:    make(map[string]*sentinel_pb.AdminTokenCacheStats),
+		cachedMapStats:           make(map[string]*sentinel_pb.AdminMapStats),
+		cachedGraphRegistry:      make(map[string]*sentinel_pb.AdminGraphInfo),
+		cachedServiceConnections: make(map[string]*sentinel_pb.AdminServiceConnection),
+		cachedQueueStats:         make(map[string]*sentinel_pb.AdminQueueStats),
+		cachedTopicStats:         make(map[string]*sentinel_pb.AdminTopicStats),
+		cachedWatchHealth:        make(map[string]*sentinel_pb.AdminWatchHealth),
+		cachedMutationRates:      make(map[string]*sentinel_pb.AdminMutationRate),
 		ctx:                      ctx,
 		cancel:                   cancel,
 	}
@@ -131,52 +131,52 @@ func (c *Backend) Proto() *types.ClusterState {
 	defer c.mu.RUnlock()
 	state := &types.ClusterState{}
 	if c.cachedClusterInfo != nil {
-		state.ClusterInfo = proto.Clone(c.cachedClusterInfo).(*presley_pb.AdminClusterInfo)
+		state.ClusterInfo = proto.Clone(c.cachedClusterInfo).(*sentinel_pb.AdminClusterInfo)
 	}
 	if c.cachedClusterHealth != nil {
-		state.ClusterHealth = proto.Clone(c.cachedClusterHealth).(*presley_pb.AdminClusterHealth)
+		state.ClusterHealth = proto.Clone(c.cachedClusterHealth).(*sentinel_pb.AdminClusterHealth)
 	}
 	if c.cachedFrontendConfig != nil {
 		state.FrontendConfig = proto.Clone(c.cachedFrontendConfig).(*types.Config)
 	}
 	for _, v := range c.cachedNodeMetrics {
-		state.NodeMetrics = append(state.NodeMetrics, proto.Clone(v).(*presley_pb.AdminNodeMetrics))
+		state.NodeMetrics = append(state.NodeMetrics, proto.Clone(v).(*sentinel_pb.AdminNodeMetrics))
 	}
 	for _, v := range c.cachedGrpcStats {
-		state.GrpcStats = append(state.GrpcStats, proto.Clone(v).(*presley_pb.AdminGrpcStats))
+		state.GrpcStats = append(state.GrpcStats, proto.Clone(v).(*sentinel_pb.AdminGrpcStats))
 	}
 	for _, v := range c.cachedPersistenceStatus {
-		state.PersistenceStatus = append(state.PersistenceStatus, proto.Clone(v).(*presley_pb.AdminPersistenceStatus))
+		state.PersistenceStatus = append(state.PersistenceStatus, proto.Clone(v).(*sentinel_pb.AdminPersistenceStatus))
 	}
 	for _, v := range c.cachedNetworkStats {
-		state.NetworkStats = append(state.NetworkStats, proto.Clone(v).(*presley_pb.AdminNetworkStats))
+		state.NetworkStats = append(state.NetworkStats, proto.Clone(v).(*sentinel_pb.AdminNetworkStats))
 	}
 	for _, v := range c.cachedThreadInfo {
-		state.ThreadInfo = append(state.ThreadInfo, proto.Clone(v).(*presley_pb.AdminThreadInfo))
+		state.ThreadInfo = append(state.ThreadInfo, proto.Clone(v).(*sentinel_pb.AdminThreadInfo))
 	}
 	for _, v := range c.cachedTokenCacheStats {
-		state.TokenCacheStats = append(state.TokenCacheStats, proto.Clone(v).(*presley_pb.AdminTokenCacheStats))
+		state.TokenCacheStats = append(state.TokenCacheStats, proto.Clone(v).(*sentinel_pb.AdminTokenCacheStats))
 	}
 	for _, v := range c.cachedMapStats {
-		state.MapStats = append(state.MapStats, proto.Clone(v).(*presley_pb.AdminMapStats))
+		state.MapStats = append(state.MapStats, proto.Clone(v).(*sentinel_pb.AdminMapStats))
 	}
 	for _, v := range c.cachedGraphRegistry {
-		state.GraphRegistry = append(state.GraphRegistry, proto.Clone(v).(*presley_pb.AdminGraphInfo))
+		state.GraphRegistry = append(state.GraphRegistry, proto.Clone(v).(*sentinel_pb.AdminGraphInfo))
 	}
 	for _, v := range c.cachedServiceConnections {
-		state.ServiceConnections = append(state.ServiceConnections, proto.Clone(v).(*presley_pb.AdminServiceConnection))
+		state.ServiceConnections = append(state.ServiceConnections, proto.Clone(v).(*sentinel_pb.AdminServiceConnection))
 	}
 	for _, v := range c.cachedQueueStats {
-		state.QueueStats = append(state.QueueStats, proto.Clone(v).(*presley_pb.AdminQueueStats))
+		state.QueueStats = append(state.QueueStats, proto.Clone(v).(*sentinel_pb.AdminQueueStats))
 	}
 	for _, v := range c.cachedTopicStats {
-		state.TopicStats = append(state.TopicStats, proto.Clone(v).(*presley_pb.AdminTopicStats))
+		state.TopicStats = append(state.TopicStats, proto.Clone(v).(*sentinel_pb.AdminTopicStats))
 	}
 	for _, v := range c.cachedWatchHealth {
-		state.WatchHealth = append(state.WatchHealth, proto.Clone(v).(*presley_pb.AdminWatchHealth))
+		state.WatchHealth = append(state.WatchHealth, proto.Clone(v).(*sentinel_pb.AdminWatchHealth))
 	}
 	for _, v := range c.cachedMutationRates {
-		state.MutationRates = append(state.MutationRates, proto.Clone(v).(*presley_pb.AdminMutationRate))
+		state.MutationRates = append(state.MutationRates, proto.Clone(v).(*sentinel_pb.AdminMutationRate))
 	}
 	return state
 }
@@ -191,7 +191,7 @@ func (c *Backend) receiveClusterInfoUpdates(stream types.ClusterStateBackendServ
 		if err != nil {
 			return
 		}
-		if err := presley_pb.ValidateAdminClusterInfo(msg); err != nil {
+		if err := sentinel_pb.ValidateAdminClusterInfo(msg); err != nil {
 			continue
 		}
 		c.mu.Lock()
@@ -207,7 +207,7 @@ func (c *Backend) receiveClusterHealthUpdates(stream types.ClusterStateBackendSe
 		if err != nil {
 			return
 		}
-		if err := presley_pb.ValidateAdminClusterHealth(msg); err != nil {
+		if err := sentinel_pb.ValidateAdminClusterHealth(msg); err != nil {
 			continue
 		}
 		c.mu.Lock()
@@ -243,7 +243,7 @@ func (c *Backend) receiveFrontendConfigUpdates(stream types.ClusterStateBackendS
 type ClusterInfoWrapper struct {
 	parent     *Backend
 	callbackMu sync.Mutex
-	callbacks  []func(*presley_pb.AdminClusterInfo)
+	callbacks  []func(*sentinel_pb.AdminClusterInfo)
 }
 
 // ClusterInfo returns the wrapper for the AdminClusterInfo boundary.
@@ -253,34 +253,34 @@ func (c *Backend) ClusterInfo() *ClusterInfoWrapper {
 
 // OnChange registers a callback that fires when the AdminClusterInfo is updated via the Watch stream.
 // The callback receives a defensive copy of the new value.
-func (w *ClusterInfoWrapper) OnChange(fn func(*presley_pb.AdminClusterInfo)) {
+func (w *ClusterInfoWrapper) OnChange(fn func(*sentinel_pb.AdminClusterInfo)) {
 	w.callbackMu.Lock()
 	defer w.callbackMu.Unlock()
 	w.callbacks = append(w.callbacks, fn)
 }
 
-func (w *ClusterInfoWrapper) notifyCallbacks(value *presley_pb.AdminClusterInfo) {
+func (w *ClusterInfoWrapper) notifyCallbacks(value *sentinel_pb.AdminClusterInfo) {
 	w.callbackMu.Lock()
-	cbs := make([]func(*presley_pb.AdminClusterInfo), len(w.callbacks))
+	cbs := make([]func(*sentinel_pb.AdminClusterInfo), len(w.callbacks))
 	copy(cbs, w.callbacks)
 	w.callbackMu.Unlock()
 	for _, cb := range cbs {
-		cb(proto.Clone(value).(*presley_pb.AdminClusterInfo))
+		cb(proto.Clone(value).(*sentinel_pb.AdminClusterInfo))
 	}
 }
 
 // Get returns a defensive copy of the cached AdminClusterInfo.
-func (w *ClusterInfoWrapper) Get() *presley_pb.AdminClusterInfo {
+func (w *ClusterInfoWrapper) Get() *sentinel_pb.AdminClusterInfo {
 	w.parent.mu.RLock()
 	defer w.parent.mu.RUnlock()
 	if w.parent.cachedClusterInfo == nil {
 		return nil
 	}
-	return proto.Clone(w.parent.cachedClusterInfo).(*presley_pb.AdminClusterInfo)
+	return proto.Clone(w.parent.cachedClusterInfo).(*sentinel_pb.AdminClusterInfo)
 }
 
 // Fetch retrieves the authoritative AdminClusterInfo from the backend service.
-func (w *ClusterInfoWrapper) Fetch(ctx context.Context) (*presley_pb.AdminClusterInfo, error) {
+func (w *ClusterInfoWrapper) Fetch(ctx context.Context) (*sentinel_pb.AdminClusterInfo, error) {
 	return w.parent.backendStub.GetClusterInfo(ctx, &emptypb.Empty{})
 }
 
@@ -290,7 +290,7 @@ func (w *ClusterInfoWrapper) Fetch(ctx context.Context) (*presley_pb.AdminCluste
 type ClusterHealthWrapper struct {
 	parent     *Backend
 	callbackMu sync.Mutex
-	callbacks  []func(*presley_pb.AdminClusterHealth)
+	callbacks  []func(*sentinel_pb.AdminClusterHealth)
 }
 
 // ClusterHealth returns the wrapper for the AdminClusterHealth boundary.
@@ -300,34 +300,34 @@ func (c *Backend) ClusterHealth() *ClusterHealthWrapper {
 
 // OnChange registers a callback that fires when the AdminClusterHealth is updated via the Watch stream.
 // The callback receives a defensive copy of the new value.
-func (w *ClusterHealthWrapper) OnChange(fn func(*presley_pb.AdminClusterHealth)) {
+func (w *ClusterHealthWrapper) OnChange(fn func(*sentinel_pb.AdminClusterHealth)) {
 	w.callbackMu.Lock()
 	defer w.callbackMu.Unlock()
 	w.callbacks = append(w.callbacks, fn)
 }
 
-func (w *ClusterHealthWrapper) notifyCallbacks(value *presley_pb.AdminClusterHealth) {
+func (w *ClusterHealthWrapper) notifyCallbacks(value *sentinel_pb.AdminClusterHealth) {
 	w.callbackMu.Lock()
-	cbs := make([]func(*presley_pb.AdminClusterHealth), len(w.callbacks))
+	cbs := make([]func(*sentinel_pb.AdminClusterHealth), len(w.callbacks))
 	copy(cbs, w.callbacks)
 	w.callbackMu.Unlock()
 	for _, cb := range cbs {
-		cb(proto.Clone(value).(*presley_pb.AdminClusterHealth))
+		cb(proto.Clone(value).(*sentinel_pb.AdminClusterHealth))
 	}
 }
 
 // Get returns a defensive copy of the cached AdminClusterHealth.
-func (w *ClusterHealthWrapper) Get() *presley_pb.AdminClusterHealth {
+func (w *ClusterHealthWrapper) Get() *sentinel_pb.AdminClusterHealth {
 	w.parent.mu.RLock()
 	defer w.parent.mu.RUnlock()
 	if w.parent.cachedClusterHealth == nil {
 		return nil
 	}
-	return proto.Clone(w.parent.cachedClusterHealth).(*presley_pb.AdminClusterHealth)
+	return proto.Clone(w.parent.cachedClusterHealth).(*sentinel_pb.AdminClusterHealth)
 }
 
 // Fetch retrieves the authoritative AdminClusterHealth from the backend service.
-func (w *ClusterHealthWrapper) Fetch(ctx context.Context) (*presley_pb.AdminClusterHealth, error) {
+func (w *ClusterHealthWrapper) Fetch(ctx context.Context) (*sentinel_pb.AdminClusterHealth, error) {
 	return w.parent.backendStub.GetClusterHealth(ctx, &emptypb.Empty{})
 }
 
@@ -383,18 +383,18 @@ func (w *FrontendConfigWrapper) Fetch(ctx context.Context) (*types.Config, error
 // ============================================================================
 
 // GetNodeMetrics returns defensive copies of all cached AdminNodeMetrics items.
-func (c *Backend) GetNodeMetrics() []*presley_pb.AdminNodeMetrics {
+func (c *Backend) GetNodeMetrics() []*sentinel_pb.AdminNodeMetrics {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminNodeMetrics, 0, len(c.cachedNodeMetrics))
+	result := make([]*sentinel_pb.AdminNodeMetrics, 0, len(c.cachedNodeMetrics))
 	for _, v := range c.cachedNodeMetrics {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminNodeMetrics))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminNodeMetrics))
 	}
 	return result
 }
 
 // FetchNodeMetrics retrieves a single AdminNodeMetrics by key from the backend service.
-func (c *Backend) FetchNodeMetrics(ctx context.Context, key string) (*presley_pb.AdminNodeMetrics, error) {
+func (c *Backend) FetchNodeMetrics(ctx context.Context, key string) (*sentinel_pb.AdminNodeMetrics, error) {
 	resp, err := c.backendStub.GetNodeMetrics(ctx, &types.NodeMetricsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -406,7 +406,7 @@ func (c *Backend) FetchNodeMetrics(ctx context.Context, key string) (*presley_pb
 }
 
 // QueryNodeMetrics executes a structured query against the NodeMetrics collection.
-func (c *Backend) QueryNodeMetrics(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminNodeMetrics, int32, error) {
+func (c *Backend) QueryNodeMetrics(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminNodeMetrics, int32, error) {
 	resp, err := c.backendStub.QueryNodeMetrics(ctx, &types.NodeMetricsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -420,18 +420,18 @@ func (c *Backend) WatchQueryNodeMetrics(ctx context.Context, q *types.Collection
 }
 
 // GetGrpcStats returns defensive copies of all cached AdminGrpcStats items.
-func (c *Backend) GetGrpcStats() []*presley_pb.AdminGrpcStats {
+func (c *Backend) GetGrpcStats() []*sentinel_pb.AdminGrpcStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminGrpcStats, 0, len(c.cachedGrpcStats))
+	result := make([]*sentinel_pb.AdminGrpcStats, 0, len(c.cachedGrpcStats))
 	for _, v := range c.cachedGrpcStats {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminGrpcStats))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminGrpcStats))
 	}
 	return result
 }
 
 // FetchGrpcStats retrieves a single AdminGrpcStats by key from the backend service.
-func (c *Backend) FetchGrpcStats(ctx context.Context, key string) (*presley_pb.AdminGrpcStats, error) {
+func (c *Backend) FetchGrpcStats(ctx context.Context, key string) (*sentinel_pb.AdminGrpcStats, error) {
 	resp, err := c.backendStub.GetGrpcStats(ctx, &types.GrpcStatsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -443,7 +443,7 @@ func (c *Backend) FetchGrpcStats(ctx context.Context, key string) (*presley_pb.A
 }
 
 // QueryGrpcStats executes a structured query against the GrpcStats collection.
-func (c *Backend) QueryGrpcStats(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminGrpcStats, int32, error) {
+func (c *Backend) QueryGrpcStats(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminGrpcStats, int32, error) {
 	resp, err := c.backendStub.QueryGrpcStats(ctx, &types.GrpcStatsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -457,18 +457,18 @@ func (c *Backend) WatchQueryGrpcStats(ctx context.Context, q *types.CollectionQu
 }
 
 // GetPersistenceStatus returns defensive copies of all cached AdminPersistenceStatus items.
-func (c *Backend) GetPersistenceStatus() []*presley_pb.AdminPersistenceStatus {
+func (c *Backend) GetPersistenceStatus() []*sentinel_pb.AdminPersistenceStatus {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminPersistenceStatus, 0, len(c.cachedPersistenceStatus))
+	result := make([]*sentinel_pb.AdminPersistenceStatus, 0, len(c.cachedPersistenceStatus))
 	for _, v := range c.cachedPersistenceStatus {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminPersistenceStatus))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminPersistenceStatus))
 	}
 	return result
 }
 
 // FetchPersistenceStatus retrieves a single AdminPersistenceStatus by key from the backend service.
-func (c *Backend) FetchPersistenceStatus(ctx context.Context, key string) (*presley_pb.AdminPersistenceStatus, error) {
+func (c *Backend) FetchPersistenceStatus(ctx context.Context, key string) (*sentinel_pb.AdminPersistenceStatus, error) {
 	resp, err := c.backendStub.GetPersistenceStatus(ctx, &types.PersistenceStatusGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -480,7 +480,7 @@ func (c *Backend) FetchPersistenceStatus(ctx context.Context, key string) (*pres
 }
 
 // QueryPersistenceStatus executes a structured query against the PersistenceStatus collection.
-func (c *Backend) QueryPersistenceStatus(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminPersistenceStatus, int32, error) {
+func (c *Backend) QueryPersistenceStatus(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminPersistenceStatus, int32, error) {
 	resp, err := c.backendStub.QueryPersistenceStatus(ctx, &types.PersistenceStatusQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -494,18 +494,18 @@ func (c *Backend) WatchQueryPersistenceStatus(ctx context.Context, q *types.Coll
 }
 
 // GetNetworkStats returns defensive copies of all cached AdminNetworkStats items.
-func (c *Backend) GetNetworkStats() []*presley_pb.AdminNetworkStats {
+func (c *Backend) GetNetworkStats() []*sentinel_pb.AdminNetworkStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminNetworkStats, 0, len(c.cachedNetworkStats))
+	result := make([]*sentinel_pb.AdminNetworkStats, 0, len(c.cachedNetworkStats))
 	for _, v := range c.cachedNetworkStats {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminNetworkStats))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminNetworkStats))
 	}
 	return result
 }
 
 // FetchNetworkStats retrieves a single AdminNetworkStats by key from the backend service.
-func (c *Backend) FetchNetworkStats(ctx context.Context, key string) (*presley_pb.AdminNetworkStats, error) {
+func (c *Backend) FetchNetworkStats(ctx context.Context, key string) (*sentinel_pb.AdminNetworkStats, error) {
 	resp, err := c.backendStub.GetNetworkStats(ctx, &types.NetworkStatsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -517,7 +517,7 @@ func (c *Backend) FetchNetworkStats(ctx context.Context, key string) (*presley_p
 }
 
 // QueryNetworkStats executes a structured query against the NetworkStats collection.
-func (c *Backend) QueryNetworkStats(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminNetworkStats, int32, error) {
+func (c *Backend) QueryNetworkStats(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminNetworkStats, int32, error) {
 	resp, err := c.backendStub.QueryNetworkStats(ctx, &types.NetworkStatsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -531,18 +531,18 @@ func (c *Backend) WatchQueryNetworkStats(ctx context.Context, q *types.Collectio
 }
 
 // GetThreadInfo returns defensive copies of all cached AdminThreadInfo items.
-func (c *Backend) GetThreadInfo() []*presley_pb.AdminThreadInfo {
+func (c *Backend) GetThreadInfo() []*sentinel_pb.AdminThreadInfo {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminThreadInfo, 0, len(c.cachedThreadInfo))
+	result := make([]*sentinel_pb.AdminThreadInfo, 0, len(c.cachedThreadInfo))
 	for _, v := range c.cachedThreadInfo {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminThreadInfo))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminThreadInfo))
 	}
 	return result
 }
 
 // FetchThreadInfo retrieves a single AdminThreadInfo by key from the backend service.
-func (c *Backend) FetchThreadInfo(ctx context.Context, key string) (*presley_pb.AdminThreadInfo, error) {
+func (c *Backend) FetchThreadInfo(ctx context.Context, key string) (*sentinel_pb.AdminThreadInfo, error) {
 	resp, err := c.backendStub.GetThreadInfo(ctx, &types.ThreadInfoGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -554,7 +554,7 @@ func (c *Backend) FetchThreadInfo(ctx context.Context, key string) (*presley_pb.
 }
 
 // QueryThreadInfo executes a structured query against the ThreadInfo collection.
-func (c *Backend) QueryThreadInfo(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminThreadInfo, int32, error) {
+func (c *Backend) QueryThreadInfo(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminThreadInfo, int32, error) {
 	resp, err := c.backendStub.QueryThreadInfo(ctx, &types.ThreadInfoQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -568,18 +568,18 @@ func (c *Backend) WatchQueryThreadInfo(ctx context.Context, q *types.CollectionQ
 }
 
 // GetTokenCacheStats returns defensive copies of all cached AdminTokenCacheStats items.
-func (c *Backend) GetTokenCacheStats() []*presley_pb.AdminTokenCacheStats {
+func (c *Backend) GetTokenCacheStats() []*sentinel_pb.AdminTokenCacheStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminTokenCacheStats, 0, len(c.cachedTokenCacheStats))
+	result := make([]*sentinel_pb.AdminTokenCacheStats, 0, len(c.cachedTokenCacheStats))
 	for _, v := range c.cachedTokenCacheStats {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminTokenCacheStats))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminTokenCacheStats))
 	}
 	return result
 }
 
 // FetchTokenCacheStats retrieves a single AdminTokenCacheStats by key from the backend service.
-func (c *Backend) FetchTokenCacheStats(ctx context.Context, key string) (*presley_pb.AdminTokenCacheStats, error) {
+func (c *Backend) FetchTokenCacheStats(ctx context.Context, key string) (*sentinel_pb.AdminTokenCacheStats, error) {
 	resp, err := c.backendStub.GetTokenCacheStats(ctx, &types.TokenCacheStatsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -591,7 +591,7 @@ func (c *Backend) FetchTokenCacheStats(ctx context.Context, key string) (*presle
 }
 
 // QueryTokenCacheStats executes a structured query against the TokenCacheStats collection.
-func (c *Backend) QueryTokenCacheStats(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminTokenCacheStats, int32, error) {
+func (c *Backend) QueryTokenCacheStats(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminTokenCacheStats, int32, error) {
 	resp, err := c.backendStub.QueryTokenCacheStats(ctx, &types.TokenCacheStatsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -605,18 +605,18 @@ func (c *Backend) WatchQueryTokenCacheStats(ctx context.Context, q *types.Collec
 }
 
 // GetMapStats returns defensive copies of all cached AdminMapStats items.
-func (c *Backend) GetMapStats() []*presley_pb.AdminMapStats {
+func (c *Backend) GetMapStats() []*sentinel_pb.AdminMapStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminMapStats, 0, len(c.cachedMapStats))
+	result := make([]*sentinel_pb.AdminMapStats, 0, len(c.cachedMapStats))
 	for _, v := range c.cachedMapStats {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminMapStats))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminMapStats))
 	}
 	return result
 }
 
 // FetchMapStats retrieves a single AdminMapStats by key from the backend service.
-func (c *Backend) FetchMapStats(ctx context.Context, key string) (*presley_pb.AdminMapStats, error) {
+func (c *Backend) FetchMapStats(ctx context.Context, key string) (*sentinel_pb.AdminMapStats, error) {
 	resp, err := c.backendStub.GetMapStats(ctx, &types.MapStatsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -628,7 +628,7 @@ func (c *Backend) FetchMapStats(ctx context.Context, key string) (*presley_pb.Ad
 }
 
 // QueryMapStats executes a structured query against the MapStats collection.
-func (c *Backend) QueryMapStats(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminMapStats, int32, error) {
+func (c *Backend) QueryMapStats(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminMapStats, int32, error) {
 	resp, err := c.backendStub.QueryMapStats(ctx, &types.MapStatsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -642,18 +642,18 @@ func (c *Backend) WatchQueryMapStats(ctx context.Context, q *types.CollectionQue
 }
 
 // GetGraphRegistry returns defensive copies of all cached AdminGraphInfo items.
-func (c *Backend) GetGraphRegistry() []*presley_pb.AdminGraphInfo {
+func (c *Backend) GetGraphRegistry() []*sentinel_pb.AdminGraphInfo {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminGraphInfo, 0, len(c.cachedGraphRegistry))
+	result := make([]*sentinel_pb.AdminGraphInfo, 0, len(c.cachedGraphRegistry))
 	for _, v := range c.cachedGraphRegistry {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminGraphInfo))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminGraphInfo))
 	}
 	return result
 }
 
 // FetchGraphRegistry retrieves a single AdminGraphInfo by key from the backend service.
-func (c *Backend) FetchGraphRegistry(ctx context.Context, key string) (*presley_pb.AdminGraphInfo, error) {
+func (c *Backend) FetchGraphRegistry(ctx context.Context, key string) (*sentinel_pb.AdminGraphInfo, error) {
 	resp, err := c.backendStub.GetGraphRegistry(ctx, &types.GraphRegistryGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -665,7 +665,7 @@ func (c *Backend) FetchGraphRegistry(ctx context.Context, key string) (*presley_
 }
 
 // QueryGraphRegistry executes a structured query against the GraphRegistry collection.
-func (c *Backend) QueryGraphRegistry(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminGraphInfo, int32, error) {
+func (c *Backend) QueryGraphRegistry(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminGraphInfo, int32, error) {
 	resp, err := c.backendStub.QueryGraphRegistry(ctx, &types.GraphRegistryQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -679,18 +679,18 @@ func (c *Backend) WatchQueryGraphRegistry(ctx context.Context, q *types.Collecti
 }
 
 // GetServiceConnections returns defensive copies of all cached AdminServiceConnection items.
-func (c *Backend) GetServiceConnections() []*presley_pb.AdminServiceConnection {
+func (c *Backend) GetServiceConnections() []*sentinel_pb.AdminServiceConnection {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminServiceConnection, 0, len(c.cachedServiceConnections))
+	result := make([]*sentinel_pb.AdminServiceConnection, 0, len(c.cachedServiceConnections))
 	for _, v := range c.cachedServiceConnections {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminServiceConnection))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminServiceConnection))
 	}
 	return result
 }
 
 // FetchServiceConnections retrieves a single AdminServiceConnection by key from the backend service.
-func (c *Backend) FetchServiceConnections(ctx context.Context, key string) (*presley_pb.AdminServiceConnection, error) {
+func (c *Backend) FetchServiceConnections(ctx context.Context, key string) (*sentinel_pb.AdminServiceConnection, error) {
 	resp, err := c.backendStub.GetServiceConnections(ctx, &types.ServiceConnectionsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -702,7 +702,7 @@ func (c *Backend) FetchServiceConnections(ctx context.Context, key string) (*pre
 }
 
 // QueryServiceConnections executes a structured query against the ServiceConnections collection.
-func (c *Backend) QueryServiceConnections(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminServiceConnection, int32, error) {
+func (c *Backend) QueryServiceConnections(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminServiceConnection, int32, error) {
 	resp, err := c.backendStub.QueryServiceConnections(ctx, &types.ServiceConnectionsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -716,18 +716,18 @@ func (c *Backend) WatchQueryServiceConnections(ctx context.Context, q *types.Col
 }
 
 // GetQueueStats returns defensive copies of all cached AdminQueueStats items.
-func (c *Backend) GetQueueStats() []*presley_pb.AdminQueueStats {
+func (c *Backend) GetQueueStats() []*sentinel_pb.AdminQueueStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminQueueStats, 0, len(c.cachedQueueStats))
+	result := make([]*sentinel_pb.AdminQueueStats, 0, len(c.cachedQueueStats))
 	for _, v := range c.cachedQueueStats {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminQueueStats))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminQueueStats))
 	}
 	return result
 }
 
 // FetchQueueStats retrieves a single AdminQueueStats by key from the backend service.
-func (c *Backend) FetchQueueStats(ctx context.Context, key string) (*presley_pb.AdminQueueStats, error) {
+func (c *Backend) FetchQueueStats(ctx context.Context, key string) (*sentinel_pb.AdminQueueStats, error) {
 	resp, err := c.backendStub.GetQueueStats(ctx, &types.QueueStatsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -739,7 +739,7 @@ func (c *Backend) FetchQueueStats(ctx context.Context, key string) (*presley_pb.
 }
 
 // QueryQueueStats executes a structured query against the QueueStats collection.
-func (c *Backend) QueryQueueStats(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminQueueStats, int32, error) {
+func (c *Backend) QueryQueueStats(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminQueueStats, int32, error) {
 	resp, err := c.backendStub.QueryQueueStats(ctx, &types.QueueStatsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -753,18 +753,18 @@ func (c *Backend) WatchQueryQueueStats(ctx context.Context, q *types.CollectionQ
 }
 
 // GetTopicStats returns defensive copies of all cached AdminTopicStats items.
-func (c *Backend) GetTopicStats() []*presley_pb.AdminTopicStats {
+func (c *Backend) GetTopicStats() []*sentinel_pb.AdminTopicStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminTopicStats, 0, len(c.cachedTopicStats))
+	result := make([]*sentinel_pb.AdminTopicStats, 0, len(c.cachedTopicStats))
 	for _, v := range c.cachedTopicStats {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminTopicStats))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminTopicStats))
 	}
 	return result
 }
 
 // FetchTopicStats retrieves a single AdminTopicStats by key from the backend service.
-func (c *Backend) FetchTopicStats(ctx context.Context, key string) (*presley_pb.AdminTopicStats, error) {
+func (c *Backend) FetchTopicStats(ctx context.Context, key string) (*sentinel_pb.AdminTopicStats, error) {
 	resp, err := c.backendStub.GetTopicStats(ctx, &types.TopicStatsGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -776,7 +776,7 @@ func (c *Backend) FetchTopicStats(ctx context.Context, key string) (*presley_pb.
 }
 
 // QueryTopicStats executes a structured query against the TopicStats collection.
-func (c *Backend) QueryTopicStats(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminTopicStats, int32, error) {
+func (c *Backend) QueryTopicStats(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminTopicStats, int32, error) {
 	resp, err := c.backendStub.QueryTopicStats(ctx, &types.TopicStatsQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -790,18 +790,18 @@ func (c *Backend) WatchQueryTopicStats(ctx context.Context, q *types.CollectionQ
 }
 
 // GetWatchHealth returns defensive copies of all cached AdminWatchHealth items.
-func (c *Backend) GetWatchHealth() []*presley_pb.AdminWatchHealth {
+func (c *Backend) GetWatchHealth() []*sentinel_pb.AdminWatchHealth {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminWatchHealth, 0, len(c.cachedWatchHealth))
+	result := make([]*sentinel_pb.AdminWatchHealth, 0, len(c.cachedWatchHealth))
 	for _, v := range c.cachedWatchHealth {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminWatchHealth))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminWatchHealth))
 	}
 	return result
 }
 
 // FetchWatchHealth retrieves a single AdminWatchHealth by key from the backend service.
-func (c *Backend) FetchWatchHealth(ctx context.Context, key string) (*presley_pb.AdminWatchHealth, error) {
+func (c *Backend) FetchWatchHealth(ctx context.Context, key string) (*sentinel_pb.AdminWatchHealth, error) {
 	resp, err := c.backendStub.GetWatchHealth(ctx, &types.WatchHealthGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -813,7 +813,7 @@ func (c *Backend) FetchWatchHealth(ctx context.Context, key string) (*presley_pb
 }
 
 // QueryWatchHealth executes a structured query against the WatchHealth collection.
-func (c *Backend) QueryWatchHealth(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminWatchHealth, int32, error) {
+func (c *Backend) QueryWatchHealth(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminWatchHealth, int32, error) {
 	resp, err := c.backendStub.QueryWatchHealth(ctx, &types.WatchHealthQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err
@@ -827,18 +827,18 @@ func (c *Backend) WatchQueryWatchHealth(ctx context.Context, q *types.Collection
 }
 
 // GetMutationRates returns defensive copies of all cached AdminMutationRate items.
-func (c *Backend) GetMutationRates() []*presley_pb.AdminMutationRate {
+func (c *Backend) GetMutationRates() []*sentinel_pb.AdminMutationRate {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*presley_pb.AdminMutationRate, 0, len(c.cachedMutationRates))
+	result := make([]*sentinel_pb.AdminMutationRate, 0, len(c.cachedMutationRates))
 	for _, v := range c.cachedMutationRates {
-		result = append(result, proto.Clone(v).(*presley_pb.AdminMutationRate))
+		result = append(result, proto.Clone(v).(*sentinel_pb.AdminMutationRate))
 	}
 	return result
 }
 
 // FetchMutationRates retrieves a single AdminMutationRate by key from the backend service.
-func (c *Backend) FetchMutationRates(ctx context.Context, key string) (*presley_pb.AdminMutationRate, error) {
+func (c *Backend) FetchMutationRates(ctx context.Context, key string) (*sentinel_pb.AdminMutationRate, error) {
 	resp, err := c.backendStub.GetMutationRates(ctx, &types.MutationRatesGetRequest{Key: key})
 	if err != nil {
 		return nil, err
@@ -850,7 +850,7 @@ func (c *Backend) FetchMutationRates(ctx context.Context, key string) (*presley_
 }
 
 // QueryMutationRates executes a structured query against the MutationRates collection.
-func (c *Backend) QueryMutationRates(ctx context.Context, q *types.CollectionQuery) ([]*presley_pb.AdminMutationRate, int32, error) {
+func (c *Backend) QueryMutationRates(ctx context.Context, q *types.CollectionQuery) ([]*sentinel_pb.AdminMutationRate, int32, error) {
 	resp, err := c.backendStub.QueryMutationRates(ctx, &types.MutationRatesQueryRequest{Query: q})
 	if err != nil {
 		return nil, 0, err

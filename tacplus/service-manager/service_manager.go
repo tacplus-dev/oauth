@@ -18,7 +18,7 @@ import (
 	"net"
 
 	healthreport_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
-	elvis_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
+	healthstate_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 
 	"go.uber.org/zap"
 
@@ -158,8 +158,8 @@ func (sm *ServiceManager) Run(h Handler) error {
 		}
 	})
 
-	// Start health reporter — publishes ServiceInstanceHealth to elvis so
-	// the gateway (springsteen) can discover this instance.
+	// Start health reporter — publishes ServiceInstanceHealth so
+	// the gateway can discover this instance.
 	healthStub := sm.bc.Services().ServiceHealthState().BackendStub()
 	metrics := buildMetricsProvider(runtimeCfg.ListenAddress)
 	hr := healthreporter.New(&healthPublisherAdapter{stub: healthStub}, metrics, zap.L())
@@ -259,7 +259,7 @@ func (m *staticMetrics) Labels() map[string]string   { return nil }
 
 // healthPublisherAdapter adapts the gRPC stub to the HealthPublisher interface.
 type healthPublisherAdapter struct {
-	stub elvis_pb.ServiceHealthStateBackendServiceClient
+	stub healthstate_pb.ServiceHealthStateBackendServiceClient
 }
 
 func (a *healthPublisherAdapter) SetInstances(ctx context.Context, health *healthreport_pb.ServiceInstanceHealth) error {

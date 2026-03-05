@@ -7,8 +7,7 @@ import (
 	"time"
 
 	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager"
-	cluster_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
-	elvis_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
+	kernel_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -17,7 +16,7 @@ import (
 // Service implements SentinelServiceServer and the service-manager Handler interface.
 type Service struct {
 	pb.UnimplementedSentinelServiceServer
-	admin elvis_pb.ClusterStateBackendServiceClient
+	admin kernel_pb.ClusterStateBackendServiceClient
 }
 
 // NewHandler creates a new Handler.
@@ -82,20 +81,20 @@ func (s *Service) WatchDashboard(req *pb.WatchDashboardRequest, stream pb.Sentin
 	}
 }
 
-func (s *Service) GetClusterInfo(ctx context.Context, _ *emptypb.Empty) (*cluster_pb.AdminClusterInfo, error) {
+func (s *Service) GetClusterInfo(ctx context.Context, _ *emptypb.Empty) (*pb.AdminClusterInfo, error) {
 	return s.admin.GetClusterInfo(ctx, &emptypb.Empty{})
 }
 
-func (s *Service) GetClusterHealth(ctx context.Context, _ *emptypb.Empty) (*cluster_pb.AdminClusterHealth, error) {
+func (s *Service) GetClusterHealth(ctx context.Context, _ *emptypb.Empty) (*pb.AdminClusterHealth, error) {
 	return s.admin.GetClusterHealth(ctx, &emptypb.Empty{})
 }
 
 func (s *Service) GetNodeMetrics(ctx context.Context, _ *emptypb.Empty) (*pb.NodeMetricsResponse, error) {
-	resp, err := s.admin.GetAllNodeMetrics(ctx, &elvis_pb.NodeMetricsGetAllRequest{})
+	resp, err := s.admin.GetAllNodeMetrics(ctx, &kernel_pb.NodeMetricsGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminNodeMetrics, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminNodeMetrics, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -103,11 +102,11 @@ func (s *Service) GetNodeMetrics(ctx context.Context, _ *emptypb.Empty) (*pb.Nod
 }
 
 func (s *Service) GetGrpcStats(ctx context.Context, _ *emptypb.Empty) (*pb.GrpcStatsResponse, error) {
-	resp, err := s.admin.GetAllGrpcStats(ctx, &elvis_pb.GrpcStatsGetAllRequest{})
+	resp, err := s.admin.GetAllGrpcStats(ctx, &kernel_pb.GrpcStatsGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminGrpcStats, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminGrpcStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -115,11 +114,11 @@ func (s *Service) GetGrpcStats(ctx context.Context, _ *emptypb.Empty) (*pb.GrpcS
 }
 
 func (s *Service) GetPersistenceStatus(ctx context.Context, _ *emptypb.Empty) (*pb.PersistenceStatusResponse, error) {
-	resp, err := s.admin.GetAllPersistenceStatus(ctx, &elvis_pb.PersistenceStatusGetAllRequest{})
+	resp, err := s.admin.GetAllPersistenceStatus(ctx, &kernel_pb.PersistenceStatusGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminPersistenceStatus, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminPersistenceStatus, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -127,11 +126,11 @@ func (s *Service) GetPersistenceStatus(ctx context.Context, _ *emptypb.Empty) (*
 }
 
 func (s *Service) GetNetworkStats(ctx context.Context, _ *emptypb.Empty) (*pb.NetworkStatsResponse, error) {
-	resp, err := s.admin.GetAllNetworkStats(ctx, &elvis_pb.NetworkStatsGetAllRequest{})
+	resp, err := s.admin.GetAllNetworkStats(ctx, &kernel_pb.NetworkStatsGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminNetworkStats, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminNetworkStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -139,11 +138,11 @@ func (s *Service) GetNetworkStats(ctx context.Context, _ *emptypb.Empty) (*pb.Ne
 }
 
 func (s *Service) GetThreadInfo(ctx context.Context, _ *emptypb.Empty) (*pb.ThreadInfoResponse, error) {
-	resp, err := s.admin.GetAllThreadInfo(ctx, &elvis_pb.ThreadInfoGetAllRequest{})
+	resp, err := s.admin.GetAllThreadInfo(ctx, &kernel_pb.ThreadInfoGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminThreadInfo, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminThreadInfo, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -151,11 +150,11 @@ func (s *Service) GetThreadInfo(ctx context.Context, _ *emptypb.Empty) (*pb.Thre
 }
 
 func (s *Service) GetTokenCacheStats(ctx context.Context, _ *emptypb.Empty) (*pb.TokenCacheStatsResponse, error) {
-	resp, err := s.admin.GetAllTokenCacheStats(ctx, &elvis_pb.TokenCacheStatsGetAllRequest{})
+	resp, err := s.admin.GetAllTokenCacheStats(ctx, &kernel_pb.TokenCacheStatsGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminTokenCacheStats, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminTokenCacheStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -163,11 +162,11 @@ func (s *Service) GetTokenCacheStats(ctx context.Context, _ *emptypb.Empty) (*pb
 }
 
 func (s *Service) GetMapStats(ctx context.Context, _ *emptypb.Empty) (*pb.MapStatsResponse, error) {
-	resp, err := s.admin.GetAllMapStats(ctx, &elvis_pb.MapStatsGetAllRequest{})
+	resp, err := s.admin.GetAllMapStats(ctx, &kernel_pb.MapStatsGetAllRequest{})
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*cluster_pb.AdminMapStats, 0, len(resp.GetEntries()))
+	items := make([]*pb.AdminMapStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -216,12 +215,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllNodeMetrics(ctx, &elvis_pb.NodeMetricsGetAllRequest{})
+		resp, err := s.admin.GetAllNodeMetrics(ctx, &kernel_pb.NodeMetricsGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminNodeMetrics, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminNodeMetrics, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -232,12 +231,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllGrpcStats(ctx, &elvis_pb.GrpcStatsGetAllRequest{})
+		resp, err := s.admin.GetAllGrpcStats(ctx, &kernel_pb.GrpcStatsGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminGrpcStats, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminGrpcStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -248,12 +247,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllPersistenceStatus(ctx, &elvis_pb.PersistenceStatusGetAllRequest{})
+		resp, err := s.admin.GetAllPersistenceStatus(ctx, &kernel_pb.PersistenceStatusGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminPersistenceStatus, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminPersistenceStatus, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -264,12 +263,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllNetworkStats(ctx, &elvis_pb.NetworkStatsGetAllRequest{})
+		resp, err := s.admin.GetAllNetworkStats(ctx, &kernel_pb.NetworkStatsGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminNetworkStats, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminNetworkStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -280,12 +279,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllThreadInfo(ctx, &elvis_pb.ThreadInfoGetAllRequest{})
+		resp, err := s.admin.GetAllThreadInfo(ctx, &kernel_pb.ThreadInfoGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminThreadInfo, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminThreadInfo, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -296,12 +295,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllTokenCacheStats(ctx, &elvis_pb.TokenCacheStatsGetAllRequest{})
+		resp, err := s.admin.GetAllTokenCacheStats(ctx, &kernel_pb.TokenCacheStatsGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminTokenCacheStats, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminTokenCacheStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -312,12 +311,12 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 
 	go func() {
 		defer wg.Done()
-		resp, err := s.admin.GetAllMapStats(ctx, &elvis_pb.MapStatsGetAllRequest{})
+		resp, err := s.admin.GetAllMapStats(ctx, &kernel_pb.MapStatsGetAllRequest{})
 		if err != nil {
 			setErr(err)
 			return
 		}
-		items := make([]*cluster_pb.AdminMapStats, 0, len(resp.GetEntries()))
+		items := make([]*pb.AdminMapStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -380,17 +379,17 @@ func filterAndResolve[T nodeIDAccessor](items []T, active map[string]bool, addrM
 // setNodeID replaces the node_id field on any of the admin stats types.
 func setNodeID(item any, id string) {
 	switch v := item.(type) {
-	case *cluster_pb.AdminNodeMetrics:
+	case *pb.AdminNodeMetrics:
 		v.NodeId = id
-	case *cluster_pb.AdminGrpcStats:
+	case *pb.AdminGrpcStats:
 		v.NodeId = id
-	case *cluster_pb.AdminPersistenceStatus:
+	case *pb.AdminPersistenceStatus:
 		v.NodeId = id
-	case *cluster_pb.AdminNetworkStats:
+	case *pb.AdminNetworkStats:
 		v.NodeId = id
-	case *cluster_pb.AdminThreadInfo:
+	case *pb.AdminThreadInfo:
 		v.NodeId = id
-	case *cluster_pb.AdminTokenCacheStats:
+	case *pb.AdminTokenCacheStats:
 		v.NodeId = id
 	}
 }
