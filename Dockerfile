@@ -12,17 +12,17 @@ RUN --mount=type=secret,id=netrc,dst=/root/.netrc go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /fleetwood .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /sentinel .
 
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata && \
-    addgroup -S fleetwood && adduser -S fleetwood -G fleetwood
+    addgroup -S sentinel && adduser -S sentinel -G sentinel
 
 WORKDIR /app
 
-COPY --from=builder /fleetwood /app/fleetwood
+COPY --from=builder /sentinel /app/sentinel
 
-USER fleetwood
+USER sentinel
 
-ENTRYPOINT ["/app/fleetwood"]
+ENTRYPOINT ["/app/sentinel"]
