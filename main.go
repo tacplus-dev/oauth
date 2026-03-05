@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	handler "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/internal"
-	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/service-manager"
+	handler "gitlab.com/secondstarcavalier/controlplane/services/sentinel/internal"
+	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager"
 )
 
 func main() {
@@ -19,6 +19,6 @@ func main() {
 	}
 
 	if err := sm.Run(h); err != nil {
-		log.Fatalf("fleetwood: %v", err)
+		log.Fatalf("sentinel: %v", err)
 	}
 }

@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"sync"
 
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/servicemanager"
-	types "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/elvis"
-	presley_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/presley"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
+	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
+	presley_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )

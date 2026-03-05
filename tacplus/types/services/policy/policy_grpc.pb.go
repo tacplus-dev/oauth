@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/queen.proto
+// Source: services/policy.proto
 
-package queen
+package policy
 
 import (
 	context "context"
@@ -27,17 +27,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	QueenService_GetServiceCatalog_FullMethodName    = "/queen.QueenService/GetServiceCatalog"
-	QueenService_GetMyEntitlements_FullMethodName    = "/queen.QueenService/GetMyEntitlements"
-	QueenService_SimulateEntitlements_FullMethodName = "/queen.QueenService/SimulateEntitlements"
-	QueenService_EvaluatePolicy_FullMethodName       = "/queen.QueenService/EvaluatePolicy"
-	QueenService_GetPolicies_FullMethodName          = "/queen.QueenService/GetPolicies"
+	PolicyService_GetServiceCatalog_FullMethodName    = "/policy.PolicyService/GetServiceCatalog"
+	PolicyService_GetMyEntitlements_FullMethodName    = "/policy.PolicyService/GetMyEntitlements"
+	PolicyService_SimulateEntitlements_FullMethodName = "/policy.PolicyService/SimulateEntitlements"
+	PolicyService_EvaluatePolicy_FullMethodName       = "/policy.PolicyService/EvaluatePolicy"
+	PolicyService_GetPolicies_FullMethodName          = "/policy.PolicyService/GetPolicies"
 )
 
-// QueenServiceClient is the client API for QueenService service.
+// PolicyServiceClient is the client API for PolicyService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type QueenServiceClient interface {
+type PolicyServiceClient interface {
 	// GetServiceCatalog returns the available services and their RPCs,
 	// built from the service_entitlements config.
 	GetServiceCatalog(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServiceCatalogResponse, error)
@@ -54,68 +54,68 @@ type QueenServiceClient interface {
 	GetPolicies(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetPoliciesResponse, error)
 }
 
-type queenServiceClient struct {
+type policyServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewQueenServiceClient(cc grpc.ClientConnInterface) QueenServiceClient {
-	return &queenServiceClient{cc}
+func NewPolicyServiceClient(cc grpc.ClientConnInterface) PolicyServiceClient {
+	return &policyServiceClient{cc}
 }
 
-func (c *queenServiceClient) GetServiceCatalog(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServiceCatalogResponse, error) {
+func (c *policyServiceClient) GetServiceCatalog(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ServiceCatalogResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ServiceCatalogResponse)
-	err := c.cc.Invoke(ctx, QueenService_GetServiceCatalog_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PolicyService_GetServiceCatalog_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queenServiceClient) GetMyEntitlements(ctx context.Context, in *GetMyEntitlementsRequest, opts ...grpc.CallOption) (*MyEntitlementsResponse, error) {
+func (c *policyServiceClient) GetMyEntitlements(ctx context.Context, in *GetMyEntitlementsRequest, opts ...grpc.CallOption) (*MyEntitlementsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MyEntitlementsResponse)
-	err := c.cc.Invoke(ctx, QueenService_GetMyEntitlements_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PolicyService_GetMyEntitlements_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queenServiceClient) SimulateEntitlements(ctx context.Context, in *SimulateEntitlementsRequest, opts ...grpc.CallOption) (*MyEntitlementsResponse, error) {
+func (c *policyServiceClient) SimulateEntitlements(ctx context.Context, in *SimulateEntitlementsRequest, opts ...grpc.CallOption) (*MyEntitlementsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MyEntitlementsResponse)
-	err := c.cc.Invoke(ctx, QueenService_SimulateEntitlements_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PolicyService_SimulateEntitlements_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queenServiceClient) EvaluatePolicy(ctx context.Context, in *EvaluatePolicyRequest, opts ...grpc.CallOption) (*EvaluatePolicyResponse, error) {
+func (c *policyServiceClient) EvaluatePolicy(ctx context.Context, in *EvaluatePolicyRequest, opts ...grpc.CallOption) (*EvaluatePolicyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EvaluatePolicyResponse)
-	err := c.cc.Invoke(ctx, QueenService_EvaluatePolicy_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PolicyService_EvaluatePolicy_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queenServiceClient) GetPolicies(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetPoliciesResponse, error) {
+func (c *policyServiceClient) GetPolicies(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetPoliciesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPoliciesResponse)
-	err := c.cc.Invoke(ctx, QueenService_GetPolicies_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PolicyService_GetPolicies_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// QueenServiceServer is the server API for QueenService service.
-// All implementations must embed UnimplementedQueenServiceServer
+// PolicyServiceServer is the server API for PolicyService service.
+// All implementations must embed UnimplementedPolicyServiceServer
 // for forward compatibility.
-type QueenServiceServer interface {
+type PolicyServiceServer interface {
 	// GetServiceCatalog returns the available services and their RPCs,
 	// built from the service_entitlements config.
 	GetServiceCatalog(context.Context, *emptypb.Empty) (*ServiceCatalogResponse, error)
@@ -130,170 +130,170 @@ type QueenServiceServer interface {
 	EvaluatePolicy(context.Context, *EvaluatePolicyRequest) (*EvaluatePolicyResponse, error)
 	// GetPolicies returns the current claim mapping and entitlements Rego policies.
 	GetPolicies(context.Context, *emptypb.Empty) (*GetPoliciesResponse, error)
-	mustEmbedUnimplementedQueenServiceServer()
+	mustEmbedUnimplementedPolicyServiceServer()
 }
 
-// UnimplementedQueenServiceServer must be embedded to have
+// UnimplementedPolicyServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedQueenServiceServer struct{}
+type UnimplementedPolicyServiceServer struct{}
 
-func (UnimplementedQueenServiceServer) GetServiceCatalog(context.Context, *emptypb.Empty) (*ServiceCatalogResponse, error) {
+func (UnimplementedPolicyServiceServer) GetServiceCatalog(context.Context, *emptypb.Empty) (*ServiceCatalogResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetServiceCatalog not implemented")
 }
-func (UnimplementedQueenServiceServer) GetMyEntitlements(context.Context, *GetMyEntitlementsRequest) (*MyEntitlementsResponse, error) {
+func (UnimplementedPolicyServiceServer) GetMyEntitlements(context.Context, *GetMyEntitlementsRequest) (*MyEntitlementsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyEntitlements not implemented")
 }
-func (UnimplementedQueenServiceServer) SimulateEntitlements(context.Context, *SimulateEntitlementsRequest) (*MyEntitlementsResponse, error) {
+func (UnimplementedPolicyServiceServer) SimulateEntitlements(context.Context, *SimulateEntitlementsRequest) (*MyEntitlementsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SimulateEntitlements not implemented")
 }
-func (UnimplementedQueenServiceServer) EvaluatePolicy(context.Context, *EvaluatePolicyRequest) (*EvaluatePolicyResponse, error) {
+func (UnimplementedPolicyServiceServer) EvaluatePolicy(context.Context, *EvaluatePolicyRequest) (*EvaluatePolicyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EvaluatePolicy not implemented")
 }
-func (UnimplementedQueenServiceServer) GetPolicies(context.Context, *emptypb.Empty) (*GetPoliciesResponse, error) {
+func (UnimplementedPolicyServiceServer) GetPolicies(context.Context, *emptypb.Empty) (*GetPoliciesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPolicies not implemented")
 }
-func (UnimplementedQueenServiceServer) mustEmbedUnimplementedQueenServiceServer() {}
-func (UnimplementedQueenServiceServer) testEmbeddedByValue()                      {}
+func (UnimplementedPolicyServiceServer) mustEmbedUnimplementedPolicyServiceServer() {}
+func (UnimplementedPolicyServiceServer) testEmbeddedByValue()                       {}
 
-// UnsafeQueenServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to QueenServiceServer will
+// UnsafePolicyServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PolicyServiceServer will
 // result in compilation errors.
-type UnsafeQueenServiceServer interface {
-	mustEmbedUnimplementedQueenServiceServer()
+type UnsafePolicyServiceServer interface {
+	mustEmbedUnimplementedPolicyServiceServer()
 }
 
-func RegisterQueenServiceServer(s grpc.ServiceRegistrar, srv QueenServiceServer) {
-	// If the following call panics, it indicates UnimplementedQueenServiceServer was
+func RegisterPolicyServiceServer(s grpc.ServiceRegistrar, srv PolicyServiceServer) {
+	// If the following call panics, it indicates UnimplementedPolicyServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&QueenService_ServiceDesc, srv)
+	s.RegisterService(&PolicyService_ServiceDesc, srv)
 }
 
-func _QueenService_GetServiceCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PolicyService_GetServiceCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenServiceServer).GetServiceCatalog(ctx, in)
+		return srv.(PolicyServiceServer).GetServiceCatalog(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenService_GetServiceCatalog_FullMethodName,
+		FullMethod: PolicyService_GetServiceCatalog_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenServiceServer).GetServiceCatalog(ctx, req.(*emptypb.Empty))
+		return srv.(PolicyServiceServer).GetServiceCatalog(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueenService_GetMyEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PolicyService_GetMyEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMyEntitlementsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenServiceServer).GetMyEntitlements(ctx, in)
+		return srv.(PolicyServiceServer).GetMyEntitlements(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenService_GetMyEntitlements_FullMethodName,
+		FullMethod: PolicyService_GetMyEntitlements_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenServiceServer).GetMyEntitlements(ctx, req.(*GetMyEntitlementsRequest))
+		return srv.(PolicyServiceServer).GetMyEntitlements(ctx, req.(*GetMyEntitlementsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueenService_SimulateEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PolicyService_SimulateEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SimulateEntitlementsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenServiceServer).SimulateEntitlements(ctx, in)
+		return srv.(PolicyServiceServer).SimulateEntitlements(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenService_SimulateEntitlements_FullMethodName,
+		FullMethod: PolicyService_SimulateEntitlements_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenServiceServer).SimulateEntitlements(ctx, req.(*SimulateEntitlementsRequest))
+		return srv.(PolicyServiceServer).SimulateEntitlements(ctx, req.(*SimulateEntitlementsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueenService_EvaluatePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PolicyService_EvaluatePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EvaluatePolicyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenServiceServer).EvaluatePolicy(ctx, in)
+		return srv.(PolicyServiceServer).EvaluatePolicy(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenService_EvaluatePolicy_FullMethodName,
+		FullMethod: PolicyService_EvaluatePolicy_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenServiceServer).EvaluatePolicy(ctx, req.(*EvaluatePolicyRequest))
+		return srv.(PolicyServiceServer).EvaluatePolicy(ctx, req.(*EvaluatePolicyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueenService_GetPolicies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PolicyService_GetPolicies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenServiceServer).GetPolicies(ctx, in)
+		return srv.(PolicyServiceServer).GetPolicies(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenService_GetPolicies_FullMethodName,
+		FullMethod: PolicyService_GetPolicies_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenServiceServer).GetPolicies(ctx, req.(*emptypb.Empty))
+		return srv.(PolicyServiceServer).GetPolicies(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// QueenService_ServiceDesc is the grpc.ServiceDesc for QueenService service.
+// PolicyService_ServiceDesc is the grpc.ServiceDesc for PolicyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var QueenService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "queen.QueenService",
-	HandlerType: (*QueenServiceServer)(nil),
+var PolicyService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "policy.PolicyService",
+	HandlerType: (*PolicyServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetServiceCatalog",
-			Handler:    _QueenService_GetServiceCatalog_Handler,
+			Handler:    _PolicyService_GetServiceCatalog_Handler,
 		},
 		{
 			MethodName: "GetMyEntitlements",
-			Handler:    _QueenService_GetMyEntitlements_Handler,
+			Handler:    _PolicyService_GetMyEntitlements_Handler,
 		},
 		{
 			MethodName: "SimulateEntitlements",
-			Handler:    _QueenService_SimulateEntitlements_Handler,
+			Handler:    _PolicyService_SimulateEntitlements_Handler,
 		},
 		{
 			MethodName: "EvaluatePolicy",
-			Handler:    _QueenService_EvaluatePolicy_Handler,
+			Handler:    _PolicyService_EvaluatePolicy_Handler,
 		},
 		{
 			MethodName: "GetPolicies",
-			Handler:    _QueenService_GetPolicies_Handler,
+			Handler:    _PolicyService_GetPolicies_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "services/queen.proto",
+	Metadata: "services/policy.proto",
 }

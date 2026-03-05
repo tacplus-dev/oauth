@@ -15,9 +15,9 @@ package elvis
 
 import (
 	context "context"
-	healthreport "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/healthreport"
-	token "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/token"
-	presley "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/presley"
+	healthreport "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
+	token "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/token"
+	presley "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

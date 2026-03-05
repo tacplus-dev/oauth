@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/queen.proto
+// Source: services/policy.proto
 
-package queen
+package policy
 
 import (
 	"bytes"
@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	opa "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/opa"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -1364,9 +1364,9 @@ func ServiceCatalogEntryToEnvVar(v *ServiceCatalogEntry) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_QUEEN_SERVICE_CATALOG_ENTRY_SERVICE_NAME"] = v.ServiceName
+	result["PROTO_SERVICES_POLICY_SERVICE_CATALOG_ENTRY_SERVICE_NAME"] = v.ServiceName
 	if len(v.Rpcs) > 0 {
-		result["PROTO_SERVICES_QUEEN_SERVICE_CATALOG_ENTRY_RPCS"] = strings.Join(v.Rpcs, ",")
+		result["PROTO_SERVICES_POLICY_SERVICE_CATALOG_ENTRY_RPCS"] = strings.Join(v.Rpcs, ",")
 	}
 	return result
 }
@@ -1374,10 +1374,10 @@ func ServiceCatalogEntryToEnvVar(v *ServiceCatalogEntry) map[string]string {
 // ServiceCatalogEntryFromEnvVar creates ServiceCatalogEntry from environment variable key-value pairs.
 func ServiceCatalogEntryFromEnvVar(env map[string]string) (*ServiceCatalogEntry, error) {
 	result := &ServiceCatalogEntry{}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SERVICE_CATALOG_ENTRY_SERVICE_NAME"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SERVICE_CATALOG_ENTRY_SERVICE_NAME"]; ok && val != "" {
 		result.ServiceName = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SERVICE_CATALOG_ENTRY_RPCS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SERVICE_CATALOG_ENTRY_RPCS"]; ok && val != "" {
 		result.Rpcs = strings.Split(val, ",")
 	}
 	return result, nil
@@ -1389,14 +1389,14 @@ func GetMyEntitlementsRequestToEnvVar(v *GetMyEntitlementsRequest) map[string]st
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_QUEEN_GET_MY_ENTITLEMENTS_REQUEST_ACCESS_TOKEN"] = v.AccessToken
+	result["PROTO_SERVICES_POLICY_GET_MY_ENTITLEMENTS_REQUEST_ACCESS_TOKEN"] = v.AccessToken
 	return result
 }
 
 // GetMyEntitlementsRequestFromEnvVar creates GetMyEntitlementsRequest from environment variable key-value pairs.
 func GetMyEntitlementsRequestFromEnvVar(env map[string]string) (*GetMyEntitlementsRequest, error) {
 	result := &GetMyEntitlementsRequest{}
-	if val, ok := env["PROTO_SERVICES_QUEEN_GET_MY_ENTITLEMENTS_REQUEST_ACCESS_TOKEN"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_GET_MY_ENTITLEMENTS_REQUEST_ACCESS_TOKEN"]; ok && val != "" {
 		result.AccessToken = val
 	}
 	return result, nil
@@ -1423,24 +1423,24 @@ func ServiceEntitlementInfoToEnvVar(v *ServiceEntitlementInfo) map[string]string
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_QUEEN_SERVICE_ENTITLEMENT_INFO_SERVICE_NAME"] = v.ServiceName
+	result["PROTO_SERVICES_POLICY_SERVICE_ENTITLEMENT_INFO_SERVICE_NAME"] = v.ServiceName
 	if len(v.Rpcs) > 0 {
-		result["PROTO_SERVICES_QUEEN_SERVICE_ENTITLEMENT_INFO_RPCS"] = strings.Join(v.Rpcs, ",")
+		result["PROTO_SERVICES_POLICY_SERVICE_ENTITLEMENT_INFO_RPCS"] = strings.Join(v.Rpcs, ",")
 	}
-	result["PROTO_SERVICES_QUEEN_SERVICE_ENTITLEMENT_INFO_TOTAL_RPCS"] = strconv.FormatInt(int64(v.TotalRpcs), 10)
+	result["PROTO_SERVICES_POLICY_SERVICE_ENTITLEMENT_INFO_TOTAL_RPCS"] = strconv.FormatInt(int64(v.TotalRpcs), 10)
 	return result
 }
 
 // ServiceEntitlementInfoFromEnvVar creates ServiceEntitlementInfo from environment variable key-value pairs.
 func ServiceEntitlementInfoFromEnvVar(env map[string]string) (*ServiceEntitlementInfo, error) {
 	result := &ServiceEntitlementInfo{}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SERVICE_ENTITLEMENT_INFO_SERVICE_NAME"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SERVICE_ENTITLEMENT_INFO_SERVICE_NAME"]; ok && val != "" {
 		result.ServiceName = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SERVICE_ENTITLEMENT_INFO_RPCS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SERVICE_ENTITLEMENT_INFO_RPCS"]; ok && val != "" {
 		result.Rpcs = strings.Split(val, ",")
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SERVICE_ENTITLEMENT_INFO_TOTAL_RPCS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SERVICE_ENTITLEMENT_INFO_TOTAL_RPCS"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, err
@@ -1456,18 +1456,18 @@ func SimulateEntitlementsRequestToEnvVar(v *SimulateEntitlementsRequest) map[str
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_QUEEN_SIMULATE_ENTITLEMENTS_REQUEST_CLAIMS_JSON"] = v.ClaimsJson
-	result["PROTO_SERVICES_QUEEN_SIMULATE_ENTITLEMENTS_REQUEST_PRINCIPAL"] = v.Principal
+	result["PROTO_SERVICES_POLICY_SIMULATE_ENTITLEMENTS_REQUEST_CLAIMS_JSON"] = v.ClaimsJson
+	result["PROTO_SERVICES_POLICY_SIMULATE_ENTITLEMENTS_REQUEST_PRINCIPAL"] = v.Principal
 	return result
 }
 
 // SimulateEntitlementsRequestFromEnvVar creates SimulateEntitlementsRequest from environment variable key-value pairs.
 func SimulateEntitlementsRequestFromEnvVar(env map[string]string) (*SimulateEntitlementsRequest, error) {
 	result := &SimulateEntitlementsRequest{}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SIMULATE_ENTITLEMENTS_REQUEST_CLAIMS_JSON"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SIMULATE_ENTITLEMENTS_REQUEST_CLAIMS_JSON"]; ok && val != "" {
 		result.ClaimsJson = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_SIMULATE_ENTITLEMENTS_REQUEST_PRINCIPAL"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_SIMULATE_ENTITLEMENTS_REQUEST_PRINCIPAL"]; ok && val != "" {
 		result.Principal = val
 	}
 	return result, nil
@@ -1479,26 +1479,26 @@ func EvaluatePolicyRequestToEnvVar(v *EvaluatePolicyRequest) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_REGO_SOURCE"] = v.RegoSource
-	result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_INPUT_JSON"] = v.InputJson
-	result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_QUERY"] = v.Query
-	result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_DATA_JSON"] = v.DataJson
+	result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_REGO_SOURCE"] = v.RegoSource
+	result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_INPUT_JSON"] = v.InputJson
+	result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_QUERY"] = v.Query
+	result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_DATA_JSON"] = v.DataJson
 	return result
 }
 
 // EvaluatePolicyRequestFromEnvVar creates EvaluatePolicyRequest from environment variable key-value pairs.
 func EvaluatePolicyRequestFromEnvVar(env map[string]string) (*EvaluatePolicyRequest, error) {
 	result := &EvaluatePolicyRequest{}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_REGO_SOURCE"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_REGO_SOURCE"]; ok && val != "" {
 		result.RegoSource = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_INPUT_JSON"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_INPUT_JSON"]; ok && val != "" {
 		result.InputJson = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_QUERY"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_QUERY"]; ok && val != "" {
 		result.Query = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_REQUEST_DATA_JSON"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_REQUEST_DATA_JSON"]; ok && val != "" {
 		result.DataJson = val
 	}
 	return result, nil
@@ -1510,10 +1510,10 @@ func EvaluatePolicyResponseToEnvVar(v *EvaluatePolicyResponse) map[string]string
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_RESPONSE_RESULT_JSON"] = v.ResultJson
-	result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_RESPONSE_ALLOWED"] = strconv.FormatBool(v.Allowed)
+	result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_RESPONSE_RESULT_JSON"] = v.ResultJson
+	result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_RESPONSE_ALLOWED"] = strconv.FormatBool(v.Allowed)
 	if len(v.Errors) > 0 {
-		result["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_RESPONSE_ERRORS"] = strings.Join(v.Errors, ",")
+		result["PROTO_SERVICES_POLICY_EVALUATE_POLICY_RESPONSE_ERRORS"] = strings.Join(v.Errors, ",")
 	}
 	return result
 }
@@ -1521,17 +1521,17 @@ func EvaluatePolicyResponseToEnvVar(v *EvaluatePolicyResponse) map[string]string
 // EvaluatePolicyResponseFromEnvVar creates EvaluatePolicyResponse from environment variable key-value pairs.
 func EvaluatePolicyResponseFromEnvVar(env map[string]string) (*EvaluatePolicyResponse, error) {
 	result := &EvaluatePolicyResponse{}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_RESPONSE_RESULT_JSON"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_RESPONSE_RESULT_JSON"]; ok && val != "" {
 		result.ResultJson = val
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_RESPONSE_ALLOWED"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_RESPONSE_ALLOWED"]; ok && val != "" {
 		parsed, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, err
 		}
 		result.Allowed = parsed
 	}
-	if val, ok := env["PROTO_SERVICES_QUEEN_EVALUATE_POLICY_RESPONSE_ERRORS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_POLICY_EVALUATE_POLICY_RESPONSE_ERRORS"]; ok && val != "" {
 		result.Errors = strings.Split(val, ",")
 	}
 	return result, nil

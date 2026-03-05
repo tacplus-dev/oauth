@@ -3,7 +3,7 @@
 syntax = "proto3";
 
 package spec;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/spec";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec";
 
 // ============================================================================
 // Dependencies Configuration Schema

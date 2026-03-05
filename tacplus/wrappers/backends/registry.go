@@ -37,7 +37,7 @@ func (s *Backends) Boundaries() []BoundaryInfo {
 		{Service: "services/cluster_state", Boundary: "WatchHealth", Consistency: "convergent", Persistence: false},
 		{Service: "services/cluster_state", Boundary: "MutationRates", Consistency: "convergent", Persistence: false},
 		{Service: "services/service_health_state", Boundary: "Instances", Consistency: "convergent", Persistence: false},
-		{Service: "services/fleetwood_config_state", Boundary: "Config", Consistency: "convergent", Persistence: true},
+		{Service: "services/sentinel_config_state", Boundary: "Config", Consistency: "convergent", Persistence: true},
 		{Service: "services/service_config_state", Boundary: "Config", Consistency: "convergent", Persistence: true},
 	}
 }
@@ -54,8 +54,8 @@ func (s *Backends) GetBoundary(service, boundary string) proto.Message {
 		return s.Services().ClusterState().ClusterHealth().Get()
 	case "services/cluster_state.FrontendConfig":
 		return s.Services().ClusterState().FrontendConfig().Get()
-	case "services/fleetwood_config_state.Config":
-		return s.Services().FleetwoodConfigState().Config().Get()
+	case "services/sentinel_config_state.Config":
+		return s.Services().SentinelConfigState().Config().Get()
 	case "services/service_config_state.Config":
 		return s.Services().ServiceConfigState().Config().Get()
 	}

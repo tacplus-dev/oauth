@@ -20,11 +20,11 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
-	entitlement "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/entitlement"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	jwk "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/jwk"
-	opa "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/opa"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/utils"
+	entitlement "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/entitlement"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	jwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
+	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
+	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -8359,14 +8359,14 @@ func ValidateProviderConfig(m *ProviderConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId must be at least 1 characters, got: %d", len(m.ClientId))
 	}
 
-	// Validate ClientSecret (assert_min_length: 1)
-	if len(m.ClientSecret) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
-	}
-
 	// Validate ClientSecret (assert_required)
 	if m.ClientSecret == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
+	}
+
+	// Validate ClientSecret (assert_min_length: 1)
+	if len(m.ClientSecret) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
 	}
 
 	// Validate AuthorizationEndpoint (assert_url: URL_SCHEME_HTTPS)
@@ -8655,14 +8655,14 @@ func ValidateCallbackResponse(m *CallbackResponse) error {
 		return nil
 	}
 
-	// Validate RefreshToken (assert_required)
-	if m.RefreshToken == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken is required")
-	}
-
 	// Validate RefreshToken (assert_min_length: 1)
 	if len(m.RefreshToken) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken must be at least 1 characters, got: %d", len(m.RefreshToken))
+	}
+
+	// Validate RefreshToken (assert_required)
+	if m.RefreshToken == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken is required")
 	}
 
 	// Validate AccessToken (assert_required)
@@ -8828,14 +8828,14 @@ func ValidateExchangeTokenRequest(m *ExchangeTokenRequest) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
 	}
 
-	// Validate Audience (assert_min_length: 1)
-	if len(m.Audience) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Audience must be at least 1 characters, got: %d", len(m.Audience))
-	}
-
 	// Validate Audience (assert_required)
 	if m.Audience == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Audience is required")
+	}
+
+	// Validate Audience (assert_min_length: 1)
+	if len(m.Audience) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Audience must be at least 1 characters, got: %d", len(m.Audience))
 	}
 
 	// Validate AccessToken (default max size: 32768 bytes)

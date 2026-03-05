@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	serviceconfig_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/serviceconfig"
+	serviceconfig_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig"
 	"go.uber.org/zap"
 )
 

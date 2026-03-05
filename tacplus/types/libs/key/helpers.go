@@ -25,8 +25,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/utils"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -641,14 +641,14 @@ func ValidateKey(m *Key) error {
 		return nil
 	}
 
-	// Validate Id (assert_min_length: 1)
-	if len(m.Id) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Id must be at least 1 characters, got: %d", len(m.Id))
-	}
-
 	// Validate Id (assert_required)
 	if m.Id == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id is required")
+	}
+
+	// Validate Id (assert_min_length: 1)
+	if len(m.Id) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Id must be at least 1 characters, got: %d", len(m.Id))
 	}
 
 	// Validate Base64 (assert_required)
@@ -670,10 +670,6 @@ func ValidateKey(m *Key) error {
 		}
 	}
 
-	// Validate Created (assert_ge: 1735689600)
-	if m.Created < 1735689600 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be >= 1735689600, got: %v", m.Created)
-	}
 	// Validate Created (assert_le: 8045740800)
 	if m.Created > 8045740800 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be <= 8045740800, got: %v", m.Created)
@@ -683,6 +679,10 @@ func ValidateKey(m *Key) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created is required and must be greater than zero")
 	}
 
+	// Validate Created (assert_ge: 1735689600)
+	if m.Created < 1735689600 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be >= 1735689600, got: %v", m.Created)
+	}
 	// Validate Id (default max size: 32768 bytes)
 	if len(m.Id) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id exceeds max size of 32768 bytes, got: %d", len(m.Id))

@@ -17,23 +17,23 @@ import (
 
 	"net"
 
-	healthreport_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/healthreport"
-	elvis_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/elvis"
+	healthreport_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
+	elvis_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
 
 	"go.uber.org/zap"
 
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/frontendserver"
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/logger"
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/serviceconfig"
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/servicemanager"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/frontendserver"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/logger"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/serviceconfig"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
 
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/healthreporter"
-	host_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/host"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/healthreporter"
+	host_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 
-	service_fe "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/service-manager/frontends/services/fleetwood"
-	serviceconfig_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/serviceconfig"
-	pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/fleetwood"
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends"
+	service_fe "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager/frontends/services/sentinel"
+	serviceconfig_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig"
+	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends"
 )
 
 // ServiceManager holds the infrastructure state created during New().
@@ -94,7 +94,7 @@ func (sm *ServiceManager) Run(h Handler) error {
 	defer sm.stop()
 
 	// 1. Create authorizer (starts JWK view subscription for token verification).
-	auth, err := frontendserver.NewAuthorizer(sm.ctx, sm.sc.Conn(), "fleetwood")
+	auth, err := frontendserver.NewAuthorizer(sm.ctx, sm.sc.Conn(), "sentinel")
 	if err != nil {
 		return fmt.Errorf("authorizer: %w", err)
 	}
@@ -127,7 +127,7 @@ func (sm *ServiceManager) Run(h Handler) error {
 	})
 
 	// 3. Fetch initial typed config from config_holder.
-	configHolder := sm.bc.Services().FleetwoodConfigState()
+	configHolder := sm.bc.Services().SentinelConfigState()
 	typedConfig, err := configHolder.Config().Fetch(sm.ctx)
 	if err != nil {
 		return fmt.Errorf("fetch config: %w", err)
@@ -141,7 +141,7 @@ func (sm *ServiceManager) Run(h Handler) error {
 	// 4. Wrap gRPC impl with generated service wrapper (validation, auth).
 	// Auth and validation are controlled by proto annotations (disable_auth,
 	// disable_validation) at the service or RPC level — no runtime flags needed.
-	wrapper := service_fe.NewFleetwoodService(h.GetGrpcImpl())
+	wrapper := service_fe.NewSentinelService(h.GetGrpcImpl())
 	wrapper.SetAuthorizeFunc(auth.Authorize)
 
 	// 5. Create frontend server from runtime config.

@@ -14,7 +14,7 @@
 package opa
 
 import (
-	_ "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/spec"
+	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -126,7 +126,7 @@ const file_libs_opa_proto_rawDesc = "" +
 	"\x06bundle\x18\x02 \x01(\tB\b\x80\xa7\x1d\x01ا\x1d\x01R\x06bundle\x12*\n" +
 	"\acreated\x18\x03 \x01(\x03B\x10\xb0\xa7\x1d\x80\x8bһ\x06\xc0\xa7\x1d\x80\x86\xc1\xfc\x1dR\acreated\x12\x1e\n" +
 	"\aversion\x18\x04 \x01(\tB\x04\xe0\xa7\x1d\x01R\aversion\x12\x16\n" +
-	"\x06source\x18\x05 \x01(\tR\x06sourceBRZPgitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/opab\x06proto3"
+	"\x06source\x18\x05 \x01(\tR\x06sourceBQZOgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opab\x06proto3"
 
 var (
 	file_libs_opa_proto_rawDescOnce sync.Once

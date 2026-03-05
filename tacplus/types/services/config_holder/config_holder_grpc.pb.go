@@ -15,12 +15,12 @@ package config_holder
 
 import (
 	context "context"
-	serviceconfig "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/serviceconfig"
-	fleetwood "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/fleetwood"
-	gateway "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/gateway"
-	genesis "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/genesis"
-	identity "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/identity"
-	queen "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/queen"
+	serviceconfig "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig"
+	gateway "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gateway"
+	identity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity"
+	letsencrypt "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/letsencrypt"
+	policy "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policy"
+	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -33,56 +33,56 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FleetwoodConfigStateBackendService_GetConfig_FullMethodName   = "/config_holder.FleetwoodConfigStateBackendService/GetConfig"
-	FleetwoodConfigStateBackendService_SetConfig_FullMethodName   = "/config_holder.FleetwoodConfigStateBackendService/SetConfig"
-	FleetwoodConfigStateBackendService_WatchConfig_FullMethodName = "/config_holder.FleetwoodConfigStateBackendService/WatchConfig"
+	SentinelConfigStateBackendService_GetConfig_FullMethodName   = "/config_holder.SentinelConfigStateBackendService/GetConfig"
+	SentinelConfigStateBackendService_SetConfig_FullMethodName   = "/config_holder.SentinelConfigStateBackendService/SetConfig"
+	SentinelConfigStateBackendService_WatchConfig_FullMethodName = "/config_holder.SentinelConfigStateBackendService/WatchConfig"
 )
 
-// FleetwoodConfigStateBackendServiceClient is the client API for FleetwoodConfigStateBackendService service.
+// SentinelConfigStateBackendServiceClient is the client API for SentinelConfigStateBackendService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type FleetwoodConfigStateBackendServiceClient interface {
+type SentinelConfigStateBackendServiceClient interface {
 	// Singleton: Config
-	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*fleetwood.Config, error)
-	SetConfig(ctx context.Context, in *fleetwood.Config, opts ...grpc.CallOption) (*fleetwood.Config, error)
-	WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[fleetwood.Config], error)
+	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*sentinel.Config, error)
+	SetConfig(ctx context.Context, in *sentinel.Config, opts ...grpc.CallOption) (*sentinel.Config, error)
+	WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[sentinel.Config], error)
 }
 
-type fleetwoodConfigStateBackendServiceClient struct {
+type sentinelConfigStateBackendServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewFleetwoodConfigStateBackendServiceClient(cc grpc.ClientConnInterface) FleetwoodConfigStateBackendServiceClient {
-	return &fleetwoodConfigStateBackendServiceClient{cc}
+func NewSentinelConfigStateBackendServiceClient(cc grpc.ClientConnInterface) SentinelConfigStateBackendServiceClient {
+	return &sentinelConfigStateBackendServiceClient{cc}
 }
 
-func (c *fleetwoodConfigStateBackendServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*fleetwood.Config, error) {
+func (c *sentinelConfigStateBackendServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*sentinel.Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(fleetwood.Config)
-	err := c.cc.Invoke(ctx, FleetwoodConfigStateBackendService_GetConfig_FullMethodName, in, out, cOpts...)
+	out := new(sentinel.Config)
+	err := c.cc.Invoke(ctx, SentinelConfigStateBackendService_GetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fleetwoodConfigStateBackendServiceClient) SetConfig(ctx context.Context, in *fleetwood.Config, opts ...grpc.CallOption) (*fleetwood.Config, error) {
+func (c *sentinelConfigStateBackendServiceClient) SetConfig(ctx context.Context, in *sentinel.Config, opts ...grpc.CallOption) (*sentinel.Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(fleetwood.Config)
-	err := c.cc.Invoke(ctx, FleetwoodConfigStateBackendService_SetConfig_FullMethodName, in, out, cOpts...)
+	out := new(sentinel.Config)
+	err := c.cc.Invoke(ctx, SentinelConfigStateBackendService_SetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *fleetwoodConfigStateBackendServiceClient) WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[fleetwood.Config], error) {
+func (c *sentinelConfigStateBackendServiceClient) WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[sentinel.Config], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &FleetwoodConfigStateBackendService_ServiceDesc.Streams[0], FleetwoodConfigStateBackendService_WatchConfig_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &SentinelConfigStateBackendService_ServiceDesc.Streams[0], SentinelConfigStateBackendService_WatchConfig_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[emptypb.Empty, fleetwood.Config]{ClientStream: stream}
+	x := &grpc.GenericClientStream[emptypb.Empty, sentinel.Config]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -93,124 +93,124 @@ func (c *fleetwoodConfigStateBackendServiceClient) WatchConfig(ctx context.Conte
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type FleetwoodConfigStateBackendService_WatchConfigClient = grpc.ServerStreamingClient[fleetwood.Config]
+type SentinelConfigStateBackendService_WatchConfigClient = grpc.ServerStreamingClient[sentinel.Config]
 
-// FleetwoodConfigStateBackendServiceServer is the server API for FleetwoodConfigStateBackendService service.
-// All implementations must embed UnimplementedFleetwoodConfigStateBackendServiceServer
+// SentinelConfigStateBackendServiceServer is the server API for SentinelConfigStateBackendService service.
+// All implementations must embed UnimplementedSentinelConfigStateBackendServiceServer
 // for forward compatibility.
-type FleetwoodConfigStateBackendServiceServer interface {
+type SentinelConfigStateBackendServiceServer interface {
 	// Singleton: Config
-	GetConfig(context.Context, *emptypb.Empty) (*fleetwood.Config, error)
-	SetConfig(context.Context, *fleetwood.Config) (*fleetwood.Config, error)
-	WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[fleetwood.Config]) error
-	mustEmbedUnimplementedFleetwoodConfigStateBackendServiceServer()
+	GetConfig(context.Context, *emptypb.Empty) (*sentinel.Config, error)
+	SetConfig(context.Context, *sentinel.Config) (*sentinel.Config, error)
+	WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[sentinel.Config]) error
+	mustEmbedUnimplementedSentinelConfigStateBackendServiceServer()
 }
 
-// UnimplementedFleetwoodConfigStateBackendServiceServer must be embedded to have
+// UnimplementedSentinelConfigStateBackendServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedFleetwoodConfigStateBackendServiceServer struct{}
+type UnimplementedSentinelConfigStateBackendServiceServer struct{}
 
-func (UnimplementedFleetwoodConfigStateBackendServiceServer) GetConfig(context.Context, *emptypb.Empty) (*fleetwood.Config, error) {
+func (UnimplementedSentinelConfigStateBackendServiceServer) GetConfig(context.Context, *emptypb.Empty) (*sentinel.Config, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetConfig not implemented")
 }
-func (UnimplementedFleetwoodConfigStateBackendServiceServer) SetConfig(context.Context, *fleetwood.Config) (*fleetwood.Config, error) {
+func (UnimplementedSentinelConfigStateBackendServiceServer) SetConfig(context.Context, *sentinel.Config) (*sentinel.Config, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedFleetwoodConfigStateBackendServiceServer) WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[fleetwood.Config]) error {
+func (UnimplementedSentinelConfigStateBackendServiceServer) WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[sentinel.Config]) error {
 	return status.Error(codes.Unimplemented, "method WatchConfig not implemented")
 }
-func (UnimplementedFleetwoodConfigStateBackendServiceServer) mustEmbedUnimplementedFleetwoodConfigStateBackendServiceServer() {
+func (UnimplementedSentinelConfigStateBackendServiceServer) mustEmbedUnimplementedSentinelConfigStateBackendServiceServer() {
 }
-func (UnimplementedFleetwoodConfigStateBackendServiceServer) testEmbeddedByValue() {}
+func (UnimplementedSentinelConfigStateBackendServiceServer) testEmbeddedByValue() {}
 
-// UnsafeFleetwoodConfigStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to FleetwoodConfigStateBackendServiceServer will
+// UnsafeSentinelConfigStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SentinelConfigStateBackendServiceServer will
 // result in compilation errors.
-type UnsafeFleetwoodConfigStateBackendServiceServer interface {
-	mustEmbedUnimplementedFleetwoodConfigStateBackendServiceServer()
+type UnsafeSentinelConfigStateBackendServiceServer interface {
+	mustEmbedUnimplementedSentinelConfigStateBackendServiceServer()
 }
 
-func RegisterFleetwoodConfigStateBackendServiceServer(s grpc.ServiceRegistrar, srv FleetwoodConfigStateBackendServiceServer) {
-	// If the following call panics, it indicates UnimplementedFleetwoodConfigStateBackendServiceServer was
+func RegisterSentinelConfigStateBackendServiceServer(s grpc.ServiceRegistrar, srv SentinelConfigStateBackendServiceServer) {
+	// If the following call panics, it indicates UnimplementedSentinelConfigStateBackendServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&FleetwoodConfigStateBackendService_ServiceDesc, srv)
+	s.RegisterService(&SentinelConfigStateBackendService_ServiceDesc, srv)
 }
 
-func _FleetwoodConfigStateBackendService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _SentinelConfigStateBackendService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FleetwoodConfigStateBackendServiceServer).GetConfig(ctx, in)
+		return srv.(SentinelConfigStateBackendServiceServer).GetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FleetwoodConfigStateBackendService_GetConfig_FullMethodName,
+		FullMethod: SentinelConfigStateBackendService_GetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FleetwoodConfigStateBackendServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
+		return srv.(SentinelConfigStateBackendServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FleetwoodConfigStateBackendService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(fleetwood.Config)
+func _SentinelConfigStateBackendService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(sentinel.Config)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(FleetwoodConfigStateBackendServiceServer).SetConfig(ctx, in)
+		return srv.(SentinelConfigStateBackendServiceServer).SetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: FleetwoodConfigStateBackendService_SetConfig_FullMethodName,
+		FullMethod: SentinelConfigStateBackendService_SetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FleetwoodConfigStateBackendServiceServer).SetConfig(ctx, req.(*fleetwood.Config))
+		return srv.(SentinelConfigStateBackendServiceServer).SetConfig(ctx, req.(*sentinel.Config))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FleetwoodConfigStateBackendService_WatchConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _SentinelConfigStateBackendService_WatchConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(FleetwoodConfigStateBackendServiceServer).WatchConfig(m, &grpc.GenericServerStream[emptypb.Empty, fleetwood.Config]{ServerStream: stream})
+	return srv.(SentinelConfigStateBackendServiceServer).WatchConfig(m, &grpc.GenericServerStream[emptypb.Empty, sentinel.Config]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type FleetwoodConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer[fleetwood.Config]
+type SentinelConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer[sentinel.Config]
 
-// FleetwoodConfigStateBackendService_ServiceDesc is the grpc.ServiceDesc for FleetwoodConfigStateBackendService service.
+// SentinelConfigStateBackendService_ServiceDesc is the grpc.ServiceDesc for SentinelConfigStateBackendService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var FleetwoodConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "config_holder.FleetwoodConfigStateBackendService",
-	HandlerType: (*FleetwoodConfigStateBackendServiceServer)(nil),
+var SentinelConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "config_holder.SentinelConfigStateBackendService",
+	HandlerType: (*SentinelConfigStateBackendServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetConfig",
-			Handler:    _FleetwoodConfigStateBackendService_GetConfig_Handler,
+			Handler:    _SentinelConfigStateBackendService_GetConfig_Handler,
 		},
 		{
 			MethodName: "SetConfig",
-			Handler:    _FleetwoodConfigStateBackendService_SetConfig_Handler,
+			Handler:    _SentinelConfigStateBackendService_SetConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "WatchConfig",
-			Handler:       _FleetwoodConfigStateBackendService_WatchConfig_Handler,
+			Handler:       _SentinelConfigStateBackendService_WatchConfig_Handler,
 			ServerStreams: true,
 		},
 	},
@@ -588,56 +588,56 @@ var GatewayConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	GenesisConfigStateBackendService_GetConfig_FullMethodName   = "/config_holder.GenesisConfigStateBackendService/GetConfig"
-	GenesisConfigStateBackendService_SetConfig_FullMethodName   = "/config_holder.GenesisConfigStateBackendService/SetConfig"
-	GenesisConfigStateBackendService_WatchConfig_FullMethodName = "/config_holder.GenesisConfigStateBackendService/WatchConfig"
+	LetsencryptConfigStateBackendService_GetConfig_FullMethodName   = "/config_holder.LetsencryptConfigStateBackendService/GetConfig"
+	LetsencryptConfigStateBackendService_SetConfig_FullMethodName   = "/config_holder.LetsencryptConfigStateBackendService/SetConfig"
+	LetsencryptConfigStateBackendService_WatchConfig_FullMethodName = "/config_holder.LetsencryptConfigStateBackendService/WatchConfig"
 )
 
-// GenesisConfigStateBackendServiceClient is the client API for GenesisConfigStateBackendService service.
+// LetsencryptConfigStateBackendServiceClient is the client API for LetsencryptConfigStateBackendService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type GenesisConfigStateBackendServiceClient interface {
+type LetsencryptConfigStateBackendServiceClient interface {
 	// Singleton: Config
-	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*genesis.Config, error)
-	SetConfig(ctx context.Context, in *genesis.Config, opts ...grpc.CallOption) (*genesis.Config, error)
-	WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[genesis.Config], error)
+	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*letsencrypt.Config, error)
+	SetConfig(ctx context.Context, in *letsencrypt.Config, opts ...grpc.CallOption) (*letsencrypt.Config, error)
+	WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[letsencrypt.Config], error)
 }
 
-type genesisConfigStateBackendServiceClient struct {
+type letsencryptConfigStateBackendServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewGenesisConfigStateBackendServiceClient(cc grpc.ClientConnInterface) GenesisConfigStateBackendServiceClient {
-	return &genesisConfigStateBackendServiceClient{cc}
+func NewLetsencryptConfigStateBackendServiceClient(cc grpc.ClientConnInterface) LetsencryptConfigStateBackendServiceClient {
+	return &letsencryptConfigStateBackendServiceClient{cc}
 }
 
-func (c *genesisConfigStateBackendServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*genesis.Config, error) {
+func (c *letsencryptConfigStateBackendServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*letsencrypt.Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(genesis.Config)
-	err := c.cc.Invoke(ctx, GenesisConfigStateBackendService_GetConfig_FullMethodName, in, out, cOpts...)
+	out := new(letsencrypt.Config)
+	err := c.cc.Invoke(ctx, LetsencryptConfigStateBackendService_GetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *genesisConfigStateBackendServiceClient) SetConfig(ctx context.Context, in *genesis.Config, opts ...grpc.CallOption) (*genesis.Config, error) {
+func (c *letsencryptConfigStateBackendServiceClient) SetConfig(ctx context.Context, in *letsencrypt.Config, opts ...grpc.CallOption) (*letsencrypt.Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(genesis.Config)
-	err := c.cc.Invoke(ctx, GenesisConfigStateBackendService_SetConfig_FullMethodName, in, out, cOpts...)
+	out := new(letsencrypt.Config)
+	err := c.cc.Invoke(ctx, LetsencryptConfigStateBackendService_SetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *genesisConfigStateBackendServiceClient) WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[genesis.Config], error) {
+func (c *letsencryptConfigStateBackendServiceClient) WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[letsencrypt.Config], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &GenesisConfigStateBackendService_ServiceDesc.Streams[0], GenesisConfigStateBackendService_WatchConfig_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &LetsencryptConfigStateBackendService_ServiceDesc.Streams[0], LetsencryptConfigStateBackendService_WatchConfig_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[emptypb.Empty, genesis.Config]{ClientStream: stream}
+	x := &grpc.GenericClientStream[emptypb.Empty, letsencrypt.Config]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -648,124 +648,124 @@ func (c *genesisConfigStateBackendServiceClient) WatchConfig(ctx context.Context
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GenesisConfigStateBackendService_WatchConfigClient = grpc.ServerStreamingClient[genesis.Config]
+type LetsencryptConfigStateBackendService_WatchConfigClient = grpc.ServerStreamingClient[letsencrypt.Config]
 
-// GenesisConfigStateBackendServiceServer is the server API for GenesisConfigStateBackendService service.
-// All implementations must embed UnimplementedGenesisConfigStateBackendServiceServer
+// LetsencryptConfigStateBackendServiceServer is the server API for LetsencryptConfigStateBackendService service.
+// All implementations must embed UnimplementedLetsencryptConfigStateBackendServiceServer
 // for forward compatibility.
-type GenesisConfigStateBackendServiceServer interface {
+type LetsencryptConfigStateBackendServiceServer interface {
 	// Singleton: Config
-	GetConfig(context.Context, *emptypb.Empty) (*genesis.Config, error)
-	SetConfig(context.Context, *genesis.Config) (*genesis.Config, error)
-	WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[genesis.Config]) error
-	mustEmbedUnimplementedGenesisConfigStateBackendServiceServer()
+	GetConfig(context.Context, *emptypb.Empty) (*letsencrypt.Config, error)
+	SetConfig(context.Context, *letsencrypt.Config) (*letsencrypt.Config, error)
+	WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[letsencrypt.Config]) error
+	mustEmbedUnimplementedLetsencryptConfigStateBackendServiceServer()
 }
 
-// UnimplementedGenesisConfigStateBackendServiceServer must be embedded to have
+// UnimplementedLetsencryptConfigStateBackendServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedGenesisConfigStateBackendServiceServer struct{}
+type UnimplementedLetsencryptConfigStateBackendServiceServer struct{}
 
-func (UnimplementedGenesisConfigStateBackendServiceServer) GetConfig(context.Context, *emptypb.Empty) (*genesis.Config, error) {
+func (UnimplementedLetsencryptConfigStateBackendServiceServer) GetConfig(context.Context, *emptypb.Empty) (*letsencrypt.Config, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetConfig not implemented")
 }
-func (UnimplementedGenesisConfigStateBackendServiceServer) SetConfig(context.Context, *genesis.Config) (*genesis.Config, error) {
+func (UnimplementedLetsencryptConfigStateBackendServiceServer) SetConfig(context.Context, *letsencrypt.Config) (*letsencrypt.Config, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedGenesisConfigStateBackendServiceServer) WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[genesis.Config]) error {
+func (UnimplementedLetsencryptConfigStateBackendServiceServer) WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[letsencrypt.Config]) error {
 	return status.Error(codes.Unimplemented, "method WatchConfig not implemented")
 }
-func (UnimplementedGenesisConfigStateBackendServiceServer) mustEmbedUnimplementedGenesisConfigStateBackendServiceServer() {
+func (UnimplementedLetsencryptConfigStateBackendServiceServer) mustEmbedUnimplementedLetsencryptConfigStateBackendServiceServer() {
 }
-func (UnimplementedGenesisConfigStateBackendServiceServer) testEmbeddedByValue() {}
+func (UnimplementedLetsencryptConfigStateBackendServiceServer) testEmbeddedByValue() {}
 
-// UnsafeGenesisConfigStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to GenesisConfigStateBackendServiceServer will
+// UnsafeLetsencryptConfigStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to LetsencryptConfigStateBackendServiceServer will
 // result in compilation errors.
-type UnsafeGenesisConfigStateBackendServiceServer interface {
-	mustEmbedUnimplementedGenesisConfigStateBackendServiceServer()
+type UnsafeLetsencryptConfigStateBackendServiceServer interface {
+	mustEmbedUnimplementedLetsencryptConfigStateBackendServiceServer()
 }
 
-func RegisterGenesisConfigStateBackendServiceServer(s grpc.ServiceRegistrar, srv GenesisConfigStateBackendServiceServer) {
-	// If the following call panics, it indicates UnimplementedGenesisConfigStateBackendServiceServer was
+func RegisterLetsencryptConfigStateBackendServiceServer(s grpc.ServiceRegistrar, srv LetsencryptConfigStateBackendServiceServer) {
+	// If the following call panics, it indicates UnimplementedLetsencryptConfigStateBackendServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&GenesisConfigStateBackendService_ServiceDesc, srv)
+	s.RegisterService(&LetsencryptConfigStateBackendService_ServiceDesc, srv)
 }
 
-func _GenesisConfigStateBackendService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _LetsencryptConfigStateBackendService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GenesisConfigStateBackendServiceServer).GetConfig(ctx, in)
+		return srv.(LetsencryptConfigStateBackendServiceServer).GetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GenesisConfigStateBackendService_GetConfig_FullMethodName,
+		FullMethod: LetsencryptConfigStateBackendService_GetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GenesisConfigStateBackendServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
+		return srv.(LetsencryptConfigStateBackendServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GenesisConfigStateBackendService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(genesis.Config)
+func _LetsencryptConfigStateBackendService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(letsencrypt.Config)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GenesisConfigStateBackendServiceServer).SetConfig(ctx, in)
+		return srv.(LetsencryptConfigStateBackendServiceServer).SetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GenesisConfigStateBackendService_SetConfig_FullMethodName,
+		FullMethod: LetsencryptConfigStateBackendService_SetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GenesisConfigStateBackendServiceServer).SetConfig(ctx, req.(*genesis.Config))
+		return srv.(LetsencryptConfigStateBackendServiceServer).SetConfig(ctx, req.(*letsencrypt.Config))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GenesisConfigStateBackendService_WatchConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _LetsencryptConfigStateBackendService_WatchConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(GenesisConfigStateBackendServiceServer).WatchConfig(m, &grpc.GenericServerStream[emptypb.Empty, genesis.Config]{ServerStream: stream})
+	return srv.(LetsencryptConfigStateBackendServiceServer).WatchConfig(m, &grpc.GenericServerStream[emptypb.Empty, letsencrypt.Config]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GenesisConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer[genesis.Config]
+type LetsencryptConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer[letsencrypt.Config]
 
-// GenesisConfigStateBackendService_ServiceDesc is the grpc.ServiceDesc for GenesisConfigStateBackendService service.
+// LetsencryptConfigStateBackendService_ServiceDesc is the grpc.ServiceDesc for LetsencryptConfigStateBackendService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var GenesisConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "config_holder.GenesisConfigStateBackendService",
-	HandlerType: (*GenesisConfigStateBackendServiceServer)(nil),
+var LetsencryptConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "config_holder.LetsencryptConfigStateBackendService",
+	HandlerType: (*LetsencryptConfigStateBackendServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetConfig",
-			Handler:    _GenesisConfigStateBackendService_GetConfig_Handler,
+			Handler:    _LetsencryptConfigStateBackendService_GetConfig_Handler,
 		},
 		{
 			MethodName: "SetConfig",
-			Handler:    _GenesisConfigStateBackendService_SetConfig_Handler,
+			Handler:    _LetsencryptConfigStateBackendService_SetConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "WatchConfig",
-			Handler:       _GenesisConfigStateBackendService_WatchConfig_Handler,
+			Handler:       _LetsencryptConfigStateBackendService_WatchConfig_Handler,
 			ServerStreams: true,
 		},
 	},
@@ -773,56 +773,56 @@ var GenesisConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	QueenConfigStateBackendService_GetConfig_FullMethodName   = "/config_holder.QueenConfigStateBackendService/GetConfig"
-	QueenConfigStateBackendService_SetConfig_FullMethodName   = "/config_holder.QueenConfigStateBackendService/SetConfig"
-	QueenConfigStateBackendService_WatchConfig_FullMethodName = "/config_holder.QueenConfigStateBackendService/WatchConfig"
+	PolicyConfigStateBackendService_GetConfig_FullMethodName   = "/config_holder.PolicyConfigStateBackendService/GetConfig"
+	PolicyConfigStateBackendService_SetConfig_FullMethodName   = "/config_holder.PolicyConfigStateBackendService/SetConfig"
+	PolicyConfigStateBackendService_WatchConfig_FullMethodName = "/config_holder.PolicyConfigStateBackendService/WatchConfig"
 )
 
-// QueenConfigStateBackendServiceClient is the client API for QueenConfigStateBackendService service.
+// PolicyConfigStateBackendServiceClient is the client API for PolicyConfigStateBackendService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type QueenConfigStateBackendServiceClient interface {
+type PolicyConfigStateBackendServiceClient interface {
 	// Singleton: Config
-	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*queen.Config, error)
-	SetConfig(ctx context.Context, in *queen.Config, opts ...grpc.CallOption) (*queen.Config, error)
-	WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[queen.Config], error)
+	GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*policy.Config, error)
+	SetConfig(ctx context.Context, in *policy.Config, opts ...grpc.CallOption) (*policy.Config, error)
+	WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[policy.Config], error)
 }
 
-type queenConfigStateBackendServiceClient struct {
+type policyConfigStateBackendServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewQueenConfigStateBackendServiceClient(cc grpc.ClientConnInterface) QueenConfigStateBackendServiceClient {
-	return &queenConfigStateBackendServiceClient{cc}
+func NewPolicyConfigStateBackendServiceClient(cc grpc.ClientConnInterface) PolicyConfigStateBackendServiceClient {
+	return &policyConfigStateBackendServiceClient{cc}
 }
 
-func (c *queenConfigStateBackendServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*queen.Config, error) {
+func (c *policyConfigStateBackendServiceClient) GetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*policy.Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(queen.Config)
-	err := c.cc.Invoke(ctx, QueenConfigStateBackendService_GetConfig_FullMethodName, in, out, cOpts...)
+	out := new(policy.Config)
+	err := c.cc.Invoke(ctx, PolicyConfigStateBackendService_GetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queenConfigStateBackendServiceClient) SetConfig(ctx context.Context, in *queen.Config, opts ...grpc.CallOption) (*queen.Config, error) {
+func (c *policyConfigStateBackendServiceClient) SetConfig(ctx context.Context, in *policy.Config, opts ...grpc.CallOption) (*policy.Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(queen.Config)
-	err := c.cc.Invoke(ctx, QueenConfigStateBackendService_SetConfig_FullMethodName, in, out, cOpts...)
+	out := new(policy.Config)
+	err := c.cc.Invoke(ctx, PolicyConfigStateBackendService_SetConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queenConfigStateBackendServiceClient) WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[queen.Config], error) {
+func (c *policyConfigStateBackendServiceClient) WatchConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[policy.Config], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &QueenConfigStateBackendService_ServiceDesc.Streams[0], QueenConfigStateBackendService_WatchConfig_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &PolicyConfigStateBackendService_ServiceDesc.Streams[0], PolicyConfigStateBackendService_WatchConfig_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[emptypb.Empty, queen.Config]{ClientStream: stream}
+	x := &grpc.GenericClientStream[emptypb.Empty, policy.Config]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -833,124 +833,124 @@ func (c *queenConfigStateBackendServiceClient) WatchConfig(ctx context.Context, 
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type QueenConfigStateBackendService_WatchConfigClient = grpc.ServerStreamingClient[queen.Config]
+type PolicyConfigStateBackendService_WatchConfigClient = grpc.ServerStreamingClient[policy.Config]
 
-// QueenConfigStateBackendServiceServer is the server API for QueenConfigStateBackendService service.
-// All implementations must embed UnimplementedQueenConfigStateBackendServiceServer
+// PolicyConfigStateBackendServiceServer is the server API for PolicyConfigStateBackendService service.
+// All implementations must embed UnimplementedPolicyConfigStateBackendServiceServer
 // for forward compatibility.
-type QueenConfigStateBackendServiceServer interface {
+type PolicyConfigStateBackendServiceServer interface {
 	// Singleton: Config
-	GetConfig(context.Context, *emptypb.Empty) (*queen.Config, error)
-	SetConfig(context.Context, *queen.Config) (*queen.Config, error)
-	WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[queen.Config]) error
-	mustEmbedUnimplementedQueenConfigStateBackendServiceServer()
+	GetConfig(context.Context, *emptypb.Empty) (*policy.Config, error)
+	SetConfig(context.Context, *policy.Config) (*policy.Config, error)
+	WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[policy.Config]) error
+	mustEmbedUnimplementedPolicyConfigStateBackendServiceServer()
 }
 
-// UnimplementedQueenConfigStateBackendServiceServer must be embedded to have
+// UnimplementedPolicyConfigStateBackendServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedQueenConfigStateBackendServiceServer struct{}
+type UnimplementedPolicyConfigStateBackendServiceServer struct{}
 
-func (UnimplementedQueenConfigStateBackendServiceServer) GetConfig(context.Context, *emptypb.Empty) (*queen.Config, error) {
+func (UnimplementedPolicyConfigStateBackendServiceServer) GetConfig(context.Context, *emptypb.Empty) (*policy.Config, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetConfig not implemented")
 }
-func (UnimplementedQueenConfigStateBackendServiceServer) SetConfig(context.Context, *queen.Config) (*queen.Config, error) {
+func (UnimplementedPolicyConfigStateBackendServiceServer) SetConfig(context.Context, *policy.Config) (*policy.Config, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedQueenConfigStateBackendServiceServer) WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[queen.Config]) error {
+func (UnimplementedPolicyConfigStateBackendServiceServer) WatchConfig(*emptypb.Empty, grpc.ServerStreamingServer[policy.Config]) error {
 	return status.Error(codes.Unimplemented, "method WatchConfig not implemented")
 }
-func (UnimplementedQueenConfigStateBackendServiceServer) mustEmbedUnimplementedQueenConfigStateBackendServiceServer() {
+func (UnimplementedPolicyConfigStateBackendServiceServer) mustEmbedUnimplementedPolicyConfigStateBackendServiceServer() {
 }
-func (UnimplementedQueenConfigStateBackendServiceServer) testEmbeddedByValue() {}
+func (UnimplementedPolicyConfigStateBackendServiceServer) testEmbeddedByValue() {}
 
-// UnsafeQueenConfigStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to QueenConfigStateBackendServiceServer will
+// UnsafePolicyConfigStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PolicyConfigStateBackendServiceServer will
 // result in compilation errors.
-type UnsafeQueenConfigStateBackendServiceServer interface {
-	mustEmbedUnimplementedQueenConfigStateBackendServiceServer()
+type UnsafePolicyConfigStateBackendServiceServer interface {
+	mustEmbedUnimplementedPolicyConfigStateBackendServiceServer()
 }
 
-func RegisterQueenConfigStateBackendServiceServer(s grpc.ServiceRegistrar, srv QueenConfigStateBackendServiceServer) {
-	// If the following call panics, it indicates UnimplementedQueenConfigStateBackendServiceServer was
+func RegisterPolicyConfigStateBackendServiceServer(s grpc.ServiceRegistrar, srv PolicyConfigStateBackendServiceServer) {
+	// If the following call panics, it indicates UnimplementedPolicyConfigStateBackendServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&QueenConfigStateBackendService_ServiceDesc, srv)
+	s.RegisterService(&PolicyConfigStateBackendService_ServiceDesc, srv)
 }
 
-func _QueenConfigStateBackendService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PolicyConfigStateBackendService_GetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenConfigStateBackendServiceServer).GetConfig(ctx, in)
+		return srv.(PolicyConfigStateBackendServiceServer).GetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenConfigStateBackendService_GetConfig_FullMethodName,
+		FullMethod: PolicyConfigStateBackendService_GetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenConfigStateBackendServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
+		return srv.(PolicyConfigStateBackendServiceServer).GetConfig(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueenConfigStateBackendService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(queen.Config)
+func _PolicyConfigStateBackendService_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(policy.Config)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueenConfigStateBackendServiceServer).SetConfig(ctx, in)
+		return srv.(PolicyConfigStateBackendServiceServer).SetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: QueenConfigStateBackendService_SetConfig_FullMethodName,
+		FullMethod: PolicyConfigStateBackendService_SetConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueenConfigStateBackendServiceServer).SetConfig(ctx, req.(*queen.Config))
+		return srv.(PolicyConfigStateBackendServiceServer).SetConfig(ctx, req.(*policy.Config))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _QueenConfigStateBackendService_WatchConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _PolicyConfigStateBackendService_WatchConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(QueenConfigStateBackendServiceServer).WatchConfig(m, &grpc.GenericServerStream[emptypb.Empty, queen.Config]{ServerStream: stream})
+	return srv.(PolicyConfigStateBackendServiceServer).WatchConfig(m, &grpc.GenericServerStream[emptypb.Empty, policy.Config]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type QueenConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer[queen.Config]
+type PolicyConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer[policy.Config]
 
-// QueenConfigStateBackendService_ServiceDesc is the grpc.ServiceDesc for QueenConfigStateBackendService service.
+// PolicyConfigStateBackendService_ServiceDesc is the grpc.ServiceDesc for PolicyConfigStateBackendService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var QueenConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "config_holder.QueenConfigStateBackendService",
-	HandlerType: (*QueenConfigStateBackendServiceServer)(nil),
+var PolicyConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "config_holder.PolicyConfigStateBackendService",
+	HandlerType: (*PolicyConfigStateBackendServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetConfig",
-			Handler:    _QueenConfigStateBackendService_GetConfig_Handler,
+			Handler:    _PolicyConfigStateBackendService_GetConfig_Handler,
 		},
 		{
 			MethodName: "SetConfig",
-			Handler:    _QueenConfigStateBackendService_SetConfig_Handler,
+			Handler:    _PolicyConfigStateBackendService_SetConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "WatchConfig",
-			Handler:       _QueenConfigStateBackendService_WatchConfig_Handler,
+			Handler:       _PolicyConfigStateBackendService_WatchConfig_Handler,
 			ServerStreams: true,
 		},
 	},

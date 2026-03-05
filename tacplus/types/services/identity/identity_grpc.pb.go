@@ -15,7 +15,7 @@ package identity
 
 import (
 	context "context"
-	opa "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/opa"
+	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

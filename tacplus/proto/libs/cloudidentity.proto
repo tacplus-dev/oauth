@@ -11,7 +11,7 @@
 syntax = "proto3";
 
 package cloudidentity;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/cloudidentity";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudidentity";
 
 import "libs/cloudvendor.proto";
 

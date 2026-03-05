@@ -17,7 +17,7 @@
 //
 // Identity is the centralized OAuth2 authentication gateway. The auth flow:
 //
-//   1. User hits a microservice (e.g. fleetwood). The frontend wrapper checks
+//   1. User hits a microservice (e.g. sentinel). The frontend wrapper checks
 //      for a valid bearer token. If absent/invalid, redirects to Identity
 //      with a callback_url query parameter.
 //
@@ -49,7 +49,7 @@
 syntax = "proto3";
 
 package identity;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/identity";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity";
 
 import "libs/entitlement.proto";
 import "libs/jwk.proto";
@@ -174,7 +174,7 @@ message ProviderConfig {
 // ============================================================================
 
 // EntitlementConfig wraps the entitlement mappings and service entitlement
-// definitions. Published by Identity from config so other services (queen)
+// definitions. Published by Identity from config so other services (policy)
 // can read them via Watch (RO) without duplicating config.
 message EntitlementConfig {
   repeated entitlement.ServiceEntitlementMapping entitlement_mappings = 1;
@@ -184,7 +184,7 @@ message EntitlementConfig {
 // IdentityState holds public verifying keys and auth config readable by all
 // services. Each Identity instance generates its own key pair locally, keeps
 // the private key in memory, and publishes the public JWK here. OPA policies
-// and entitlement config are also published here so downstream services (queen)
+// and entitlement config are also published here so downstream services (policy)
 // can consume them without duplicating config.
 // Access: RW for identity, RO for any service that needs to verify tokens
 // or read auth config.
@@ -305,7 +305,7 @@ message AuthorizeRequest {
   int32 provider_index = 1;
 
   // callback_url is where the user is sent after successful authentication.
-  // This is the originating microservice's URL (e.g. "https://fleetwood:9000/").
+  // This is the originating microservice's URL (e.g. "https://sentinel:9000/").
   string callback_url = 2;
 }
 
@@ -383,7 +383,7 @@ message ExchangeTokenRequest {
   // access_token is a generic access token (no entitlements) issued by Identity.
   string access_token = 1;
 
-  // audience is the target service name (e.g. "fleetwood").
+  // audience is the target service name (e.g. "sentinel").
   string audience = 2;
 }
 

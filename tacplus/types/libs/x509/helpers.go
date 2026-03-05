@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	key "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/key"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/utils"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	key "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/key"
+	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -1147,24 +1147,24 @@ func ValidateX509CertRequest(m *X509CertRequest) error {
 		return nil
 	}
 
-	// Validate Exp (assert_duration: POSITIVE)
-	if m.Exp <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be positive (> 0), got: %d", m.Exp)
-	}
-
 	// Validate Exp (assert_required: must be > 0)
 	if m.Exp <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Exp is required and must be greater than zero")
 	}
 
-	// Validate Issuer (assert_required)
-	if m.Issuer == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
+	// Validate Exp (assert_duration: POSITIVE)
+	if m.Exp <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be positive (> 0), got: %d", m.Exp)
 	}
 
 	// Validate Issuer (assert_min_length: 1)
 	if len(m.Issuer) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer must be at least 1 characters, got: %d", len(m.Issuer))
+	}
+
+	// Validate Issuer (assert_required)
+	if m.Issuer == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
 	}
 
 	// Validate Issuer (default max size: 32768 bytes)

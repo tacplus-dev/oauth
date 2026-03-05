@@ -5,7 +5,7 @@ package webserver
 import (
 	"context"
 
-	webserverProto "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/httpserver"
+	webserverProto "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/httpserver"
 )
 
 // Callback provides the interface for distributed certificate storage and locking.

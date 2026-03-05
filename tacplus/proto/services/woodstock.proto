@@ -14,7 +14,7 @@
 syntax = "proto3";
 
 package woodstock;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/woodstock";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/woodstock";
 
 import "google/protobuf/empty.proto";
 

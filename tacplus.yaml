@@ -1,10 +1,10 @@
 language: go
 src: /Users/jody/workspace/services/proto
 tag: latest
-pkg: gitlab.com/secondstarcavalier/controlplane/services/fleetwood
+pkg: gitlab.com/secondstarcavalier/controlplane/services/sentinel
 backends:
   - services/elvis.ClusterState:ro
   - services/elvis.ServiceHealthState:rw
 frontends:
-  - services/fleetwood.FleetwoodService
+  - services/sentinel.SentinelService
 entry-point: internal.NewHandler

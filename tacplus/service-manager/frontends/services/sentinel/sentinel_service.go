@@ -9,7 +9,7 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 
-package fleetwood
+package sentinel
 
 import (
 	"context"
@@ -19,9 +19,9 @@ import (
 	"strings"
 	"sync"
 
-	types "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/fleetwood"
+	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 
-	presley_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/presley"
+	presley_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -29,38 +29,38 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-// FleetwoodService wraps a gRPC service with authorization and optional validation.
+// SentinelService wraps a gRPC service with authorization and optional validation.
 // It implements the gRPC server interface and can be registered with a grpc.Server.
-type FleetwoodService struct {
-	types.UnimplementedFleetwoodServiceServer
-	grpcService       types.FleetwoodServiceServer
+type SentinelService struct {
+	types.UnimplementedSentinelServiceServer
+	grpcService       types.SentinelServiceServer
 	mu                sync.RWMutex
 	disableValidation bool
 	authorizeFunc     func(ctx context.Context, fullMethod string, req any) error
 }
 
-// NewFleetwoodService creates a wrapper that wraps the given gRPC service implementation.
+// NewSentinelService creates a wrapper that wraps the given gRPC service implementation.
 // Auth and validation are configured via SetAuthorizeFunc and SetDisableValidation.
-func NewFleetwoodService(grpcService types.FleetwoodServiceServer) *FleetwoodService {
-	return &FleetwoodService{grpcService: grpcService}
+func NewSentinelService(grpcService types.SentinelServiceServer) *SentinelService {
+	return &SentinelService{grpcService: grpcService}
 }
 
 // SetAuthorizeFunc sets the authorization function.
-func (p *FleetwoodService) SetAuthorizeFunc(f func(ctx context.Context, fullMethod string, req any) error) {
+func (p *SentinelService) SetAuthorizeFunc(f func(ctx context.Context, fullMethod string, req any) error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.authorizeFunc = f
 }
 
 // SetDisableValidation sets whether validation is disabled.
-func (p *FleetwoodService) SetDisableValidation(v bool) {
+func (p *SentinelService) SetDisableValidation(v bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.disableValidation = v
 }
 
 // authorize checks if the request is authorized. Denies if no authorize func is set.
-func (p *FleetwoodService) authorize(ctx context.Context, fullMethod string, req any) error {
+func (p *SentinelService) authorize(ctx context.Context, fullMethod string, req any) error {
 	p.mu.RLock()
 	f := p.authorizeFunc
 	p.mu.RUnlock()
@@ -72,7 +72,7 @@ func (p *FleetwoodService) authorize(ctx context.Context, fullMethod string, req
 
 // checkAllowedCallers verifies the token's "sub" claim matches one of the allowed callers.
 // Returns nil if the caller is allowed, or a PermissionDenied error otherwise.
-func (p *FleetwoodService) checkAllowedCallers(ctx context.Context, allowed []string) error {
+func (p *SentinelService) checkAllowedCallers(ctx context.Context, allowed []string) error {
 	if len(allowed) == 0 {
 		return nil
 	}
@@ -112,23 +112,23 @@ func (p *FleetwoodService) checkAllowedCallers(ctx context.Context, allowed []st
 }
 
 // validationEnabled returns true if validation is enabled.
-func (p *FleetwoodService) validationEnabled() bool {
+func (p *SentinelService) validationEnabled() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return !p.disableValidation
 }
 
 // RegisterServices registers the gRPC service with validation wrappers
-func (p *FleetwoodService) RegisterServices(grpcServer *grpc.Server) error {
-	types.RegisterFleetwoodServiceServer(grpcServer, p)
+func (p *SentinelService) RegisterServices(grpcServer *grpc.Server) error {
+	types.RegisterSentinelServiceServer(grpcServer, p)
 	return nil
 }
 
 // gRPC method implementations with validation
-// GetClusterInfo implements FleetwoodService.GetClusterInfo with authorization and optional validation
-func (p *FleetwoodService) GetClusterInfo(ctx context.Context, req *emptypb.Empty) (*presley_pb.AdminClusterInfo, error) {
+// GetClusterInfo implements SentinelService.GetClusterInfo with authorization and optional validation
+func (p *SentinelService) GetClusterInfo(ctx context.Context, req *emptypb.Empty) (*presley_pb.AdminClusterInfo, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetClusterInfo_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetClusterInfo_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -148,10 +148,10 @@ func (p *FleetwoodService) GetClusterInfo(ctx context.Context, req *emptypb.Empt
 	return resp, nil
 }
 
-// GetClusterHealth implements FleetwoodService.GetClusterHealth with authorization and optional validation
-func (p *FleetwoodService) GetClusterHealth(ctx context.Context, req *emptypb.Empty) (*presley_pb.AdminClusterHealth, error) {
+// GetClusterHealth implements SentinelService.GetClusterHealth with authorization and optional validation
+func (p *SentinelService) GetClusterHealth(ctx context.Context, req *emptypb.Empty) (*presley_pb.AdminClusterHealth, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetClusterHealth_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetClusterHealth_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -171,10 +171,10 @@ func (p *FleetwoodService) GetClusterHealth(ctx context.Context, req *emptypb.Em
 	return resp, nil
 }
 
-// GetNodeMetrics implements FleetwoodService.GetNodeMetrics with authorization and optional validation
-func (p *FleetwoodService) GetNodeMetrics(ctx context.Context, req *emptypb.Empty) (*types.NodeMetricsResponse, error) {
+// GetNodeMetrics implements SentinelService.GetNodeMetrics with authorization and optional validation
+func (p *SentinelService) GetNodeMetrics(ctx context.Context, req *emptypb.Empty) (*types.NodeMetricsResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetNodeMetrics_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetNodeMetrics_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -194,10 +194,10 @@ func (p *FleetwoodService) GetNodeMetrics(ctx context.Context, req *emptypb.Empt
 	return resp, nil
 }
 
-// GetGrpcStats implements FleetwoodService.GetGrpcStats with authorization and optional validation
-func (p *FleetwoodService) GetGrpcStats(ctx context.Context, req *emptypb.Empty) (*types.GrpcStatsResponse, error) {
+// GetGrpcStats implements SentinelService.GetGrpcStats with authorization and optional validation
+func (p *SentinelService) GetGrpcStats(ctx context.Context, req *emptypb.Empty) (*types.GrpcStatsResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetGrpcStats_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetGrpcStats_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -217,10 +217,10 @@ func (p *FleetwoodService) GetGrpcStats(ctx context.Context, req *emptypb.Empty)
 	return resp, nil
 }
 
-// GetPersistenceStatus implements FleetwoodService.GetPersistenceStatus with authorization and optional validation
-func (p *FleetwoodService) GetPersistenceStatus(ctx context.Context, req *emptypb.Empty) (*types.PersistenceStatusResponse, error) {
+// GetPersistenceStatus implements SentinelService.GetPersistenceStatus with authorization and optional validation
+func (p *SentinelService) GetPersistenceStatus(ctx context.Context, req *emptypb.Empty) (*types.PersistenceStatusResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetPersistenceStatus_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetPersistenceStatus_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -240,10 +240,10 @@ func (p *FleetwoodService) GetPersistenceStatus(ctx context.Context, req *emptyp
 	return resp, nil
 }
 
-// GetNetworkStats implements FleetwoodService.GetNetworkStats with authorization and optional validation
-func (p *FleetwoodService) GetNetworkStats(ctx context.Context, req *emptypb.Empty) (*types.NetworkStatsResponse, error) {
+// GetNetworkStats implements SentinelService.GetNetworkStats with authorization and optional validation
+func (p *SentinelService) GetNetworkStats(ctx context.Context, req *emptypb.Empty) (*types.NetworkStatsResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetNetworkStats_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetNetworkStats_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -263,10 +263,10 @@ func (p *FleetwoodService) GetNetworkStats(ctx context.Context, req *emptypb.Emp
 	return resp, nil
 }
 
-// GetThreadInfo implements FleetwoodService.GetThreadInfo with authorization and optional validation
-func (p *FleetwoodService) GetThreadInfo(ctx context.Context, req *emptypb.Empty) (*types.ThreadInfoResponse, error) {
+// GetThreadInfo implements SentinelService.GetThreadInfo with authorization and optional validation
+func (p *SentinelService) GetThreadInfo(ctx context.Context, req *emptypb.Empty) (*types.ThreadInfoResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetThreadInfo_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetThreadInfo_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -286,10 +286,10 @@ func (p *FleetwoodService) GetThreadInfo(ctx context.Context, req *emptypb.Empty
 	return resp, nil
 }
 
-// GetTokenCacheStats implements FleetwoodService.GetTokenCacheStats with authorization and optional validation
-func (p *FleetwoodService) GetTokenCacheStats(ctx context.Context, req *emptypb.Empty) (*types.TokenCacheStatsResponse, error) {
+// GetTokenCacheStats implements SentinelService.GetTokenCacheStats with authorization and optional validation
+func (p *SentinelService) GetTokenCacheStats(ctx context.Context, req *emptypb.Empty) (*types.TokenCacheStatsResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetTokenCacheStats_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetTokenCacheStats_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -309,10 +309,10 @@ func (p *FleetwoodService) GetTokenCacheStats(ctx context.Context, req *emptypb.
 	return resp, nil
 }
 
-// GetMapStats implements FleetwoodService.GetMapStats with authorization and optional validation
-func (p *FleetwoodService) GetMapStats(ctx context.Context, req *emptypb.Empty) (*types.MapStatsResponse, error) {
+// GetMapStats implements SentinelService.GetMapStats with authorization and optional validation
+func (p *SentinelService) GetMapStats(ctx context.Context, req *emptypb.Empty) (*types.MapStatsResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetMapStats_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetMapStats_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -332,10 +332,10 @@ func (p *FleetwoodService) GetMapStats(ctx context.Context, req *emptypb.Empty) 
 	return resp, nil
 }
 
-// GetDashboard implements FleetwoodService.GetDashboard with authorization and optional validation
-func (p *FleetwoodService) GetDashboard(ctx context.Context, req *emptypb.Empty) (*types.DashboardResponse, error) {
+// GetDashboard implements SentinelService.GetDashboard with authorization and optional validation
+func (p *SentinelService) GetDashboard(ctx context.Context, req *emptypb.Empty) (*types.DashboardResponse, error) {
 	// Authorize
-	if err := p.authorize(ctx, "/services"+types.FleetwoodService_GetDashboard_FullMethodName, req); err != nil {
+	if err := p.authorize(ctx, "/services"+types.SentinelService_GetDashboard_FullMethodName, req); err != nil {
 		return nil, err
 	}
 
@@ -355,9 +355,9 @@ func (p *FleetwoodService) GetDashboard(ctx context.Context, req *emptypb.Empty)
 	return resp, nil
 }
 
-// WatchDashboard implements FleetwoodService.WatchDashboard (server streaming)
-func (p *FleetwoodService) WatchDashboard(req *types.WatchDashboardRequest, stream grpc.ServerStreamingServer[types.DashboardResponse]) error {
-	if err := p.authorize(stream.Context(), "/services"+types.FleetwoodService_WatchDashboard_FullMethodName, req); err != nil {
+// WatchDashboard implements SentinelService.WatchDashboard (server streaming)
+func (p *SentinelService) WatchDashboard(req *types.WatchDashboardRequest, stream grpc.ServerStreamingServer[types.DashboardResponse]) error {
+	if err := p.authorize(stream.Context(), "/services"+types.SentinelService_WatchDashboard_FullMethodName, req); err != nil {
 		return err
 	}
 	return p.grpcService.WatchDashboard(req, stream)

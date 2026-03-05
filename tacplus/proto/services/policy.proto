@@ -9,25 +9,25 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/queen.proto
+// Source: services/policy.proto
 
 // Copyright (c) 2024 Second Star Cavalier, LLC.
 
-// Package queen provides protobuf definitions for the Queen service.
+// Package policy provides protobuf definitions for the Policy service.
 //
-// Queen is the entitlements introspection and dev tools microservice. It
+// Policy is the entitlements introspection and dev tools microservice. It
 // provides service catalog browsing, entitlement inspection, entitlement
 // simulation, and arbitrary OPA policy evaluation — all extracted from
 // identity so the auth gateway can focus purely on authentication.
 //
-// Queen reads identity's verifying_keys (via Watch RO) to verify access
+// Policy reads identity's verifying_keys (via Watch RO) to verify access
 // tokens for GetMyEntitlements. All other RPCs operate on config-provided
 // data (service_entitlements, OPA policies) and require no token validation.
 
 syntax = "proto3";
 
-package queen;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/queen";
+package policy;
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policy";
 
 import "libs/opa.proto";
 import "google/protobuf/empty.proto";
@@ -37,7 +37,7 @@ import "google/api/annotations.proto";
 // Config
 // ============================================================================
 
-// Queen reads all auth config (OPA policies, entitlement mappings) from
+// Policy reads all auth config (OPA policies, entitlement mappings) from
 // IdentityState via Watch (RO). No config duplication needed.
 message Config {
 }
@@ -46,35 +46,35 @@ message Config {
 // Frontend Service
 // ============================================================================
 
-service QueenService {
+service PolicyService {
 
   // GetServiceCatalog returns the available services and their RPCs,
   // built from the service_entitlements config.
   rpc GetServiceCatalog(google.protobuf.Empty) returns (ServiceCatalogResponse) {
-    option (google.api.http) = { get: "/api/queen/v1/catalog" };
+    option (google.api.http) = { get: "/api/policy/v1/catalog" };
   }
 
   // GetMyEntitlements returns what services/RPCs the caller's access token
   // would grant across all catalog services. Accepts access_token in the
   // request body (same pattern as ExchangeToken — no bearer auth needed).
   rpc GetMyEntitlements(GetMyEntitlementsRequest) returns (MyEntitlementsResponse) {
-    option (google.api.http) = { post: "/api/queen/v1/entitlements" body: "*" };
+    option (google.api.http) = { post: "/api/policy/v1/entitlements" body: "*" };
   }
 
   // SimulateEntitlements returns what entitlements a hypothetical set of claims
   // would produce. No token validation — purely catalog-based simulation.
   rpc SimulateEntitlements(SimulateEntitlementsRequest) returns (MyEntitlementsResponse) {
-    option (google.api.http) = { post: "/api/queen/v1/simulate-entitlements" body: "*" };
+    option (google.api.http) = { post: "/api/policy/v1/simulate-entitlements" body: "*" };
   }
 
   // EvaluatePolicy evaluates an arbitrary OPA Rego policy.
   rpc EvaluatePolicy(EvaluatePolicyRequest) returns (EvaluatePolicyResponse) {
-    option (google.api.http) = { post: "/api/queen/v1/evaluate" body: "*" };
+    option (google.api.http) = { post: "/api/policy/v1/evaluate" body: "*" };
   }
 
   // GetPolicies returns the current claim mapping and entitlements Rego policies.
   rpc GetPolicies(google.protobuf.Empty) returns (GetPoliciesResponse) {
-    option (google.api.http) = { get: "/api/queen/v1/policies" };
+    option (google.api.http) = { get: "/api/policy/v1/policies" };
   }
 }
 
@@ -89,7 +89,7 @@ message ServiceCatalogResponse {
 
 // ServiceCatalogEntry describes a single service and its available RPCs.
 message ServiceCatalogEntry {
-  // service_name is the service identifier (e.g. "fleetwood").
+  // service_name is the service identifier (e.g. "sentinel").
   string service_name = 1;
 
   // rpcs lists the available RPC methods on this service.
@@ -109,7 +109,7 @@ message MyEntitlementsResponse {
 
 // ServiceEntitlementInfo describes a caller's entitlements on a single service.
 message ServiceEntitlementInfo {
-  // service_name is the service identifier (e.g. "fleetwood").
+  // service_name is the service identifier (e.g. "sentinel").
   string service_name = 1;
 
   // rpcs lists the granted RPCs. ["*"] means all RPCs are granted.

@@ -55,9 +55,9 @@ import (
 	"strconv"
 
 	"github.com/golang-jwt/jwt/v5"
-	protoKey "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/key"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/utils"
+	protoKey "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/key"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/proto"
 )
 

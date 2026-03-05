@@ -27,8 +27,8 @@ import (
 	"encoding/base64"
 	"math/big"
 
-	protoX509 "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/x509"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
+	protoX509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
+	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

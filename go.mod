@@ -1,4 +1,4 @@
-module gitlab.com/secondstarcavalier/controlplane/services/fleetwood
+module gitlab.com/secondstarcavalier/controlplane/services/sentinel
 
 go 1.25.5
 

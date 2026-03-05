@@ -1,17 +1,17 @@
 {
   "binary_hash": "704b28fed9fd190364231d653c561ab0edf265e9211f30301259abc59bcda46e",
-  "config_hash": "f6345bf1cfeac1c00ac50d7fa45394a843c6a02ccbb5304fb0b2df8761d9a9d0",
-  "structure_hash": "5f452dd6ebd1ccdf6543a29b1ae6b7f7a007fe840a1dd99912dab3dc5bcfdf63",
+  "config_hash": "105eeb1f1492f5f0a72c8bb0661041390dbf8bbc7bbfa865f0f9abf195c5a9a3",
+  "structure_hash": "c683d06bf54314d591eb80292b56632792224816a961a80b79b40cc3b6886a37",
   "files": {
     "dependencies.yaml": "b1e3b41802693b989403f5da77d07c50392cbeb70718fbb6341421ffc1ac2442",
-    "services/elvis.proto": "787586e02ff8914a13a00aa267cb97247255c702ed9526d3472ec4bba4002477",
-    "services/fleetwood.proto": "bca2397572a2122efeda8367804b03fd90514f4feaf994bf0460708c999090d1",
+    "services/elvis.proto": "ca9c64d21c527c88e0f0bc3ab96e7ca6d745b56315a3502487f4f6f6ff9362bd",
     "services/gateway.proto": "ed2598f1c82c856c1df5c9fbb7e1cbb285075d397b4dbf7c2e919b75285fa608",
-    "services/genesis.proto": "2fbef573056dc47cb5cd91d2f3eedb6ff3a88082ed47b37ea4676090371de3ff",
-    "services/identity.proto": "34f271d02693ce5abcf40187af2bcc7d23840bd93c0869fafd64c941fef330e7",
+    "services/identity.proto": "a5293157f34b54f7dcbb504ab047449350410a2956b3461e11c6ab007a7fcd89",
+    "services/letsencrypt.proto": "44366284e0532c4c00cb93f8d5a3510e56a471f503831dbbee82f0c5af815a3d",
     "services/orchestrator.proto": "2b2ff73b1942541e137b6e7013ab26c7aceb4b40c8749980e4cf24497ccce714",
-    "services/presley.proto": "345989755a66c74c28de623e4335a4c1a93ad7d93bd5c4dfb43ae4a04d131a61",
-    "services/queen.proto": "5c6cf8643cc5b660936de495bad2ec78dd1465f60a14d96b0aa9913e64527477",
+    "services/policy.proto": "0375f1556cbf8d160143201a287683f8cc7b7878d49e17246c0578d2f7c24b3d",
+    "services/presley.proto": "0cec6a5861506e56e03e5792935115cebbe9a0e49c8f7be78c41ece7360f210a",
+    "services/sentinel.proto": "bf3ff5dfbc53ffec046383a6f80aac0c43c07fe93024e247e41b5cdd9e5cdb09",
     "services/snoopy.proto": "3ad109bdcf347d242779c738e937136ab095acf86d05a910307d56c6a84e25b9",
     "services/woodstock.proto": "07da50aa11dcb6531f46b0a6bc343cc766647b52c6f42dae5b21f304262f42db"
   }

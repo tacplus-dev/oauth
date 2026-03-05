@@ -14,7 +14,7 @@
 package gateway
 
 import (
-	_ "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/spec"
+	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -103,7 +103,7 @@ const file_services_gateway_proto_rawDesc = "" +
 	"enable_tcp\x18\x02 \x01(\bB\x04\xa0\xa8\x1d\x01R\tenableTcp\x12%\n" +
 	"\venable_quic\x18\x03 \x01(\bB\x04\xa0\xa8\x1d\x01R\n" +
 	"enableQuic:\x0fҨ\x1d\v\n" +
-	"\agateway\x10\aBZZXgitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/gatewayb\x06proto3"
+	"\agateway\x10\aBYZWgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gatewayb\x06proto3"
 
 var (
 	file_services_gateway_proto_rawDescOnce sync.Once

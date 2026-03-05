@@ -12,7 +12,7 @@
 syntax = "proto3";
 
 package jwk;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/jwk";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk";
 
 import "libs/key.proto";
 

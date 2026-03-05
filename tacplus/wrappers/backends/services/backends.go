@@ -11,20 +11,20 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/servicemanager"
-	cluster_state_backend "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends/services/cluster_state"
-	fleetwood_config_state_backend "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends/services/fleetwood_config_state"
-	service_config_state_backend "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends/services/service_config_state"
-	service_health_state_backend "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends/services/service_health_state"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
+	cluster_state_backend "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/services/cluster_state"
+	sentinel_config_state_backend "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/services/sentinel_config_state"
+	service_config_state_backend "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/services/service_config_state"
+	service_health_state_backend "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/services/service_health_state"
 )
 
 // Backends provides typed access to per-service backend clients in the services group.
 type Backends struct {
-	sc                     *servicemanager.ServiceManager
-	cluster_state          *cluster_state_backend.Backend
-	service_health_state   *service_health_state_backend.Backend
-	fleetwood_config_state *fleetwood_config_state_backend.Backend
-	service_config_state   *service_config_state_backend.Backend
+	sc                    *servicemanager.ServiceManager
+	cluster_state         *cluster_state_backend.Backend
+	service_health_state  *service_health_state_backend.Backend
+	sentinel_config_state *sentinel_config_state_backend.Backend
+	service_config_state  *service_config_state_backend.Backend
 }
 
 // NewBackends creates backend clients for the services group from a shared Backend.
@@ -45,10 +45,10 @@ func NewBackends(ctx context.Context, sc *servicemanager.ServiceManager,
 		return nil, fmt.Errorf("failed to create service_health_state backend client: %w", err)
 	}
 
-	s.fleetwood_config_state, err = fleetwood_config_state_backend.NewBackend(ctx, sc)
+	s.sentinel_config_state, err = sentinel_config_state_backend.NewBackend(ctx, sc)
 	if err != nil {
 		s.Close()
-		return nil, fmt.Errorf("failed to create fleetwood_config_state backend client: %w", err)
+		return nil, fmt.Errorf("failed to create sentinel_config_state backend client: %w", err)
 	}
 
 	s.service_config_state, err = service_config_state_backend.NewBackend(ctx, sc)
@@ -68,8 +68,8 @@ func (s *Backends) Close() {
 	if s.service_health_state != nil {
 		s.service_health_state.Close()
 	}
-	if s.fleetwood_config_state != nil {
-		s.fleetwood_config_state.Close()
+	if s.sentinel_config_state != nil {
+		s.sentinel_config_state.Close()
 	}
 	if s.service_config_state != nil {
 		s.service_config_state.Close()
@@ -86,9 +86,9 @@ func (s *Backends) ServiceHealthState() *service_health_state_backend.Backend {
 	return s.service_health_state
 }
 
-// FleetwoodConfigState returns the Backend.
-func (s *Backends) FleetwoodConfigState() *fleetwood_config_state_backend.Backend {
-	return s.fleetwood_config_state
+// SentinelConfigState returns the Backend.
+func (s *Backends) SentinelConfigState() *sentinel_config_state_backend.Backend {
+	return s.sentinel_config_state
 }
 
 // ServiceConfigState returns the Backend.

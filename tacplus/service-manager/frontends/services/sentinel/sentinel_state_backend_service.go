@@ -9,7 +9,7 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 
-package fleetwood
+package sentinel
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	types "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/fleetwood"
+	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,38 +26,38 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// FleetwoodStateBackendService wraps a gRPC service with authorization and optional validation.
+// SentinelStateBackendService wraps a gRPC service with authorization and optional validation.
 // It implements the gRPC server interface and can be registered with a grpc.Server.
-type FleetwoodStateBackendService struct {
-	types.UnimplementedFleetwoodStateBackendServiceServer
-	grpcService       types.FleetwoodStateBackendServiceServer
+type SentinelStateBackendService struct {
+	types.UnimplementedSentinelStateBackendServiceServer
+	grpcService       types.SentinelStateBackendServiceServer
 	mu                sync.RWMutex
 	disableValidation bool
 	authorizeFunc     func(ctx context.Context, fullMethod string, req any) error
 }
 
-// NewFleetwoodStateBackendService creates a wrapper that wraps the given gRPC service implementation.
+// NewSentinelStateBackendService creates a wrapper that wraps the given gRPC service implementation.
 // Auth and validation are configured via SetAuthorizeFunc and SetDisableValidation.
-func NewFleetwoodStateBackendService(grpcService types.FleetwoodStateBackendServiceServer) *FleetwoodStateBackendService {
-	return &FleetwoodStateBackendService{grpcService: grpcService}
+func NewSentinelStateBackendService(grpcService types.SentinelStateBackendServiceServer) *SentinelStateBackendService {
+	return &SentinelStateBackendService{grpcService: grpcService}
 }
 
 // SetAuthorizeFunc sets the authorization function.
-func (p *FleetwoodStateBackendService) SetAuthorizeFunc(f func(ctx context.Context, fullMethod string, req any) error) {
+func (p *SentinelStateBackendService) SetAuthorizeFunc(f func(ctx context.Context, fullMethod string, req any) error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.authorizeFunc = f
 }
 
 // SetDisableValidation sets whether validation is disabled.
-func (p *FleetwoodStateBackendService) SetDisableValidation(v bool) {
+func (p *SentinelStateBackendService) SetDisableValidation(v bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.disableValidation = v
 }
 
 // authorize checks if the request is authorized. Denies if no authorize func is set.
-func (p *FleetwoodStateBackendService) authorize(ctx context.Context, fullMethod string, req any) error {
+func (p *SentinelStateBackendService) authorize(ctx context.Context, fullMethod string, req any) error {
 	p.mu.RLock()
 	f := p.authorizeFunc
 	p.mu.RUnlock()
@@ -69,7 +69,7 @@ func (p *FleetwoodStateBackendService) authorize(ctx context.Context, fullMethod
 
 // checkAllowedCallers verifies the token's "sub" claim matches one of the allowed callers.
 // Returns nil if the caller is allowed, or a PermissionDenied error otherwise.
-func (p *FleetwoodStateBackendService) checkAllowedCallers(ctx context.Context, allowed []string) error {
+func (p *SentinelStateBackendService) checkAllowedCallers(ctx context.Context, allowed []string) error {
 	if len(allowed) == 0 {
 		return nil
 	}
@@ -109,15 +109,15 @@ func (p *FleetwoodStateBackendService) checkAllowedCallers(ctx context.Context, 
 }
 
 // validationEnabled returns true if validation is enabled.
-func (p *FleetwoodStateBackendService) validationEnabled() bool {
+func (p *SentinelStateBackendService) validationEnabled() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return !p.disableValidation
 }
 
 // RegisterServices registers the gRPC service with validation wrappers
-func (p *FleetwoodStateBackendService) RegisterServices(grpcServer *grpc.Server) error {
-	types.RegisterFleetwoodStateBackendServiceServer(grpcServer, p)
+func (p *SentinelStateBackendService) RegisterServices(grpcServer *grpc.Server) error {
+	types.RegisterSentinelStateBackendServiceServer(grpcServer, p)
 	return nil
 }
 

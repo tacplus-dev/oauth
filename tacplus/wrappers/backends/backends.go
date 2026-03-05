@@ -11,8 +11,8 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/servicemanager"
-	services_backends "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends/services"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
+	services_backends "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/services"
 )
 
 // Backends provides typed access to all per-service backend clients.

@@ -15,7 +15,7 @@
 
 syntax = "proto3";
 package gateway;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/gateway";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gateway";
 
 message Config {
 

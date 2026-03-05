@@ -14,8 +14,8 @@
 package jwk
 
 import (
-	key "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/key"
-	_ "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/spec"
+	key "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/key"
+	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -792,8 +792,8 @@ const file_libs_jwk_proto_rawDesc = "" +
 	"JwkUseType\x12\x1a\n" +
 	"\x16JWK_USE_TYPE_UNDEFINED\x10\x00\x12\x1d\n" +
 	"\x10JWK_USE_TYPE_SIG\x10\x01\x1a\a\xaa\xb5\x18\x03sig\x12\x1d\n" +
-	"\x10JWK_USE_TYPE_ENC\x10\x02\x1a\a\xaa\xb5\x18\x03encB\x90\x01\x8a\xb5\x18:\n" +
-	"\x16PATH_WELL_KNOWN_OPENID\x12 .well-known/openid-configurationZPgitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/jwkb\x06proto3"
+	"\x10JWK_USE_TYPE_ENC\x10\x02\x1a\a\xaa\xb5\x18\x03encB\x8f\x01\x8a\xb5\x18:\n" +
+	"\x16PATH_WELL_KNOWN_OPENID\x12 .well-known/openid-configurationZOgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwkb\x06proto3"
 
 var (
 	file_libs_jwk_proto_rawDescOnce sync.Once

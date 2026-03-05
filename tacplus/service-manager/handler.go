@@ -10,8 +10,8 @@ package servicemanager
 import (
 	"context"
 
-	pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/fleetwood"
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends"
+	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends"
 )
 
 // Handler defines the lifecycle interface for the service.
@@ -28,7 +28,7 @@ type Handler interface {
 	// GetGrpcImpl returns the gRPC service implementation.
 	// The returned server is wrapped with validation, authorization, and
 	// REST/GraphQL adapters by generated code.
-	GetGrpcImpl() pb.FleetwoodServiceServer
+	GetGrpcImpl() pb.SentinelServiceServer
 
 	// Init is called after the ServiceManager creates Backends.
 	// Use this to store backend references and initialize service state.

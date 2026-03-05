@@ -9,13 +9,13 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/queen.proto
+// Source: services/policy.proto
 
-package queen
+package policy
 
 import (
-	opa "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/opa"
-	_ "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/spec"
+	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
+	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -32,7 +32,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Queen reads all auth config (OPA policies, entitlement mappings) from
+// Policy reads all auth config (OPA policies, entitlement mappings) from
 // IdentityState via Watch (RO). No config duplication needed.
 type Config struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -42,7 +42,7 @@ type Config struct {
 
 func (x *Config) Reset() {
 	*x = Config{}
-	mi := &file_services_queen_proto_msgTypes[0]
+	mi := &file_services_policy_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +54,7 @@ func (x *Config) String() string {
 func (*Config) ProtoMessage() {}
 
 func (x *Config) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[0]
+	mi := &file_services_policy_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,7 +67,7 @@ func (x *Config) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Config.ProtoReflect.Descriptor instead.
 func (*Config) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{0}
+	return file_services_policy_proto_rawDescGZIP(), []int{0}
 }
 
 // ServiceCatalogResponse lists available services and their RPCs.
@@ -80,7 +80,7 @@ type ServiceCatalogResponse struct {
 
 func (x *ServiceCatalogResponse) Reset() {
 	*x = ServiceCatalogResponse{}
-	mi := &file_services_queen_proto_msgTypes[1]
+	mi := &file_services_policy_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -92,7 +92,7 @@ func (x *ServiceCatalogResponse) String() string {
 func (*ServiceCatalogResponse) ProtoMessage() {}
 
 func (x *ServiceCatalogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[1]
+	mi := &file_services_policy_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -105,7 +105,7 @@ func (x *ServiceCatalogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceCatalogResponse.ProtoReflect.Descriptor instead.
 func (*ServiceCatalogResponse) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{1}
+	return file_services_policy_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ServiceCatalogResponse) GetServices() []*ServiceCatalogEntry {
@@ -118,7 +118,7 @@ func (x *ServiceCatalogResponse) GetServices() []*ServiceCatalogEntry {
 // ServiceCatalogEntry describes a single service and its available RPCs.
 type ServiceCatalogEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// service_name is the service identifier (e.g. "fleetwood").
+	// service_name is the service identifier (e.g. "sentinel").
 	ServiceName string `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
 	// rpcs lists the available RPC methods on this service.
 	Rpcs          []string `protobuf:"bytes,2,rep,name=rpcs,proto3" json:"rpcs,omitempty"`
@@ -128,7 +128,7 @@ type ServiceCatalogEntry struct {
 
 func (x *ServiceCatalogEntry) Reset() {
 	*x = ServiceCatalogEntry{}
-	mi := &file_services_queen_proto_msgTypes[2]
+	mi := &file_services_policy_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -140,7 +140,7 @@ func (x *ServiceCatalogEntry) String() string {
 func (*ServiceCatalogEntry) ProtoMessage() {}
 
 func (x *ServiceCatalogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[2]
+	mi := &file_services_policy_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -153,7 +153,7 @@ func (x *ServiceCatalogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceCatalogEntry.ProtoReflect.Descriptor instead.
 func (*ServiceCatalogEntry) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{2}
+	return file_services_policy_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ServiceCatalogEntry) GetServiceName() string {
@@ -181,7 +181,7 @@ type GetMyEntitlementsRequest struct {
 
 func (x *GetMyEntitlementsRequest) Reset() {
 	*x = GetMyEntitlementsRequest{}
-	mi := &file_services_queen_proto_msgTypes[3]
+	mi := &file_services_policy_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -193,7 +193,7 @@ func (x *GetMyEntitlementsRequest) String() string {
 func (*GetMyEntitlementsRequest) ProtoMessage() {}
 
 func (x *GetMyEntitlementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[3]
+	mi := &file_services_policy_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -206,7 +206,7 @@ func (x *GetMyEntitlementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyEntitlementsRequest.ProtoReflect.Descriptor instead.
 func (*GetMyEntitlementsRequest) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{3}
+	return file_services_policy_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetMyEntitlementsRequest) GetAccessToken() string {
@@ -226,7 +226,7 @@ type MyEntitlementsResponse struct {
 
 func (x *MyEntitlementsResponse) Reset() {
 	*x = MyEntitlementsResponse{}
-	mi := &file_services_queen_proto_msgTypes[4]
+	mi := &file_services_policy_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -238,7 +238,7 @@ func (x *MyEntitlementsResponse) String() string {
 func (*MyEntitlementsResponse) ProtoMessage() {}
 
 func (x *MyEntitlementsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[4]
+	mi := &file_services_policy_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -251,7 +251,7 @@ func (x *MyEntitlementsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyEntitlementsResponse.ProtoReflect.Descriptor instead.
 func (*MyEntitlementsResponse) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{4}
+	return file_services_policy_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MyEntitlementsResponse) GetEntitlements() []*ServiceEntitlementInfo {
@@ -264,7 +264,7 @@ func (x *MyEntitlementsResponse) GetEntitlements() []*ServiceEntitlementInfo {
 // ServiceEntitlementInfo describes a caller's entitlements on a single service.
 type ServiceEntitlementInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// service_name is the service identifier (e.g. "fleetwood").
+	// service_name is the service identifier (e.g. "sentinel").
 	ServiceName string `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
 	// rpcs lists the granted RPCs. ["*"] means all RPCs are granted.
 	Rpcs []string `protobuf:"bytes,2,rep,name=rpcs,proto3" json:"rpcs,omitempty"`
@@ -276,7 +276,7 @@ type ServiceEntitlementInfo struct {
 
 func (x *ServiceEntitlementInfo) Reset() {
 	*x = ServiceEntitlementInfo{}
-	mi := &file_services_queen_proto_msgTypes[5]
+	mi := &file_services_policy_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +288,7 @@ func (x *ServiceEntitlementInfo) String() string {
 func (*ServiceEntitlementInfo) ProtoMessage() {}
 
 func (x *ServiceEntitlementInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[5]
+	mi := &file_services_policy_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +301,7 @@ func (x *ServiceEntitlementInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceEntitlementInfo.ProtoReflect.Descriptor instead.
 func (*ServiceEntitlementInfo) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{5}
+	return file_services_policy_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ServiceEntitlementInfo) GetServiceName() string {
@@ -338,7 +338,7 @@ type SimulateEntitlementsRequest struct {
 
 func (x *SimulateEntitlementsRequest) Reset() {
 	*x = SimulateEntitlementsRequest{}
-	mi := &file_services_queen_proto_msgTypes[6]
+	mi := &file_services_policy_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -350,7 +350,7 @@ func (x *SimulateEntitlementsRequest) String() string {
 func (*SimulateEntitlementsRequest) ProtoMessage() {}
 
 func (x *SimulateEntitlementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[6]
+	mi := &file_services_policy_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -363,7 +363,7 @@ func (x *SimulateEntitlementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulateEntitlementsRequest.ProtoReflect.Descriptor instead.
 func (*SimulateEntitlementsRequest) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{6}
+	return file_services_policy_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SimulateEntitlementsRequest) GetClaimsJson() string {
@@ -397,7 +397,7 @@ type EvaluatePolicyRequest struct {
 
 func (x *EvaluatePolicyRequest) Reset() {
 	*x = EvaluatePolicyRequest{}
-	mi := &file_services_queen_proto_msgTypes[7]
+	mi := &file_services_policy_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -409,7 +409,7 @@ func (x *EvaluatePolicyRequest) String() string {
 func (*EvaluatePolicyRequest) ProtoMessage() {}
 
 func (x *EvaluatePolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[7]
+	mi := &file_services_policy_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -422,7 +422,7 @@ func (x *EvaluatePolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluatePolicyRequest.ProtoReflect.Descriptor instead.
 func (*EvaluatePolicyRequest) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{7}
+	return file_services_policy_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *EvaluatePolicyRequest) GetRegoSource() string {
@@ -468,7 +468,7 @@ type EvaluatePolicyResponse struct {
 
 func (x *EvaluatePolicyResponse) Reset() {
 	*x = EvaluatePolicyResponse{}
-	mi := &file_services_queen_proto_msgTypes[8]
+	mi := &file_services_policy_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -480,7 +480,7 @@ func (x *EvaluatePolicyResponse) String() string {
 func (*EvaluatePolicyResponse) ProtoMessage() {}
 
 func (x *EvaluatePolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[8]
+	mi := &file_services_policy_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,7 +493,7 @@ func (x *EvaluatePolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluatePolicyResponse.ProtoReflect.Descriptor instead.
 func (*EvaluatePolicyResponse) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{8}
+	return file_services_policy_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *EvaluatePolicyResponse) GetResultJson() string {
@@ -528,7 +528,7 @@ type GetPoliciesResponse struct {
 
 func (x *GetPoliciesResponse) Reset() {
 	*x = GetPoliciesResponse{}
-	mi := &file_services_queen_proto_msgTypes[9]
+	mi := &file_services_policy_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -540,7 +540,7 @@ func (x *GetPoliciesResponse) String() string {
 func (*GetPoliciesResponse) ProtoMessage() {}
 
 func (x *GetPoliciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_queen_proto_msgTypes[9]
+	mi := &file_services_policy_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -553,7 +553,7 @@ func (x *GetPoliciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPoliciesResponse.ProtoReflect.Descriptor instead.
 func (*GetPoliciesResponse) Descriptor() ([]byte, []int) {
-	return file_services_queen_proto_rawDescGZIP(), []int{9}
+	return file_services_policy_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetPoliciesResponse) GetEntitlementsPolicy() *opa.OpaPolicy {
@@ -563,23 +563,24 @@ func (x *GetPoliciesResponse) GetEntitlementsPolicy() *opa.OpaPolicy {
 	return nil
 }
 
-var File_services_queen_proto protoreflect.FileDescriptor
+var File_services_policy_proto protoreflect.FileDescriptor
 
-const file_services_queen_proto_rawDesc = "" +
+const file_services_policy_proto_rawDesc = "" +
 	"\n" +
-	"\x14services/queen.proto\x12\x05queen\x1a\x0flibs/spec.proto\x1a\x0elibs/opa.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\x17\n" +
-	"\x06Config:\rҨ\x1d\t\n" +
-	"\x05queen\x10\n" +
-	"\"P\n" +
-	"\x16ServiceCatalogResponse\x126\n" +
-	"\bservices\x18\x01 \x03(\v2\x1a.queen.ServiceCatalogEntryR\bservices\"R\n" +
+	"\x15services/policy.proto\x12\x06policy\x1a\x0flibs/spec.proto\x1a\x0elibs/opa.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\x18\n" +
+	"\x06Config:\x0eҨ\x1d\n" +
+	"\n" +
+	"\x06policy\x10\n" +
+	"\"Q\n" +
+	"\x16ServiceCatalogResponse\x127\n" +
+	"\bservices\x18\x01 \x03(\v2\x1b.policy.ServiceCatalogEntryR\bservices\"R\n" +
 	"\x13ServiceCatalogEntry\x12'\n" +
 	"\fservice_name\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\vserviceName\x12\x12\n" +
 	"\x04rpcs\x18\x02 \x03(\tR\x04rpcs\"C\n" +
 	"\x18GetMyEntitlementsRequest\x12'\n" +
-	"\faccess_token\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\vaccessToken\"[\n" +
-	"\x16MyEntitlementsResponse\x12A\n" +
-	"\fentitlements\x18\x01 \x03(\v2\x1d.queen.ServiceEntitlementInfoR\fentitlements\"n\n" +
+	"\faccess_token\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\vaccessToken\"\\\n" +
+	"\x16MyEntitlementsResponse\x12B\n" +
+	"\fentitlements\x18\x01 \x03(\v2\x1e.policy.ServiceEntitlementInfoR\fentitlements\"n\n" +
 	"\x16ServiceEntitlementInfo\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x12\n" +
 	"\x04rpcs\x18\x02 \x03(\tR\x04rpcs\x12\x1d\n" +
@@ -605,55 +606,56 @@ const file_services_queen_proto_rawDesc = "" +
 	"\aallowed\x18\x02 \x01(\bR\aallowed\x12\x16\n" +
 	"\x06errors\x18\x03 \x03(\tR\x06errors\"V\n" +
 	"\x13GetPoliciesResponse\x12?\n" +
-	"\x13entitlements_policy\x18\x01 \x01(\v2\x0e.opa.OpaPolicyR\x12entitlementsPolicy2\xe1\x04\n" +
-	"\fQueenService\x12i\n" +
-	"\x11GetServiceCatalog\x12\x16.google.protobuf.Empty\x1a\x1d.queen.ServiceCatalogResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/queen/v1/catalog\x12z\n" +
-	"\x11GetMyEntitlements\x12\x1f.queen.GetMyEntitlementsRequest\x1a\x1d.queen.MyEntitlementsResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/queen/v1/entitlements\x12\x89\x01\n" +
-	"\x14SimulateEntitlements\x12\".queen.SimulateEntitlementsRequest\x1a\x1d.queen.MyEntitlementsResponse\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/queen/v1/simulate-entitlements\x12p\n" +
-	"\x0eEvaluatePolicy\x12\x1c.queen.EvaluatePolicyRequest\x1a\x1d.queen.EvaluatePolicyResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/queen/v1/evaluate\x12a\n" +
-	"\vGetPolicies\x12\x16.google.protobuf.Empty\x1a\x1a.queen.GetPoliciesResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/queen/v1/policies\x1a\t\xa2\x97\"\x05queenBXZVgitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/queenb\x06proto3"
+	"\x13entitlements_policy\x18\x01 \x01(\v2\x0e.opa.OpaPolicyR\x12entitlementsPolicy2\xf0\x04\n" +
+	"\rPolicyService\x12k\n" +
+	"\x11GetServiceCatalog\x12\x16.google.protobuf.Empty\x1a\x1e.policy.ServiceCatalogResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/policy/v1/catalog\x12}\n" +
+	"\x11GetMyEntitlements\x12 .policy.GetMyEntitlementsRequest\x1a\x1e.policy.MyEntitlementsResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/policy/v1/entitlements\x12\x8c\x01\n" +
+	"\x14SimulateEntitlements\x12#.policy.SimulateEntitlementsRequest\x1a\x1e.policy.MyEntitlementsResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/policy/v1/simulate-entitlements\x12s\n" +
+	"\x0eEvaluatePolicy\x12\x1d.policy.EvaluatePolicyRequest\x1a\x1e.policy.EvaluatePolicyResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/policy/v1/evaluate\x12c\n" +
+	"\vGetPolicies\x12\x16.google.protobuf.Empty\x1a\x1b.policy.GetPoliciesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/policy/v1/policies\x1a\n" +
+	"\xa2\x97\"\x06policyBXZVgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policyb\x06proto3"
 
 var (
-	file_services_queen_proto_rawDescOnce sync.Once
-	file_services_queen_proto_rawDescData []byte
+	file_services_policy_proto_rawDescOnce sync.Once
+	file_services_policy_proto_rawDescData []byte
 )
 
-func file_services_queen_proto_rawDescGZIP() []byte {
-	file_services_queen_proto_rawDescOnce.Do(func() {
-		file_services_queen_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_services_queen_proto_rawDesc), len(file_services_queen_proto_rawDesc)))
+func file_services_policy_proto_rawDescGZIP() []byte {
+	file_services_policy_proto_rawDescOnce.Do(func() {
+		file_services_policy_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_services_policy_proto_rawDesc), len(file_services_policy_proto_rawDesc)))
 	})
-	return file_services_queen_proto_rawDescData
+	return file_services_policy_proto_rawDescData
 }
 
-var file_services_queen_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-var file_services_queen_proto_goTypes = []any{
-	(*Config)(nil),                      // 0: queen.Config
-	(*ServiceCatalogResponse)(nil),      // 1: queen.ServiceCatalogResponse
-	(*ServiceCatalogEntry)(nil),         // 2: queen.ServiceCatalogEntry
-	(*GetMyEntitlementsRequest)(nil),    // 3: queen.GetMyEntitlementsRequest
-	(*MyEntitlementsResponse)(nil),      // 4: queen.MyEntitlementsResponse
-	(*ServiceEntitlementInfo)(nil),      // 5: queen.ServiceEntitlementInfo
-	(*SimulateEntitlementsRequest)(nil), // 6: queen.SimulateEntitlementsRequest
-	(*EvaluatePolicyRequest)(nil),       // 7: queen.EvaluatePolicyRequest
-	(*EvaluatePolicyResponse)(nil),      // 8: queen.EvaluatePolicyResponse
-	(*GetPoliciesResponse)(nil),         // 9: queen.GetPoliciesResponse
+var file_services_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_services_policy_proto_goTypes = []any{
+	(*Config)(nil),                      // 0: policy.Config
+	(*ServiceCatalogResponse)(nil),      // 1: policy.ServiceCatalogResponse
+	(*ServiceCatalogEntry)(nil),         // 2: policy.ServiceCatalogEntry
+	(*GetMyEntitlementsRequest)(nil),    // 3: policy.GetMyEntitlementsRequest
+	(*MyEntitlementsResponse)(nil),      // 4: policy.MyEntitlementsResponse
+	(*ServiceEntitlementInfo)(nil),      // 5: policy.ServiceEntitlementInfo
+	(*SimulateEntitlementsRequest)(nil), // 6: policy.SimulateEntitlementsRequest
+	(*EvaluatePolicyRequest)(nil),       // 7: policy.EvaluatePolicyRequest
+	(*EvaluatePolicyResponse)(nil),      // 8: policy.EvaluatePolicyResponse
+	(*GetPoliciesResponse)(nil),         // 9: policy.GetPoliciesResponse
 	(*opa.OpaPolicy)(nil),               // 10: opa.OpaPolicy
 	(*emptypb.Empty)(nil),               // 11: google.protobuf.Empty
 }
-var file_services_queen_proto_depIdxs = []int32{
-	2,  // 0: queen.ServiceCatalogResponse.services:type_name -> queen.ServiceCatalogEntry
-	5,  // 1: queen.MyEntitlementsResponse.entitlements:type_name -> queen.ServiceEntitlementInfo
-	10, // 2: queen.GetPoliciesResponse.entitlements_policy:type_name -> opa.OpaPolicy
-	11, // 3: queen.QueenService.GetServiceCatalog:input_type -> google.protobuf.Empty
-	3,  // 4: queen.QueenService.GetMyEntitlements:input_type -> queen.GetMyEntitlementsRequest
-	6,  // 5: queen.QueenService.SimulateEntitlements:input_type -> queen.SimulateEntitlementsRequest
-	7,  // 6: queen.QueenService.EvaluatePolicy:input_type -> queen.EvaluatePolicyRequest
-	11, // 7: queen.QueenService.GetPolicies:input_type -> google.protobuf.Empty
-	1,  // 8: queen.QueenService.GetServiceCatalog:output_type -> queen.ServiceCatalogResponse
-	4,  // 9: queen.QueenService.GetMyEntitlements:output_type -> queen.MyEntitlementsResponse
-	4,  // 10: queen.QueenService.SimulateEntitlements:output_type -> queen.MyEntitlementsResponse
-	8,  // 11: queen.QueenService.EvaluatePolicy:output_type -> queen.EvaluatePolicyResponse
-	9,  // 12: queen.QueenService.GetPolicies:output_type -> queen.GetPoliciesResponse
+var file_services_policy_proto_depIdxs = []int32{
+	2,  // 0: policy.ServiceCatalogResponse.services:type_name -> policy.ServiceCatalogEntry
+	5,  // 1: policy.MyEntitlementsResponse.entitlements:type_name -> policy.ServiceEntitlementInfo
+	10, // 2: policy.GetPoliciesResponse.entitlements_policy:type_name -> opa.OpaPolicy
+	11, // 3: policy.PolicyService.GetServiceCatalog:input_type -> google.protobuf.Empty
+	3,  // 4: policy.PolicyService.GetMyEntitlements:input_type -> policy.GetMyEntitlementsRequest
+	6,  // 5: policy.PolicyService.SimulateEntitlements:input_type -> policy.SimulateEntitlementsRequest
+	7,  // 6: policy.PolicyService.EvaluatePolicy:input_type -> policy.EvaluatePolicyRequest
+	11, // 7: policy.PolicyService.GetPolicies:input_type -> google.protobuf.Empty
+	1,  // 8: policy.PolicyService.GetServiceCatalog:output_type -> policy.ServiceCatalogResponse
+	4,  // 9: policy.PolicyService.GetMyEntitlements:output_type -> policy.MyEntitlementsResponse
+	4,  // 10: policy.PolicyService.SimulateEntitlements:output_type -> policy.MyEntitlementsResponse
+	8,  // 11: policy.PolicyService.EvaluatePolicy:output_type -> policy.EvaluatePolicyResponse
+	9,  // 12: policy.PolicyService.GetPolicies:output_type -> policy.GetPoliciesResponse
 	8,  // [8:13] is the sub-list for method output_type
 	3,  // [3:8] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
@@ -661,26 +663,26 @@ var file_services_queen_proto_depIdxs = []int32{
 	0,  // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_services_queen_proto_init() }
-func file_services_queen_proto_init() {
-	if File_services_queen_proto != nil {
+func init() { file_services_policy_proto_init() }
+func file_services_policy_proto_init() {
+	if File_services_policy_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_queen_proto_rawDesc), len(file_services_queen_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_policy_proto_rawDesc), len(file_services_policy_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_services_queen_proto_goTypes,
-		DependencyIndexes: file_services_queen_proto_depIdxs,
-		MessageInfos:      file_services_queen_proto_msgTypes,
+		GoTypes:           file_services_policy_proto_goTypes,
+		DependencyIndexes: file_services_policy_proto_depIdxs,
+		MessageInfos:      file_services_policy_proto_msgTypes,
 	}.Build()
-	File_services_queen_proto = out.File
-	file_services_queen_proto_goTypes = nil
-	file_services_queen_proto_depIdxs = nil
+	File_services_policy_proto = out.File
+	file_services_policy_proto_goTypes = nil
+	file_services_policy_proto_depIdxs = nil
 }

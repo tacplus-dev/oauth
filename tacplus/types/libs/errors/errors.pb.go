@@ -108,7 +108,7 @@ const file_libs_errors_proto_rawDesc = "" +
 	"\x05Error\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x05R\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12.\n" +
-	"\adetails\x18\x03 \x03(\v2\x14.google.protobuf.AnyR\adetailsBUZSgitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errorsb\x06proto3"
+	"\adetails\x18\x03 \x03(\v2\x14.google.protobuf.AnyR\adetailsBTZRgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errorsb\x06proto3"
 
 var (
 	file_libs_errors_proto_rawDescOnce sync.Once

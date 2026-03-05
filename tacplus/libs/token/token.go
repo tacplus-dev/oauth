@@ -58,12 +58,12 @@ import (
 	"strings"
 	"time"
 
-	keyProto "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/key"
-	tokenProto "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/token"
-	wrapperJwk "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/jwk"
-	wrapperKey "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/libs/key"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/utils"
+	keyProto "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/key"
+	tokenProto "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/token"
+	wrapperJwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/jwk"
+	wrapperKey "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/key"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

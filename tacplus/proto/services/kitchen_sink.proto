@@ -5,7 +5,7 @@
 syntax = "proto3";
 
 package kitchen_sink;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/services/kitchen_sink";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/services/kitchen_sink";
 
 import "libs/healthreport.proto";
 import "libs/jwk.proto";
@@ -13,12 +13,12 @@ import "libs/opa.proto";
 import "libs/serviceconfig.proto";
 import "libs/x509.proto";
 import "services/elvis.proto";
-import "services/fleetwood.proto";
 import "services/gateway.proto";
-import "services/genesis.proto";
 import "services/identity.proto";
+import "services/letsencrypt.proto";
+import "services/policy.proto";
 import "services/presley.proto";
-import "services/queen.proto";
+import "services/sentinel.proto";
 import "services/snoopy.proto";
 import "services/woodstock.proto";
 
@@ -31,16 +31,16 @@ message KitchenSink {
 
   oneof payload {
     elvis.Config elvis_config = 100;
-    fleetwood.Config fleetwood_config = 101;
-    gateway.Config gateway_config = 102;
-    genesis.Config genesis_config = 103;
-    genesis.GenesisCertData genesis_genesis_cert_data = 104;
-    healthreport.ServiceInstanceHealth healthreport_service_instance_health = 105;
-    identity.Config identity_config = 106;
-    identity.EntitlementConfig identity_entitlement_config = 107;
-    identity.ExternalJwk identity_external_jwk = 108;
-    jwk.Jwk jwk_jwk = 109;
-    opa.OpaPolicy opa_opa_policy = 110;
+    gateway.Config gateway_config = 101;
+    healthreport.ServiceInstanceHealth healthreport_service_instance_health = 102;
+    identity.Config identity_config = 103;
+    identity.EntitlementConfig identity_entitlement_config = 104;
+    identity.ExternalJwk identity_external_jwk = 105;
+    jwk.Jwk jwk_jwk = 106;
+    letsencrypt.Config letsencrypt_config = 107;
+    letsencrypt.LetsEncryptCertData letsencrypt_lets_encrypt_cert_data = 108;
+    opa.OpaPolicy opa_opa_policy = 109;
+    policy.Config policy_config = 110;
     presley.AdminClusterHealth presley_admin_cluster_health = 111;
     presley.AdminClusterInfo presley_admin_cluster_info = 112;
     presley.AdminGraphInfo presley_admin_graph_info = 113;
@@ -56,7 +56,7 @@ message KitchenSink {
     presley.AdminTokenCacheStats presley_admin_token_cache_stats = 123;
     presley.AdminTopicStats presley_admin_topic_stats = 124;
     presley.AdminWatchHealth presley_admin_watch_health = 125;
-    queen.Config queen_config = 126;
+    sentinel.Config sentinel_config = 126;
     serviceconfig.Config serviceconfig_config = 127;
     snoopy.EventData snoopy_event_data = 128;
     snoopy.ServiceStatus snoopy_service_status = 129;

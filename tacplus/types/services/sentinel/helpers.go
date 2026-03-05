@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/fleetwood.proto
+// Source: services/sentinel.proto
 
-package fleetwood
+package sentinel
 
 import (
 	"bytes"
@@ -19,8 +19,8 @@ import (
 	"strconv"
 
 	"github.com/pelletier/go-toml/v2"
-	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/errors"
-	presley "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/presley"
+	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	presley "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -147,25 +147,25 @@ func ConfigToTOML(v *Config) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
-// FleetwoodStateJSON represents FleetwoodState in external JSON format (with string enums)
+// SentinelStateJSON represents SentinelState in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
-type fleetwoodstateJSON struct {
+type sentinelstateJSON struct {
 }
 
-// FleetwoodStateToJSON converts FleetwoodState to JSON bytes.
+// SentinelStateToJSON converts SentinelState to JSON bytes.
 // Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func FleetwoodStateToJSON(v *FleetwoodState) ([]byte, error) {
+func SentinelStateToJSON(v *SentinelState) ([]byte, error) {
 	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "fleetwoodstate is nil")
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "sentinelstate is nil")
 	}
 	// Convert to JSON helper struct with string enums
-	helper := fleetwoodstateJSON{}
+	helper := sentinelstateJSON{}
 	return json.Marshal(helper)
 }
 
-// FleetwoodStateFromBytes creates FleetwoodState from bytes, auto-detecting the format.
+// SentinelStateFromBytes creates SentinelState from bytes, auto-detecting the format.
 // Supports JSON, YAML, TOML, and binary protobuf formats.
-func FleetwoodStateFromBytes(data []byte) (*FleetwoodState, error) {
+func SentinelStateFromBytes(data []byte) (*SentinelState, error) {
 	// Trim leading whitespace to check format
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
@@ -173,7 +173,7 @@ func FleetwoodStateFromBytes(data []byte) (*FleetwoodState, error) {
 	}
 	// Try JSON first (most common, starts with { or [)
 	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := FleetwoodStateFromJSON(data); err == nil {
+		if result, err := SentinelStateFromJSON(data); err == nil {
 			return result, nil
 		}
 	}
@@ -183,7 +183,7 @@ func FleetwoodStateFromBytes(data []byte) (*FleetwoodState, error) {
 		// Convert TOML to JSON, then parse
 		jsonData, err := json.Marshal(tomlObj)
 		if err == nil {
-			if result, err := FleetwoodStateFromJSON(jsonData); err == nil {
+			if result, err := SentinelStateFromJSON(jsonData); err == nil {
 				return result, nil
 			}
 		}
@@ -194,46 +194,46 @@ func FleetwoodStateFromBytes(data []byte) (*FleetwoodState, error) {
 		// Convert YAML to JSON, then parse
 		jsonData, err := json.Marshal(yamlObj)
 		if err == nil {
-			if result, err := FleetwoodStateFromJSON(jsonData); err == nil {
+			if result, err := SentinelStateFromJSON(jsonData); err == nil {
 				return result, nil
 			}
 		}
 	}
 	// Try binary protobuf
-	v := &FleetwoodState{}
+	v := &SentinelState{}
 	if err := proto.Unmarshal(data, v); err == nil {
 		return v, nil
 	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse FleetwoodState: unsupported format or invalid data")
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse SentinelState: unsupported format or invalid data")
 }
 
-// FleetwoodStateFromJSON creates FleetwoodState from JSON bytes.
+// SentinelStateFromJSON creates SentinelState from JSON bytes.
 // Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func FleetwoodStateFromJSON(data []byte) (*FleetwoodState, error) {
+func SentinelStateFromJSON(data []byte) (*SentinelState, error) {
 	// Unmarshal into helper struct with string enums
-	var raw fleetwoodstateJSON
+	var raw sentinelstateJSON
 	if err := json.Unmarshal(data, &raw); err != nil {
 		// Fall back to protojson which handles proto3 JSON conventions
 		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &FleetwoodState{}
+		v := &SentinelState{}
 		if pErr := protojson.Unmarshal(data, v); pErr != nil {
 			return nil, err
 		}
 		return v, nil
 	}
 	// Build result with parsed enums
-	result := &FleetwoodState{}
+	result := &SentinelState{}
 	return result, nil
 }
 
-// FleetwoodStateToYAML converts FleetwoodState to YAML bytes.
+// SentinelStateToYAML converts SentinelState to YAML bytes.
 // Converts to JSON first, then to YAML for proper protobuf handling.
-func FleetwoodStateToYAML(v *FleetwoodState) ([]byte, error) {
+func SentinelStateToYAML(v *SentinelState) ([]byte, error) {
 	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "fleetwoodstate is nil")
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "sentinelstate is nil")
 	}
 	// Convert to JSON first
-	jsonData, err := FleetwoodStateToJSON(v)
+	jsonData, err := SentinelStateToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -245,14 +245,14 @@ func FleetwoodStateToYAML(v *FleetwoodState) ([]byte, error) {
 	return yaml.Marshal(obj)
 }
 
-// FleetwoodStateToTOML converts FleetwoodState to TOML bytes.
+// SentinelStateToTOML converts SentinelState to TOML bytes.
 // Converts to JSON first, then to TOML for proper protobuf handling.
-func FleetwoodStateToTOML(v *FleetwoodState) ([]byte, error) {
+func SentinelStateToTOML(v *SentinelState) ([]byte, error) {
 	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "fleetwoodstate is nil")
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "sentinelstate is nil")
 	}
 	// Convert to JSON first
-	jsonData, err := FleetwoodStateToJSON(v)
+	jsonData, err := SentinelStateToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -1873,8 +1873,8 @@ func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 	return result, nil
 }
 
-// FleetwoodStateToEnvVar converts FleetwoodState to environment variable key-value pairs.
-func FleetwoodStateToEnvVar(v *FleetwoodState) map[string]string {
+// SentinelStateToEnvVar converts SentinelState to environment variable key-value pairs.
+func SentinelStateToEnvVar(v *SentinelState) map[string]string {
 	if v == nil {
 		return nil
 	}
@@ -1882,9 +1882,9 @@ func FleetwoodStateToEnvVar(v *FleetwoodState) map[string]string {
 	return result
 }
 
-// FleetwoodStateFromEnvVar creates FleetwoodState from environment variable key-value pairs.
-func FleetwoodStateFromEnvVar(env map[string]string) (*FleetwoodState, error) {
-	result := &FleetwoodState{}
+// SentinelStateFromEnvVar creates SentinelState from environment variable key-value pairs.
+func SentinelStateFromEnvVar(env map[string]string) (*SentinelState, error) {
+	result := &SentinelState{}
 	return result, nil
 }
 
@@ -1894,14 +1894,14 @@ func WatchDashboardRequestToEnvVar(v *WatchDashboardRequest) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_FLEETWOOD_WATCH_DASHBOARD_REQUEST_INTERVAL_SECONDS"] = strconv.FormatInt(int64(v.IntervalSeconds), 10)
+	result["PROTO_SERVICES_SENTINEL_WATCH_DASHBOARD_REQUEST_INTERVAL_SECONDS"] = strconv.FormatInt(int64(v.IntervalSeconds), 10)
 	return result
 }
 
 // WatchDashboardRequestFromEnvVar creates WatchDashboardRequest from environment variable key-value pairs.
 func WatchDashboardRequestFromEnvVar(env map[string]string) (*WatchDashboardRequest, error) {
 	result := &WatchDashboardRequest{}
-	if val, ok := env["PROTO_SERVICES_FLEETWOOD_WATCH_DASHBOARD_REQUEST_INTERVAL_SECONDS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_SENTINEL_WATCH_DASHBOARD_REQUEST_INTERVAL_SECONDS"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, err
@@ -2080,9 +2080,9 @@ func ValidateConfig(m *Config) error {
 	return nil
 }
 
-// ValidateFleetwoodState validates all fields in FleetwoodState according to their annotations.
+// ValidateSentinelState validates all fields in SentinelState according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateFleetwoodState(m *FleetwoodState) error {
+func ValidateSentinelState(m *SentinelState) error {
 	if m == nil {
 		return nil
 	}

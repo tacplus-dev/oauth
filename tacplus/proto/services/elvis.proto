@@ -22,7 +22,7 @@
 syntax = "proto3";
 
 package elvis;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/elvis";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis";
 
 import "libs/logger.proto";
 import "libs/outputformat.proto";
@@ -351,17 +351,17 @@ message Config {
   // token_exchanger configures the token exchange service.
   TokenExchangerConfig token_exchanger = 15;
 
-  // cred_pairs bind public keys to identities for the CredPair token exchange flow.
+  // cred_pairs hold public keys for the CredPair token exchange flow.
+  // Identity mapping (kid → service) is in entitlement_mappings.
   repeated jwk.CredPair cred_pairs = 16;
 
-  // entitlement_mappings defines static entitlements for CredPair principals.
-  // TokenExchanger uses these to encode entitlements as claims in access tokens.
-  // Each mapping's string_id must match "local:<principal>" for a CredPair.
+  // entitlement_mappings maps credential IDs (kid) to service identities.
+  // TokenExchanger uses these to resolve which service a CredPair represents.
   repeated entitlement.ServiceEntitlementMapping entitlement_mappings = 21;
 
   // service_entitlements holds named entitlement definitions loaded from
-  // proto/security/*.json at config build time. Referenced by
-  // entitlement_mappings via entitlements_id.
+  // proto/security/*.json at config build time. Used for S2S entitlements
+  // (derived from proto descriptors) and U2S entitlements (expandWildcard).
   repeated entitlement.ServiceEntitlements service_entitlements = 22;
 }
 

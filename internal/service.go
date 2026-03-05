@@ -6,17 +6,17 @@ import (
 	"sync"
 	"time"
 
-	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/service-manager"
-	cluster_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/presley"
-	elvis_pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/elvis"
-	pb "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/fleetwood"
-	"gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/wrappers/backends"
+	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager"
+	cluster_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/presley"
+	elvis_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/elvis"
+	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
+	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// Service implements FleetwoodServiceServer and the service-manager Handler interface.
+// Service implements SentinelServiceServer and the service-manager Handler interface.
 type Service struct {
-	pb.UnimplementedFleetwoodServiceServer
+	pb.UnimplementedSentinelServiceServer
 	admin elvis_pb.ClusterStateBackendServiceClient
 }
 
@@ -30,7 +30,7 @@ func NewHandler(bc *backends.Backends) (servicemanager.Handler, error) {
 	return s, nil
 }
 
-func (s *Service) GetGrpcImpl() pb.FleetwoodServiceServer {
+func (s *Service) GetGrpcImpl() pb.SentinelServiceServer {
 	return s
 }
 
@@ -45,7 +45,7 @@ func (s *Service) HandleConfig(_ *pb.Config) error {
 
 func (s *Service) Shutdown(_ context.Context) {}
 
-func (s *Service) WatchDashboard(req *pb.WatchDashboardRequest, stream pb.FleetwoodService_WatchDashboardServer) error {
+func (s *Service) WatchDashboard(req *pb.WatchDashboardRequest, stream pb.SentinelService_WatchDashboardServer) error {
 	interval := req.GetIntervalSeconds()
 	if interval < 1 {
 		interval = 5

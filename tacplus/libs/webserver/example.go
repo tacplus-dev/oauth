@@ -3,7 +3,7 @@
 package webserver
 
 import (
-	webserverProto "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/httpserver"
+	webserverProto "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/httpserver"
 )
 
 

@@ -3,7 +3,7 @@
 syntax = "proto3";
 
 package httpclient;
-option go_package = "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/httpclient";
+option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/httpclient";
 
 import "libs/x509.proto";
 
