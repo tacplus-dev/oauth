@@ -8255,14 +8255,14 @@ func ValidateConfig(m *Config) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshTokenLifetimeSeconds must be positive (> 0), got: %d", m.RefreshTokenLifetimeSeconds)
 	}
 
-	// Validate KeyLifetimeSeconds (assert_duration_min: 3600)
-	if m.KeyLifetimeSeconds < 3600 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field KeyLifetimeSeconds must be >= 3600, got: %d", m.KeyLifetimeSeconds)
-	}
-
 	// Validate KeyLifetimeSeconds (assert_duration: POSITIVE)
 	if m.KeyLifetimeSeconds <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field KeyLifetimeSeconds must be positive (> 0), got: %d", m.KeyLifetimeSeconds)
+	}
+
+	// Validate KeyLifetimeSeconds (assert_duration_min: 3600)
+	if m.KeyLifetimeSeconds < 3600 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field KeyLifetimeSeconds must be >= 3600, got: %d", m.KeyLifetimeSeconds)
 	}
 
 	// Validate NonceExpireSeconds (assert_duration: POSITIVE)
@@ -8359,14 +8359,14 @@ func ValidateProviderConfig(m *ProviderConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId must be at least 1 characters, got: %d", len(m.ClientId))
 	}
 
-	// Validate ClientSecret (assert_required)
-	if m.ClientSecret == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
-	}
-
 	// Validate ClientSecret (assert_min_length: 1)
 	if len(m.ClientSecret) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
+	}
+
+	// Validate ClientSecret (assert_required)
+	if m.ClientSecret == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
 	}
 
 	// Validate AuthorizationEndpoint (assert_url: URL_SCHEME_HTTPS)
@@ -8476,14 +8476,14 @@ func ValidateExternalJwk(m *ExternalJwk) error {
 		return nil
 	}
 
-	// Validate Kid (assert_min_length: 1)
-	if len(m.Kid) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Kid must be at least 1 characters, got: %d", len(m.Kid))
-	}
-
 	// Validate Kid (assert_required)
 	if m.Kid == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Kid is required")
+	}
+
+	// Validate Kid (assert_min_length: 1)
+	if len(m.Kid) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Kid must be at least 1 characters, got: %d", len(m.Kid))
 	}
 
 	// Validate Key (assert_required)
@@ -8745,14 +8745,14 @@ func ValidateRefreshTokenResponse(m *RefreshTokenResponse) error {
 		return nil
 	}
 
-	// Validate AccessToken (assert_required)
-	if m.AccessToken == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
-	}
-
 	// Validate AccessToken (assert_min_length: 1)
 	if len(m.AccessToken) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken must be at least 1 characters, got: %d", len(m.AccessToken))
+	}
+
+	// Validate AccessToken (assert_required)
+	if m.AccessToken == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
 	}
 
 	// Validate ExpiresIn (assert_gt: 0)

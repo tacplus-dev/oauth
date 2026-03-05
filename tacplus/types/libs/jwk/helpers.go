@@ -1321,16 +1321,16 @@ func ValidateOpenIdConfiguration(m *OpenIdConfiguration) error {
 		}
 	}
 
-	// Validate JwksUri (assert_required)
-	if m.JwksUri == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field JwksUri is required")
-	}
-
 	// Validate JwksUri (assert_url: URL_SCHEME_HTTPS)
 	if m.JwksUri != "" {
 		if err := utils.ValidateAssertURL_URL_SCHEME_HTTPS(m.JwksUri); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field JwksUri URL validation failed")
 		}
+	}
+
+	// Validate JwksUri (assert_required)
+	if m.JwksUri == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field JwksUri is required")
 	}
 
 	// Validate IntrospectionEndpoint (assert_url: URL_SCHEME_HTTPS)

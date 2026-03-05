@@ -1147,14 +1147,14 @@ func ValidateX509CertRequest(m *X509CertRequest) error {
 		return nil
 	}
 
-	// Validate Exp (assert_duration: POSITIVE)
-	if m.Exp <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be positive (> 0), got: %d", m.Exp)
-	}
-
 	// Validate Exp (assert_required: must be > 0)
 	if m.Exp <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Exp is required and must be greater than zero")
+	}
+
+	// Validate Exp (assert_duration: POSITIVE)
+	if m.Exp <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be positive (> 0), got: %d", m.Exp)
 	}
 
 	// Validate Issuer (assert_required)
