@@ -388,6 +388,12 @@ message AdminMapStats {
 
   // State root that owns this map: "ClusterState"
   string state_root = 25;
+
+  // Consistency model: "atomic" or "convergent"
+  string consistency = 26;
+
+  // Whether persistence is enabled for this boundary
+  bool persistence = 27;
 }
 
 // ============================================================================

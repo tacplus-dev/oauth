@@ -168,9 +168,6 @@ message CredPair {
   // kid (public_key.kid) is used as the collection key.
   Jwk public_key = 1;
 
-  // Field 2 was subject_type — now lives on ServiceEntitlementMapping.
-  reserved 2;
-
   // The principal name bound to this key.
-  string principal = 3;
+  string principal = 2;
 }

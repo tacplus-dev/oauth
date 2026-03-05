@@ -1310,7 +1310,11 @@ type AdminMapStats struct {
 	// Fully qualified name: "services/elvis/ClusterState.NodeMetrics"
 	QualifiedName string `protobuf:"bytes,24,opt,name=qualified_name,json=qualifiedName,proto3" json:"qualified_name,omitempty"`
 	// State root that owns this map: "ClusterState"
-	StateRoot     string `protobuf:"bytes,25,opt,name=state_root,json=stateRoot,proto3" json:"state_root,omitempty"`
+	StateRoot string `protobuf:"bytes,25,opt,name=state_root,json=stateRoot,proto3" json:"state_root,omitempty"`
+	// Consistency model: "atomic" or "convergent"
+	Consistency string `protobuf:"bytes,26,opt,name=consistency,proto3" json:"consistency,omitempty"`
+	// Whether persistence is enabled for this boundary
+	Persistence   bool `protobuf:"varint,27,opt,name=persistence,proto3" json:"persistence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1518,6 +1522,20 @@ func (x *AdminMapStats) GetStateRoot() string {
 		return x.StateRoot
 	}
 	return ""
+}
+
+func (x *AdminMapStats) GetConsistency() string {
+	if x != nil {
+		return x.Consistency
+	}
+	return ""
+}
+
+func (x *AdminMapStats) GetPersistence() bool {
+	if x != nil {
+		return x.Persistence
+	}
+	return false
 }
 
 // AdminGrpcStats captures gRPC connection and RPC statistics for a single node.
@@ -3218,7 +3236,7 @@ const file_services_presley_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1aE\n" +
 	"\x17PerErrorCodeCountsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xe4\a\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xa8\b\n" +
 	"\rAdminMapStats\x12\x1f\n" +
 	"\bmap_name\x18\x01 \x01(\tB\x04е\x18\x01R\amapName\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\x05R\x04size\x12*\n" +
@@ -3248,7 +3266,9 @@ const file_services_presley_proto_rawDesc = "" +
 	"graph_type\x18\x17 \x01(\x0e2\x17.presley.AdminGraphTypeR\tgraphType\x12%\n" +
 	"\x0equalified_name\x18\x18 \x01(\tR\rqualifiedName\x12\x1d\n" +
 	"\n" +
-	"state_root\x18\x19 \x01(\tR\tstateRoot\"\xb4\x03\n" +
+	"state_root\x18\x19 \x01(\tR\tstateRoot\x12 \n" +
+	"\vconsistency\x18\x1a \x01(\tR\vconsistency\x12 \n" +
+	"\vpersistence\x18\x1b \x01(\bR\vpersistence\"\xb4\x03\n" +
 	"\x0eAdminGrpcStats\x12\x1d\n" +
 	"\anode_id\x18\x01 \x01(\tB\x04е\x18\x01R\x06nodeId\x12-\n" +
 	"\x12active_connections\x18\x02 \x01(\x05R\x11activeConnections\x12\x1d\n" +

@@ -1104,16 +1104,16 @@ func ValidateX509Cert(m *X509Cert) error {
 		return nil
 	}
 
+	// Validate Base64 (assert_required)
+	if m.Base64 == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Base64 is required")
+	}
+
 	// Validate Base64 (assert_base64)
 	if m.Base64 != "" {
 		if err := utils.ValidateAssertBase64(m.Base64); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Base64 base64 validation failed")
 		}
-	}
-
-	// Validate Base64 (assert_required)
-	if m.Base64 == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Base64 is required")
 	}
 
 	// Validate Id (default max size: 32768 bytes)
@@ -1147,14 +1147,14 @@ func ValidateX509CertRequest(m *X509CertRequest) error {
 		return nil
 	}
 
-	// Validate Exp (assert_required: must be > 0)
-	if m.Exp <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Exp is required and must be greater than zero")
-	}
-
 	// Validate Exp (assert_duration: POSITIVE)
 	if m.Exp <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be positive (> 0), got: %d", m.Exp)
+	}
+
+	// Validate Exp (assert_required: must be > 0)
+	if m.Exp <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Exp is required and must be greater than zero")
 	}
 
 	// Validate Issuer (assert_required)

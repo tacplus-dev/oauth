@@ -1660,6 +1660,29 @@ func ConfigDefaults(v *Config) {
 }
 
 // ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v.PingIntervalMs == int32(DefaultPingIntervalMs) {
+		v.PingIntervalMs = 0
+	}
+	if v.RebalanceIntervalMs == int32(DefaultRebalanceIntervalMs) {
+		v.RebalanceIntervalMs = 0
+	}
+	if v.MaxRequestSize == DefaultMaxRequestSize {
+		v.MaxRequestSize = 0
+	}
+	if v.RequestTimeoutSeconds == DefaultRequestTimeoutSeconds {
+		v.RequestTimeoutSeconds = 0
+	}
+	if v.ShutdownTimeoutSeconds == DefaultShutdownTimeoutSeconds {
+		v.ShutdownTimeoutSeconds = 0
+	}
+}
+
+// ============================================================
 // Merge: BootstrapConfig
 // ============================================================
 // MergeBootstrapConfig fills zero-valued fields in dst from src.

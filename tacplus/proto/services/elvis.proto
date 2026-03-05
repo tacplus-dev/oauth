@@ -286,7 +286,7 @@ message TokenRequest {
 
 // TokenExchangerState holds the public verifying keys for the built-in token
 // exchange service. TokenExchanger is built into elvis to solve the
-// chicken-egg problem: services like IronMaiden need a ServiceToken from
+// chicken-egg problem: services like Identity need a ServiceToken from
 // TokenExchanger (via their CredPair) before they can register their own
 // JWKs with elvis. If TokenExchanger were external, it would need a
 // ServiceToken from itself to bootstrap.

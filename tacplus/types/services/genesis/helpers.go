@@ -1166,6 +1166,20 @@ func ConfigDefaults(v *Config) {
 }
 
 // ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v.HttpListen == DefaultHttpListen {
+		v.HttpListen = ""
+	}
+	if v.RenewalCheckIntervalSeconds == DefaultRenewalCheckIntervalSeconds {
+		v.RenewalCheckIntervalSeconds = 0
+	}
+}
+
+// ============================================================
 // Merge: Config
 // ============================================================
 // MergeConfig fills zero-valued fields in dst from src.

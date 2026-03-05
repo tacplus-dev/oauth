@@ -12,6 +12,7 @@ message OpaPolicy {
   string entry_point = 1;
 
   // bundle contains the base64-encoded OPA policy bundle (tar.gz format).
+  // Optional — policies can be provided as raw source instead.
   string bundle = 2;
 
   // created is the Unix epoch timestamp (seconds) when the policy was created.

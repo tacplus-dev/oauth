@@ -110,7 +110,7 @@ func (x *Config) GetRenewalCheckIntervalSeconds() int64 {
 }
 
 // GenesisState holds the Let's Encrypt certificate and CertMagic storage
-// state. Springsteen watches this to obtain the TLS certificate for its
+// state. Gateway watches this to obtain the TLS certificate for its
 // public-facing HTTPS listener.
 type GenesisState struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -164,7 +164,7 @@ func (x *GenesisState) GetCertData() *GenesisCertData {
 type GenesisCertData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// tls_cert is the current Let's Encrypt certificate and private key.
-	// Springsteen watches this to serve HTTPS traffic.
+	// Gateway watches this to serve HTTPS traffic.
 	TlsCert *x509.X509CertPair `protobuf:"bytes,1,opt,name=tls_cert,json=tlsCert,proto3" json:"tls_cert,omitempty"`
 	// certmagic_state is the serialized CertMagic storage tree. Contains
 	// ACME account data, certificate metadata, and cached certificates.

@@ -51,7 +51,7 @@ message Config {
 // ============================================================================
 
 // GenesisState holds the Let's Encrypt certificate and CertMagic storage
-// state. Springsteen watches this to obtain the TLS certificate for its
+// state. Gateway watches this to obtain the TLS certificate for its
 // public-facing HTTPS listener.
 message GenesisState {
 
@@ -65,7 +65,7 @@ message GenesisState {
 // issuance or renewal.
 message GenesisCertData {
   // tls_cert is the current Let's Encrypt certificate and private key.
-  // Springsteen watches this to serve HTTPS traffic.
+  // Gateway watches this to serve HTTPS traffic.
   x509.X509CertPair tls_cert = 1;
 
   // certmagic_state is the serialized CertMagic storage tree. Contains

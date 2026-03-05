@@ -14,9 +14,9 @@
 package fleetwood
 
 import (
-	_ "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/google/api/google"
 	_ "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/libs/spec"
 	presley "gitlab.com/secondstarcavalier/controlplane/services/fleetwood/tacplus/types/services/presley"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"

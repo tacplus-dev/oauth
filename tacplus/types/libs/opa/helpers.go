@@ -216,19 +216,9 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 		return nil
 	}
 
-	// Validate EntryPoint (assert_required)
-	if m.EntryPoint == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint is required")
-	}
-
 	// Validate EntryPoint (assert_min_length: 1)
 	if len(m.EntryPoint) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at least 1 characters, got: %d", len(m.EntryPoint))
-	}
-
-	// Validate Bundle (assert_required)
-	if m.Bundle == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Bundle is required")
 	}
 
 	// Validate Bundle (assert_base64)
