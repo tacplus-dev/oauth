@@ -519,6 +519,11 @@ func ValidateServiceInstanceHealth(m *ServiceInstanceHealth) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field GrpcEndpoint must be at most 256 characters, got: %d", len(m.GrpcEndpoint))
 	}
 
+	// Validate HttpEndpoint (assert_max_length: 256)
+	if len(m.HttpEndpoint) > 256 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field HttpEndpoint must be at most 256 characters, got: %d", len(m.HttpEndpoint))
+	}
+
 	// Validate HttpEndpoint (assert_host: IP address or FQDN)
 	if m.HttpEndpoint != "" {
 		if ip := net.ParseIP(m.HttpEndpoint); ip == nil {
@@ -526,11 +531,6 @@ func ValidateServiceInstanceHealth(m *ServiceInstanceHealth) error {
 				return protoerrors.NewErrMissingInvalidData(nil, "field HttpEndpoint must be a valid IP address or FQDN, got: %s", m.HttpEndpoint)
 			}
 		}
-	}
-
-	// Validate HttpEndpoint (assert_max_length: 256)
-	if len(m.HttpEndpoint) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field HttpEndpoint must be at most 256 characters, got: %d", len(m.HttpEndpoint))
 	}
 
 	// Validate StatusMessage (assert_max_length: 1024)

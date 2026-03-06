@@ -35,8 +35,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// ConfigHolder wraps all frontend service configs for YAML loading by kernel.
-// Field IDs must match the (spec.frontend_config) id annotation on each Config message.
 type ConfigHolder struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	SentinelConfig    *sentinel.Config       `protobuf:"bytes,5,opt,name=sentinel_config,json=sentinelConfig,proto3" json:"sentinel_config,omitempty"`
@@ -133,7 +131,7 @@ var File_services_config_holder_proto protoreflect.FileDescriptor
 
 const file_services_config_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x1cservices/config_holder.proto\x12\rconfig_holder\x1a\x16services/gateway.proto\x1a\x17services/identity.proto\x1a\x1aservices/letsencrypt.proto\x1a\x19services/mcp_assist.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x17services/sentinel.proto\"\xa6\x03\n" +
+	"\x1cservices/config_holder.proto\x12\rconfig_holder\x1a\x17services/sentinel.proto\x1a\x17services/identity.proto\x1a\x16services/gateway.proto\x1a\x1aservices/letsencrypt.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x19services/mcp_assist.proto\"\xa6\x03\n" +
 	"\fConfigHolder\x129\n" +
 	"\x0fsentinel_config\x18\x05 \x01(\v2\x10.sentinel.ConfigR\x0esentinelConfig\x129\n" +
 	"\x0fidentity_config\x18\x06 \x01(\v2\x10.identity.ConfigR\x0eidentityConfig\x126\n" +

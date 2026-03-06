@@ -40,6 +40,101 @@ import (
 // ============================================================
 // Enum Helpers
 // ============================================================
+// NodeModeValues returns all valid NodeMode values (excluding UNDEFINED)
+func NodeModeValues() []NodeMode {
+	return []NodeMode{
+		NodeMode_NODE_MODE_EDGE,
+	}
+}
+
+// NodeModeStringValues returns all valid NodeMode names as strings
+func NodeModeStringValues() []string {
+	return []string{"edge"}
+}
+
+// ParseNodeMode converts a string to a NodeMode enum value
+// Accepts both hyphen and underscore formats for compatibility (case-insensitive)
+func ParseNodeMode(s string) (NodeMode, error) {
+	// Normalize: convert to lowercase and replace underscores with hyphens for case-insensitive comparison
+	normalized := strings.ReplaceAll(strings.ToLower(s), "_", "-")
+	switch normalized {
+	case "":
+		return NodeMode_NODE_MODE_CORE, nil
+	case "edge", "node-mode-edge":
+		return NodeMode_NODE_MODE_EDGE, nil
+	default:
+		return NodeMode_NODE_MODE_CORE, protoerrors.NewErrMissingInvalidData(nil, "invalid nodemode %s, expecting one of: %v", s, NodeModeStringValues())
+	}
+}
+
+// ParseNodeModes converts a comma-separated string to a slice of NodeMode enum values
+// Returns an error if any value is invalid
+func ParseNodeModes(s string) ([]NodeMode, error) {
+	if s == "" {
+		return nil, nil
+	}
+	parts := strings.Split(s, ",")
+	result := make([]NodeMode, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		val, err := ParseNodeMode(trimmed)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, val)
+	}
+	return result, nil
+}
+
+// NodeModeToString converts a NodeMode to its lowercase string representation
+func NodeModeToString(v NodeMode) string {
+	switch v {
+	case NodeMode_NODE_MODE_EDGE:
+		return "edge"
+	default:
+		return ""
+	}
+}
+
+// ParseNodeModeLiberal parses a NodeMode liberally, accepting:
+// - Integer values (as string or int)
+// - Enum names in any case
+// - RFC-compliant JSON names
+func ParseNodeModeLiberal(s string) NodeMode {
+	if s == "" {
+		return NodeMode_NODE_MODE_CORE
+	}
+	// Try parsing as integer
+	if num, err := strconv.Atoi(s); err == nil {
+		return NodeMode(num)
+	}
+	// Normalize and try parsing
+	normalized := strings.ToLower(strings.TrimSpace(s))
+	normalized = strings.ReplaceAll(normalized, "_", "-")
+	normalized = strings.ReplaceAll(normalized, " ", "-")
+	switch normalized {
+	case "edge", "node-mode-edge":
+		return NodeMode_NODE_MODE_EDGE
+	default:
+		return NodeMode_NODE_MODE_CORE
+	}
+}
+
+// NodeModeToSpecName converts a NodeMode to its canonical protobuf spec name
+func NodeModeToSpecName(v NodeMode) string {
+	switch v {
+	case NodeMode_NODE_MODE_CORE:
+		return "NODE_MODE_CORE"
+	case NodeMode_NODE_MODE_EDGE:
+		return "NODE_MODE_EDGE"
+	default:
+		return ""
+	}
+}
+
 // OpTypeValues returns all valid OpType values (excluding UNDEFINED)
 func OpTypeValues() []OpType {
 	return []OpType{
@@ -646,6 +741,7 @@ type bootstrapconfigJSON struct {
 	LoaderCa          []json.RawMessage `json:"loader_ca,omitempty"`
 	Tls               json.RawMessage   `json:"tls,omitempty"`
 	RaftPort          int32             `json:"raft_port,omitempty"`
+	Mode              string            `json:"mode,omitempty"`
 }
 
 // BootstrapConfigToJSON converts BootstrapConfig to JSON bytes.
@@ -709,6 +805,7 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			return data
 		}(),
 		RaftPort: v.RaftPort,
+		Mode:     NodeModeToString(v.Mode),
 	}
 	return json.Marshal(helper)
 }
@@ -829,6 +926,12 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 		}
 	}
 	result.RaftPort = raw.RaftPort
+	// Parse enum field: Mode
+	if raw.Mode != "" {
+		if parsed, err := ParseNodeMode(raw.Mode); err == nil {
+			result.Mode = parsed
+		}
+	}
 	return result, nil
 }
 
@@ -28560,6 +28663,7 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 		}
 	}
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_RAFT_PORT"] = strconv.FormatInt(int64(v.RaftPort), 10)
+	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"] = NodeModeToString(v.Mode)
 	return result
 }
 
@@ -28642,6 +28746,13 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 			return nil, err
 		}
 		result.RaftPort = int32(parsed)
+	}
+	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"]; ok && val != "" {
+		parsed, err := ParseNodeMode(val)
+		if err != nil {
+			return nil, err
+		}
+		result.Mode = parsed
 	}
 	return result, nil
 }
@@ -36565,6 +36676,9 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	if dst.RaftPort == 0 {
 		dst.RaftPort = src.RaftPort
 	}
+	if dst.Mode == 0 {
+		dst.Mode = src.Mode
+	}
 	if dst.Config == nil {
 		dst.Config = src.Config
 	}
@@ -38390,7 +38504,6 @@ func ConfigLlmTypeDescriptor() string {
       "message": {
         "name": "ConfigHolder",
         "package": "config_holder",
-        "description": "ConfigHolder wraps all frontend service configs for YAML loading by kernel.\n Field IDs must match the (spec.frontend_config) id annotation on each Config message.",
         "fields": [
           {
             "name": "sentinel_config",
@@ -38791,8 +38904,8 @@ func ConfigLlmTypeDescriptor() string {
                   "description": "max_retries is the maximum number of validation retry attempts\n before giving up on constructing the type. Default: 3.",
                   "default": 3,
                   "constraints": [
-                    "must be \u003e= 1",
-                    "must be \u003c= 10"
+                    "must be \u003c= 10",
+                    "must be \u003e= 1"
                   ]
                 },
                 {

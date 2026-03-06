@@ -611,13 +611,13 @@ func ValidateRetryConfig(m *RetryConfig) error {
 		return nil
 	}
 
-	// Validate MaxRetries (assert_ge: 0)
-	if m.MaxRetries < 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 0, got: %v", m.MaxRetries)
-	}
 	// Validate MaxRetries (assert_le: 10)
 	if m.MaxRetries > 10 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be <= 10, got: %v", m.MaxRetries)
+	}
+	// Validate MaxRetries (assert_ge: 0)
+	if m.MaxRetries < 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 0, got: %v", m.MaxRetries)
 	}
 	// Validate InitialBackoffMs (assert_duration: POSITIVE)
 	if m.InitialBackoffMs <= 0 {
@@ -809,8 +809,8 @@ func HttpClientConfigLlmTypeDescriptor() string {
                   "description": "Created is the Unix epoch timestamp (seconds) when the key was created\n Valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
                   "required": true,
                   "constraints": [
-                    "must be \u003c= 8045740800",
-                    "must be \u003e= 1735689600"
+                    "must be \u003e= 1735689600",
+                    "must be \u003c= 8045740800"
                   ]
                 }
               ]

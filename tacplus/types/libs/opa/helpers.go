@@ -265,16 +265,16 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Source exceeds max size of 1048576 bytes, got: %d", len(m.Source))
 	}
 
+	// Validate Issuer (assert_required)
+	if m.Issuer == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
+	}
+
 	// Validate Issuer (assert_url: URL_SCHEME_HTTPS)
 	if m.Issuer != "" {
 		if err := utils.ValidateAssertURL_URL_SCHEME_HTTPS(m.Issuer); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Issuer URL validation failed")
 		}
-	}
-
-	// Validate Issuer (assert_required)
-	if m.Issuer == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
 	}
 
 	// Validate EntryPoint (default max size: 32768 bytes)
@@ -351,8 +351,8 @@ func OpaPolicyLlmTypeDescriptor() string {
       "type": "string",
       "description": "entry_point specifies the main package/decision point for policy evaluation.",
       "constraints": [
-        "minimum length: 1",
-        "maximum length: 256"
+        "maximum length: 256",
+        "minimum length: 1"
       ]
     },
     {
@@ -378,8 +378,8 @@ func OpaPolicyLlmTypeDescriptor() string {
       "type": "string",
       "description": "version is an optional version string for this policy (e.g., \"1.0.0\").",
       "constraints": [
-        "maximum length: 64",
-        "must be a valid semantic version"
+        "must be a valid semantic version",
+        "maximum length: 64"
       ]
     },
     {

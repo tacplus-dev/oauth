@@ -1777,16 +1777,16 @@ func ValidateConfig(m *Config) error {
 		return nil
 	}
 
-	// Validate ListenAddress (assert_max_length: 256)
-	if len(m.ListenAddress) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ListenAddress must be at most 256 characters, got: %d", len(m.ListenAddress))
-	}
-
 	// Validate ListenAddress (assert_listen_addr)
 	if m.ListenAddress != "" {
 		if err := utils.ValidateAssertListenAddr(m.ListenAddress); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field ListenAddress listen address validation failed")
 		}
+	}
+
+	// Validate ListenAddress (assert_max_length: 256)
+	if len(m.ListenAddress) > 256 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ListenAddress must be at most 256 characters, got: %d", len(m.ListenAddress))
 	}
 
 	// Validate MaxRequestSize (assert_gt: 0)
@@ -1818,14 +1818,14 @@ func ValidateLogMessage(m *LogMessage) error {
 		return nil
 	}
 
-	// Validate Message (assert_required)
-	if m.Message == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Message is required")
-	}
-
 	// Validate Message (assert_max_length: 4096)
 	if len(m.Message) > 4096 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Message must be at most 4096 characters, got: %d", len(m.Message))
+	}
+
+	// Validate Message (assert_required)
+	if m.Message == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Message is required")
 	}
 
 	// Validate Message (default max size: 32768 bytes)

@@ -35,6 +35,22 @@ import "services/config_holder.proto";
 import "google/protobuf/empty.proto";
 
 // ============================================================================
+// Node Mode
+// ============================================================================
+
+// NodeMode determines whether a kernel node runs as core (quorum/persistence)
+// or edge (gRPC serving for microservices).
+enum NodeMode {
+  // Core mode: owns data partitions, writes persistence, participates in Raft,
+  // counts toward quorum. Does NOT accept gRPC from microservices.
+  NODE_MODE_CORE = 0;
+
+  // Edge mode: Hazelcast lite member (no data partitions), no persistence,
+  // no Raft. Accepts all gRPC from microservices. Scalable 0-N.
+  NODE_MODE_EDGE = 1;
+}
+
+// ============================================================================
 // BackendDB Configuration
 // ============================================================================
 
@@ -119,6 +135,10 @@ message BootstrapConfig {
   // distributed locks. All nodes use the same raft_port (each node has a
   // unique hostname). Default: 5002.
   int32 raft_port = 22;
+
+  // mode determines whether this node runs as core (quorum/persistence)
+  // or edge (gRPC serving). Default: NODE_MODE_CORE (backward compatible).
+  NodeMode mode = 25;
 }
 
 // ============================================================================
