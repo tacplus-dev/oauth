@@ -28,7 +28,6 @@ import (
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
 
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/healthreporter"
-	host_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 
 	service_fe "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager/frontends/services/sentinel"
 	serviceconfig_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig"
@@ -234,28 +233,24 @@ func buildMetricsProvider(listenAddr string) healthreporter.MetricsProvider {
 		}
 		host = hostname
 	}
-	port := int32(0)
-	if p, err := net.LookupPort("tcp", portStr); err == nil {
-		port = int32(p)
-	}
-	return &staticMetrics{grpcEndpoint: &host_pb.Host{Host: host, Port: port}}
+	return &staticMetrics{grpcEndpoint: net.JoinHostPort(host, portStr)}
 }
 
 // staticMetrics is a minimal MetricsProvider that only reports the gRPC endpoint.
 type staticMetrics struct {
-	grpcEndpoint *host_pb.Host
+	grpcEndpoint string
 }
 
-func (m *staticMetrics) GrpcEndpoint() *host_pb.Host { return m.grpcEndpoint }
-func (m *staticMetrics) HttpEndpoint() *host_pb.Host { return nil }
-func (m *staticMetrics) ActiveRequests() int32       { return 0 }
-func (m *staticMetrics) MaxConcurrent() int32        { return 0 }
-func (m *staticMetrics) RequestRate() float64        { return 0 }
-func (m *staticMetrics) P50LatencyUs() int64         { return 0 }
-func (m *staticMetrics) P99LatencyUs() int64         { return 0 }
-func (m *staticMetrics) ErrorRate() float64          { return 0 }
-func (m *staticMetrics) Version() string             { return "" }
-func (m *staticMetrics) Labels() map[string]string   { return nil }
+func (m *staticMetrics) GrpcEndpoint() string      { return m.grpcEndpoint }
+func (m *staticMetrics) HttpEndpoint() string      { return "" }
+func (m *staticMetrics) ActiveRequests() int32     { return 0 }
+func (m *staticMetrics) MaxConcurrent() int32      { return 0 }
+func (m *staticMetrics) RequestRate() float64      { return 0 }
+func (m *staticMetrics) P50LatencyUs() int64       { return 0 }
+func (m *staticMetrics) P99LatencyUs() int64       { return 0 }
+func (m *staticMetrics) ErrorRate() float64        { return 0 }
+func (m *staticMetrics) Version() string           { return "" }
+func (m *staticMetrics) Labels() map[string]string { return nil }
 
 // healthPublisherAdapter adapts the gRPC stub to the HealthPublisher interface.
 type healthPublisherAdapter struct {

@@ -1553,16 +1553,16 @@ func ValidateClusterMember(m *ClusterMember) error {
 		return nil
 	}
 
+	// Validate Endpoint (assert_max_length: 256)
+	if len(m.Endpoint) > 256 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Endpoint must be at most 256 characters, got: %d", len(m.Endpoint))
+	}
+
 	// Validate Endpoint (assert_listen_addr)
 	if m.Endpoint != "" {
 		if err := utils.ValidateAssertListenAddr(m.Endpoint); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Endpoint listen address validation failed")
 		}
-	}
-
-	// Validate Endpoint (assert_max_length: 256)
-	if len(m.Endpoint) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Endpoint must be at most 256 characters, got: %d", len(m.Endpoint))
 	}
 
 	// Validate Endpoint (default max size: 32768 bytes)

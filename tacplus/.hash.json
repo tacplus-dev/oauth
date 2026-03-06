@@ -1,11 +1,11 @@
 {
-  "binary_hash": "b29143dd29c17b8cd4a8303afe10a22836ee3be7dc6eaac40a48a6e83b88f9d2",
+  "binary_hash": "7256adc454524b182bda258a1b8d656c5bdbf4c5a813e1c5fd558dd806a95ee9",
   "config_hash": "b5793adf9e7298fa1e3d0282626ca428fc9dd7237ce126a59bcbbaa2f4771441",
   "structure_hash": "599ca86daad4ae88ebe4fde60137e487b32f66a48087d1f767647adbea841e81",
   "files": {
     "dependencies.yaml": "b1e3b41802693b989403f5da77d07c50392cbeb70718fbb6341421ffc1ac2442",
-    "services/gateway.proto": "ed2598f1c82c856c1df5c9fbb7e1cbb285075d397b4dbf7c2e919b75285fa608",
-    "services/identity.proto": "daad9a4fa7efbe1a86e4a0a106990a0ca64cc307a1b5fd7d8c99e3c94b929215",
+    "services/gateway.proto": "3c3ddae6d87809da9fedc3b4ae5f100f3b81a849ecd9eb07d2594876fae3e588",
+    "services/identity.proto": "a85b6be43a6e0134d8d4e610bbe83d53d812a123926e4d87f7d29943cd9b97f2",
     "services/kernel.proto": "049e69b874c7ebbfec93fd6909a98d3bc993103427890e79984203fa4b35d019",
     "services/letsencrypt.proto": "a22e104aabe98907b6ea992efa645dfac847b5e2ddd19610480e1d95b88c3aad",
     "services/orchestrator.proto": "6e4c719e915ebed7e6ca9e0105ee9ab484038df2c9b8c65879880e3f8efb5405",

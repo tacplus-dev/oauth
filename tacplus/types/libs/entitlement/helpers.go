@@ -778,14 +778,14 @@ func ValidateServiceEntitlementMapping(m *ServiceEntitlementMapping) error {
 		return nil
 	}
 
-	// Validate CredentialId (assert_max_length: 512)
-	if len(m.CredentialId) > 512 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId must be at most 512 characters, got: %d", len(m.CredentialId))
-	}
-
 	// Validate CredentialId (assert_required)
 	if m.CredentialId == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId is required")
+	}
+
+	// Validate CredentialId (assert_max_length: 512)
+	if len(m.CredentialId) > 512 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId must be at most 512 characters, got: %d", len(m.CredentialId))
 	}
 
 	// Validate Service (assert_required)

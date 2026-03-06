@@ -96,14 +96,14 @@ var File_services_gateway_proto protoreflect.FileDescriptor
 
 const file_services_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x16services/gateway.proto\x12\agateway\x1a\x0flibs/spec.proto\"\xac\x01\n" +
+	"\x16services/gateway.proto\x12\agateway\x1a\x0flibs/spec.proto\"\xb0\x01\n" +
 	"\x06Config\x12E\n" +
 	"\x1chealth_poll_interval_seconds\x18\x01 \x01(\x03B\x04\x90\xa8\x1d\x05R\x19healthPollIntervalSeconds\x12#\n" +
 	"\n" +
 	"enable_tcp\x18\x02 \x01(\bB\x04\xa0\xa8\x1d\x01R\tenableTcp\x12%\n" +
 	"\venable_quic\x18\x03 \x01(\bB\x04\xa0\xa8\x1d\x01R\n" +
-	"enableQuic:\x0fҨ\x1d\v\n" +
-	"\agateway\x10\aBYZWgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gatewayb\x06proto3"
+	"enableQuic:\x13Ҩ\x1d\v\n" +
+	"\agateway\x10\a\xe8\xa8\x1d\x01BYZWgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gatewayb\x06proto3"
 
 var (
 	file_services_gateway_proto_rawDescOnce sync.Once

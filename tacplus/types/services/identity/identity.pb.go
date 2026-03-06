@@ -2945,7 +2945,7 @@ var File_services_identity_proto protoreflect.FileDescriptor
 
 const file_services_identity_proto_rawDesc = "" +
 	"\n" +
-	"\x17services/identity.proto\x12\bidentity\x1a\x0flibs/spec.proto\x1a\x16libs/entitlement.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/opa.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\xaf\x05\n" +
+	"\x17services/identity.proto\x12\bidentity\x1a\x0flibs/spec.proto\x1a\x16libs/entitlement.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/opa.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\xb3\x05\n" +
 	"\x06Config\x12+\n" +
 	"\x05oauth\x18\x01 \x01(\v2\x15.identity.OAuthConfigR\x05oauth\x12L\n" +
 	"\x1daccess_token_lifetime_seconds\x18\x02 \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\x84\aR\x1aaccessTokenLifetimeSeconds\x12O\n" +
@@ -2957,8 +2957,8 @@ const file_services_identity_proto_rawDesc = "" +
 	"\x1cjwk_refetch_interval_seconds\x18\a \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\xac\x02R\x19jwkRefetchIntervalSeconds\x12/\n" +
 	"\x13entitlements_policy\x18\v \x01(\tR\x12entitlementsPolicy\x12Y\n" +
 	"\x14entitlement_mappings\x18\b \x03(\v2&.entitlement.ServiceEntitlementMappingR\x13entitlementMappings\x12I\n" +
-	"\x11identity_profiles\x18\t \x03(\v2\x1c.entitlement.IdentityProfileR\x10identityProfiles:\x10Ҩ\x1d\f\n" +
-	"\bidentity\x10\x06\"\xa3\x01\n" +
+	"\x11identity_profiles\x18\t \x03(\v2\x1c.entitlement.IdentityProfileR\x10identityProfiles:\x14Ҩ\x1d\f\n" +
+	"\bidentity\x10\x06\xe8\xa8\x1d\x01\"\xa3\x01\n" +
 	"\vOAuthConfig\x12\x16\n" +
 	"\x06enable\x18\x01 \x01(\bR\x06enable\x12\x16\n" +
 	"\x06scopes\x18\x02 \x03(\tR\x06scopes\x126\n" +
