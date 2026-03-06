@@ -100,7 +100,7 @@ func (sm *ServiceManager) Run(h Handler) error {
 
 	// 2. Subscribe to shared runtime config (TLS, listen address, etc.)
 	//    from ServiceConfigState. This must complete before starting the server.
-	serviceConfigState := sm.bc.Services().ServiceConfigState()
+	serviceConfigState := sm.bc.Libs().ServiceConfigState()
 	runtimeCfg, err := serviceConfigState.Config().Fetch(sm.ctx)
 	if err != nil {
 		return fmt.Errorf("fetch runtime config: %w", err)

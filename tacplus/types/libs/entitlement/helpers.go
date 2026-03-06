@@ -778,14 +778,14 @@ func ValidateServiceEntitlementMapping(m *ServiceEntitlementMapping) error {
 		return nil
 	}
 
-	// Validate CredentialId (assert_required)
-	if m.CredentialId == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId is required")
-	}
-
 	// Validate CredentialId (assert_max_length: 512)
 	if len(m.CredentialId) > 512 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId must be at most 512 characters, got: %d", len(m.CredentialId))
+	}
+
+	// Validate CredentialId (assert_required)
+	if m.CredentialId == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId is required")
 	}
 
 	// Validate Service (assert_required)
@@ -875,4 +875,172 @@ func MergeServiceEntitlementMapping(dst, src *ServiceEntitlementMapping) {
 	if dst.Service == "" {
 		dst.Service = src.Service
 	}
+}
+
+// ServiceEntitlementLlmTypeDescriptor returns a JSON description of ServiceEntitlement for LLM-assisted construction.
+// The description includes field names, types, comments, constraints, defaults,
+// nested message structures, and enum values — everything an LLM needs to
+// construct a valid instance of this type.
+func ServiceEntitlementLlmTypeDescriptor() string {
+	return `{
+  "name": "ServiceEntitlement",
+  "package": "entitlement",
+  "description": "ServiceEntitlement defines what a caller is allowed to do on a target service.\n The service_name becomes the \"aud\" claim in access tokens.\n Every permitted RPC must be listed — there is no wildcard/default-allow.",
+  "fields": [
+    {
+      "name": "service_name",
+      "type": "string",
+      "description": "service_name is the target service (matches spec.service_frontend value).",
+      "required": true,
+      "constraints": [
+        "maximum length: 128"
+      ]
+    },
+    {
+      "name": "allowed_rpcs",
+      "type": "string",
+      "description": "allowed_rpcs lists the RPC methods permitted on the target service.\n Format: \"MethodName\" (unqualified). Must not be empty.",
+      "required": true,
+      "repeated": true
+    }
+  ]
+}`
+}
+
+// ServiceEntitlementsLlmTypeDescriptor returns a JSON description of ServiceEntitlements for LLM-assisted construction.
+// The description includes field names, types, comments, constraints, defaults,
+// nested message structures, and enum values — everything an LLM needs to
+// construct a valid instance of this type.
+func ServiceEntitlementsLlmTypeDescriptor() string {
+	return `{
+  "name": "ServiceEntitlements",
+  "package": "entitlement",
+  "description": "ServiceEntitlements is a named collection of entitlements, typically one per\n microservice or logical role (e.g. \"sentinel-admin\", \"full-admin\").\n Defined as JSON files in proto/security/ and loaded into service configs\n at config build time.",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string",
+      "description": "id identifies this entitlement set (e.g. \"sentinel-admin\", \"snoopy-reader\").\n Matches the JSON filename in proto/security/.",
+      "required": true,
+      "constraints": [
+        "maximum length: 128"
+      ]
+    },
+    {
+      "name": "entitlements",
+      "type": "message",
+      "description": "entitlements is the set of services and RPCs this collection grants access to.",
+      "required": true,
+      "repeated": true,
+      "message": {
+        "name": "ServiceEntitlement",
+        "package": "entitlement",
+        "description": "ServiceEntitlement defines what a caller is allowed to do on a target service.\n The service_name becomes the \"aud\" claim in access tokens.\n Every permitted RPC must be listed — there is no wildcard/default-allow.",
+        "fields": [
+          {
+            "name": "service_name",
+            "type": "string",
+            "description": "service_name is the target service (matches spec.service_frontend value).",
+            "required": true,
+            "constraints": [
+              "maximum length: 128"
+            ]
+          },
+          {
+            "name": "allowed_rpcs",
+            "type": "string",
+            "description": "allowed_rpcs lists the RPC methods permitted on the target service.\n Format: \"MethodName\" (unqualified). Must not be empty.",
+            "required": true,
+            "repeated": true
+          }
+        ]
+      }
+    }
+  ]
+}`
+}
+
+// IdentityProfileLlmTypeDescriptor returns a JSON description of IdentityProfile for LLM-assisted construction.
+// The description includes field names, types, comments, constraints, defaults,
+// nested message structures, and enum values — everything an LLM needs to
+// construct a valid instance of this type.
+func IdentityProfileLlmTypeDescriptor() string {
+	return `{
+  "name": "IdentityProfile",
+  "package": "entitlement",
+  "description": "IdentityProfile defines a named set of entitlements for user authorization.\n OPA entitlements_policy returns zero or more profile names; identity resolves\n those names to concrete ServiceEntitlements at token exchange time.",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string",
+      "description": "id is the profile name (e.g. \"user\", \"admin\", \"reader\").\n Referenced by OPA policy output.",
+      "required": true,
+      "constraints": [
+        "maximum length: 128"
+      ]
+    },
+    {
+      "name": "entitlements",
+      "type": "message",
+      "description": "entitlements is the set of services and RPCs this profile grants access to.",
+      "required": true,
+      "repeated": true,
+      "message": {
+        "name": "ServiceEntitlement",
+        "package": "entitlement",
+        "description": "ServiceEntitlement defines what a caller is allowed to do on a target service.\n The service_name becomes the \"aud\" claim in access tokens.\n Every permitted RPC must be listed — there is no wildcard/default-allow.",
+        "fields": [
+          {
+            "name": "service_name",
+            "type": "string",
+            "description": "service_name is the target service (matches spec.service_frontend value).",
+            "required": true,
+            "constraints": [
+              "maximum length: 128"
+            ]
+          },
+          {
+            "name": "allowed_rpcs",
+            "type": "string",
+            "description": "allowed_rpcs lists the RPC methods permitted on the target service.\n Format: \"MethodName\" (unqualified). Must not be empty.",
+            "required": true,
+            "repeated": true
+          }
+        ]
+      }
+    }
+  ]
+}`
+}
+
+// ServiceEntitlementMappingLlmTypeDescriptor returns a JSON description of ServiceEntitlementMapping for LLM-assisted construction.
+// The description includes field names, types, comments, constraints, defaults,
+// nested message structures, and enum values — everything an LLM needs to
+// construct a valid instance of this type.
+func ServiceEntitlementMappingLlmTypeDescriptor() string {
+	return `{
+  "name": "ServiceEntitlementMapping",
+  "package": "entitlement",
+  "description": "ServiceEntitlementMapping maps a credential to a service identity.\n Used by TokenExchanger (static config) to resolve\n which service a CredPair or cloud credential represents.\n Entitlements for S2S are derived from proto definitions — no entitlements_id needed.",
+  "fields": [
+    {
+      "name": "credential_id",
+      "type": "string",
+      "description": "credential_id is the unique identifier for the authentication credential.\n For CredPairs this is the public_key.kid. For cloud credentials, the\n cloud credential ID (e.g. IAM role ARN).",
+      "required": true,
+      "constraints": [
+        "maximum length: 512"
+      ]
+    },
+    {
+      "name": "service",
+      "type": "string",
+      "description": "service is the logical service identity this credential maps to.\n Becomes the \"sub\" claim in S2S tokens.",
+      "required": true,
+      "constraints": [
+        "maximum length: 128"
+      ]
+    }
+  ]
+}`
 }

@@ -137,6 +137,136 @@ func AssistResponseTypeToSpecName(v AssistResponseType) string {
 // JSON/YAML/TOML Serialization Helpers
 // ============================================================
 
+// ConfigJSON represents Config in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type configJSON struct {
+	AnthropicApiKey   string `json:"anthropic_api_key,omitempty"`
+	Model             string `json:"model,omitempty"`
+	MaxRetries        int32  `json:"max_retries,omitempty"`
+	SessionTtlSeconds int64  `json:"session_ttl_seconds,omitempty"`
+}
+
+// ConfigToJSON converts Config to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func ConfigToJSON(v *Config) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "config is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := configJSON{
+		AnthropicApiKey:   v.AnthropicApiKey,
+		Model:             v.Model,
+		MaxRetries:        v.MaxRetries,
+		SessionTtlSeconds: v.SessionTtlSeconds,
+	}
+	return json.Marshal(helper)
+}
+
+// ConfigFromBytes creates Config from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func ConfigFromBytes(data []byte) (*Config, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := ConfigFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := ConfigFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := ConfigFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &Config{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse Config: unsupported format or invalid data")
+}
+
+// ConfigFromJSON creates Config from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func ConfigFromJSON(data []byte) (*Config, error) {
+	// Unmarshal into helper struct with string enums
+	var raw configJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &Config{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &Config{}
+	result.AnthropicApiKey = raw.AnthropicApiKey
+	result.Model = raw.Model
+	result.MaxRetries = raw.MaxRetries
+	result.SessionTtlSeconds = raw.SessionTtlSeconds
+	return result, nil
+}
+
+// ConfigToYAML converts Config to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func ConfigToYAML(v *Config) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "config is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := ConfigToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// ConfigToTOML converts Config to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func ConfigToTOML(v *Config) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "config is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := ConfigToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
 // ToolAuthorizationJSON represents ToolAuthorization in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type toolauthorizationJSON struct {
@@ -537,6 +667,7 @@ func AssistToolRequestToTOML(v *AssistToolRequest) ([]byte, error) {
 // MARKER: JSON helper struct generated from serial.go
 type assistrequestJSON struct {
 	SessionId       string            `json:"session_id,omitempty"`
+	TargetType      string            `json:"target_type,omitempty"`
 	Prompt          string            `json:"prompt,omitempty"`
 	AuthorizedTools []json.RawMessage `json:"authorized_tools,omitempty"`
 	AgentTokens     []json.RawMessage `json:"agent_tokens,omitempty"`
@@ -550,8 +681,9 @@ func AssistRequestToJSON(v *AssistRequest) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := assistrequestJSON{
-		SessionId: v.SessionId,
-		Prompt:    v.Prompt,
+		SessionId:  v.SessionId,
+		TargetType: v.TargetType,
+		Prompt:     v.Prompt,
 		AuthorizedTools: func() []json.RawMessage {
 			if len(v.AuthorizedTools) == 0 {
 				return nil
@@ -645,6 +777,7 @@ func AssistRequestFromJSON(data []byte) (*AssistRequest, error) {
 	// Build result with parsed enums
 	result := &AssistRequest{}
 	result.SessionId = raw.SessionId
+	result.TargetType = raw.TargetType
 	result.Prompt = raw.Prompt
 	// Parse repeated message field: AuthorizedTools
 	if len(raw.AuthorizedTools) > 0 {
@@ -717,6 +850,8 @@ type assistresponseJSON struct {
 	SessionId    string          `json:"session_id,omitempty"`
 	ResponseType string          `json:"response_type,omitempty"`
 	ToolRequest  json.RawMessage `json:"tool_request,omitempty"`
+	ResultType   string          `json:"result_type,omitempty"`
+	ResultJson   string          `json:"result_json,omitempty"`
 }
 
 // AssistResponseToJSON converts AssistResponse to JSON bytes.
@@ -736,6 +871,8 @@ func AssistResponseToJSON(v *AssistResponse) ([]byte, error) {
 			data, _ := AssistToolRequestToJSON(v.ToolRequest)
 			return data
 		}(),
+		ResultType: v.ResultType,
+		ResultJson: v.ResultJson,
 	}
 	return json.Marshal(helper)
 }
@@ -814,6 +951,8 @@ func AssistResponseFromJSON(data []byte) (*AssistResponse, error) {
 			result.ToolRequest = parsed
 		}
 	}
+	result.ResultType = raw.ResultType
+	result.ResultJson = raw.ResultJson
 	return result, nil
 }
 
@@ -855,9 +994,298 @@ func AssistResponseToTOML(v *AssistResponse) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
+// McpConfigStateJSON represents McpConfigState in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type mcpconfigstateJSON struct {
+	Config json.RawMessage `json:"config,omitempty"`
+}
+
+// McpConfigStateToJSON converts McpConfigState to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func McpConfigStateToJSON(v *McpConfigState) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "mcpconfigstate is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := mcpconfigstateJSON{
+		Config: func() json.RawMessage {
+			if v.Config == nil {
+				return nil
+			}
+			data, _ := ConfigToJSON(v.Config)
+			return data
+		}(),
+	}
+	return json.Marshal(helper)
+}
+
+// McpConfigStateFromBytes creates McpConfigState from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func McpConfigStateFromBytes(data []byte) (*McpConfigState, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := McpConfigStateFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := McpConfigStateFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := McpConfigStateFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &McpConfigState{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse McpConfigState: unsupported format or invalid data")
+}
+
+// McpConfigStateFromJSON creates McpConfigState from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func McpConfigStateFromJSON(data []byte) (*McpConfigState, error) {
+	// Unmarshal into helper struct with string enums
+	var raw mcpconfigstateJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &McpConfigState{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &McpConfigState{}
+	// Parse message field: Config
+	if len(raw.Config) > 0 {
+		parsed, err := ConfigFromJSON(raw.Config)
+		if err == nil {
+			result.Config = parsed
+		}
+	}
+	return result, nil
+}
+
+// McpConfigStateToYAML converts McpConfigState to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func McpConfigStateToYAML(v *McpConfigState) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "mcpconfigstate is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := McpConfigStateToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// McpConfigStateToTOML converts McpConfigState to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func McpConfigStateToTOML(v *McpConfigState) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "mcpconfigstate is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := McpConfigStateToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// MapEmptyJSON represents MapEmpty in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type mapemptyJSON struct {
+}
+
+// MapEmptyToJSON converts MapEmpty to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func MapEmptyToJSON(v *MapEmpty) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "mapempty is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := mapemptyJSON{}
+	return json.Marshal(helper)
+}
+
+// MapEmptyFromBytes creates MapEmpty from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func MapEmptyFromBytes(data []byte) (*MapEmpty, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := MapEmptyFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := MapEmptyFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := MapEmptyFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &MapEmpty{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse MapEmpty: unsupported format or invalid data")
+}
+
+// MapEmptyFromJSON creates MapEmpty from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func MapEmptyFromJSON(data []byte) (*MapEmpty, error) {
+	// Unmarshal into helper struct with string enums
+	var raw mapemptyJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &MapEmpty{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &MapEmpty{}
+	return result, nil
+}
+
+// MapEmptyToYAML converts MapEmpty to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func MapEmptyToYAML(v *MapEmpty) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "mapempty is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := MapEmptyToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// MapEmptyToTOML converts MapEmpty to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func MapEmptyToTOML(v *MapEmpty) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "mapempty is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := MapEmptyToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
 // ============================================================
 // Environment Variable Helpers
 // ============================================================
+
+// ConfigToEnvVar converts Config to environment variable key-value pairs.
+func ConfigToEnvVar(v *Config) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_ANTHROPIC_API_KEY"] = v.AnthropicApiKey
+	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_MODEL"] = v.Model
+	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_MAX_RETRIES"] = strconv.FormatInt(int64(v.MaxRetries), 10)
+	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_SESSION_TTL_SECONDS"] = strconv.FormatInt(v.SessionTtlSeconds, 10)
+	return result
+}
+
+// ConfigFromEnvVar creates Config from environment variable key-value pairs.
+func ConfigFromEnvVar(env map[string]string) (*Config, error) {
+	result := &Config{}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_ANTHROPIC_API_KEY"]; ok && val != "" {
+		result.AnthropicApiKey = val
+	}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_MODEL"]; ok && val != "" {
+		result.Model = val
+	}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_MAX_RETRIES"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		result.MaxRetries = int32(parsed)
+	}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_SESSION_TTL_SECONDS"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.SessionTtlSeconds = parsed
+	}
+	return result, nil
+}
 
 // ToolAuthorizationToEnvVar converts ToolAuthorization to environment variable key-value pairs.
 func ToolAuthorizationToEnvVar(v *ToolAuthorization) map[string]string {
@@ -933,6 +1361,7 @@ func AssistRequestToEnvVar(v *AssistRequest) map[string]string {
 	}
 	result := make(map[string]string)
 	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_SESSION_ID"] = v.SessionId
+	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_TARGET_TYPE"] = v.TargetType
 	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_PROMPT"] = v.Prompt
 	return result
 }
@@ -942,6 +1371,9 @@ func AssistRequestFromEnvVar(env map[string]string) (*AssistRequest, error) {
 	result := &AssistRequest{}
 	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_SESSION_ID"]; ok && val != "" {
 		result.SessionId = val
+	}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_TARGET_TYPE"]; ok && val != "" {
+		result.TargetType = val
 	}
 	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_PROMPT"]; ok && val != "" {
 		result.Prompt = val
@@ -962,6 +1394,8 @@ func AssistResponseToEnvVar(v *AssistResponse) map[string]string {
 			result[k] = val
 		}
 	}
+	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_TYPE"] = v.ResultType
+	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_JSON"] = v.ResultJson
 	return result
 }
 
@@ -983,12 +1417,96 @@ func AssistResponseFromEnvVar(env map[string]string) (*AssistResponse, error) {
 	} else if sub != nil {
 		result.ToolRequest = sub
 	}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_TYPE"]; ok && val != "" {
+		result.ResultType = val
+	}
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_JSON"]; ok && val != "" {
+		result.ResultJson = val
+	}
+	return result, nil
+}
+
+// McpConfigStateToEnvVar converts McpConfigState to environment variable key-value pairs.
+func McpConfigStateToEnvVar(v *McpConfigState) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	if v.Config != nil {
+		for k, val := range ConfigToEnvVar(v.Config) {
+			result[k] = val
+		}
+	}
+	return result
+}
+
+// McpConfigStateFromEnvVar creates McpConfigState from environment variable key-value pairs.
+func McpConfigStateFromEnvVar(env map[string]string) (*McpConfigState, error) {
+	result := &McpConfigState{}
+	if sub, err := ConfigFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Config = sub
+	}
+	return result, nil
+}
+
+// MapEmptyToEnvVar converts MapEmpty to environment variable key-value pairs.
+func MapEmptyToEnvVar(v *MapEmpty) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// MapEmptyFromEnvVar creates MapEmpty from environment variable key-value pairs.
+func MapEmptyFromEnvVar(env map[string]string) (*MapEmpty, error) {
+	result := &MapEmpty{}
 	return result, nil
 }
 
 // ============================================================
 // Validation Helpers
 // ============================================================
+// ValidateConfig validates all fields in Config according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateConfig(m *Config) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate AnthropicApiKey (assert_required)
+	if m.AnthropicApiKey == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AnthropicApiKey is required")
+	}
+
+	// Validate MaxRetries (assert_ge: 1)
+	if m.MaxRetries < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 1, got: %v", m.MaxRetries)
+	}
+	// Validate MaxRetries (assert_le: 10)
+	if m.MaxRetries > 10 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be <= 10, got: %v", m.MaxRetries)
+	}
+	// Validate SessionTtlSeconds (assert_duration: POSITIVE)
+	if m.SessionTtlSeconds <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field SessionTtlSeconds must be positive (> 0), got: %d", m.SessionTtlSeconds)
+	}
+
+	// Validate AnthropicApiKey (default max size: 32768 bytes)
+	if len(m.AnthropicApiKey) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AnthropicApiKey exceeds max size of 32768 bytes, got: %d", len(m.AnthropicApiKey))
+	}
+
+	// Validate Model (default max size: 32768 bytes)
+	if len(m.Model) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Model exceeds max size of 32768 bytes, got: %d", len(m.Model))
+	}
+
+	return nil
+}
+
 // ValidateToolAuthorization validates all fields in ToolAuthorization according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateToolAuthorization(m *ToolAuthorization) error {
@@ -1046,9 +1564,19 @@ func ValidateAssistRequest(m *AssistRequest) error {
 		return nil
 	}
 
+	// Validate TargetType (assert_required)
+	if m.TargetType == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field TargetType is required")
+	}
+
 	// Validate SessionId (default max size: 32768 bytes)
 	if len(m.SessionId) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field SessionId exceeds max size of 32768 bytes, got: %d", len(m.SessionId))
+	}
+
+	// Validate TargetType (default max size: 32768 bytes)
+	if len(m.TargetType) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field TargetType exceeds max size of 32768 bytes, got: %d", len(m.TargetType))
 	}
 
 	// Validate Prompt (default max size: 32768 bytes)
@@ -1071,21 +1599,139 @@ func ValidateAssistResponse(m *AssistResponse) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field SessionId exceeds max size of 32768 bytes, got: %d", len(m.SessionId))
 	}
 
+	// Validate ResultType (default max size: 32768 bytes)
+	if len(m.ResultType) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ResultType exceeds max size of 32768 bytes, got: %d", len(m.ResultType))
+	}
+
+	// Validate ResultJson (default max size: 32768 bytes)
+	if len(m.ResultJson) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ResultJson exceeds max size of 32768 bytes, got: %d", len(m.ResultJson))
+	}
+
 	return nil
 }
+
+// ValidateMcpConfigState validates all fields in McpConfigState according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateMcpConfigState(m *McpConfigState) error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// ValidateMapEmpty validates all fields in MapEmpty according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateMapEmpty(m *MapEmpty) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ============================================================
+// Constants
+// ============================================================
+const (
+	DefaultModel             string = "claude-sonnet-4-20250514"
+	DefaultMaxRetries        int64  = 3
+	DefaultSessionTtlSeconds int64  = 3600
+)
 
 // ============================================================
 // Capacity Constants (for utilization monitoring)
 // ============================================================
 const (
+	MaxSizeConfigAnthropicApiKey          int = 32768
+	MaxSizeConfigModel                    int = 32768
 	MaxSizeToolauthorizationService       int = 32768
 	MaxSizeAgenttokenService              int = 32768
 	MaxSizeAgenttokenToken                int = 32768
 	MaxSizeAssisttoolrequestJustification int = 32768
 	MaxSizeAssistrequestSessionId         int = 32768
+	MaxSizeAssistrequestTargetType        int = 32768
 	MaxSizeAssistrequestPrompt            int = 32768
 	MaxSizeAssistresponseSessionId        int = 32768
+	MaxSizeAssistresponseResultType       int = 32768
+	MaxSizeAssistresponseResultJson       int = 32768
 )
+
+// ============================================================
+// TypeDefaults: Config
+// ============================================================
+// ConfigDefaults applies field-level default values to zero-valued fields.
+func ConfigDefaults(v *Config) {
+	if v.Model == "" {
+		v.Model = DefaultModel
+	}
+	if v.MaxRetries == 0 {
+		v.MaxRetries = int32(DefaultMaxRetries)
+	}
+	if v.SessionTtlSeconds == 0 {
+		v.SessionTtlSeconds = DefaultSessionTtlSeconds
+	}
+}
+
+// ============================================================
+// TypeDefaults: McpConfigState
+// ============================================================
+// McpConfigStateDefaults applies field-level default values to zero-valued fields.
+func McpConfigStateDefaults(v *McpConfigState) {
+	if v.Config != nil {
+		ConfigDefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v.Model == DefaultModel {
+		v.Model = ""
+	}
+	if v.MaxRetries == int32(DefaultMaxRetries) {
+		v.MaxRetries = 0
+	}
+	if v.SessionTtlSeconds == DefaultSessionTtlSeconds {
+		v.SessionTtlSeconds = 0
+	}
+}
+
+// ============================================================
+// TypeUndefaults: McpConfigState
+// ============================================================
+// McpConfigStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func McpConfigStateUndefaults(v *McpConfigState) {
+	if v.Config != nil {
+		ConfigUndefaults(v.Config)
+	}
+}
+
+// ============================================================
+// Merge: Config
+// ============================================================
+// MergeConfig fills zero-valued fields in dst from src.
+func MergeConfig(dst, src *Config) {
+	if dst.AnthropicApiKey == "" {
+		dst.AnthropicApiKey = src.AnthropicApiKey
+	}
+	if dst.Model == "" {
+		dst.Model = src.Model
+	}
+	if dst.MaxRetries == 0 {
+		dst.MaxRetries = src.MaxRetries
+	}
+	if dst.SessionTtlSeconds == 0 {
+		dst.SessionTtlSeconds = src.SessionTtlSeconds
+	}
+}
 
 // ============================================================
 // Merge: ToolAuthorization
@@ -1134,6 +1780,9 @@ func MergeAssistRequest(dst, src *AssistRequest) {
 	if dst.SessionId == "" {
 		dst.SessionId = src.SessionId
 	}
+	if dst.TargetType == "" {
+		dst.TargetType = src.TargetType
+	}
 	if dst.Prompt == "" {
 		dst.Prompt = src.Prompt
 	}
@@ -1161,7 +1810,22 @@ func MergeAssistResponse(dst, src *AssistResponse) {
 	} else if src.ToolRequest != nil {
 		MergeAssistToolRequest(dst.ToolRequest, src.ToolRequest)
 	}
-	if dst.Result == nil {
-		dst.Result = src.Result
+	if dst.ResultType == "" {
+		dst.ResultType = src.ResultType
+	}
+	if dst.ResultJson == "" {
+		dst.ResultJson = src.ResultJson
+	}
+}
+
+// ============================================================
+// Merge: McpConfigState
+// ============================================================
+// MergeMcpConfigState fills zero-valued fields in dst from src.
+func MergeMcpConfigState(dst, src *McpConfigState) {
+	if dst.Config == nil {
+		dst.Config = src.Config
+	} else if src.Config != nil {
+		MergeConfig(dst.Config, src.Config)
 	}
 }

@@ -14,10 +14,10 @@
 package mcp_assist
 
 import (
-	gateway "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gateway"
-	identity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity"
+	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -83,6 +83,82 @@ func (AssistResponseType) EnumDescriptor() ([]byte, []int) {
 	return file_services_mcp_assist_proto_rawDescGZIP(), []int{0}
 }
 
+// Config is the service-level configuration for the MCP assist service.
+type Config struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// anthropic_api_key is the API key for calling the Anthropic Claude API.
+	AnthropicApiKey string `protobuf:"bytes,1,opt,name=anthropic_api_key,json=anthropicApiKey,proto3" json:"anthropic_api_key,omitempty"`
+	// model is the Claude model to use (e.g. "claude-sonnet-4-20250514").
+	// Default: "claude-sonnet-4-20250514".
+	Model string `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	// max_retries is the maximum number of validation retry attempts
+	// before giving up on constructing the type. Default: 3.
+	MaxRetries int32 `protobuf:"varint,3,opt,name=max_retries,json=maxRetries,proto3" json:"max_retries,omitempty"`
+	// session_ttl_seconds is how long idle sessions are kept before expiry.
+	// Default: 3600 (1 hour).
+	SessionTtlSeconds int64 `protobuf:"varint,4,opt,name=session_ttl_seconds,json=sessionTtlSeconds,proto3" json:"session_ttl_seconds,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *Config) Reset() {
+	*x = Config{}
+	mi := &file_services_mcp_assist_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Config) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Config) ProtoMessage() {}
+
+func (x *Config) ProtoReflect() protoreflect.Message {
+	mi := &file_services_mcp_assist_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Config.ProtoReflect.Descriptor instead.
+func (*Config) Descriptor() ([]byte, []int) {
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Config) GetAnthropicApiKey() string {
+	if x != nil {
+		return x.AnthropicApiKey
+	}
+	return ""
+}
+
+func (x *Config) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *Config) GetMaxRetries() int32 {
+	if x != nil {
+		return x.MaxRetries
+	}
+	return 0
+}
+
+func (x *Config) GetSessionTtlSeconds() int64 {
+	if x != nil {
+		return x.SessionTtlSeconds
+	}
+	return 0
+}
+
 // ToolAuthorization grants the LLM access to a specific service RPC.
 type ToolAuthorization struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -96,7 +172,7 @@ type ToolAuthorization struct {
 
 func (x *ToolAuthorization) Reset() {
 	*x = ToolAuthorization{}
-	mi := &file_services_mcp_assist_proto_msgTypes[0]
+	mi := &file_services_mcp_assist_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -108,7 +184,7 @@ func (x *ToolAuthorization) String() string {
 func (*ToolAuthorization) ProtoMessage() {}
 
 func (x *ToolAuthorization) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[0]
+	mi := &file_services_mcp_assist_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -121,7 +197,7 @@ func (x *ToolAuthorization) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolAuthorization.ProtoReflect.Descriptor instead.
 func (*ToolAuthorization) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{0}
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ToolAuthorization) GetService() string {
@@ -151,7 +227,7 @@ type AgentToken struct {
 
 func (x *AgentToken) Reset() {
 	*x = AgentToken{}
-	mi := &file_services_mcp_assist_proto_msgTypes[1]
+	mi := &file_services_mcp_assist_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -163,7 +239,7 @@ func (x *AgentToken) String() string {
 func (*AgentToken) ProtoMessage() {}
 
 func (x *AgentToken) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[1]
+	mi := &file_services_mcp_assist_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -176,7 +252,7 @@ func (x *AgentToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentToken.ProtoReflect.Descriptor instead.
 func (*AgentToken) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{1}
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AgentToken) GetService() string {
@@ -207,7 +283,7 @@ type AssistToolRequest struct {
 
 func (x *AssistToolRequest) Reset() {
 	*x = AssistToolRequest{}
-	mi := &file_services_mcp_assist_proto_msgTypes[2]
+	mi := &file_services_mcp_assist_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +295,7 @@ func (x *AssistToolRequest) String() string {
 func (*AssistToolRequest) ProtoMessage() {}
 
 func (x *AssistToolRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[2]
+	mi := &file_services_mcp_assist_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +308,7 @@ func (x *AssistToolRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssistToolRequest.ProtoReflect.Descriptor instead.
 func (*AssistToolRequest) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{2}
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AssistToolRequest) GetRequestedTools() []*ToolAuthorization {
@@ -255,19 +331,22 @@ type AssistRequest struct {
 	// Session ID for continuing an existing MCP session.
 	// Empty for new requests; set when responding to a tool access request.
 	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// target_type is the fully-qualified proto type name to construct
+	// (e.g. "gateway.Config"). Must be a type annotated with (spec.llm_assist).
+	TargetType string `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
 	// Natural language instructions for the LLM.
-	Prompt string `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Prompt string `protobuf:"bytes,3,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	// Tools the LLM is authorized to call.
-	AuthorizedTools []*ToolAuthorization `protobuf:"bytes,3,rep,name=authorized_tools,json=authorizedTools,proto3" json:"authorized_tools,omitempty"`
+	AuthorizedTools []*ToolAuthorization `protobuf:"bytes,4,rep,name=authorized_tools,json=authorizedTools,proto3" json:"authorized_tools,omitempty"`
 	// Scoped agent tokens for each authorized service.
-	AgentTokens   []*AgentToken `protobuf:"bytes,4,rep,name=agent_tokens,json=agentTokens,proto3" json:"agent_tokens,omitempty"`
+	AgentTokens   []*AgentToken `protobuf:"bytes,5,rep,name=agent_tokens,json=agentTokens,proto3" json:"agent_tokens,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AssistRequest) Reset() {
 	*x = AssistRequest{}
-	mi := &file_services_mcp_assist_proto_msgTypes[3]
+	mi := &file_services_mcp_assist_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -279,7 +358,7 @@ func (x *AssistRequest) String() string {
 func (*AssistRequest) ProtoMessage() {}
 
 func (x *AssistRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[3]
+	mi := &file_services_mcp_assist_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -292,12 +371,19 @@ func (x *AssistRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssistRequest.ProtoReflect.Descriptor instead.
 func (*AssistRequest) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{3}
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AssistRequest) GetSessionId() string {
 	if x != nil {
 		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AssistRequest) GetTargetType() string {
+	if x != nil {
+		return x.TargetType
 	}
 	return ""
 }
@@ -332,20 +418,19 @@ type AssistResponse struct {
 	ResponseType AssistResponseType `protobuf:"varint,2,opt,name=response_type,json=responseType,proto3,enum=mcp_assist.AssistResponseType" json:"response_type,omitempty"`
 	// Present when response_type is REQUEST_ADDITIONAL_ACCESS.
 	ToolRequest *AssistToolRequest `protobuf:"bytes,3,opt,name=tool_request,json=toolRequest,proto3" json:"tool_request,omitempty"`
-	// The constructed result. Present when response_type is RESULT.
-	//
-	// Types that are valid to be assigned to Result:
-	//
-	//	*AssistResponse_GatewayConfig
-	//	*AssistResponse_IdentityConfig
-	Result        isAssistResponse_Result `protobuf_oneof:"result"`
+	// result_type is the fully-qualified proto type name of the result
+	// (e.g. "gateway.Config"). Present when response_type is RESULT.
+	ResultType string `protobuf:"bytes,4,opt,name=result_type,json=resultType,proto3" json:"result_type,omitempty"`
+	// result_json is the JSON-serialized result. Present when response_type is RESULT.
+	// Callers deserialize this using the appropriate type based on result_type.
+	ResultJson    string `protobuf:"bytes,5,opt,name=result_json,json=resultJson,proto3" json:"result_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AssistResponse) Reset() {
 	*x = AssistResponse{}
-	mi := &file_services_mcp_assist_proto_msgTypes[4]
+	mi := &file_services_mcp_assist_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -357,7 +442,7 @@ func (x *AssistResponse) String() string {
 func (*AssistResponse) ProtoMessage() {}
 
 func (x *AssistResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[4]
+	mi := &file_services_mcp_assist_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -370,7 +455,7 @@ func (x *AssistResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssistResponse.ProtoReflect.Descriptor instead.
 func (*AssistResponse) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{4}
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AssistResponse) GetSessionId() string {
@@ -394,53 +479,116 @@ func (x *AssistResponse) GetToolRequest() *AssistToolRequest {
 	return nil
 }
 
-func (x *AssistResponse) GetResult() isAssistResponse_Result {
+func (x *AssistResponse) GetResultType() string {
 	if x != nil {
-		return x.Result
+		return x.ResultType
 	}
-	return nil
+	return ""
 }
 
-func (x *AssistResponse) GetGatewayConfig() *gateway.Config {
+func (x *AssistResponse) GetResultJson() string {
 	if x != nil {
-		if x, ok := x.Result.(*AssistResponse_GatewayConfig); ok {
-			return x.GatewayConfig
+		return x.ResultJson
+	}
+	return ""
+}
+
+// McpConfigState is the backend state boundary for mcp service configuration.
+// Auto-injected by tacplus from (spec.frontend_config) annotation.
+type McpConfigState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *Config                `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *McpConfigState) Reset() {
+	*x = McpConfigState{}
+	mi := &file_services_mcp_assist_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *McpConfigState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*McpConfigState) ProtoMessage() {}
+
+func (x *McpConfigState) ProtoReflect() protoreflect.Message {
+	mi := &file_services_mcp_assist_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
 		}
+		return ms
 	}
-	return nil
+	return mi.MessageOf(x)
 }
 
-func (x *AssistResponse) GetIdentityConfig() *identity.Config {
+// Deprecated: Use McpConfigState.ProtoReflect.Descriptor instead.
+func (*McpConfigState) Descriptor() ([]byte, []int) {
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *McpConfigState) GetConfig() *Config {
 	if x != nil {
-		if x, ok := x.Result.(*AssistResponse_IdentityConfig); ok {
-			return x.IdentityConfig
-		}
+		return x.Config
 	}
 	return nil
 }
 
-type isAssistResponse_Result interface {
-	isAssistResponse_Result()
+type MapEmpty struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-type AssistResponse_GatewayConfig struct {
-	GatewayConfig *gateway.Config `protobuf:"bytes,100,opt,name=gateway_config,json=gatewayConfig,proto3,oneof"`
+func (x *MapEmpty) Reset() {
+	*x = MapEmpty{}
+	mi := &file_services_mcp_assist_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
-type AssistResponse_IdentityConfig struct {
-	IdentityConfig *identity.Config `protobuf:"bytes,101,opt,name=identity_config,json=identityConfig,proto3,oneof"`
+func (x *MapEmpty) String() string {
+	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AssistResponse_GatewayConfig) isAssistResponse_Result() {}
+func (*MapEmpty) ProtoMessage() {}
 
-func (*AssistResponse_IdentityConfig) isAssistResponse_Result() {}
+func (x *MapEmpty) ProtoReflect() protoreflect.Message {
+	mi := &file_services_mcp_assist_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MapEmpty.ProtoReflect.Descriptor instead.
+func (*MapEmpty) Descriptor() ([]byte, []int) {
+	return file_services_mcp_assist_proto_rawDescGZIP(), []int{7}
+}
 
 var File_services_mcp_assist_proto protoreflect.FileDescriptor
 
 const file_services_mcp_assist_proto_rawDesc = "" +
 	"\n" +
 	"\x19services/mcp_assist.proto\x12\n" +
-	"mcp_assist\x1a\x16services/gateway.proto\x1a\x17services/identity.proto\"G\n" +
+	"mcp_assist\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe5\x01\n" +
+	"\x06Config\x120\n" +
+	"\x11anthropic_api_key\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\x0fanthropicApiKey\x122\n" +
+	"\x05model\x18\x02 \x01(\tB\x1c\x8a\xa8\x1d\x18claude-sonnet-4-20250514R\x05model\x12-\n" +
+	"\vmax_retries\x18\x03 \x01(\x05B\f\xb0\xa7\x1d\x01\xc0\xa7\x1d\n" +
+	"\x90\xa8\x1d\x03R\n" +
+	"maxRetries\x129\n" +
+	"\x13session_ttl_seconds\x18\x04 \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\x90\x1cR\x11sessionTtlSeconds:\vҨ\x1d\a\n" +
+	"\x03mcp\x10\f\"G\n" +
 	"\x11ToolAuthorization\x12\x18\n" +
 	"\aservice\x18\x01 \x01(\tR\aservice\x12\x18\n" +
 	"\amethods\x18\x02 \x03(\tR\amethods\"<\n" +
@@ -450,28 +598,38 @@ const file_services_mcp_assist_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"\x81\x01\n" +
 	"\x11AssistToolRequest\x12F\n" +
 	"\x0frequested_tools\x18\x01 \x03(\v2\x1d.mcp_assist.ToolAuthorizationR\x0erequestedTools\x12$\n" +
-	"\rjustification\x18\x02 \x01(\tR\rjustification\"\xcb\x01\n" +
+	"\rjustification\x18\x02 \x01(\tR\rjustification\"\xf2\x01\n" +
 	"\rAssistRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x16\n" +
-	"\x06prompt\x18\x02 \x01(\tR\x06prompt\x12H\n" +
-	"\x10authorized_tools\x18\x03 \x03(\v2\x1d.mcp_assist.ToolAuthorizationR\x0fauthorizedTools\x129\n" +
-	"\fagent_tokens\x18\x04 \x03(\v2\x16.mcp_assist.AgentTokenR\vagentTokens\"\xb7\x02\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
+	"\vtarget_type\x18\x02 \x01(\tB\x04\x88\xa6\x1d\x01R\n" +
+	"targetType\x12\x16\n" +
+	"\x06prompt\x18\x03 \x01(\tR\x06prompt\x12H\n" +
+	"\x10authorized_tools\x18\x04 \x03(\v2\x1d.mcp_assist.ToolAuthorizationR\x0fauthorizedTools\x129\n" +
+	"\fagent_tokens\x18\x05 \x03(\v2\x16.mcp_assist.AgentTokenR\vagentTokens\"\xf8\x01\n" +
 	"\x0eAssistResponse\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12C\n" +
 	"\rresponse_type\x18\x02 \x01(\x0e2\x1e.mcp_assist.AssistResponseTypeR\fresponseType\x12@\n" +
-	"\ftool_request\x18\x03 \x01(\v2\x1d.mcp_assist.AssistToolRequestR\vtoolRequest\x128\n" +
-	"\x0egateway_config\x18d \x01(\v2\x0f.gateway.ConfigH\x00R\rgatewayConfig\x12;\n" +
-	"\x0fidentity_config\x18e \x01(\v2\x10.identity.ConfigH\x00R\x0eidentityConfigB\b\n" +
-	"\x06result*\x8f\x01\n" +
+	"\ftool_request\x18\x03 \x01(\v2\x1d.mcp_assist.AssistToolRequestR\vtoolRequest\x12\x1f\n" +
+	"\vresult_type\x18\x04 \x01(\tR\n" +
+	"resultType\x12\x1f\n" +
+	"\vresult_json\x18\x05 \x01(\tR\n" +
+	"resultJson\"^\n" +
+	"\x0eMcpConfigState\x124\n" +
+	"\x06config\x18\x01 \x01(\v2\x12.mcp_assist.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x16\x9a\xa8\x1d\x0eMcpConfigState\xa0\xa8\x1d\x02\"\n" +
+	"\n" +
+	"\bMapEmpty*\x8f\x01\n" +
 	"\x12AssistResponseType\x12$\n" +
 	" ASSIST_RESPONSE_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bASSIST_RESPONSE_TYPE_RESULT\x10\x01\x122\n" +
-	".ASSIST_RESPONSE_TYPE_REQUEST_ADDITIONAL_ACCESS\x10\x022\xaf\x01\n" +
-	"\x10McpAssistService\x12L\n" +
-	"\x13GatewayConfigAssist\x12\x19.mcp_assist.AssistRequest\x1a\x1a.mcp_assist.AssistResponse\x12M\n" +
-	"\x14IdentityConfigAssist\x12\x19.mcp_assist.AssistRequest\x1a\x1a.mcp_assist.AssistResponseBVZTgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/services/mcp_assistb\x06proto3"
+	".ASSIST_RESPONSE_TYPE_REQUEST_ADDITIONAL_ACCESS\x10\x022\\\n" +
+	"\x10McpAssistService\x12?\n" +
+	"\x06Assist\x12\x19.mcp_assist.AssistRequest\x1a\x1a.mcp_assist.AssistResponse\x1a\a\xa2\x97\"\x03mcp2\xc9\x01\n" +
+	"\x1cMcpConfigStateBackendService\x127\n" +
+	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x12.mcp_assist.Config\x123\n" +
+	"\tSetConfig\x12\x12.mcp_assist.Config\x1a\x12.mcp_assist.Config\x12;\n" +
+	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\x12.mcp_assist.Config0\x01B\\ZZgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp_assistb\x06proto3"
 
 var (
 	file_services_mcp_assist_proto_rawDescOnce sync.Once
@@ -486,34 +644,39 @@ func file_services_mcp_assist_proto_rawDescGZIP() []byte {
 }
 
 var file_services_mcp_assist_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_services_mcp_assist_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_services_mcp_assist_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_services_mcp_assist_proto_goTypes = []any{
 	(AssistResponseType)(0),   // 0: mcp_assist.AssistResponseType
-	(*ToolAuthorization)(nil), // 1: mcp_assist.ToolAuthorization
-	(*AgentToken)(nil),        // 2: mcp_assist.AgentToken
-	(*AssistToolRequest)(nil), // 3: mcp_assist.AssistToolRequest
-	(*AssistRequest)(nil),     // 4: mcp_assist.AssistRequest
-	(*AssistResponse)(nil),    // 5: mcp_assist.AssistResponse
-	(*gateway.Config)(nil),    // 6: gateway.Config
-	(*identity.Config)(nil),   // 7: identity.Config
+	(*Config)(nil),            // 1: mcp_assist.Config
+	(*ToolAuthorization)(nil), // 2: mcp_assist.ToolAuthorization
+	(*AgentToken)(nil),        // 3: mcp_assist.AgentToken
+	(*AssistToolRequest)(nil), // 4: mcp_assist.AssistToolRequest
+	(*AssistRequest)(nil),     // 5: mcp_assist.AssistRequest
+	(*AssistResponse)(nil),    // 6: mcp_assist.AssistResponse
+	(*McpConfigState)(nil),    // 7: mcp_assist.McpConfigState
+	(*MapEmpty)(nil),          // 8: mcp_assist.MapEmpty
+	(*emptypb.Empty)(nil),     // 9: google.protobuf.Empty
 }
 var file_services_mcp_assist_proto_depIdxs = []int32{
-	1, // 0: mcp_assist.AssistToolRequest.requested_tools:type_name -> mcp_assist.ToolAuthorization
-	1, // 1: mcp_assist.AssistRequest.authorized_tools:type_name -> mcp_assist.ToolAuthorization
-	2, // 2: mcp_assist.AssistRequest.agent_tokens:type_name -> mcp_assist.AgentToken
-	0, // 3: mcp_assist.AssistResponse.response_type:type_name -> mcp_assist.AssistResponseType
-	3, // 4: mcp_assist.AssistResponse.tool_request:type_name -> mcp_assist.AssistToolRequest
-	6, // 5: mcp_assist.AssistResponse.gateway_config:type_name -> gateway.Config
-	7, // 6: mcp_assist.AssistResponse.identity_config:type_name -> identity.Config
-	4, // 7: mcp_assist.McpAssistService.GatewayConfigAssist:input_type -> mcp_assist.AssistRequest
-	4, // 8: mcp_assist.McpAssistService.IdentityConfigAssist:input_type -> mcp_assist.AssistRequest
-	5, // 9: mcp_assist.McpAssistService.GatewayConfigAssist:output_type -> mcp_assist.AssistResponse
-	5, // 10: mcp_assist.McpAssistService.IdentityConfigAssist:output_type -> mcp_assist.AssistResponse
-	9, // [9:11] is the sub-list for method output_type
-	7, // [7:9] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2,  // 0: mcp_assist.AssistToolRequest.requested_tools:type_name -> mcp_assist.ToolAuthorization
+	2,  // 1: mcp_assist.AssistRequest.authorized_tools:type_name -> mcp_assist.ToolAuthorization
+	3,  // 2: mcp_assist.AssistRequest.agent_tokens:type_name -> mcp_assist.AgentToken
+	0,  // 3: mcp_assist.AssistResponse.response_type:type_name -> mcp_assist.AssistResponseType
+	4,  // 4: mcp_assist.AssistResponse.tool_request:type_name -> mcp_assist.AssistToolRequest
+	1,  // 5: mcp_assist.McpConfigState.config:type_name -> mcp_assist.Config
+	5,  // 6: mcp_assist.McpAssistService.Assist:input_type -> mcp_assist.AssistRequest
+	9,  // 7: mcp_assist.McpConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
+	1,  // 8: mcp_assist.McpConfigStateBackendService.SetConfig:input_type -> mcp_assist.Config
+	9,  // 9: mcp_assist.McpConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
+	6,  // 10: mcp_assist.McpAssistService.Assist:output_type -> mcp_assist.AssistResponse
+	1,  // 11: mcp_assist.McpConfigStateBackendService.GetConfig:output_type -> mcp_assist.Config
+	1,  // 12: mcp_assist.McpConfigStateBackendService.SetConfig:output_type -> mcp_assist.Config
+	1,  // 13: mcp_assist.McpConfigStateBackendService.WatchConfig:output_type -> mcp_assist.Config
+	10, // [10:14] is the sub-list for method output_type
+	6,  // [6:10] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_services_mcp_assist_proto_init() }
@@ -521,19 +684,15 @@ func file_services_mcp_assist_proto_init() {
 	if File_services_mcp_assist_proto != nil {
 		return
 	}
-	file_services_mcp_assist_proto_msgTypes[4].OneofWrappers = []any{
-		(*AssistResponse_GatewayConfig)(nil),
-		(*AssistResponse_IdentityConfig)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_mcp_assist_proto_rawDesc), len(file_services_mcp_assist_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_services_mcp_assist_proto_goTypes,
 		DependencyIndexes: file_services_mcp_assist_proto_depIdxs,

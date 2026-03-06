@@ -13,8 +13,7 @@ import (
 	"sync"
 
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
-	serviceconfig_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig"
-	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/config_holder"
+	types "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -28,7 +27,7 @@ type Backend struct {
 	mu sync.RWMutex
 
 	// Cached singleton state
-	cachedConfig *serviceconfig_pb.Config
+	cachedConfig *types.Config
 
 	// Cached collection state
 
@@ -87,7 +86,7 @@ func (c *Backend) Proto() *types.ServiceConfigState {
 	defer c.mu.RUnlock()
 	state := &types.ServiceConfigState{}
 	if c.cachedConfig != nil {
-		state.Config = proto.Clone(c.cachedConfig).(*serviceconfig_pb.Config)
+		state.Config = proto.Clone(c.cachedConfig).(*types.Config)
 	}
 	return state
 }
@@ -102,7 +101,7 @@ func (c *Backend) receiveConfigUpdates(stream types.ServiceConfigStateBackendSer
 		if err != nil {
 			return
 		}
-		if err := serviceconfig_pb.ValidateConfig(msg); err != nil {
+		if err := types.ValidateConfig(msg); err != nil {
 			continue
 		}
 		c.mu.Lock()
@@ -122,7 +121,7 @@ func (c *Backend) receiveConfigUpdates(stream types.ServiceConfigStateBackendSer
 type ConfigWrapper struct {
 	parent     *Backend
 	callbackMu sync.Mutex
-	callbacks  []func(*serviceconfig_pb.Config)
+	callbacks  []func(*types.Config)
 }
 
 // Config returns the wrapper for the Config boundary.
@@ -132,34 +131,34 @@ func (c *Backend) Config() *ConfigWrapper {
 
 // OnChange registers a callback that fires when the Config is updated via the Watch stream.
 // The callback receives a defensive copy of the new value.
-func (w *ConfigWrapper) OnChange(fn func(*serviceconfig_pb.Config)) {
+func (w *ConfigWrapper) OnChange(fn func(*types.Config)) {
 	w.callbackMu.Lock()
 	defer w.callbackMu.Unlock()
 	w.callbacks = append(w.callbacks, fn)
 }
 
-func (w *ConfigWrapper) notifyCallbacks(value *serviceconfig_pb.Config) {
+func (w *ConfigWrapper) notifyCallbacks(value *types.Config) {
 	w.callbackMu.Lock()
-	cbs := make([]func(*serviceconfig_pb.Config), len(w.callbacks))
+	cbs := make([]func(*types.Config), len(w.callbacks))
 	copy(cbs, w.callbacks)
 	w.callbackMu.Unlock()
 	for _, cb := range cbs {
-		cb(proto.Clone(value).(*serviceconfig_pb.Config))
+		cb(proto.Clone(value).(*types.Config))
 	}
 }
 
 // Get returns a defensive copy of the cached Config.
-func (w *ConfigWrapper) Get() *serviceconfig_pb.Config {
+func (w *ConfigWrapper) Get() *types.Config {
 	w.parent.mu.RLock()
 	defer w.parent.mu.RUnlock()
 	if w.parent.cachedConfig == nil {
 		return nil
 	}
-	return proto.Clone(w.parent.cachedConfig).(*serviceconfig_pb.Config)
+	return proto.Clone(w.parent.cachedConfig).(*types.Config)
 }
 
 // Fetch retrieves the authoritative Config from the backend service.
-func (w *ConfigWrapper) Fetch(ctx context.Context) (*serviceconfig_pb.Config, error) {
+func (w *ConfigWrapper) Fetch(ctx context.Context) (*types.Config, error) {
 	return w.parent.backendStub.GetConfig(ctx, &emptypb.Empty{})
 }
 

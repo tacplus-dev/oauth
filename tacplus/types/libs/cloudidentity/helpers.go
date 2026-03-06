@@ -403,14 +403,14 @@ func ValidatePresignedHttpRequest(m *PresignedHttpRequest) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Method must be at most 16 characters, got: %d", len(m.Method))
 	}
 
-	// Validate Url (assert_max_length: 2048)
-	if len(m.Url) > 2048 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Url must be at most 2048 characters, got: %d", len(m.Url))
-	}
-
 	// Validate Url (assert_required)
 	if m.Url == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Url is required")
+	}
+
+	// Validate Url (assert_max_length: 2048)
+	if len(m.Url) > 2048 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Url must be at most 2048 characters, got: %d", len(m.Url))
 	}
 
 	// Validate Body (assert_max_size: 8192 bytes)

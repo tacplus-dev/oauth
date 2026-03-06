@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/servicemanager"
+	libs_backends "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/libs"
 	services_backends "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends/services"
 )
 
@@ -20,6 +21,7 @@ import (
 type Backends struct {
 	sc       *servicemanager.ServiceManager
 	services *services_backends.Backends
+	libs     *libs_backends.Backends
 }
 
 // NewBackends creates a new Backends from a ServiceManager.
@@ -35,6 +37,12 @@ func NewBackends(ctx context.Context, sc *servicemanager.ServiceManager,
 		return nil, fmt.Errorf("failed to create services backend clients: %w", err)
 	}
 
+	s.libs, err = libs_backends.NewBackends(ctx, sc)
+	if err != nil {
+		s.Close()
+		return nil, fmt.Errorf("failed to create libs backend clients: %w", err)
+	}
+
 	return s, nil
 }
 
@@ -44,9 +52,17 @@ func (s *Backends) Close() {
 	if s.services != nil {
 		s.services.Close()
 	}
+	if s.libs != nil {
+		s.libs.Close()
+	}
 }
 
 // Services returns the backend clients for the services group.
 func (s *Backends) Services() *services_backends.Backends {
 	return s.services
+}
+
+// Libs returns the backend clients for the libs group.
+func (s *Backends) Libs() *libs_backends.Backends {
+	return s.libs
 }
