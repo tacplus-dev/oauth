@@ -522,11 +522,6 @@ func ValidateLoggerConfig(m *LoggerConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Name must be at most 128 characters, got: %d", len(m.Name))
 	}
 
-	// Validate OutputPaths (assert_max_items: 8)
-	if len(m.OutputPaths) > 8 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field OutputPaths exceeds max items of 8, got: %d", len(m.OutputPaths))
-	}
-
 	// Validate OutputPaths (assert_file_path: PATH_ANY)
 	for i, path := range m.OutputPaths {
 		if path != "" {
@@ -534,6 +529,11 @@ func ValidateLoggerConfig(m *LoggerConfig) error {
 				return protoerrors.NewErrMissingInvalidData(err, "field OutputPaths[%d] file path validation failed", i)
 			}
 		}
+	}
+
+	// Validate OutputPaths (assert_max_items: 8)
+	if len(m.OutputPaths) > 8 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field OutputPaths exceeds max items of 8, got: %d", len(m.OutputPaths))
 	}
 
 	// Validate ErrorOutputPaths (assert_max_items: 8)

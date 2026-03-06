@@ -12,6 +12,7 @@ import (
 	"time"
 
 	healthreport_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
+	host_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 	"go.uber.org/zap"
 )
 
@@ -37,8 +38,8 @@ type HealthPublisher interface {
 
 // MetricsProvider supplies runtime metrics from the frontend server.
 type MetricsProvider interface {
-	GrpcEndpoint() string
-	HttpEndpoint() string
+	GrpcEndpoint() *host_pb.Host
+	HttpEndpoint() *host_pb.Host
 	ActiveRequests() int32
 	MaxConcurrent() int32
 	RequestRate() float64

@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/mcp_assist.proto
+// Source: services/mcp.proto
 
-package mcp_assist
+package mcp
 
 import (
 	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
@@ -67,11 +67,11 @@ func (x AssistResponseType) String() string {
 }
 
 func (AssistResponseType) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_mcp_assist_proto_enumTypes[0].Descriptor()
+	return file_services_mcp_proto_enumTypes[0].Descriptor()
 }
 
 func (AssistResponseType) Type() protoreflect.EnumType {
-	return &file_services_mcp_assist_proto_enumTypes[0]
+	return &file_services_mcp_proto_enumTypes[0]
 }
 
 func (x AssistResponseType) Number() protoreflect.EnumNumber {
@@ -80,7 +80,7 @@ func (x AssistResponseType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AssistResponseType.Descriptor instead.
 func (AssistResponseType) EnumDescriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{0}
+	return file_services_mcp_proto_rawDescGZIP(), []int{0}
 }
 
 // Config is the service-level configuration for the MCP assist service.
@@ -103,7 +103,7 @@ type Config struct {
 
 func (x *Config) Reset() {
 	*x = Config{}
-	mi := &file_services_mcp_assist_proto_msgTypes[0]
+	mi := &file_services_mcp_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -115,7 +115,7 @@ func (x *Config) String() string {
 func (*Config) ProtoMessage() {}
 
 func (x *Config) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[0]
+	mi := &file_services_mcp_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -128,7 +128,7 @@ func (x *Config) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Config.ProtoReflect.Descriptor instead.
 func (*Config) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{0}
+	return file_services_mcp_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Config) GetAnthropicApiKey() string {
@@ -172,7 +172,7 @@ type ToolAuthorization struct {
 
 func (x *ToolAuthorization) Reset() {
 	*x = ToolAuthorization{}
-	mi := &file_services_mcp_assist_proto_msgTypes[1]
+	mi := &file_services_mcp_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +184,7 @@ func (x *ToolAuthorization) String() string {
 func (*ToolAuthorization) ProtoMessage() {}
 
 func (x *ToolAuthorization) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[1]
+	mi := &file_services_mcp_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +197,7 @@ func (x *ToolAuthorization) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolAuthorization.ProtoReflect.Descriptor instead.
 func (*ToolAuthorization) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{1}
+	return file_services_mcp_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ToolAuthorization) GetService() string {
@@ -227,7 +227,7 @@ type AgentToken struct {
 
 func (x *AgentToken) Reset() {
 	*x = AgentToken{}
-	mi := &file_services_mcp_assist_proto_msgTypes[2]
+	mi := &file_services_mcp_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -239,7 +239,7 @@ func (x *AgentToken) String() string {
 func (*AgentToken) ProtoMessage() {}
 
 func (x *AgentToken) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[2]
+	mi := &file_services_mcp_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -252,7 +252,7 @@ func (x *AgentToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentToken.ProtoReflect.Descriptor instead.
 func (*AgentToken) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{2}
+	return file_services_mcp_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AgentToken) GetService() string {
@@ -283,7 +283,7 @@ type AssistToolRequest struct {
 
 func (x *AssistToolRequest) Reset() {
 	*x = AssistToolRequest{}
-	mi := &file_services_mcp_assist_proto_msgTypes[3]
+	mi := &file_services_mcp_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +295,7 @@ func (x *AssistToolRequest) String() string {
 func (*AssistToolRequest) ProtoMessage() {}
 
 func (x *AssistToolRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[3]
+	mi := &file_services_mcp_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,7 +308,7 @@ func (x *AssistToolRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssistToolRequest.ProtoReflect.Descriptor instead.
 func (*AssistToolRequest) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{3}
+	return file_services_mcp_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AssistToolRequest) GetRequestedTools() []*ToolAuthorization {
@@ -346,7 +346,7 @@ type AssistRequest struct {
 
 func (x *AssistRequest) Reset() {
 	*x = AssistRequest{}
-	mi := &file_services_mcp_assist_proto_msgTypes[4]
+	mi := &file_services_mcp_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -358,7 +358,7 @@ func (x *AssistRequest) String() string {
 func (*AssistRequest) ProtoMessage() {}
 
 func (x *AssistRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[4]
+	mi := &file_services_mcp_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -371,7 +371,7 @@ func (x *AssistRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssistRequest.ProtoReflect.Descriptor instead.
 func (*AssistRequest) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{4}
+	return file_services_mcp_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AssistRequest) GetSessionId() string {
@@ -415,7 +415,7 @@ type AssistResponse struct {
 	// Session ID for this MCP session (stable across request/response cycles).
 	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	// Indicates what kind of response this is.
-	ResponseType AssistResponseType `protobuf:"varint,2,opt,name=response_type,json=responseType,proto3,enum=mcp_assist.AssistResponseType" json:"response_type,omitempty"`
+	ResponseType AssistResponseType `protobuf:"varint,2,opt,name=response_type,json=responseType,proto3,enum=mcp.AssistResponseType" json:"response_type,omitempty"`
 	// Present when response_type is REQUEST_ADDITIONAL_ACCESS.
 	ToolRequest *AssistToolRequest `protobuf:"bytes,3,opt,name=tool_request,json=toolRequest,proto3" json:"tool_request,omitempty"`
 	// result_type is the fully-qualified proto type name of the result
@@ -430,7 +430,7 @@ type AssistResponse struct {
 
 func (x *AssistResponse) Reset() {
 	*x = AssistResponse{}
-	mi := &file_services_mcp_assist_proto_msgTypes[5]
+	mi := &file_services_mcp_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -442,7 +442,7 @@ func (x *AssistResponse) String() string {
 func (*AssistResponse) ProtoMessage() {}
 
 func (x *AssistResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[5]
+	mi := &file_services_mcp_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -455,7 +455,7 @@ func (x *AssistResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssistResponse.ProtoReflect.Descriptor instead.
 func (*AssistResponse) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{5}
+	return file_services_mcp_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AssistResponse) GetSessionId() string {
@@ -504,7 +504,7 @@ type McpConfigState struct {
 
 func (x *McpConfigState) Reset() {
 	*x = McpConfigState{}
-	mi := &file_services_mcp_assist_proto_msgTypes[6]
+	mi := &file_services_mcp_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -516,7 +516,7 @@ func (x *McpConfigState) String() string {
 func (*McpConfigState) ProtoMessage() {}
 
 func (x *McpConfigState) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[6]
+	mi := &file_services_mcp_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -529,7 +529,7 @@ func (x *McpConfigState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use McpConfigState.ProtoReflect.Descriptor instead.
 func (*McpConfigState) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{6}
+	return file_services_mcp_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *McpConfigState) GetConfig() *Config {
@@ -547,7 +547,7 @@ type MapEmpty struct {
 
 func (x *MapEmpty) Reset() {
 	*x = MapEmpty{}
-	mi := &file_services_mcp_assist_proto_msgTypes[7]
+	mi := &file_services_mcp_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -559,7 +559,7 @@ func (x *MapEmpty) String() string {
 func (*MapEmpty) ProtoMessage() {}
 
 func (x *MapEmpty) ProtoReflect() protoreflect.Message {
-	mi := &file_services_mcp_assist_proto_msgTypes[7]
+	mi := &file_services_mcp_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -572,15 +572,14 @@ func (x *MapEmpty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapEmpty.ProtoReflect.Descriptor instead.
 func (*MapEmpty) Descriptor() ([]byte, []int) {
-	return file_services_mcp_assist_proto_rawDescGZIP(), []int{7}
+	return file_services_mcp_proto_rawDescGZIP(), []int{7}
 }
 
-var File_services_mcp_assist_proto protoreflect.FileDescriptor
+var File_services_mcp_proto protoreflect.FileDescriptor
 
-const file_services_mcp_assist_proto_rawDesc = "" +
+const file_services_mcp_proto_rawDesc = "" +
 	"\n" +
-	"\x19services/mcp_assist.proto\x12\n" +
-	"mcp_assist\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe5\x01\n" +
+	"\x12services/mcp.proto\x12\x03mcp\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe5\x01\n" +
 	"\x06Config\x120\n" +
 	"\x11anthropic_api_key\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\x0fanthropicApiKey\x122\n" +
 	"\x05model\x18\x02 \x01(\tB\x1c\x8a\xa8\x1d\x18claude-sonnet-4-20250514R\x05model\x12-\n" +
@@ -595,83 +594,83 @@ const file_services_mcp_assist_proto_rawDesc = "" +
 	"\n" +
 	"AgentToken\x12\x18\n" +
 	"\aservice\x18\x01 \x01(\tR\aservice\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"\x81\x01\n" +
-	"\x11AssistToolRequest\x12F\n" +
-	"\x0frequested_tools\x18\x01 \x03(\v2\x1d.mcp_assist.ToolAuthorizationR\x0erequestedTools\x12$\n" +
-	"\rjustification\x18\x02 \x01(\tR\rjustification\"\xf2\x01\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"z\n" +
+	"\x11AssistToolRequest\x12?\n" +
+	"\x0frequested_tools\x18\x01 \x03(\v2\x16.mcp.ToolAuthorizationR\x0erequestedTools\x12$\n" +
+	"\rjustification\x18\x02 \x01(\tR\rjustification\"\xe4\x01\n" +
 	"\rAssistRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
 	"\vtarget_type\x18\x02 \x01(\tB\x04\x88\xa6\x1d\x01R\n" +
 	"targetType\x12\x16\n" +
-	"\x06prompt\x18\x03 \x01(\tR\x06prompt\x12H\n" +
-	"\x10authorized_tools\x18\x04 \x03(\v2\x1d.mcp_assist.ToolAuthorizationR\x0fauthorizedTools\x129\n" +
-	"\fagent_tokens\x18\x05 \x03(\v2\x16.mcp_assist.AgentTokenR\vagentTokens\"\xf8\x01\n" +
+	"\x06prompt\x18\x03 \x01(\tR\x06prompt\x12A\n" +
+	"\x10authorized_tools\x18\x04 \x03(\v2\x16.mcp.ToolAuthorizationR\x0fauthorizedTools\x122\n" +
+	"\fagent_tokens\x18\x05 \x03(\v2\x0f.mcp.AgentTokenR\vagentTokens\"\xea\x01\n" +
 	"\x0eAssistResponse\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12C\n" +
-	"\rresponse_type\x18\x02 \x01(\x0e2\x1e.mcp_assist.AssistResponseTypeR\fresponseType\x12@\n" +
-	"\ftool_request\x18\x03 \x01(\v2\x1d.mcp_assist.AssistToolRequestR\vtoolRequest\x12\x1f\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12<\n" +
+	"\rresponse_type\x18\x02 \x01(\x0e2\x17.mcp.AssistResponseTypeR\fresponseType\x129\n" +
+	"\ftool_request\x18\x03 \x01(\v2\x16.mcp.AssistToolRequestR\vtoolRequest\x12\x1f\n" +
 	"\vresult_type\x18\x04 \x01(\tR\n" +
 	"resultType\x12\x1f\n" +
 	"\vresult_json\x18\x05 \x01(\tR\n" +
-	"resultJson\"^\n" +
-	"\x0eMcpConfigState\x124\n" +
-	"\x06config\x18\x01 \x01(\v2\x12.mcp_assist.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x16\x9a\xa8\x1d\x0eMcpConfigState\xa0\xa8\x1d\x02\"\n" +
+	"resultJson\"W\n" +
+	"\x0eMcpConfigState\x12-\n" +
+	"\x06config\x18\x01 \x01(\v2\v.mcp.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x16\x9a\xa8\x1d\x0eMcpConfigState\xa0\xa8\x1d\x02\"\n" +
 	"\n" +
 	"\bMapEmpty*\x8f\x01\n" +
 	"\x12AssistResponseType\x12$\n" +
 	" ASSIST_RESPONSE_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bASSIST_RESPONSE_TYPE_RESULT\x10\x01\x122\n" +
-	".ASSIST_RESPONSE_TYPE_REQUEST_ADDITIONAL_ACCESS\x10\x022\\\n" +
-	"\x10McpAssistService\x12?\n" +
-	"\x06Assist\x12\x19.mcp_assist.AssistRequest\x1a\x1a.mcp_assist.AssistResponse\x1a\a\xa2\x97\"\x03mcp2\xc9\x01\n" +
-	"\x1cMcpConfigStateBackendService\x127\n" +
-	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x12.mcp_assist.Config\x123\n" +
-	"\tSetConfig\x12\x12.mcp_assist.Config\x1a\x12.mcp_assist.Config\x12;\n" +
-	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\x12.mcp_assist.Config0\x01B\\ZZgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp_assistb\x06proto3"
+	".ASSIST_RESPONSE_TYPE_REQUEST_ADDITIONAL_ACCESS\x10\x022N\n" +
+	"\x10McpAssistService\x121\n" +
+	"\x06Assist\x12\x12.mcp.AssistRequest\x1a\x13.mcp.AssistResponse\x1a\a\xa2\x97\"\x03mcp2\xad\x01\n" +
+	"\x1cMcpConfigStateBackendService\x120\n" +
+	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\v.mcp.Config\x12%\n" +
+	"\tSetConfig\x12\v.mcp.Config\x1a\v.mcp.Config\x124\n" +
+	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\v.mcp.Config0\x01BUZSgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcpb\x06proto3"
 
 var (
-	file_services_mcp_assist_proto_rawDescOnce sync.Once
-	file_services_mcp_assist_proto_rawDescData []byte
+	file_services_mcp_proto_rawDescOnce sync.Once
+	file_services_mcp_proto_rawDescData []byte
 )
 
-func file_services_mcp_assist_proto_rawDescGZIP() []byte {
-	file_services_mcp_assist_proto_rawDescOnce.Do(func() {
-		file_services_mcp_assist_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_services_mcp_assist_proto_rawDesc), len(file_services_mcp_assist_proto_rawDesc)))
+func file_services_mcp_proto_rawDescGZIP() []byte {
+	file_services_mcp_proto_rawDescOnce.Do(func() {
+		file_services_mcp_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_services_mcp_proto_rawDesc), len(file_services_mcp_proto_rawDesc)))
 	})
-	return file_services_mcp_assist_proto_rawDescData
+	return file_services_mcp_proto_rawDescData
 }
 
-var file_services_mcp_assist_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_services_mcp_assist_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_services_mcp_assist_proto_goTypes = []any{
-	(AssistResponseType)(0),   // 0: mcp_assist.AssistResponseType
-	(*Config)(nil),            // 1: mcp_assist.Config
-	(*ToolAuthorization)(nil), // 2: mcp_assist.ToolAuthorization
-	(*AgentToken)(nil),        // 3: mcp_assist.AgentToken
-	(*AssistToolRequest)(nil), // 4: mcp_assist.AssistToolRequest
-	(*AssistRequest)(nil),     // 5: mcp_assist.AssistRequest
-	(*AssistResponse)(nil),    // 6: mcp_assist.AssistResponse
-	(*McpConfigState)(nil),    // 7: mcp_assist.McpConfigState
-	(*MapEmpty)(nil),          // 8: mcp_assist.MapEmpty
+var file_services_mcp_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_services_mcp_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_services_mcp_proto_goTypes = []any{
+	(AssistResponseType)(0),   // 0: mcp.AssistResponseType
+	(*Config)(nil),            // 1: mcp.Config
+	(*ToolAuthorization)(nil), // 2: mcp.ToolAuthorization
+	(*AgentToken)(nil),        // 3: mcp.AgentToken
+	(*AssistToolRequest)(nil), // 4: mcp.AssistToolRequest
+	(*AssistRequest)(nil),     // 5: mcp.AssistRequest
+	(*AssistResponse)(nil),    // 6: mcp.AssistResponse
+	(*McpConfigState)(nil),    // 7: mcp.McpConfigState
+	(*MapEmpty)(nil),          // 8: mcp.MapEmpty
 	(*emptypb.Empty)(nil),     // 9: google.protobuf.Empty
 }
-var file_services_mcp_assist_proto_depIdxs = []int32{
-	2,  // 0: mcp_assist.AssistToolRequest.requested_tools:type_name -> mcp_assist.ToolAuthorization
-	2,  // 1: mcp_assist.AssistRequest.authorized_tools:type_name -> mcp_assist.ToolAuthorization
-	3,  // 2: mcp_assist.AssistRequest.agent_tokens:type_name -> mcp_assist.AgentToken
-	0,  // 3: mcp_assist.AssistResponse.response_type:type_name -> mcp_assist.AssistResponseType
-	4,  // 4: mcp_assist.AssistResponse.tool_request:type_name -> mcp_assist.AssistToolRequest
-	1,  // 5: mcp_assist.McpConfigState.config:type_name -> mcp_assist.Config
-	5,  // 6: mcp_assist.McpAssistService.Assist:input_type -> mcp_assist.AssistRequest
-	9,  // 7: mcp_assist.McpConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
-	1,  // 8: mcp_assist.McpConfigStateBackendService.SetConfig:input_type -> mcp_assist.Config
-	9,  // 9: mcp_assist.McpConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
-	6,  // 10: mcp_assist.McpAssistService.Assist:output_type -> mcp_assist.AssistResponse
-	1,  // 11: mcp_assist.McpConfigStateBackendService.GetConfig:output_type -> mcp_assist.Config
-	1,  // 12: mcp_assist.McpConfigStateBackendService.SetConfig:output_type -> mcp_assist.Config
-	1,  // 13: mcp_assist.McpConfigStateBackendService.WatchConfig:output_type -> mcp_assist.Config
+var file_services_mcp_proto_depIdxs = []int32{
+	2,  // 0: mcp.AssistToolRequest.requested_tools:type_name -> mcp.ToolAuthorization
+	2,  // 1: mcp.AssistRequest.authorized_tools:type_name -> mcp.ToolAuthorization
+	3,  // 2: mcp.AssistRequest.agent_tokens:type_name -> mcp.AgentToken
+	0,  // 3: mcp.AssistResponse.response_type:type_name -> mcp.AssistResponseType
+	4,  // 4: mcp.AssistResponse.tool_request:type_name -> mcp.AssistToolRequest
+	1,  // 5: mcp.McpConfigState.config:type_name -> mcp.Config
+	5,  // 6: mcp.McpAssistService.Assist:input_type -> mcp.AssistRequest
+	9,  // 7: mcp.McpConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
+	1,  // 8: mcp.McpConfigStateBackendService.SetConfig:input_type -> mcp.Config
+	9,  // 9: mcp.McpConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
+	6,  // 10: mcp.McpAssistService.Assist:output_type -> mcp.AssistResponse
+	1,  // 11: mcp.McpConfigStateBackendService.GetConfig:output_type -> mcp.Config
+	1,  // 12: mcp.McpConfigStateBackendService.SetConfig:output_type -> mcp.Config
+	1,  // 13: mcp.McpConfigStateBackendService.WatchConfig:output_type -> mcp.Config
 	10, // [10:14] is the sub-list for method output_type
 	6,  // [6:10] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
@@ -679,27 +678,27 @@ var file_services_mcp_assist_proto_depIdxs = []int32{
 	0,  // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_services_mcp_assist_proto_init() }
-func file_services_mcp_assist_proto_init() {
-	if File_services_mcp_assist_proto != nil {
+func init() { file_services_mcp_proto_init() }
+func file_services_mcp_proto_init() {
+	if File_services_mcp_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_mcp_assist_proto_rawDesc), len(file_services_mcp_assist_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_mcp_proto_rawDesc), len(file_services_mcp_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
-		GoTypes:           file_services_mcp_assist_proto_goTypes,
-		DependencyIndexes: file_services_mcp_assist_proto_depIdxs,
-		EnumInfos:         file_services_mcp_assist_proto_enumTypes,
-		MessageInfos:      file_services_mcp_assist_proto_msgTypes,
+		GoTypes:           file_services_mcp_proto_goTypes,
+		DependencyIndexes: file_services_mcp_proto_depIdxs,
+		EnumInfos:         file_services_mcp_proto_enumTypes,
+		MessageInfos:      file_services_mcp_proto_msgTypes,
 	}.Build()
-	File_services_mcp_assist_proto = out.File
-	file_services_mcp_assist_proto_goTypes = nil
-	file_services_mcp_assist_proto_depIdxs = nil
+	File_services_mcp_proto = out.File
+	file_services_mcp_proto_goTypes = nil
+	file_services_mcp_proto_depIdxs = nil
 }

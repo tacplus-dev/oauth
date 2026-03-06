@@ -6,6 +6,7 @@ variables:
   GOPRIVATE: "gitlab.com/secondstarcavalier/*"
   GONOSUMCHECK: "gitlab.com/secondstarcavalier/*"
   CGO_ENABLED: "0"
+  DOCKER_BUILDKIT: "1"
 
 .parse-version: &parse-version
   - |

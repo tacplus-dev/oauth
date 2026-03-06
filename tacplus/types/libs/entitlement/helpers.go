@@ -673,24 +673,24 @@ func ValidateServiceEntitlement(m *ServiceEntitlement) error {
 		return nil
 	}
 
-	// Validate ServiceName (assert_required)
-	if m.ServiceName == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ServiceName is required")
-	}
-
 	// Validate ServiceName (assert_max_length: 128)
 	if len(m.ServiceName) > 128 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ServiceName must be at most 128 characters, got: %d", len(m.ServiceName))
 	}
 
-	// Validate AllowedRpcs (assert_max_items: 256)
-	if len(m.AllowedRpcs) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field AllowedRpcs exceeds max items of 256, got: %d", len(m.AllowedRpcs))
+	// Validate ServiceName (assert_required)
+	if m.ServiceName == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ServiceName is required")
 	}
 
 	// Validate AllowedRpcs (assert_required)
 	if len(m.AllowedRpcs) == 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AllowedRpcs is required")
+	}
+
+	// Validate AllowedRpcs (assert_max_items: 256)
+	if len(m.AllowedRpcs) > 256 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AllowedRpcs exceeds max items of 256, got: %d", len(m.AllowedRpcs))
 	}
 
 	// Validate ServiceName (default max size: 32768 bytes)
@@ -788,14 +788,14 @@ func ValidateServiceEntitlementMapping(m *ServiceEntitlementMapping) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field CredentialId must be at most 512 characters, got: %d", len(m.CredentialId))
 	}
 
-	// Validate Service (assert_required)
-	if m.Service == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Service is required")
-	}
-
 	// Validate Service (assert_max_length: 128)
 	if len(m.Service) > 128 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Service must be at most 128 characters, got: %d", len(m.Service))
+	}
+
+	// Validate Service (assert_required)
+	if m.Service == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Service is required")
 	}
 
 	// Validate CredentialId (default max size: 32768 bytes)

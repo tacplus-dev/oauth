@@ -14,6 +14,7 @@
 package serviceconfig
 
 import (
+	host "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 	jwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
 	key "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/key"
 	logger "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/logger"
@@ -100,8 +101,8 @@ func (MemberStatus) EnumDescriptor() ([]byte, []int) {
 type BootstrapConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The backend service endpoints (cluster).
-	// Each entry is a "host:port" string (e.g. "10.0.0.1:9443", "api.example.com:443").
-	Endpoints []string `protobuf:"bytes,1,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
+	// Each entry is a host:port pair (e.g. host=10.0.0.1, port=9443).
+	Endpoints []*host.Host `protobuf:"bytes,1,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
 	// instance_id uniquely identifies this running instance/replica.
 	// Used for leader elections on boundaries with (spec.leader) = true.
 	// If empty, a random ID is generated at client creation time.
@@ -149,7 +150,7 @@ func (*BootstrapConfig) Descriptor() ([]byte, []int) {
 	return file_libs_serviceconfig_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *BootstrapConfig) GetEndpoints() []string {
+func (x *BootstrapConfig) GetEndpoints() []*host.Host {
 	if x != nil {
 		return x.Endpoints
 	}
@@ -188,9 +189,8 @@ type Config struct {
 	// rebalance_interval_ms controls how often the active connection is re-evaluated
 	// based on latency. Default: 10000 (10 seconds)
 	RebalanceIntervalMs int32 `protobuf:"varint,5,opt,name=rebalance_interval_ms,json=rebalanceIntervalMs,proto3" json:"rebalance_interval_ms,omitempty"`
-	// listen_address is the bind address for the gRPC server.
-	// Examples: ":8080", "0.0.0.0:8080", "127.0.0.1:8080"
-	ListenAddress string `protobuf:"bytes,7,opt,name=listen_address,json=listenAddress,proto3" json:"listen_address,omitempty"`
+	// listen_address is the bind address for the gRPC server (e.g. host=0.0.0.0, port=8080).
+	ListenAddress *host.Host `protobuf:"bytes,7,opt,name=listen_address,json=listenAddress,proto3" json:"listen_address,omitempty"`
 	// tls_cert is the TLS certificate and private key pair for the frontend server.
 	TlsCert *x509.X509CertPair `protobuf:"bytes,8,opt,name=tls_cert,json=tlsCert,proto3" json:"tls_cert,omitempty"`
 	// max_request_size is the maximum request size in bytes.
@@ -254,11 +254,11 @@ func (x *Config) GetRebalanceIntervalMs() int32 {
 	return 0
 }
 
-func (x *Config) GetListenAddress() string {
+func (x *Config) GetListenAddress() *host.Host {
 	if x != nil {
 		return x.ListenAddress
 	}
-	return ""
+	return nil
 }
 
 func (x *Config) GetTlsCert() *x509.X509CertPair {
@@ -354,8 +354,8 @@ func (x *LogMessage) GetMessage() string {
 // ClusterMember describes a single member (pod/node) within a cluster.
 type ClusterMember struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// endpoint is the "host:port" address of this member.
-	Endpoint      string       `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// endpoint is the host:port address of this member.
+	Endpoint      *host.Host   `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 	Status        MemberStatus `protobuf:"varint,2,opt,name=status,proto3,enum=serviceconfig.MemberStatus" json:"status,omitempty"`
 	Priority      int32        `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -392,11 +392,11 @@ func (*ClusterMember) Descriptor() ([]byte, []int) {
 	return file_libs_serviceconfig_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ClusterMember) GetEndpoint() string {
+func (x *ClusterMember) GetEndpoint() *host.Host {
 	if x != nil {
 		return x.Endpoint
 	}
-	return ""
+	return nil
 }
 
 func (x *ClusterMember) GetStatus() MemberStatus {
@@ -667,19 +667,21 @@ var File_libs_serviceconfig_proto protoreflect.FileDescriptor
 
 const file_libs_serviceconfig_proto_rawDesc = "" +
 	"\n" +
-	"\x18libs/serviceconfig.proto\x12\rserviceconfig\x1a\x0elibs/jwk.proto\x1a\x0elibs/key.proto\x1a\x11libs/logger.proto\x1a\x0flibs/spec.proto\x1a\x0flibs/x509.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xc3\x01\n" +
-	"\x0fBootstrapConfig\x12&\n" +
-	"\tendpoints\x18\x01 \x03(\tB\b\xf8\xa6\x1d\x01\xc0\xa8\x1d R\tendpoints\x12&\n" +
+	"\x18libs/serviceconfig.proto\x12\rserviceconfig\x1a\x0flibs/host.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/key.proto\x1a\x11libs/logger.proto\x1a\x0flibs/spec.proto\x1a\x0flibs/x509.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xcb\x01\n" +
+	"\x0fBootstrapConfig\x12.\n" +
+	"\tendpoints\x18\x01 \x03(\v2\n" +
+	".host.HostB\x04\xc0\xa8\x1d R\tendpoints\x12&\n" +
 	"\vinstance_id\x18\x02 \x01(\tB\x05\x90\xa7\x1d\x80\x01R\n" +
 	"instanceId\x12)\n" +
 	"\vprivate_key\x18\x03 \x01(\v2\b.key.KeyR\n" +
 	"privateKey\x125\n" +
 	"\vtrusted_cas\x18\x06 \x03(\v2\x0e.x509.X509CertB\x04\xc0\xa8\x1d R\n" +
-	"trustedCas\"\xc0\x03\n" +
+	"trustedCas\"\xc1\x03\n" +
 	"\x06Config\x12/\n" +
 	"\x10ping_interval_ms\x18\x04 \x01(\x05B\x05\x90\xa8\x1d\x88'R\x0epingIntervalMs\x129\n" +
-	"\x15rebalance_interval_ms\x18\x05 \x01(\x05B\x05\x90\xa8\x1d\x90NR\x13rebalanceIntervalMs\x120\n" +
-	"\x0elisten_address\x18\a \x01(\tB\t\xf8\xa6\x1d\x01\x90\xa7\x1d\x80\x02R\rlistenAddress\x12-\n" +
+	"\x15rebalance_interval_ms\x18\x05 \x01(\x05B\x05\x90\xa8\x1d\x90NR\x13rebalanceIntervalMs\x121\n" +
+	"\x0elisten_address\x18\a \x01(\v2\n" +
+	".host.HostR\rlistenAddress\x12-\n" +
 	"\btls_cert\x18\b \x01(\v2\x12.x509.X509CertPairR\atlsCert\x125\n" +
 	"\x10max_request_size\x18\t \x01(\x03B\v\xa8\xa7\x1d\x00\x90\xa8\x1d\x80\x80\x80\x05R\x0emaxRequestSize\x12@\n" +
 	"\x17request_timeout_seconds\x18\n" +
@@ -689,9 +691,10 @@ const file_libs_serviceconfig_proto_rawDesc = "" +
 	"\n" +
 	"LogMessage\x12)\n" +
 	"\x05level\x18\x01 \x01(\x0e2\r.logger.LevelB\x04\x98\xa7\x1d\x01R\x05level\x12#\n" +
-	"\amessage\x18\x02 \x01(\tB\t\x88\xa6\x1d\x01\x90\xa7\x1d\x80 R\amessage\"\x8d\x01\n" +
-	"\rClusterMember\x12%\n" +
-	"\bendpoint\x18\x01 \x01(\tB\t\xf8\xa6\x1d\x01\x90\xa7\x1d\x80\x02R\bendpoint\x129\n" +
+	"\amessage\x18\x02 \x01(\tB\t\x88\xa6\x1d\x01\x90\xa7\x1d\x80 R\amessage\"\x8e\x01\n" +
+	"\rClusterMember\x12&\n" +
+	"\bendpoint\x18\x01 \x01(\v2\n" +
+	".host.HostR\bendpoint\x129\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x1b.serviceconfig.MemberStatusB\x04\x98\xa7\x1d\x01R\x06status\x12\x1a\n" +
 	"\bpriority\x18\x03 \x01(\x05R\bpriority\"\xd7\x01\n" +
 	"\vClusterInfo\x12 \n" +
@@ -752,44 +755,48 @@ var file_libs_serviceconfig_proto_goTypes = []any{
 	(*PingResponse)(nil),        // 7: serviceconfig.PingResponse
 	(*ServiceConfigState)(nil),  // 8: serviceconfig.ServiceConfigState
 	(*MapEmpty)(nil),            // 9: serviceconfig.MapEmpty
-	(*key.Key)(nil),             // 10: key.Key
-	(*x509.X509Cert)(nil),       // 11: x509.X509Cert
-	(*x509.X509CertPair)(nil),   // 12: x509.X509CertPair
-	(*logger.LoggerConfig)(nil), // 13: logger.LoggerConfig
-	(logger.Level)(0),           // 14: logger.Level
-	(*emptypb.Empty)(nil),       // 15: google.protobuf.Empty
-	(*jwk.Jwks)(nil),            // 16: jwk.Jwks
+	(*host.Host)(nil),           // 10: host.Host
+	(*key.Key)(nil),             // 11: key.Key
+	(*x509.X509Cert)(nil),       // 12: x509.X509Cert
+	(*x509.X509CertPair)(nil),   // 13: x509.X509CertPair
+	(*logger.LoggerConfig)(nil), // 14: logger.LoggerConfig
+	(logger.Level)(0),           // 15: logger.Level
+	(*emptypb.Empty)(nil),       // 16: google.protobuf.Empty
+	(*jwk.Jwks)(nil),            // 17: jwk.Jwks
 }
 var file_libs_serviceconfig_proto_depIdxs = []int32{
-	10, // 0: serviceconfig.BootstrapConfig.private_key:type_name -> key.Key
-	11, // 1: serviceconfig.BootstrapConfig.trusted_cas:type_name -> x509.X509Cert
-	12, // 2: serviceconfig.Config.tls_cert:type_name -> x509.X509CertPair
-	13, // 3: serviceconfig.Config.logger:type_name -> logger.LoggerConfig
-	14, // 4: serviceconfig.LogMessage.level:type_name -> logger.Level
-	0,  // 5: serviceconfig.ClusterMember.status:type_name -> serviceconfig.MemberStatus
-	4,  // 6: serviceconfig.ClusterInfo.members:type_name -> serviceconfig.ClusterMember
-	5,  // 7: serviceconfig.ClusterState.clusters:type_name -> serviceconfig.ClusterInfo
-	0,  // 8: serviceconfig.PingResponse.status:type_name -> serviceconfig.MemberStatus
-	2,  // 9: serviceconfig.ServiceConfigState.config:type_name -> serviceconfig.Config
-	15, // 10: serviceconfig.BackendService.Log:input_type -> google.protobuf.Empty
-	15, // 11: serviceconfig.BackendService.Ping:input_type -> google.protobuf.Empty
-	15, // 12: serviceconfig.BackendService.Subscribe:input_type -> google.protobuf.Empty
-	15, // 13: serviceconfig.BackendService.WatchJwks:input_type -> google.protobuf.Empty
-	15, // 14: serviceconfig.ServiceConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
-	2,  // 15: serviceconfig.ServiceConfigStateBackendService.SetConfig:input_type -> serviceconfig.Config
-	15, // 16: serviceconfig.ServiceConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
-	3,  // 17: serviceconfig.BackendService.Log:output_type -> serviceconfig.LogMessage
-	7,  // 18: serviceconfig.BackendService.Ping:output_type -> serviceconfig.PingResponse
-	6,  // 19: serviceconfig.BackendService.Subscribe:output_type -> serviceconfig.ClusterState
-	16, // 20: serviceconfig.BackendService.WatchJwks:output_type -> jwk.Jwks
-	2,  // 21: serviceconfig.ServiceConfigStateBackendService.GetConfig:output_type -> serviceconfig.Config
-	2,  // 22: serviceconfig.ServiceConfigStateBackendService.SetConfig:output_type -> serviceconfig.Config
-	2,  // 23: serviceconfig.ServiceConfigStateBackendService.WatchConfig:output_type -> serviceconfig.Config
-	17, // [17:24] is the sub-list for method output_type
-	10, // [10:17] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	10, // 0: serviceconfig.BootstrapConfig.endpoints:type_name -> host.Host
+	11, // 1: serviceconfig.BootstrapConfig.private_key:type_name -> key.Key
+	12, // 2: serviceconfig.BootstrapConfig.trusted_cas:type_name -> x509.X509Cert
+	10, // 3: serviceconfig.Config.listen_address:type_name -> host.Host
+	13, // 4: serviceconfig.Config.tls_cert:type_name -> x509.X509CertPair
+	14, // 5: serviceconfig.Config.logger:type_name -> logger.LoggerConfig
+	15, // 6: serviceconfig.LogMessage.level:type_name -> logger.Level
+	10, // 7: serviceconfig.ClusterMember.endpoint:type_name -> host.Host
+	0,  // 8: serviceconfig.ClusterMember.status:type_name -> serviceconfig.MemberStatus
+	4,  // 9: serviceconfig.ClusterInfo.members:type_name -> serviceconfig.ClusterMember
+	5,  // 10: serviceconfig.ClusterState.clusters:type_name -> serviceconfig.ClusterInfo
+	0,  // 11: serviceconfig.PingResponse.status:type_name -> serviceconfig.MemberStatus
+	2,  // 12: serviceconfig.ServiceConfigState.config:type_name -> serviceconfig.Config
+	16, // 13: serviceconfig.BackendService.Log:input_type -> google.protobuf.Empty
+	16, // 14: serviceconfig.BackendService.Ping:input_type -> google.protobuf.Empty
+	16, // 15: serviceconfig.BackendService.Subscribe:input_type -> google.protobuf.Empty
+	16, // 16: serviceconfig.BackendService.WatchJwks:input_type -> google.protobuf.Empty
+	16, // 17: serviceconfig.ServiceConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
+	2,  // 18: serviceconfig.ServiceConfigStateBackendService.SetConfig:input_type -> serviceconfig.Config
+	16, // 19: serviceconfig.ServiceConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
+	3,  // 20: serviceconfig.BackendService.Log:output_type -> serviceconfig.LogMessage
+	7,  // 21: serviceconfig.BackendService.Ping:output_type -> serviceconfig.PingResponse
+	6,  // 22: serviceconfig.BackendService.Subscribe:output_type -> serviceconfig.ClusterState
+	17, // 23: serviceconfig.BackendService.WatchJwks:output_type -> jwk.Jwks
+	2,  // 24: serviceconfig.ServiceConfigStateBackendService.GetConfig:output_type -> serviceconfig.Config
+	2,  // 25: serviceconfig.ServiceConfigStateBackendService.SetConfig:output_type -> serviceconfig.Config
+	2,  // 26: serviceconfig.ServiceConfigStateBackendService.WatchConfig:output_type -> serviceconfig.Config
+	20, // [20:27] is the sub-list for method output_type
+	13, // [13:20] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_libs_serviceconfig_proto_init() }

@@ -25,13 +25,13 @@ import (
 	entitlement "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/entitlement"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
 	healthreport "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
+	host "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 	jwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
 	logger "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/logger"
 	outputformat "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/outputformat"
 	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
 	config_holder "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/config_holder"
 	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -43,13 +43,14 @@ import (
 // NodeModeValues returns all valid NodeMode values (excluding UNDEFINED)
 func NodeModeValues() []NodeMode {
 	return []NodeMode{
+		NodeMode_NODE_MODE_CORE,
 		NodeMode_NODE_MODE_EDGE,
 	}
 }
 
 // NodeModeStringValues returns all valid NodeMode names as strings
 func NodeModeStringValues() []string {
-	return []string{"edge"}
+	return []string{"core", "edge"}
 }
 
 // ParseNodeMode converts a string to a NodeMode enum value
@@ -59,11 +60,13 @@ func ParseNodeMode(s string) (NodeMode, error) {
 	normalized := strings.ReplaceAll(strings.ToLower(s), "_", "-")
 	switch normalized {
 	case "":
+		return NodeMode_NODE_MODE_CORE_EDGE, nil
+	case "core", "node-mode-core":
 		return NodeMode_NODE_MODE_CORE, nil
 	case "edge", "node-mode-edge":
 		return NodeMode_NODE_MODE_EDGE, nil
 	default:
-		return NodeMode_NODE_MODE_CORE, protoerrors.NewErrMissingInvalidData(nil, "invalid nodemode %s, expecting one of: %v", s, NodeModeStringValues())
+		return NodeMode_NODE_MODE_CORE_EDGE, protoerrors.NewErrMissingInvalidData(nil, "invalid nodemode %s, expecting one of: %v", s, NodeModeStringValues())
 	}
 }
 
@@ -92,6 +95,8 @@ func ParseNodeModes(s string) ([]NodeMode, error) {
 // NodeModeToString converts a NodeMode to its lowercase string representation
 func NodeModeToString(v NodeMode) string {
 	switch v {
+	case NodeMode_NODE_MODE_CORE:
+		return "core"
 	case NodeMode_NODE_MODE_EDGE:
 		return "edge"
 	default:
@@ -105,7 +110,7 @@ func NodeModeToString(v NodeMode) string {
 // - RFC-compliant JSON names
 func ParseNodeModeLiberal(s string) NodeMode {
 	if s == "" {
-		return NodeMode_NODE_MODE_CORE
+		return NodeMode_NODE_MODE_CORE_EDGE
 	}
 	// Try parsing as integer
 	if num, err := strconv.Atoi(s); err == nil {
@@ -116,16 +121,20 @@ func ParseNodeModeLiberal(s string) NodeMode {
 	normalized = strings.ReplaceAll(normalized, "_", "-")
 	normalized = strings.ReplaceAll(normalized, " ", "-")
 	switch normalized {
+	case "core", "node-mode-core":
+		return NodeMode_NODE_MODE_CORE
 	case "edge", "node-mode-edge":
 		return NodeMode_NODE_MODE_EDGE
 	default:
-		return NodeMode_NODE_MODE_CORE
+		return NodeMode_NODE_MODE_CORE_EDGE
 	}
 }
 
 // NodeModeToSpecName converts a NodeMode to its canonical protobuf spec name
 func NodeModeToSpecName(v NodeMode) string {
 	switch v {
+	case NodeMode_NODE_MODE_CORE_EDGE:
+		return "NODE_MODE_CORE_EDGE"
 	case NodeMode_NODE_MODE_CORE:
 		return "NODE_MODE_CORE"
 	case NodeMode_NODE_MODE_EDGE:
@@ -726,8 +735,8 @@ func LogicalOpToSpecName(v LogicalOp) string {
 // MARKER: JSON helper struct generated from serial.go
 type bootstrapconfigJSON struct {
 	ClusterName       string            `json:"cluster_name,omitempty"`
-	Listener          string            `json:"listener,omitempty"`
-	Members           []string          `json:"members,omitempty"`
+	Listener          json.RawMessage   `json:"listener,omitempty"`
+	Members           []json.RawMessage `json:"members,omitempty"`
 	NodeCount         int32             `json:"node_count,omitempty"`
 	Secret            string            `json:"secret,omitempty"`
 	PartitionCount    int32             `json:"partition_count,omitempty"`
@@ -752,9 +761,28 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := bootstrapconfigJSON{
-		ClusterName:    v.ClusterName,
-		Listener:       v.Listener,
-		Members:        v.Members,
+		ClusterName: v.ClusterName,
+		Listener: func() json.RawMessage {
+			if v.Listener == nil {
+				return nil
+			}
+			data, _ := host.HostToJSON(v.Listener)
+			return data
+		}(),
+		Members: func() []json.RawMessage {
+			if len(v.Members) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.Members))
+			for _, item := range v.Members {
+				if item != nil {
+					if data, err := host.HostToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
 		NodeCount:      v.NodeCount,
 		Secret:         v.Secret,
 		PartitionCount: v.PartitionCount,
@@ -871,8 +899,25 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 	// Build result with parsed enums
 	result := &BootstrapConfig{}
 	result.ClusterName = raw.ClusterName
-	result.Listener = raw.Listener
-	result.Members = raw.Members
+	// Parse message field: Listener
+	if len(raw.Listener) > 0 {
+		parsed, err := host.HostFromJSON(raw.Listener)
+		if err == nil {
+			result.Listener = parsed
+		}
+	}
+	// Parse repeated message field: Members
+	if len(raw.Members) > 0 {
+		result.Members = make([]*host.Host, 0, len(raw.Members))
+		for _, itemJSON := range raw.Members {
+			if len(itemJSON) > 0 {
+				parsed, err := host.HostFromJSON(itemJSON)
+				if err == nil {
+					result.Members = append(result.Members, parsed)
+				}
+			}
+		}
+	}
 	result.NodeCount = raw.NodeCount
 	result.Secret = raw.Secret
 	result.PartitionCount = raw.PartitionCount
@@ -28631,9 +28676,10 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 	}
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_CLUSTER_NAME"] = v.ClusterName
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_LISTENER"] = v.Listener
-	if len(v.Members) > 0 {
-		result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MEMBERS"] = strings.Join(v.Members, ",")
+	if v.Listener != nil {
+		for k, val := range host.HostToEnvVar(v.Listener) {
+			result[k] = val
+		}
 	}
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_NODE_COUNT"] = strconv.FormatInt(int64(v.NodeCount), 10)
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_SECRET"] = v.Secret
@@ -28673,11 +28719,10 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_CLUSTER_NAME"]; ok && val != "" {
 		result.ClusterName = val
 	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_LISTENER"]; ok && val != "" {
-		result.Listener = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MEMBERS"]; ok && val != "" {
-		result.Members = strings.Split(val, ",")
+	if sub, err := host.HostFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Listener = sub
 	}
 	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_NODE_COUNT"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 32)
@@ -33589,29 +33634,13 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 	}
 
 	// Validate Listener (assert_required)
-	if m.Listener == "" {
+	if m.Listener == nil {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Listener is required")
-	}
-
-	// Validate Listener (assert_listen_addr)
-	if m.Listener != "" {
-		if err := utils.ValidateAssertListenAddr(m.Listener); err != nil {
-			return protoerrors.NewErrMissingInvalidData(err, "field Listener listen address validation failed")
-		}
 	}
 
 	// Validate Members (assert_required)
 	if len(m.Members) == 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Members is required")
-	}
-
-	// Validate Members (assert_listen_addr)
-	for _, v := range m.Members {
-		if v != "" {
-			if err := utils.ValidateAssertListenAddr(v); err != nil {
-				return protoerrors.NewErrMissingInvalidData(err, "field Members listen address validation failed")
-			}
-		}
 	}
 
 	// Validate Members (assert_max_items: 32)
@@ -33640,11 +33669,6 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 	// Validate ClusterName (default max size: 32768 bytes)
 	if len(m.ClusterName) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClusterName exceeds max size of 32768 bytes, got: %d", len(m.ClusterName))
-	}
-
-	// Validate Listener (default max size: 32768 bytes)
-	if len(m.Listener) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Listener exceeds max size of 32768 bytes, got: %d", len(m.Listener))
 	}
 
 	// Validate Secret (default max size: 32768 bytes)
@@ -36296,7 +36320,6 @@ const (
 // ============================================================
 const (
 	MaxSizeBootstrapconfigClusterName          int = 32768
-	MaxSizeBootstrapconfigListener             int = 32768
 	MaxItemsBootstrapconfigMembers             int = 32
 	MaxSizeBootstrapconfigSecret               int = 32768
 	MaxSizeBootstrapconfigPersistenceDir       int = 32768
@@ -36627,7 +36650,7 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	if dst.ClusterName == "" {
 		dst.ClusterName = src.ClusterName
 	}
-	if dst.Listener == "" {
+	if dst.Listener == nil {
 		dst.Listener = src.Listener
 	}
 	if len(dst.Members) == 0 {
@@ -38883,7 +38906,7 @@ func ConfigLlmTypeDescriptor() string {
             "type": "message",
             "message": {
               "name": "Config",
-              "package": "mcp_assist",
+              "package": "mcp",
               "description": "Config is the service-level configuration for the MCP assist service.",
               "fields": [
                 {
@@ -38904,8 +38927,8 @@ func ConfigLlmTypeDescriptor() string {
                   "description": "max_retries is the maximum number of validation retry attempts\n before giving up on constructing the type. Default: 3.",
                   "default": 3,
                   "constraints": [
-                    "must be \u003c= 10",
-                    "must be \u003e= 1"
+                    "must be \u003e= 1",
+                    "must be \u003c= 10"
                   ]
                 },
                 {
@@ -38916,6 +38939,77 @@ func ConfigLlmTypeDescriptor() string {
                   "constraints": [
                     "duration constraint: DURATION_TYPE_POSITIVE"
                   ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "dgraph_config",
+            "type": "message",
+            "message": {
+              "name": "Config",
+              "package": "dgraph",
+              "description": "Config is the service-level configuration for dgraph.",
+              "fields": [
+                {
+                  "name": "mode",
+                  "type": "enum",
+                  "description": "mode determines whether this node runs as Zero or Alpha.",
+                  "required": true,
+                  "enum_values": [
+                    {
+                      "name": "NODE_MODE_ZERO",
+                      "number": 1,
+                      "description": "Zero: cluster management, shard assignment, leader election."
+                    },
+                    {
+                      "name": "NODE_MODE_ALPHA",
+                      "number": 2,
+                      "description": "Alpha: data storage, serves GraphQL/DQL queries."
+                    }
+                  ]
+                },
+                {
+                  "name": "peers",
+                  "type": "message",
+                  "description": "peers is the list of other Zero endpoints for Raft peer discovery.\n Used by Zero nodes.",
+                  "repeated": true,
+                  "message": {
+                    "name": "Host",
+                    "package": "host",
+                    "description": "Host identifies a network endpoint by hostname/IP and port.\n The host field accepts either an FQDN or an IP address (v4/v6).",
+                    "fields": [
+                      {
+                        "name": "host",
+                        "type": "string",
+                        "description": "Hostname or IP address (e.g. \"api.example.com\" or \"10.0.0.1\").",
+                        "required": true,
+                        "constraints": [
+                          "must be a valid hostname or IP address"
+                        ]
+                      },
+                      {
+                        "name": "port",
+                        "type": "int32",
+                        "description": "TCP port number (1-65535).",
+                        "constraints": [
+                          "must be a valid network port (1-65535)"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "replicas",
+                  "type": "int32",
+                  "description": "replicas is the number of Alpha replicas per data shard group.\n Used by Zero nodes.",
+                  "default": 1
+                },
+                {
+                  "name": "zeros",
+                  "type": "message (recursive reference: host.Host)",
+                  "description": "zeros is the list of Zero endpoints for Alpha registration.\n Used by Alpha nodes.",
+                  "repeated": true
                 }
               ]
             }

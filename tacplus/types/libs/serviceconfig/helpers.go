@@ -21,10 +21,10 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	host "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 	key "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/key"
 	logger "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/logger"
 	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
-	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -171,7 +171,7 @@ func MemberStatusToSpecName(v MemberStatus) string {
 // BootstrapConfigJSON represents BootstrapConfig in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type bootstrapconfigJSON struct {
-	Endpoints  []string          `json:"endpoints,omitempty"`
+	Endpoints  []json.RawMessage `json:"endpoints,omitempty"`
 	InstanceId string            `json:"instance_id,omitempty"`
 	PrivateKey json.RawMessage   `json:"private_key,omitempty"`
 	TrustedCas []json.RawMessage `json:"trusted_cas,omitempty"`
@@ -185,7 +185,20 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := bootstrapconfigJSON{
-		Endpoints:  v.Endpoints,
+		Endpoints: func() []json.RawMessage {
+			if len(v.Endpoints) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.Endpoints))
+			for _, item := range v.Endpoints {
+				if item != nil {
+					if data, err := host.HostToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
 		InstanceId: v.InstanceId,
 		PrivateKey: func() json.RawMessage {
 			if v.PrivateKey == nil {
@@ -272,7 +285,18 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 	}
 	// Build result with parsed enums
 	result := &BootstrapConfig{}
-	result.Endpoints = raw.Endpoints
+	// Parse repeated message field: Endpoints
+	if len(raw.Endpoints) > 0 {
+		result.Endpoints = make([]*host.Host, 0, len(raw.Endpoints))
+		for _, itemJSON := range raw.Endpoints {
+			if len(itemJSON) > 0 {
+				parsed, err := host.HostFromJSON(itemJSON)
+				if err == nil {
+					result.Endpoints = append(result.Endpoints, parsed)
+				}
+			}
+		}
+	}
 	result.InstanceId = raw.InstanceId
 	// Parse message field: PrivateKey
 	if len(raw.PrivateKey) > 0 {
@@ -339,7 +363,7 @@ func BootstrapConfigToTOML(v *BootstrapConfig) ([]byte, error) {
 type configJSON struct {
 	PingIntervalMs         int32           `json:"ping_interval_ms,omitempty"`
 	RebalanceIntervalMs    int32           `json:"rebalance_interval_ms,omitempty"`
-	ListenAddress          string          `json:"listen_address,omitempty"`
+	ListenAddress          json.RawMessage `json:"listen_address,omitempty"`
 	TlsCert                json.RawMessage `json:"tls_cert,omitempty"`
 	MaxRequestSize         int64           `json:"max_request_size,omitempty"`
 	RequestTimeoutSeconds  int64           `json:"request_timeout_seconds,omitempty"`
@@ -357,7 +381,13 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 	helper := configJSON{
 		PingIntervalMs:      v.PingIntervalMs,
 		RebalanceIntervalMs: v.RebalanceIntervalMs,
-		ListenAddress:       v.ListenAddress,
+		ListenAddress: func() json.RawMessage {
+			if v.ListenAddress == nil {
+				return nil
+			}
+			data, _ := host.HostToJSON(v.ListenAddress)
+			return data
+		}(),
 		TlsCert: func() json.RawMessage {
 			if v.TlsCert == nil {
 				return nil
@@ -441,7 +471,13 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 	result := &Config{}
 	result.PingIntervalMs = raw.PingIntervalMs
 	result.RebalanceIntervalMs = raw.RebalanceIntervalMs
-	result.ListenAddress = raw.ListenAddress
+	// Parse message field: ListenAddress
+	if len(raw.ListenAddress) > 0 {
+		parsed, err := host.HostFromJSON(raw.ListenAddress)
+		if err == nil {
+			result.ListenAddress = parsed
+		}
+	}
 	// Parse message field: TlsCert
 	if len(raw.TlsCert) > 0 {
 		parsed, err := x509.X509CertPairFromJSON(raw.TlsCert)
@@ -632,9 +668,9 @@ func LogMessageToTOML(v *LogMessage) ([]byte, error) {
 // ClusterMemberJSON represents ClusterMember in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type clustermemberJSON struct {
-	Endpoint string `json:"endpoint,omitempty"`
-	Status   string `json:"status,omitempty"`
-	Priority int32  `json:"priority,omitempty"`
+	Endpoint json.RawMessage `json:"endpoint,omitempty"`
+	Status   string          `json:"status,omitempty"`
+	Priority int32           `json:"priority,omitempty"`
 }
 
 // ClusterMemberToJSON converts ClusterMember to JSON bytes.
@@ -645,7 +681,13 @@ func ClusterMemberToJSON(v *ClusterMember) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := clustermemberJSON{
-		Endpoint: v.Endpoint,
+		Endpoint: func() json.RawMessage {
+			if v.Endpoint == nil {
+				return nil
+			}
+			data, _ := host.HostToJSON(v.Endpoint)
+			return data
+		}(),
 		Status:   MemberStatusToString(v.Status),
 		Priority: v.Priority,
 	}
@@ -712,7 +754,13 @@ func ClusterMemberFromJSON(data []byte) (*ClusterMember, error) {
 	}
 	// Build result with parsed enums
 	result := &ClusterMember{}
-	result.Endpoint = raw.Endpoint
+	// Parse message field: Endpoint
+	if len(raw.Endpoint) > 0 {
+		parsed, err := host.HostFromJSON(raw.Endpoint)
+		if err == nil {
+			result.Endpoint = parsed
+		}
+	}
 	// Parse enum field: Status
 	if raw.Status != "" {
 		if parsed, err := ParseMemberStatus(raw.Status); err == nil {
@@ -1449,9 +1497,6 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	if len(v.Endpoints) > 0 {
-		result["PROTO_LIBS_SERVICECONFIG_BOOTSTRAP_CONFIG_ENDPOINTS"] = strings.Join(v.Endpoints, ",")
-	}
 	result["PROTO_LIBS_SERVICECONFIG_BOOTSTRAP_CONFIG_INSTANCE_ID"] = v.InstanceId
 	if v.PrivateKey != nil {
 		for k, val := range key.KeyToEnvVar(v.PrivateKey) {
@@ -1464,9 +1509,6 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 // BootstrapConfigFromEnvVar creates BootstrapConfig from environment variable key-value pairs.
 func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) {
 	result := &BootstrapConfig{}
-	if val, ok := env["PROTO_LIBS_SERVICECONFIG_BOOTSTRAP_CONFIG_ENDPOINTS"]; ok && val != "" {
-		result.Endpoints = strings.Split(val, ",")
-	}
 	if val, ok := env["PROTO_LIBS_SERVICECONFIG_BOOTSTRAP_CONFIG_INSTANCE_ID"]; ok && val != "" {
 		result.InstanceId = val
 	}
@@ -1486,7 +1528,11 @@ func ConfigToEnvVar(v *Config) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_LIBS_SERVICECONFIG_CONFIG_PING_INTERVAL_MS"] = strconv.FormatInt(int64(v.PingIntervalMs), 10)
 	result["PROTO_LIBS_SERVICECONFIG_CONFIG_REBALANCE_INTERVAL_MS"] = strconv.FormatInt(int64(v.RebalanceIntervalMs), 10)
-	result["PROTO_LIBS_SERVICECONFIG_CONFIG_LISTEN_ADDRESS"] = v.ListenAddress
+	if v.ListenAddress != nil {
+		for k, val := range host.HostToEnvVar(v.ListenAddress) {
+			result[k] = val
+		}
+	}
 	if v.TlsCert != nil {
 		for k, val := range x509.X509CertPairToEnvVar(v.TlsCert) {
 			result[k] = val
@@ -1520,8 +1566,10 @@ func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 		}
 		result.RebalanceIntervalMs = int32(parsed)
 	}
-	if val, ok := env["PROTO_LIBS_SERVICECONFIG_CONFIG_LISTEN_ADDRESS"]; ok && val != "" {
-		result.ListenAddress = val
+	if sub, err := host.HostFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.ListenAddress = sub
 	}
 	if sub, err := x509.X509CertPairFromEnvVar(env); err != nil {
 		return nil, err
@@ -1590,7 +1638,11 @@ func ClusterMemberToEnvVar(v *ClusterMember) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_LIBS_SERVICECONFIG_CLUSTER_MEMBER_ENDPOINT"] = v.Endpoint
+	if v.Endpoint != nil {
+		for k, val := range host.HostToEnvVar(v.Endpoint) {
+			result[k] = val
+		}
+	}
 	result["PROTO_LIBS_SERVICECONFIG_CLUSTER_MEMBER_STATUS"] = MemberStatusToString(v.Status)
 	result["PROTO_LIBS_SERVICECONFIG_CLUSTER_MEMBER_PRIORITY"] = strconv.FormatInt(int64(v.Priority), 10)
 	return result
@@ -1599,8 +1651,10 @@ func ClusterMemberToEnvVar(v *ClusterMember) map[string]string {
 // ClusterMemberFromEnvVar creates ClusterMember from environment variable key-value pairs.
 func ClusterMemberFromEnvVar(env map[string]string) (*ClusterMember, error) {
 	result := &ClusterMember{}
-	if val, ok := env["PROTO_LIBS_SERVICECONFIG_CLUSTER_MEMBER_ENDPOINT"]; ok && val != "" {
-		result.Endpoint = val
+	if sub, err := host.HostFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Endpoint = sub
 	}
 	if val, ok := env["PROTO_LIBS_SERVICECONFIG_CLUSTER_MEMBER_STATUS"]; ok && val != "" {
 		parsed, err := ParseMemberStatus(val)
@@ -1738,15 +1792,6 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 		return nil
 	}
 
-	// Validate Endpoints (assert_listen_addr)
-	for _, v := range m.Endpoints {
-		if v != "" {
-			if err := utils.ValidateAssertListenAddr(v); err != nil {
-				return protoerrors.NewErrMissingInvalidData(err, "field Endpoints listen address validation failed")
-			}
-		}
-	}
-
 	// Validate Endpoints (assert_max_items: 32)
 	if len(m.Endpoints) > 32 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Endpoints exceeds max items of 32, got: %d", len(m.Endpoints))
@@ -1777,18 +1822,6 @@ func ValidateConfig(m *Config) error {
 		return nil
 	}
 
-	// Validate ListenAddress (assert_listen_addr)
-	if m.ListenAddress != "" {
-		if err := utils.ValidateAssertListenAddr(m.ListenAddress); err != nil {
-			return protoerrors.NewErrMissingInvalidData(err, "field ListenAddress listen address validation failed")
-		}
-	}
-
-	// Validate ListenAddress (assert_max_length: 256)
-	if len(m.ListenAddress) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ListenAddress must be at most 256 characters, got: %d", len(m.ListenAddress))
-	}
-
 	// Validate MaxRequestSize (assert_gt: 0)
 	if m.MaxRequestSize <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRequestSize must be > 0, got: %v", m.MaxRequestSize)
@@ -1803,11 +1836,6 @@ func ValidateConfig(m *Config) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ShutdownTimeoutSeconds must be positive (> 0), got: %d", m.ShutdownTimeoutSeconds)
 	}
 
-	// Validate ListenAddress (default max size: 32768 bytes)
-	if len(m.ListenAddress) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ListenAddress exceeds max size of 32768 bytes, got: %d", len(m.ListenAddress))
-	}
-
 	return nil
 }
 
@@ -1818,14 +1846,14 @@ func ValidateLogMessage(m *LogMessage) error {
 		return nil
 	}
 
-	// Validate Message (assert_max_length: 4096)
-	if len(m.Message) > 4096 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Message must be at most 4096 characters, got: %d", len(m.Message))
-	}
-
 	// Validate Message (assert_required)
 	if m.Message == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Message is required")
+	}
+
+	// Validate Message (assert_max_length: 4096)
+	if len(m.Message) > 4096 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Message must be at most 4096 characters, got: %d", len(m.Message))
 	}
 
 	// Validate Message (default max size: 32768 bytes)
@@ -1841,23 +1869,6 @@ func ValidateLogMessage(m *LogMessage) error {
 func ValidateClusterMember(m *ClusterMember) error {
 	if m == nil {
 		return nil
-	}
-
-	// Validate Endpoint (assert_listen_addr)
-	if m.Endpoint != "" {
-		if err := utils.ValidateAssertListenAddr(m.Endpoint); err != nil {
-			return protoerrors.NewErrMissingInvalidData(err, "field Endpoint listen address validation failed")
-		}
-	}
-
-	// Validate Endpoint (assert_max_length: 256)
-	if len(m.Endpoint) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Endpoint must be at most 256 characters, got: %d", len(m.Endpoint))
-	}
-
-	// Validate Endpoint (default max size: 32768 bytes)
-	if len(m.Endpoint) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Endpoint exceeds max size of 32768 bytes, got: %d", len(m.Endpoint))
 	}
 
 	return nil
@@ -2000,9 +2011,7 @@ const (
 	MaxItemsBootstrapconfigEndpoints  int = 32
 	MaxSizeBootstrapconfigInstanceId  int = 32768
 	MaxItemsBootstrapconfigTrustedCas int = 32
-	MaxSizeConfigListenAddress        int = 32768
 	MaxSizeLogmessageMessage          int = 32768
-	MaxSizeClustermemberEndpoint      int = 32768
 	MaxSizeClusterinfoOrgId           int = 32768
 	MaxSizeClusterinfoRegion          int = 32768
 	MaxSizeClusterinfoZone            int = 32768
@@ -2107,7 +2116,7 @@ func MergeConfig(dst, src *Config) {
 	if dst.RebalanceIntervalMs == 0 {
 		dst.RebalanceIntervalMs = src.RebalanceIntervalMs
 	}
-	if dst.ListenAddress == "" {
+	if dst.ListenAddress == nil {
 		dst.ListenAddress = src.ListenAddress
 	}
 	if dst.TlsCert == nil {
@@ -2145,7 +2154,7 @@ func MergeLogMessage(dst, src *LogMessage) {
 // ============================================================
 // MergeClusterMember fills zero-valued fields in dst from src.
 func MergeClusterMember(dst, src *ClusterMember) {
-	if dst.Endpoint == "" {
+	if dst.Endpoint == nil {
 		dst.Endpoint = src.Endpoint
 	}
 	if dst.Status == 0 {

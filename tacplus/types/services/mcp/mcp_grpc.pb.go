@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/mcp_assist.proto
+// Source: services/mcp.proto
 
-package mcp_assist
+package mcp
 
 import (
 	context "context"
@@ -27,7 +27,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	McpAssistService_Assist_FullMethodName = "/mcp_assist.McpAssistService/Assist"
+	McpAssistService_Assist_FullMethodName = "/mcp.McpAssistService/Assist"
 )
 
 // McpAssistServiceClient is the client API for McpAssistService service.
@@ -124,7 +124,7 @@ func _McpAssistService_Assist_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var McpAssistService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "mcp_assist.McpAssistService",
+	ServiceName: "mcp.McpAssistService",
 	HandlerType: (*McpAssistServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -133,13 +133,13 @@ var McpAssistService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "services/mcp_assist.proto",
+	Metadata: "services/mcp.proto",
 }
 
 const (
-	McpConfigStateBackendService_GetConfig_FullMethodName   = "/mcp_assist.McpConfigStateBackendService/GetConfig"
-	McpConfigStateBackendService_SetConfig_FullMethodName   = "/mcp_assist.McpConfigStateBackendService/SetConfig"
-	McpConfigStateBackendService_WatchConfig_FullMethodName = "/mcp_assist.McpConfigStateBackendService/WatchConfig"
+	McpConfigStateBackendService_GetConfig_FullMethodName   = "/mcp.McpConfigStateBackendService/GetConfig"
+	McpConfigStateBackendService_SetConfig_FullMethodName   = "/mcp.McpConfigStateBackendService/SetConfig"
+	McpConfigStateBackendService_WatchConfig_FullMethodName = "/mcp.McpConfigStateBackendService/WatchConfig"
 )
 
 // McpConfigStateBackendServiceClient is the client API for McpConfigStateBackendService service.
@@ -299,7 +299,7 @@ type McpConfigStateBackendService_WatchConfigServer = grpc.ServerStreamingServer
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var McpConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "mcp_assist.McpConfigStateBackendService",
+	ServiceName: "mcp.McpConfigStateBackendService",
 	HandlerType: (*McpConfigStateBackendServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -318,5 +318,5 @@ var McpConfigStateBackendService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "services/mcp_assist.proto",
+	Metadata: "services/mcp.proto",
 }

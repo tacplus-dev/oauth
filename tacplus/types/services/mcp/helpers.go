@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/mcp_assist.proto
+// Source: services/mcp.proto
 
-package mcp_assist
+package mcp
 
 import (
 	"bytes"
@@ -1254,30 +1254,30 @@ func ConfigToEnvVar(v *Config) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_ANTHROPIC_API_KEY"] = v.AnthropicApiKey
-	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_MODEL"] = v.Model
-	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_MAX_RETRIES"] = strconv.FormatInt(int64(v.MaxRetries), 10)
-	result["PROTO_SERVICES_MCP_ASSIST_CONFIG_SESSION_TTL_SECONDS"] = strconv.FormatInt(v.SessionTtlSeconds, 10)
+	result["PROTO_SERVICES_MCP_CONFIG_ANTHROPIC_API_KEY"] = v.AnthropicApiKey
+	result["PROTO_SERVICES_MCP_CONFIG_MODEL"] = v.Model
+	result["PROTO_SERVICES_MCP_CONFIG_MAX_RETRIES"] = strconv.FormatInt(int64(v.MaxRetries), 10)
+	result["PROTO_SERVICES_MCP_CONFIG_SESSION_TTL_SECONDS"] = strconv.FormatInt(v.SessionTtlSeconds, 10)
 	return result
 }
 
 // ConfigFromEnvVar creates Config from environment variable key-value pairs.
 func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 	result := &Config{}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_ANTHROPIC_API_KEY"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_CONFIG_ANTHROPIC_API_KEY"]; ok && val != "" {
 		result.AnthropicApiKey = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_MODEL"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_CONFIG_MODEL"]; ok && val != "" {
 		result.Model = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_MAX_RETRIES"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_CONFIG_MAX_RETRIES"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, err
 		}
 		result.MaxRetries = int32(parsed)
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_CONFIG_SESSION_TTL_SECONDS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_CONFIG_SESSION_TTL_SECONDS"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, err
@@ -1293,9 +1293,9 @@ func ToolAuthorizationToEnvVar(v *ToolAuthorization) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_MCP_ASSIST_TOOL_AUTHORIZATION_SERVICE"] = v.Service
+	result["PROTO_SERVICES_MCP_TOOL_AUTHORIZATION_SERVICE"] = v.Service
 	if len(v.Methods) > 0 {
-		result["PROTO_SERVICES_MCP_ASSIST_TOOL_AUTHORIZATION_METHODS"] = strings.Join(v.Methods, ",")
+		result["PROTO_SERVICES_MCP_TOOL_AUTHORIZATION_METHODS"] = strings.Join(v.Methods, ",")
 	}
 	return result
 }
@@ -1303,10 +1303,10 @@ func ToolAuthorizationToEnvVar(v *ToolAuthorization) map[string]string {
 // ToolAuthorizationFromEnvVar creates ToolAuthorization from environment variable key-value pairs.
 func ToolAuthorizationFromEnvVar(env map[string]string) (*ToolAuthorization, error) {
 	result := &ToolAuthorization{}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_TOOL_AUTHORIZATION_SERVICE"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_TOOL_AUTHORIZATION_SERVICE"]; ok && val != "" {
 		result.Service = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_TOOL_AUTHORIZATION_METHODS"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_TOOL_AUTHORIZATION_METHODS"]; ok && val != "" {
 		result.Methods = strings.Split(val, ",")
 	}
 	return result, nil
@@ -1318,18 +1318,18 @@ func AgentTokenToEnvVar(v *AgentToken) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_MCP_ASSIST_AGENT_TOKEN_SERVICE"] = v.Service
-	result["PROTO_SERVICES_MCP_ASSIST_AGENT_TOKEN_TOKEN"] = v.Token
+	result["PROTO_SERVICES_MCP_AGENT_TOKEN_SERVICE"] = v.Service
+	result["PROTO_SERVICES_MCP_AGENT_TOKEN_TOKEN"] = v.Token
 	return result
 }
 
 // AgentTokenFromEnvVar creates AgentToken from environment variable key-value pairs.
 func AgentTokenFromEnvVar(env map[string]string) (*AgentToken, error) {
 	result := &AgentToken{}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_AGENT_TOKEN_SERVICE"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_AGENT_TOKEN_SERVICE"]; ok && val != "" {
 		result.Service = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_AGENT_TOKEN_TOKEN"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_AGENT_TOKEN_TOKEN"]; ok && val != "" {
 		result.Token = val
 	}
 	return result, nil
@@ -1341,14 +1341,14 @@ func AssistToolRequestToEnvVar(v *AssistToolRequest) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_TOOL_REQUEST_JUSTIFICATION"] = v.Justification
+	result["PROTO_SERVICES_MCP_ASSIST_TOOL_REQUEST_JUSTIFICATION"] = v.Justification
 	return result
 }
 
 // AssistToolRequestFromEnvVar creates AssistToolRequest from environment variable key-value pairs.
 func AssistToolRequestFromEnvVar(env map[string]string) (*AssistToolRequest, error) {
 	result := &AssistToolRequest{}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_TOOL_REQUEST_JUSTIFICATION"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_TOOL_REQUEST_JUSTIFICATION"]; ok && val != "" {
 		result.Justification = val
 	}
 	return result, nil
@@ -1360,22 +1360,22 @@ func AssistRequestToEnvVar(v *AssistRequest) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_SESSION_ID"] = v.SessionId
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_TARGET_TYPE"] = v.TargetType
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_PROMPT"] = v.Prompt
+	result["PROTO_SERVICES_MCP_ASSIST_REQUEST_SESSION_ID"] = v.SessionId
+	result["PROTO_SERVICES_MCP_ASSIST_REQUEST_TARGET_TYPE"] = v.TargetType
+	result["PROTO_SERVICES_MCP_ASSIST_REQUEST_PROMPT"] = v.Prompt
 	return result
 }
 
 // AssistRequestFromEnvVar creates AssistRequest from environment variable key-value pairs.
 func AssistRequestFromEnvVar(env map[string]string) (*AssistRequest, error) {
 	result := &AssistRequest{}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_SESSION_ID"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_REQUEST_SESSION_ID"]; ok && val != "" {
 		result.SessionId = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_TARGET_TYPE"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_REQUEST_TARGET_TYPE"]; ok && val != "" {
 		result.TargetType = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_REQUEST_PROMPT"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_REQUEST_PROMPT"]; ok && val != "" {
 		result.Prompt = val
 	}
 	return result, nil
@@ -1387,25 +1387,25 @@ func AssistResponseToEnvVar(v *AssistResponse) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_SESSION_ID"] = v.SessionId
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESPONSE_TYPE"] = AssistResponseTypeToString(v.ResponseType)
+	result["PROTO_SERVICES_MCP_ASSIST_RESPONSE_SESSION_ID"] = v.SessionId
+	result["PROTO_SERVICES_MCP_ASSIST_RESPONSE_RESPONSE_TYPE"] = AssistResponseTypeToString(v.ResponseType)
 	if v.ToolRequest != nil {
 		for k, val := range AssistToolRequestToEnvVar(v.ToolRequest) {
 			result[k] = val
 		}
 	}
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_TYPE"] = v.ResultType
-	result["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_JSON"] = v.ResultJson
+	result["PROTO_SERVICES_MCP_ASSIST_RESPONSE_RESULT_TYPE"] = v.ResultType
+	result["PROTO_SERVICES_MCP_ASSIST_RESPONSE_RESULT_JSON"] = v.ResultJson
 	return result
 }
 
 // AssistResponseFromEnvVar creates AssistResponse from environment variable key-value pairs.
 func AssistResponseFromEnvVar(env map[string]string) (*AssistResponse, error) {
 	result := &AssistResponse{}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_SESSION_ID"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_RESPONSE_SESSION_ID"]; ok && val != "" {
 		result.SessionId = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESPONSE_TYPE"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_RESPONSE_RESPONSE_TYPE"]; ok && val != "" {
 		parsed, err := ParseAssistResponseType(val)
 		if err != nil {
 			return nil, err
@@ -1417,10 +1417,10 @@ func AssistResponseFromEnvVar(env map[string]string) (*AssistResponse, error) {
 	} else if sub != nil {
 		result.ToolRequest = sub
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_TYPE"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_RESPONSE_RESULT_TYPE"]; ok && val != "" {
 		result.ResultType = val
 	}
-	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_ASSIST_RESPONSE_RESULT_JSON"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_MCP_ASSIST_RESPONSE_RESULT_JSON"]; ok && val != "" {
 		result.ResultJson = val
 	}
 	return result, nil

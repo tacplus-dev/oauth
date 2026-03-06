@@ -15,9 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"net"
-
 	healthreport_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
+	host_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 	healthstate_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 
 	"go.uber.org/zap"
@@ -160,7 +159,7 @@ func (sm *ServiceManager) Run(h Handler) error {
 	// Start health reporter — publishes ServiceInstanceHealth so
 	// the gateway can discover this instance.
 	healthStub := sm.bc.Services().ServiceHealthState().BackendStub()
-	metrics := buildMetricsProvider(runtimeCfg.ListenAddress)
+	metrics := buildMetricsProvider(runtimeCfg.GetListenAddress())
 	hr := healthreporter.New(&healthPublisherAdapter{stub: healthStub}, metrics, zap.L())
 	hr.SetStatus(healthreporter.StatusHealthy, "ready")
 	healthCtx, healthCancel := context.WithCancel(sm.ctx)
@@ -215,14 +214,12 @@ func (sm *ServiceManager) Run(h Handler) error {
 
 // buildMetricsProvider creates a minimal MetricsProvider that reports
 // the gRPC endpoint derived from the listen address and OS hostname.
-func buildMetricsProvider(listenAddr string) healthreporter.MetricsProvider {
-	if listenAddr == "" {
-		listenAddr = ":8443"
-	}
-	host, portStr, err := net.SplitHostPort(listenAddr)
-	if err != nil {
-		zap.L().Warn("Failed to parse listen address for health reporter", zap.String("addr", listenAddr), zap.Error(err))
-		return nil
+func buildMetricsProvider(listenAddr *host_pb.Host) healthreporter.MetricsProvider {
+	host := ""
+	port := int32(8443)
+	if listenAddr != nil {
+		host = listenAddr.Host
+		port = listenAddr.Port
 	}
 	// If host is empty or 0.0.0.0, use OS hostname (container name in Docker).
 	if host == "" || host == "0.0.0.0" || host == "::" {
@@ -233,24 +230,24 @@ func buildMetricsProvider(listenAddr string) healthreporter.MetricsProvider {
 		}
 		host = hostname
 	}
-	return &staticMetrics{grpcEndpoint: net.JoinHostPort(host, portStr)}
+	return &staticMetrics{grpcEndpoint: &host_pb.Host{Host: host, Port: port}}
 }
 
 // staticMetrics is a minimal MetricsProvider that only reports the gRPC endpoint.
 type staticMetrics struct {
-	grpcEndpoint string
+	grpcEndpoint *host_pb.Host
 }
 
-func (m *staticMetrics) GrpcEndpoint() string      { return m.grpcEndpoint }
-func (m *staticMetrics) HttpEndpoint() string      { return "" }
-func (m *staticMetrics) ActiveRequests() int32     { return 0 }
-func (m *staticMetrics) MaxConcurrent() int32      { return 0 }
-func (m *staticMetrics) RequestRate() float64      { return 0 }
-func (m *staticMetrics) P50LatencyUs() int64       { return 0 }
-func (m *staticMetrics) P99LatencyUs() int64       { return 0 }
-func (m *staticMetrics) ErrorRate() float64        { return 0 }
-func (m *staticMetrics) Version() string           { return "" }
-func (m *staticMetrics) Labels() map[string]string { return nil }
+func (m *staticMetrics) GrpcEndpoint() *host_pb.Host { return m.grpcEndpoint }
+func (m *staticMetrics) HttpEndpoint() *host_pb.Host { return nil }
+func (m *staticMetrics) ActiveRequests() int32       { return 0 }
+func (m *staticMetrics) MaxConcurrent() int32        { return 0 }
+func (m *staticMetrics) RequestRate() float64        { return 0 }
+func (m *staticMetrics) P50LatencyUs() int64         { return 0 }
+func (m *staticMetrics) P99LatencyUs() int64         { return 0 }
+func (m *staticMetrics) ErrorRate() float64          { return 0 }
+func (m *staticMetrics) Version() string             { return "" }
+func (m *staticMetrics) Labels() map[string]string   { return nil }
 
 // healthPublisherAdapter adapts the gRPC stub to the HealthPublisher interface.
 type healthPublisherAdapter struct {

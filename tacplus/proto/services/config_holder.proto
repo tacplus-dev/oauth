@@ -12,7 +12,8 @@ import "services/gateway.proto";
 import "services/letsencrypt.proto";
 import "services/policy.proto";
 import "services/policysim.proto";
-import "services/mcp_assist.proto";
+import "services/mcp.proto";
+import "services/dgraph.proto";
 
 message ConfigHolder {
   sentinel.Config sentinel_config = 5;
@@ -21,5 +22,6 @@ message ConfigHolder {
   letsencrypt.Config letsencrypt_config = 9;
   policy.Config policy_config = 10;
   policysim.Config policysim_config = 11;
-  mcp_assist.Config mcp_config = 12;
+  mcp.Config mcp_config = 12;
+  dgraph.Config dgraph_config = 13;
 }

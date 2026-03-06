@@ -19,10 +19,11 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	dgraph "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/dgraph"
 	gateway "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gateway"
 	identity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity"
 	letsencrypt "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/letsencrypt"
-	mcp_assist "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp_assist"
+	mcp "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp"
 	policy "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policy"
 	policysim "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policysim"
 	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
@@ -45,6 +46,7 @@ type configholderJSON struct {
 	PolicyConfig      json.RawMessage `json:"policy_config,omitempty"`
 	PolicysimConfig   json.RawMessage `json:"policysim_config,omitempty"`
 	McpConfig         json.RawMessage `json:"mcp_config,omitempty"`
+	DgraphConfig      json.RawMessage `json:"dgraph_config,omitempty"`
 }
 
 // ConfigHolderToJSON converts ConfigHolder to JSON bytes.
@@ -101,7 +103,14 @@ func ConfigHolderToJSON(v *ConfigHolder) ([]byte, error) {
 			if v.McpConfig == nil {
 				return nil
 			}
-			data, _ := mcp_assist.ConfigToJSON(v.McpConfig)
+			data, _ := mcp.ConfigToJSON(v.McpConfig)
+			return data
+		}(),
+		DgraphConfig: func() json.RawMessage {
+			if v.DgraphConfig == nil {
+				return nil
+			}
+			data, _ := dgraph.ConfigToJSON(v.DgraphConfig)
 			return data
 		}(),
 	}
@@ -212,9 +221,16 @@ func ConfigHolderFromJSON(data []byte) (*ConfigHolder, error) {
 	}
 	// Parse message field: McpConfig
 	if len(raw.McpConfig) > 0 {
-		parsed, err := mcp_assist.ConfigFromJSON(raw.McpConfig)
+		parsed, err := mcp.ConfigFromJSON(raw.McpConfig)
 		if err == nil {
 			result.McpConfig = parsed
+		}
+	}
+	// Parse message field: DgraphConfig
+	if len(raw.DgraphConfig) > 0 {
+		parsed, err := dgraph.ConfigFromJSON(raw.DgraphConfig)
+		if err == nil {
+			result.DgraphConfig = parsed
 		}
 	}
 	return result, nil
@@ -299,7 +315,12 @@ func ConfigHolderToEnvVar(v *ConfigHolder) map[string]string {
 		}
 	}
 	if v.McpConfig != nil {
-		for k, val := range mcp_assist.ConfigToEnvVar(v.McpConfig) {
+		for k, val := range mcp.ConfigToEnvVar(v.McpConfig) {
+			result[k] = val
+		}
+	}
+	if v.DgraphConfig != nil {
+		for k, val := range dgraph.ConfigToEnvVar(v.DgraphConfig) {
 			result[k] = val
 		}
 	}
@@ -339,10 +360,15 @@ func ConfigHolderFromEnvVar(env map[string]string) (*ConfigHolder, error) {
 	} else if sub != nil {
 		result.PolicysimConfig = sub
 	}
-	if sub, err := mcp_assist.ConfigFromEnvVar(env); err != nil {
+	if sub, err := mcp.ConfigFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.McpConfig = sub
+	}
+	if sub, err := dgraph.ConfigFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.DgraphConfig = sub
 	}
 	return result, nil
 }
@@ -386,5 +412,8 @@ func MergeConfigHolder(dst, src *ConfigHolder) {
 	}
 	if dst.McpConfig == nil {
 		dst.McpConfig = src.McpConfig
+	}
+	if dst.DgraphConfig == nil {
+		dst.DgraphConfig = src.DgraphConfig
 	}
 }

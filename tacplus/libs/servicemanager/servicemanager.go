@@ -256,7 +256,7 @@ func NewServiceManager(ctx context.Context, cfg *serviceconfig_pb.BootstrapConfi
 	var wg sync.WaitGroup
 	errs := make([]error, len(cfg.Endpoints))
 	for i, ep := range cfg.Endpoints {
-		bc.endpoints[i] = newEndpointConn(ep)
+		bc.endpoints[i] = newEndpointConn(fmt.Sprintf("%s:%d", ep.Host, ep.Port))
 		wg.Add(1)
 		go func(idx int, ec *endpointConn) {
 			defer wg.Done()

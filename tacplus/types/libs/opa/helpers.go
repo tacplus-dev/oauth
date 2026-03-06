@@ -351,8 +351,8 @@ func OpaPolicyLlmTypeDescriptor() string {
       "type": "string",
       "description": "entry_point specifies the main package/decision point for policy evaluation.",
       "constraints": [
-        "maximum length: 256",
-        "minimum length: 1"
+        "minimum length: 1",
+        "maximum length: 256"
       ]
     },
     {

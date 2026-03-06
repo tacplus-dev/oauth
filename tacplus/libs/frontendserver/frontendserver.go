@@ -86,9 +86,9 @@ func New(ctx context.Context, config *pb.Config, conn grpc.ClientConnInterface, 
 //
 // The caller is responsible for signal handling (e.g., signal.NotifyContext).
 func (ps *FrontendServer) Listen(ctx context.Context) error {
-	listenAddr := ps.config.ListenAddress
-	if listenAddr == "" {
-		listenAddr = ":8443"
+	listenAddr := ":8443"
+	if ps.config.GetListenAddress() != nil {
+		listenAddr = fmt.Sprintf("%s:%d", ps.config.GetListenAddress().Host, ps.config.GetListenAddress().Port)
 	}
 
 	var listener net.Listener

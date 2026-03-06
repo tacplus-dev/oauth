@@ -15,6 +15,7 @@ syntax = "proto3";
 package serviceconfig;
 option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfig";
 
+import "libs/host.proto";
 import "libs/jwk.proto";
 import "libs/key.proto";
 import "libs/logger.proto";
@@ -36,8 +37,8 @@ import "google/protobuf/empty.proto";
 message BootstrapConfig {
 
   // The backend service endpoints (cluster).
-  // Each entry is a "host:port" string (e.g. "10.0.0.1:9443", "api.example.com:443").
-  repeated string endpoints = 1;
+  // Each entry is a host:port pair (e.g. host=10.0.0.1, port=9443).
+  repeated host.Host endpoints = 1;
 
   // instance_id uniquely identifies this running instance/replica.
   // Used for leader elections on boundaries with (spec.leader) = true.
@@ -81,9 +82,8 @@ message Config {
   // Frontend Server — Network & TLS
   // ============================================================================
 
-  // listen_address is the bind address for the gRPC server.
-  // Examples: ":8080", "0.0.0.0:8080", "127.0.0.1:8080"
-  string listen_address = 7;
+  // listen_address is the bind address for the gRPC server (e.g. host=0.0.0.0, port=8080).
+  host.Host listen_address = 7;
 
   // tls_cert is the TLS certificate and private key pair for the frontend server.
   x509.X509CertPair tls_cert = 8;
@@ -139,8 +139,8 @@ enum MemberStatus {
 
 // ClusterMember describes a single member (pod/node) within a cluster.
 message ClusterMember {
-  // endpoint is the "host:port" address of this member.
-  string endpoint = 1;
+  // endpoint is the host:port address of this member.
+  host.Host endpoint = 1;
   MemberStatus status = 2;
   int32 priority = 3;
 }

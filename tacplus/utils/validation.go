@@ -108,13 +108,16 @@ func ValidateAssertEmail(email string) error {
 	return nil
 }
 
-// ValidateAssertFQDN validates that a string is a valid fully qualified domain name.
+// ValidateAssertFQDN validates that a string is a valid DNS hostname.
+// Accepts both fully-qualified domain names (e.g. "api.example.com") and
+// bare hostnames / single DNS labels (e.g. "sentinel-0", "localhost").
 // Corresponds to the (consts.assert_fqdn) annotation.
 func ValidateAssertFQDN(fqdn string) error {
-	// FQDN regex pattern
-	fqdnRegex := regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
-	if !fqdnRegex.MatchString(fqdn) {
-		return protoerrors.NewErrMissingInvalidData(nil, "invalid FQDN format")
+	// Accept FQDN (multi-label with dots) or bare hostname (single label).
+	// Each label: starts/ends with alphanumeric, may contain hyphens, max 63 chars.
+	hostnameRegex := regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?))*$`)
+	if !hostnameRegex.MatchString(fqdn) {
+		return protoerrors.NewErrMissingInvalidData(nil, "invalid hostname/FQDN format")
 	}
 	return nil
 }

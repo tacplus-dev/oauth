@@ -14,10 +14,11 @@
 package config_holder
 
 import (
+	dgraph "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/dgraph"
 	gateway "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gateway"
 	identity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity"
 	letsencrypt "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/letsencrypt"
-	mcp_assist "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp_assist"
+	mcp "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp"
 	policy "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policy"
 	policysim "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policysim"
 	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
@@ -43,7 +44,8 @@ type ConfigHolder struct {
 	LetsencryptConfig *letsencrypt.Config    `protobuf:"bytes,9,opt,name=letsencrypt_config,json=letsencryptConfig,proto3" json:"letsencrypt_config,omitempty"`
 	PolicyConfig      *policy.Config         `protobuf:"bytes,10,opt,name=policy_config,json=policyConfig,proto3" json:"policy_config,omitempty"`
 	PolicysimConfig   *policysim.Config      `protobuf:"bytes,11,opt,name=policysim_config,json=policysimConfig,proto3" json:"policysim_config,omitempty"`
-	McpConfig         *mcp_assist.Config     `protobuf:"bytes,12,opt,name=mcp_config,json=mcpConfig,proto3" json:"mcp_config,omitempty"`
+	McpConfig         *mcp.Config            `protobuf:"bytes,12,opt,name=mcp_config,json=mcpConfig,proto3" json:"mcp_config,omitempty"`
+	DgraphConfig      *dgraph.Config         `protobuf:"bytes,13,opt,name=dgraph_config,json=dgraphConfig,proto3" json:"dgraph_config,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -120,9 +122,16 @@ func (x *ConfigHolder) GetPolicysimConfig() *policysim.Config {
 	return nil
 }
 
-func (x *ConfigHolder) GetMcpConfig() *mcp_assist.Config {
+func (x *ConfigHolder) GetMcpConfig() *mcp.Config {
 	if x != nil {
 		return x.McpConfig
+	}
+	return nil
+}
+
+func (x *ConfigHolder) GetDgraphConfig() *dgraph.Config {
+	if x != nil {
+		return x.DgraphConfig
 	}
 	return nil
 }
@@ -131,7 +140,7 @@ var File_services_config_holder_proto protoreflect.FileDescriptor
 
 const file_services_config_holder_proto_rawDesc = "" +
 	"\n" +
-	"\x1cservices/config_holder.proto\x12\rconfig_holder\x1a\x17services/sentinel.proto\x1a\x17services/identity.proto\x1a\x16services/gateway.proto\x1a\x1aservices/letsencrypt.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x19services/mcp_assist.proto\"\xa6\x03\n" +
+	"\x1cservices/config_holder.proto\x12\rconfig_holder\x1a\x17services/sentinel.proto\x1a\x17services/identity.proto\x1a\x16services/gateway.proto\x1a\x1aservices/letsencrypt.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x12services/mcp.proto\x1a\x15services/dgraph.proto\"\xd4\x03\n" +
 	"\fConfigHolder\x129\n" +
 	"\x0fsentinel_config\x18\x05 \x01(\v2\x10.sentinel.ConfigR\x0esentinelConfig\x129\n" +
 	"\x0fidentity_config\x18\x06 \x01(\v2\x10.identity.ConfigR\x0eidentityConfig\x126\n" +
@@ -139,9 +148,10 @@ const file_services_config_holder_proto_rawDesc = "" +
 	"\x12letsencrypt_config\x18\t \x01(\v2\x13.letsencrypt.ConfigR\x11letsencryptConfig\x123\n" +
 	"\rpolicy_config\x18\n" +
 	" \x01(\v2\x0e.policy.ConfigR\fpolicyConfig\x12<\n" +
-	"\x10policysim_config\x18\v \x01(\v2\x11.policysim.ConfigR\x0fpolicysimConfig\x121\n" +
+	"\x10policysim_config\x18\v \x01(\v2\x11.policysim.ConfigR\x0fpolicysimConfig\x12*\n" +
 	"\n" +
-	"mcp_config\x18\f \x01(\v2\x12.mcp_assist.ConfigR\tmcpConfigB_Z]gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/config_holderb\x06proto3"
+	"mcp_config\x18\f \x01(\v2\v.mcp.ConfigR\tmcpConfig\x123\n" +
+	"\rdgraph_config\x18\r \x01(\v2\x0e.dgraph.ConfigR\fdgraphConfigB_Z]gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/config_holderb\x06proto3"
 
 var (
 	file_services_config_holder_proto_rawDescOnce sync.Once
@@ -164,7 +174,8 @@ var file_services_config_holder_proto_goTypes = []any{
 	(*letsencrypt.Config)(nil), // 4: letsencrypt.Config
 	(*policy.Config)(nil),      // 5: policy.Config
 	(*policysim.Config)(nil),   // 6: policysim.Config
-	(*mcp_assist.Config)(nil),  // 7: mcp_assist.Config
+	(*mcp.Config)(nil),         // 7: mcp.Config
+	(*dgraph.Config)(nil),      // 8: dgraph.Config
 }
 var file_services_config_holder_proto_depIdxs = []int32{
 	1, // 0: config_holder.ConfigHolder.sentinel_config:type_name -> sentinel.Config
@@ -173,12 +184,13 @@ var file_services_config_holder_proto_depIdxs = []int32{
 	4, // 3: config_holder.ConfigHolder.letsencrypt_config:type_name -> letsencrypt.Config
 	5, // 4: config_holder.ConfigHolder.policy_config:type_name -> policy.Config
 	6, // 5: config_holder.ConfigHolder.policysim_config:type_name -> policysim.Config
-	7, // 6: config_holder.ConfigHolder.mcp_config:type_name -> mcp_assist.Config
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7, // 6: config_holder.ConfigHolder.mcp_config:type_name -> mcp.Config
+	8, // 7: config_holder.ConfigHolder.dgraph_config:type_name -> dgraph.Config
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_services_config_holder_proto_init() }
