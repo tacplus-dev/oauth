@@ -442,7 +442,7 @@ type configJSON struct {
 	JwkRefetchIntervalSeconds   int64             `json:"jwk_refetch_interval_seconds,omitempty"`
 	EntitlementsPolicy          string            `json:"entitlements_policy,omitempty"`
 	EntitlementMappings         []json.RawMessage `json:"entitlement_mappings,omitempty"`
-	ServiceEntitlements         []json.RawMessage `json:"service_entitlements,omitempty"`
+	IdentityProfiles            []json.RawMessage `json:"identity_profiles,omitempty"`
 }
 
 // ConfigToJSON converts Config to JSON bytes.
@@ -481,14 +481,14 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 			}
 			return result
 		}(),
-		ServiceEntitlements: func() []json.RawMessage {
-			if len(v.ServiceEntitlements) == 0 {
+		IdentityProfiles: func() []json.RawMessage {
+			if len(v.IdentityProfiles) == 0 {
 				return nil
 			}
-			result := make([]json.RawMessage, 0, len(v.ServiceEntitlements))
-			for _, item := range v.ServiceEntitlements {
+			result := make([]json.RawMessage, 0, len(v.IdentityProfiles))
+			for _, item := range v.IdentityProfiles {
 				if item != nil {
-					if data, err := entitlement.ServiceEntitlementsToJSON(item); err == nil {
+					if data, err := entitlement.IdentityProfileToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -585,14 +585,14 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 			}
 		}
 	}
-	// Parse repeated message field: ServiceEntitlements
-	if len(raw.ServiceEntitlements) > 0 {
-		result.ServiceEntitlements = make([]*entitlement.ServiceEntitlements, 0, len(raw.ServiceEntitlements))
-		for _, itemJSON := range raw.ServiceEntitlements {
+	// Parse repeated message field: IdentityProfiles
+	if len(raw.IdentityProfiles) > 0 {
+		result.IdentityProfiles = make([]*entitlement.IdentityProfile, 0, len(raw.IdentityProfiles))
+		for _, itemJSON := range raw.IdentityProfiles {
 			if len(itemJSON) > 0 {
-				parsed, err := entitlement.ServiceEntitlementsFromJSON(itemJSON)
+				parsed, err := entitlement.IdentityProfileFromJSON(itemJSON)
 				if err == nil {
-					result.ServiceEntitlements = append(result.ServiceEntitlements, parsed)
+					result.IdentityProfiles = append(result.IdentityProfiles, parsed)
 				}
 			}
 		}
@@ -947,7 +947,7 @@ func ProviderConfigToTOML(v *ProviderConfig) ([]byte, error) {
 // MARKER: JSON helper struct generated from serial.go
 type entitlementconfigJSON struct {
 	EntitlementMappings []json.RawMessage `json:"entitlement_mappings,omitempty"`
-	ServiceEntitlements []json.RawMessage `json:"service_entitlements,omitempty"`
+	IdentityProfiles    []json.RawMessage `json:"identity_profiles,omitempty"`
 }
 
 // EntitlementConfigToJSON converts EntitlementConfig to JSON bytes.
@@ -972,14 +972,14 @@ func EntitlementConfigToJSON(v *EntitlementConfig) ([]byte, error) {
 			}
 			return result
 		}(),
-		ServiceEntitlements: func() []json.RawMessage {
-			if len(v.ServiceEntitlements) == 0 {
+		IdentityProfiles: func() []json.RawMessage {
+			if len(v.IdentityProfiles) == 0 {
 				return nil
 			}
-			result := make([]json.RawMessage, 0, len(v.ServiceEntitlements))
-			for _, item := range v.ServiceEntitlements {
+			result := make([]json.RawMessage, 0, len(v.IdentityProfiles))
+			for _, item := range v.IdentityProfiles {
 				if item != nil {
-					if data, err := entitlement.ServiceEntitlementsToJSON(item); err == nil {
+					if data, err := entitlement.IdentityProfileToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -1062,14 +1062,14 @@ func EntitlementConfigFromJSON(data []byte) (*EntitlementConfig, error) {
 			}
 		}
 	}
-	// Parse repeated message field: ServiceEntitlements
-	if len(raw.ServiceEntitlements) > 0 {
-		result.ServiceEntitlements = make([]*entitlement.ServiceEntitlements, 0, len(raw.ServiceEntitlements))
-		for _, itemJSON := range raw.ServiceEntitlements {
+	// Parse repeated message field: IdentityProfiles
+	if len(raw.IdentityProfiles) > 0 {
+		result.IdentityProfiles = make([]*entitlement.IdentityProfile, 0, len(raw.IdentityProfiles))
+		for _, itemJSON := range raw.IdentityProfiles {
 			if len(itemJSON) > 0 {
-				parsed, err := entitlement.ServiceEntitlementsFromJSON(itemJSON)
+				parsed, err := entitlement.IdentityProfileFromJSON(itemJSON)
 				if err == nil {
-					result.ServiceEntitlements = append(result.ServiceEntitlements, parsed)
+					result.IdentityProfiles = append(result.IdentityProfiles, parsed)
 				}
 			}
 		}
@@ -8349,24 +8349,24 @@ func ValidateProviderConfig(m *ProviderConfig) error {
 		}
 	}
 
-	// Validate ClientId (assert_required)
-	if m.ClientId == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId is required")
-	}
-
 	// Validate ClientId (assert_min_length: 1)
 	if len(m.ClientId) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId must be at least 1 characters, got: %d", len(m.ClientId))
 	}
 
-	// Validate ClientSecret (assert_min_length: 1)
-	if len(m.ClientSecret) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
+	// Validate ClientId (assert_required)
+	if m.ClientId == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId is required")
 	}
 
 	// Validate ClientSecret (assert_required)
 	if m.ClientSecret == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
+	}
+
+	// Validate ClientSecret (assert_min_length: 1)
+	if len(m.ClientSecret) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
 	}
 
 	// Validate AuthorizationEndpoint (assert_url: URL_SCHEME_HTTPS)
@@ -8476,14 +8476,14 @@ func ValidateExternalJwk(m *ExternalJwk) error {
 		return nil
 	}
 
-	// Validate Kid (assert_required)
-	if m.Kid == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Kid is required")
-	}
-
 	// Validate Kid (assert_min_length: 1)
 	if len(m.Kid) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Kid must be at least 1 characters, got: %d", len(m.Kid))
+	}
+
+	// Validate Kid (assert_required)
+	if m.Kid == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Kid is required")
 	}
 
 	// Validate Key (assert_required)
@@ -8745,14 +8745,14 @@ func ValidateRefreshTokenResponse(m *RefreshTokenResponse) error {
 		return nil
 	}
 
-	// Validate AccessToken (assert_min_length: 1)
-	if len(m.AccessToken) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken must be at least 1 characters, got: %d", len(m.AccessToken))
-	}
-
 	// Validate AccessToken (assert_required)
 	if m.AccessToken == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
+	}
+
+	// Validate AccessToken (assert_min_length: 1)
+	if len(m.AccessToken) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken must be at least 1 characters, got: %d", len(m.AccessToken))
 	}
 
 	// Validate ExpiresIn (assert_gt: 0)
@@ -9395,8 +9395,8 @@ func MergeConfig(dst, src *Config) {
 	if len(dst.EntitlementMappings) == 0 {
 		dst.EntitlementMappings = src.EntitlementMappings
 	}
-	if len(dst.ServiceEntitlements) == 0 {
-		dst.ServiceEntitlements = src.ServiceEntitlements
+	if len(dst.IdentityProfiles) == 0 {
+		dst.IdentityProfiles = src.IdentityProfiles
 	}
 }
 
@@ -9467,8 +9467,8 @@ func MergeEntitlementConfig(dst, src *EntitlementConfig) {
 	if len(dst.EntitlementMappings) == 0 {
 		dst.EntitlementMappings = src.EntitlementMappings
 	}
-	if len(dst.ServiceEntitlements) == 0 {
-		dst.ServiceEntitlements = src.ServiceEntitlements
+	if len(dst.IdentityProfiles) == 0 {
+		dst.IdentityProfiles = src.IdentityProfiles
 	}
 }
 
