@@ -42,6 +42,27 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: Error
+// ============================================================
+// ErrorDefaults applies field-level default values to zero-valued fields.
+func ErrorDefaults(v *Error) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Error
+// ============================================================
+// ErrorUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ErrorUndefaults(v *Error) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: Error
 // ============================================================
 // MergeError fills zero-valued fields in dst from src.

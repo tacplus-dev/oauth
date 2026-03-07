@@ -69,10 +69,12 @@ func (p *SentinelService) authorize(ctx context.Context, fullMethod string, req 
 	return f(ctx, fullMethod, req)
 }
 
-// checkAllowedCallers verifies the token's "sub" claim matches one of the allowed callers.
+// checkAllowedCallers verifies the token's "sub" claim against allowed callers and user policy.
+// If allowUser is true, tokens whose sub does not match any allowed_callers entry are
+// treated as user tokens and permitted (runtime authz still applies via the authorizer).
 // Returns nil if the caller is allowed, or a PermissionDenied error otherwise.
-func (p *SentinelService) checkAllowedCallers(ctx context.Context, allowed []string) error {
-	if len(allowed) == 0 {
+func (p *SentinelService) checkAllowedCallers(ctx context.Context, allowed []string, allowUser bool) error {
+	if len(allowed) == 0 && !allowUser {
 		return nil
 	}
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -102,10 +104,15 @@ func (p *SentinelService) checkAllowedCallers(ctx context.Context, allowed []str
 	if err := json.Unmarshal(payload, &claims); err != nil {
 		return status.Error(codes.Unauthenticated, "invalid token claims")
 	}
+	// Check if sub matches an allowed S2S caller
 	for _, caller := range allowed {
 		if claims.Sub == caller {
 			return nil
 		}
+	}
+	// If user tokens are allowed, permit non-service callers
+	if allowUser {
+		return nil
 	}
 	return status.Errorf(codes.PermissionDenied, "caller %q not in allowed_callers", claims.Sub)
 }

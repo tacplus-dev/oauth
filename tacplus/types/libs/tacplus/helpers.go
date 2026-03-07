@@ -510,6 +510,69 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: LanguageDependencies
+// ============================================================
+// LanguageDependenciesDefaults applies field-level default values to zero-valued fields.
+func LanguageDependenciesDefaults(v *LanguageDependencies) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: DependenciesRegistry
+// ============================================================
+// DependenciesRegistryDefaults applies field-level default values to zero-valued fields.
+func DependenciesRegistryDefaults(v *DependenciesRegistry) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: DependenciesConfig
+// ============================================================
+// DependenciesConfigDefaults applies field-level default values to zero-valued fields.
+func DependenciesConfigDefaults(v *DependenciesConfig) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: LanguageDependencies
+// ============================================================
+// LanguageDependenciesUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LanguageDependenciesUndefaults(v *LanguageDependencies) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: DependenciesRegistry
+// ============================================================
+// DependenciesRegistryUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func DependenciesRegistryUndefaults(v *DependenciesRegistry) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: DependenciesConfig
+// ============================================================
+// DependenciesConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func DependenciesConfigUndefaults(v *DependenciesConfig) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: DependenciesRegistry
 // ============================================================
 // MergeDependenciesRegistry fills zero-valued fields in dst from src.

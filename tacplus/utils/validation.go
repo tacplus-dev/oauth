@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"strings"
 
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
 )
@@ -186,4 +187,67 @@ func ValidateAssertSemver(version string) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "invalid semantic version format: %s", version)
 	}
 	return nil
+}
+
+// validateSQLInjection checks for common SQL injection patterns.
+// Returns an error if any injection pattern is detected.
+func validateSQLInjection(sql string) error {
+	if strings.Contains(sql, ";") {
+		return protoerrors.NewErrMissingInvalidData(nil, "SQL contains semicolon (possible injection)")
+	}
+	if strings.Contains(sql, "--") {
+		return protoerrors.NewErrMissingInvalidData(nil, "SQL contains line comment sequence (possible injection)")
+	}
+	if strings.Contains(sql, "/*") {
+		return protoerrors.NewErrMissingInvalidData(nil, "SQL contains block comment sequence (possible injection)")
+	}
+	if strings.Contains(sql, "\\") {
+		return protoerrors.NewErrMissingInvalidData(nil, "SQL contains escape character (possible injection)")
+	}
+	return nil
+}
+
+// ValidateAssertSQL_SQL_PERMIT_SELECT validates that a string is a valid SELECT SQL statement.
+func ValidateAssertSQL_SQL_PERMIT_SELECT(sql string) error {
+	if err := validateSQLInjection(sql); err != nil {
+		return err
+	}
+	normalized := strings.TrimSpace(strings.ToUpper(sql))
+	if !strings.HasPrefix(normalized, "SELECT") && !strings.HasPrefix(normalized, "WITH") {
+		return protoerrors.NewErrMissingInvalidData(nil, "only SELECT statements permitted")
+	}
+	return nil
+}
+
+// ValidateAssertSQL_SQL_PERMIT_DML validates that a string is a valid DML SQL statement.
+func ValidateAssertSQL_SQL_PERMIT_DML(sql string) error {
+	if err := validateSQLInjection(sql); err != nil {
+		return err
+	}
+	normalized := strings.TrimSpace(strings.ToUpper(sql))
+	for _, prefix := range []string{"SELECT", "INSERT", "UPDATE", "DELETE", "WITH"} {
+		if strings.HasPrefix(normalized, prefix) {
+			return nil
+		}
+	}
+	return protoerrors.NewErrMissingInvalidData(nil, "only DML statements (SELECT, INSERT, UPDATE, DELETE) permitted")
+}
+
+// ValidateAssertSQL_SQL_PERMIT_DDL validates that a string is a valid DDL SQL statement.
+func ValidateAssertSQL_SQL_PERMIT_DDL(sql string) error {
+	if err := validateSQLInjection(sql); err != nil {
+		return err
+	}
+	normalized := strings.TrimSpace(strings.ToUpper(sql))
+	for _, prefix := range []string{"CREATE", "ALTER", "DROP", "TRUNCATE"} {
+		if strings.HasPrefix(normalized, prefix) {
+			return nil
+		}
+	}
+	return protoerrors.NewErrMissingInvalidData(nil, "only DDL statements (CREATE, ALTER, DROP, TRUNCATE) permitted")
+}
+
+// ValidateAssertSQL_SQL_PERMIT_ANY validates that a string is a valid SQL statement (any type).
+func ValidateAssertSQL_SQL_PERMIT_ANY(sql string) error {
+	return validateSQLInjection(sql)
 }

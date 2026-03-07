@@ -2021,10 +2021,23 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: BootstrapConfig
+// ============================================================
+// BootstrapConfigDefaults applies field-level default values to zero-valued fields.
+func BootstrapConfigDefaults(v *BootstrapConfig) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeDefaults: Config
 // ============================================================
 // ConfigDefaults applies field-level default values to zero-valued fields.
 func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
 	if v.PingIntervalMs == 0 {
 		v.PingIntervalMs = int32(DefaultPingIntervalMs)
 	}
@@ -2043,12 +2056,86 @@ func ConfigDefaults(v *Config) {
 }
 
 // ============================================================
+// TypeDefaults: LogMessage
+// ============================================================
+// LogMessageDefaults applies field-level default values to zero-valued fields.
+func LogMessageDefaults(v *LogMessage) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ClusterMember
+// ============================================================
+// ClusterMemberDefaults applies field-level default values to zero-valued fields.
+func ClusterMemberDefaults(v *ClusterMember) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ClusterInfo
+// ============================================================
+// ClusterInfoDefaults applies field-level default values to zero-valued fields.
+func ClusterInfoDefaults(v *ClusterInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ClusterState
+// ============================================================
+// ClusterStateDefaults applies field-level default values to zero-valued fields.
+func ClusterStateDefaults(v *ClusterState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PingResponse
+// ============================================================
+// PingResponseDefaults applies field-level default values to zero-valued fields.
+func PingResponseDefaults(v *PingResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeDefaults: ServiceConfigState
 // ============================================================
 // ServiceConfigStateDefaults applies field-level default values to zero-valued fields.
 func ServiceConfigStateDefaults(v *ServiceConfigState) {
+	if v == nil {
+		return
+	}
 	if v.Config != nil {
 		ConfigDefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: BootstrapConfig
+// ============================================================
+// BootstrapConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func BootstrapConfigUndefaults(v *BootstrapConfig) {
+	if v == nil {
+		return
 	}
 }
 
@@ -2058,6 +2145,9 @@ func ServiceConfigStateDefaults(v *ServiceConfigState) {
 // ConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
 	if v.PingIntervalMs == int32(DefaultPingIntervalMs) {
 		v.PingIntervalMs = 0
 	}
@@ -2076,13 +2166,82 @@ func ConfigUndefaults(v *Config) {
 }
 
 // ============================================================
+// TypeUndefaults: LogMessage
+// ============================================================
+// LogMessageUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LogMessageUndefaults(v *LogMessage) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ClusterMember
+// ============================================================
+// ClusterMemberUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ClusterMemberUndefaults(v *ClusterMember) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ClusterInfo
+// ============================================================
+// ClusterInfoUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ClusterInfoUndefaults(v *ClusterInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ClusterState
+// ============================================================
+// ClusterStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ClusterStateUndefaults(v *ClusterState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PingResponse
+// ============================================================
+// PingResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PingResponseUndefaults(v *PingResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeUndefaults: ServiceConfigState
 // ============================================================
 // ServiceConfigStateUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ServiceConfigStateUndefaults(v *ServiceConfigState) {
+	if v == nil {
+		return
+	}
 	if v.Config != nil {
 		ConfigUndefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
 	}
 }
 

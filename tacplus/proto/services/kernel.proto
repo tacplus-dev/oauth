@@ -13,7 +13,7 @@
 
 // Copyright (c) 2024 Second Star Cavalier, LLC.
 //
-// BackendDB configuration, cluster state, and token exchange definitions.
+// Kernel configuration, cluster state, and token exchange definitions.
 // Admin types used by ClusterState are defined in sentinel.proto.
 
 syntax = "proto3";
@@ -28,12 +28,15 @@ import "libs/jwk.proto";
 import "libs/x509.proto";
 import "libs/token.proto";
 import "libs/cloudidentity.proto";
-import "libs/entitlement.proto";
+import "libs/cloudvendor.proto";
 import "libs/healthreport.proto";
 
 import "services/sentinel.proto";
-import "services/config_holder.proto";
+import "libs/generated.proto";
 import "google/protobuf/empty.proto";
+
+// Data must exist on at least 3 nodes (1 primary + 2 backups).
+// Hazelcast backupCount = min(MIN_DATA_COPIES - 1, clusterSize - 1).
 
 // ============================================================================
 // Node Mode
@@ -42,7 +45,7 @@ import "google/protobuf/empty.proto";
 // NodeMode determines which capabilities are active on a kernel node.
 enum NodeMode {
   // Core+Edge (default): full member with data partitions, persistence, Raft,
-  // AND serves gRPC for microservices. Backward-compatible monolith mode.
+  // AND serves gRPC for microservices.
   NODE_MODE_CORE_EDGE = 0;
 
   // Core only: owns data partitions, writes persistence, participates in Raft,
@@ -55,11 +58,11 @@ enum NodeMode {
 }
 
 // ============================================================================
-// BackendDB Configuration
+// Kernel Configuration
 // ============================================================================
 
-// BootstrapConfig is the top-level configuration for a BackendDB node.
-// BackendDB provides distributed backend state management with gRPC access
+// BootstrapConfig is the top-level configuration for a Kernel node.
+// Kernel provides distributed backend state management with gRPC access
 // and clustered storage. This configuration is read once at boot and is
 // immutable for the lifetime of the process.
 //
@@ -72,7 +75,7 @@ message BootstrapConfig {
   // All nodes in the same cluster must use the same name.
   string cluster_name = 1;
 
-  // listener is the gRPC bind address for the BackendDB server (e.g. host=0.0.0.0, port=9443).
+  // listener is the gRPC bind address for the Kernel server (e.g. host=0.0.0.0, port=9443).
   host.Host listener = 2;
 
   // members is the list of cluster member addresses for discovery (e.g. host=10.0.0.1, port=9443).
@@ -84,65 +87,55 @@ message BootstrapConfig {
   // Must be at least 1.
   int32 node_count = 4;
 
-  // secret is deprecated. Cluster membership authentication uses mTLS
-  // (configured via the tls field). Retained for backward compatibility.
-  string secret = 5;
-
   // partition_count is the number of partitions to distribute data across.
   // More partitions enable finer-grained distribution but increase metadata overhead.
   // Default: 271 (prime number for better distribution).
   // Must be greater than 0.
-  int32 partition_count = 6;
+  int32 partition_count = 5;
 
   // network configures cluster networking (timeouts, heartbeats, etc.).
-  NetworkConfig network = 7;
+  NetworkConfig network = 6;
 
-  // logger configures logging for the BackendDB server.
-  logger.LoggerConfig logger = 8;
-
-  // enable_metrics enables Prometheus-compatible metrics collection.
-  bool enable_metrics = 9;
-
-  // enable_tracing enables OpenTelemetry distributed tracing.
-  bool enable_tracing = 10;
+  // logger configures logging for the Kernel server.
+  logger.LoggerConfig logger = 7;
 
   // cp_subsystem configures the CP (consensus protocol) subsystem for strong consistency.
   // Required for distributed locks (FencedLock) used by ATOMIC boundaries.
-  CPSubsystemConfig cp_subsystem = 11;
+  CPSubsystemConfig cp_subsystem = 8;
 
   // persistence_dir is the directory where DB dumps and redo logs are stored.
   // Default: "data/kernel".
-  string persistence_dir = 12;
+  string persistence_dir = 9;
 
   // persistence_format configures the serialization format for redo logs and dumps.
   // Default: OUTPUT_FORMAT_PROTO_WIRE (binary protobuf).
-  outputformat.OutputFormat persistence_format = 13;
+  outputformat.OutputFormat persistence_format = 10;
 
   // config determines how frontend configuration (Config) is sourced.
   oneof config {
     // url_loader fetches the config from a URL (HTTPS with optional auth token).
-    UrlLoader url_loader = 15;
+    UrlLoader url_loader = 11;
 
     // file_loader loads the config from a local file on disk.
-    FileLoader file_loader = 16;
+    FileLoader file_loader = 12;
   }
 
   // loader_ca is the CA certificate trusted for TLS verification when
   // fetching Config via url_loader.
-  repeated x509.X509Cert loader_ca = 20;
+  repeated x509.X509Cert loader_ca = 13;
 
   // tls is the node's X.509 certificate and private key, used for
   // gRPC server TLS and Hazelcast mTLS and Ratis mTLS.
-  x509.X509CertPair tls = 21;
+  x509.X509CertPair tls = 14;
 
   // raft_port is the port for the Ratis (Raft consensus) server used by
   // distributed locks. All nodes use the same raft_port (each node has a
   // unique hostname). Default: 5002.
-  int32 raft_port = 22;
+  int32 raft_port = 15;
 
   // mode determines whether this node runs as core (quorum/persistence)
-  // or edge (gRPC serving). Default: NODE_MODE_CORE (backward compatible).
-  NodeMode mode = 25;
+  // or edge (gRPC serving).
+  NodeMode mode = 16;
 }
 
 // ============================================================================
@@ -247,40 +240,9 @@ message FullDumpHeader {
   string node_id = 3;
 }
 
-// SecurityConfig defines the security policy for the kernel cluster.
-// All tokens must have: sub, aud matching audience, and a kid matching a known key.
-// Tokens are validated using keys from the JwkVerifyingKeysView.
-message SecurityConfig {
-  // audience is the expected "aud" claim in tokens. Tokens whose aud
-  // does not match are rejected.
-  string audience = 2;
-
-  // token_ttl_seconds is the maximum allowed token lifetime.
-  // Tokens with exp - iat > token_ttl_seconds are rejected.
-  // Default: 3600 (1 hour). 0 = no limit.
-  int64 token_ttl_seconds = 5;
-}
-
 // ============================================================================
 // Token Exchanger
 // ============================================================================
-
-// TokenExchangerConfig configures the built-in token exchange service.
-// The exchanger validates incoming tokens signed by a CredPair or
-// existing refresh tokens, and issues short-lived access tokens
-// for backend (kernel) communication.
-message TokenExchangerConfig {
-  // refresh_audience is the expected "aud" claim in refresh tokens.
-  string refresh_audience = 1;
-
-  // key_rotation_interval_seconds is how often the exchanger rotates
-  // its own signing keys. Default: 24 hours.
-  int64 key_rotation_interval_seconds = 4;
-
-  // default_token_expiry_seconds is the default lifetime for issued
-  // access tokens when the request does not specify an expiry. Default: 1 hour.
-  int64 default_token_expiry_seconds = 7;
-}
 
 // TokenRequest is the input to the ExchangeToken RPC.
 message TokenRequest {
@@ -349,10 +311,44 @@ service TokenExchangerService {
 }
 
 // ============================================================================
+// Delegate — S2S credential holders
+// ============================================================================
+
+// CloudIdentityMatcher configures which cloud identities a delegate accepts.
+// The delegate proves identity using a CloudIdentityProof; this config
+// tells kernel what to expect.
+message CloudIdentityMatcher {
+  // vendor identifies the cloud provider.
+  cloudvendor.CloudVendor vendor = 1;
+
+  // expected_identity is the cloud identity to match against.
+  // AWS: IAM role ARN. GCP: service account email. Azure: managed identity client ID.
+  string expected_identity = 2;
+}
+
+// Delegate holds credentials for a service that can request tokens.
+// Each delegate is identified by name (becomes "sub" in issued tokens)
+// and authenticates via CredPair or cloud identity.
+message Delegate {
+  // name is the delegate's identity (becomes sub in issued tokens).
+  string name = 1;
+
+  // Credentials for proving identity. At least one must be set.
+  // Repeated to allow rotation (old + new credential during transition).
+  repeated jwk.CredPair cred_pairs = 2;
+  repeated CloudIdentityMatcher cloud_identities = 3;
+
+  // authorized_services lists services this delegate can request tokens for.
+  // Values are service names matching service_frontend annotations.
+  // The delegate can always request a token for itself (sub=name).
+  repeated string authorized_services = 4;
+}
+
+// ============================================================================
 // Frontend Configuration
 // ============================================================================
 
-// Config is the frontend configuration for BackendDB.
+// Config is the frontend configuration for Kernel.
 // Unlike BootstrapConfig (read once at boot), Config can be reloaded at any time.
 message Config {
   // trusted_cas lists the trusted CA certificates for TLS verification.
@@ -362,27 +358,22 @@ message Config {
   RateLimitConfig rate_limit = 5;
 
   // configs holds per-frontend-service configurations. On each config load,
-  // each entry is written to the corresponding ConfigHolder boundary map.
-  config_holder.ConfigHolder configs = 7;
+  // each entry is written to the corresponding service config state boundary.
+  generated.Services configs = 7;
 
-  // security is the security configuration for token validation and authorization.
-  SecurityConfig security = 10;
+  // --- Token Exchanger ---
 
-  // token_exchanger configures the token exchange service.
-  TokenExchangerConfig token_exchanger = 15;
+  // key_rotation_interval_seconds is how often the exchanger rotates
+  // its own signing keys. Default: 24 hours.
+  int64 key_rotation_interval_seconds = 10;
 
-  // cred_pairs hold public keys for the CredPair token exchange flow.
-  // Identity mapping (kid → service) is in entitlement_mappings.
-  repeated jwk.CredPair cred_pairs = 16;
+  // default_token_expiry_seconds is the default lifetime for issued
+  // access tokens when the request does not specify an expiry. Default: 1 hour.
+  int64 default_token_expiry_seconds = 11;
 
-  // entitlement_mappings maps credential IDs (kid) to service identities.
-  // TokenExchanger uses these to resolve which service a CredPair represents.
-  repeated entitlement.ServiceEntitlementMapping entitlement_mappings = 21;
-
-  // service_entitlements holds named entitlement definitions loaded from
-  // proto/security/*.json at config build time. Used for S2S entitlements
-  // (derived from proto descriptors) and U2S entitlements (expandWildcard).
-  repeated entitlement.ServiceEntitlements service_entitlements = 22;
+  // delegates hold credentials for services that can request tokens.
+  // Each delegate identifies a service and its authorized target services.
+  repeated Delegate delegates = 16;
 }
 
 // ============================================================================
@@ -525,7 +516,7 @@ message ClusterState {
 
   // reload_config triggers a reload of the frontend Config from the
   // configured source (URL or file). Updates TokenExchangerState
-  // and ConfigHolder from the reloaded config.
+  // and per-service config state from the reloaded config.
   AdminReloadConfigRequest reload_config = 12;
 
   // --- Private (no external RPCs — server reads/writes internally) ---

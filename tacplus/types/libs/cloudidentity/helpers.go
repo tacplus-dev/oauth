@@ -442,6 +442,48 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: CloudIdentityProof
+// ============================================================
+// CloudIdentityProofDefaults applies field-level default values to zero-valued fields.
+func CloudIdentityProofDefaults(v *CloudIdentityProof) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PresignedHttpRequest
+// ============================================================
+// PresignedHttpRequestDefaults applies field-level default values to zero-valued fields.
+func PresignedHttpRequestDefaults(v *PresignedHttpRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CloudIdentityProof
+// ============================================================
+// CloudIdentityProofUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CloudIdentityProofUndefaults(v *CloudIdentityProof) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PresignedHttpRequest
+// ============================================================
+// PresignedHttpRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PresignedHttpRequestUndefaults(v *PresignedHttpRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: CloudIdentityProof
 // ============================================================
 // MergeCloudIdentityProof fills zero-valued fields in dst from src.

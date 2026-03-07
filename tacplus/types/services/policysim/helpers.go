@@ -21,6 +21,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	filesystem "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/filesystem"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -543,10 +544,10 @@ func SimulatedServiceEntitlementToTOML(v *SimulatedServiceEntitlement) ([]byte, 
 // EvaluatePolicyRequestJSON represents EvaluatePolicyRequest in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type evaluatepolicyrequestJSON struct {
-	RegoSource string `json:"rego_source,omitempty"`
-	InputJson  string `json:"input_json,omitempty"`
-	Query      string `json:"query,omitempty"`
-	DataJson   string `json:"data_json,omitempty"`
+	RegoBundle json.RawMessage `json:"rego_bundle,omitempty"`
+	InputJson  string          `json:"input_json,omitempty"`
+	Query      string          `json:"query,omitempty"`
+	DataJson   string          `json:"data_json,omitempty"`
 }
 
 // EvaluatePolicyRequestToJSON converts EvaluatePolicyRequest to JSON bytes.
@@ -557,10 +558,16 @@ func EvaluatePolicyRequestToJSON(v *EvaluatePolicyRequest) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := evaluatepolicyrequestJSON{
-		RegoSource: v.RegoSource,
-		InputJson:  v.InputJson,
-		Query:      v.Query,
-		DataJson:   v.DataJson,
+		RegoBundle: func() json.RawMessage {
+			if v.RegoBundle == nil {
+				return nil
+			}
+			data, _ := filesystem.DirectoryToJSON(v.RegoBundle)
+			return data
+		}(),
+		InputJson: v.InputJson,
+		Query:     v.Query,
+		DataJson:  v.DataJson,
 	}
 	return json.Marshal(helper)
 }
@@ -625,7 +632,13 @@ func EvaluatePolicyRequestFromJSON(data []byte) (*EvaluatePolicyRequest, error) 
 	}
 	// Build result with parsed enums
 	result := &EvaluatePolicyRequest{}
-	result.RegoSource = raw.RegoSource
+	// Parse message field: RegoBundle
+	if len(raw.RegoBundle) > 0 {
+		parsed, err := filesystem.DirectoryFromJSON(raw.RegoBundle)
+		if err == nil {
+			result.RegoBundle = parsed
+		}
+	}
 	result.InputJson = raw.InputJson
 	result.Query = raw.Query
 	result.DataJson = raw.DataJson
@@ -1137,7 +1150,11 @@ func EvaluatePolicyRequestToEnvVar(v *EvaluatePolicyRequest) map[string]string {
 		return nil
 	}
 	result := make(map[string]string)
-	result["PROTO_SERVICES_POLICYSIM_EVALUATE_POLICY_REQUEST_REGO_SOURCE"] = v.RegoSource
+	if v.RegoBundle != nil {
+		for k, val := range filesystem.DirectoryToEnvVar(v.RegoBundle) {
+			result[k] = val
+		}
+	}
 	result["PROTO_SERVICES_POLICYSIM_EVALUATE_POLICY_REQUEST_INPUT_JSON"] = v.InputJson
 	result["PROTO_SERVICES_POLICYSIM_EVALUATE_POLICY_REQUEST_QUERY"] = v.Query
 	result["PROTO_SERVICES_POLICYSIM_EVALUATE_POLICY_REQUEST_DATA_JSON"] = v.DataJson
@@ -1147,8 +1164,10 @@ func EvaluatePolicyRequestToEnvVar(v *EvaluatePolicyRequest) map[string]string {
 // EvaluatePolicyRequestFromEnvVar creates EvaluatePolicyRequest from environment variable key-value pairs.
 func EvaluatePolicyRequestFromEnvVar(env map[string]string) (*EvaluatePolicyRequest, error) {
 	result := &EvaluatePolicyRequest{}
-	if val, ok := env["PROTO_SERVICES_POLICYSIM_EVALUATE_POLICY_REQUEST_REGO_SOURCE"]; ok && val != "" {
-		result.RegoSource = val
+	if sub, err := filesystem.DirectoryFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.RegoBundle = sub
 	}
 	if val, ok := env["PROTO_SERVICES_POLICYSIM_EVALUATE_POLICY_REQUEST_INPUT_JSON"]; ok && val != "" {
 		result.InputJson = val
@@ -1256,14 +1275,14 @@ func ValidateSimulateEntitlementsRequest(m *SimulateEntitlementsRequest) error {
 		return nil
 	}
 
-	// Validate ClaimsJson (assert_required)
-	if m.ClaimsJson == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClaimsJson is required")
-	}
-
 	// Validate ClaimsJson (assert_max_length: 65536)
 	if len(m.ClaimsJson) > 65536 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClaimsJson must be at most 65536 characters, got: %d", len(m.ClaimsJson))
+	}
+
+	// Validate ClaimsJson (assert_required)
+	if m.ClaimsJson == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClaimsJson is required")
 	}
 
 	// Validate ClaimsJson (default max size: 32768 bytes)
@@ -1307,14 +1326,9 @@ func ValidateEvaluatePolicyRequest(m *EvaluatePolicyRequest) error {
 		return nil
 	}
 
-	// Validate RegoSource (assert_max_length: 65536)
-	if len(m.RegoSource) > 65536 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RegoSource must be at most 65536 characters, got: %d", len(m.RegoSource))
-	}
-
-	// Validate RegoSource (assert_required)
-	if m.RegoSource == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RegoSource is required")
+	// Validate RegoBundle (assert_required)
+	if m.RegoBundle == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field RegoBundle is required")
 	}
 
 	// Validate InputJson (assert_required)
@@ -1335,11 +1349,6 @@ func ValidateEvaluatePolicyRequest(m *EvaluatePolicyRequest) error {
 	// Validate DataJson (assert_max_length: 65536)
 	if len(m.DataJson) > 65536 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field DataJson must be at most 65536 characters, got: %d", len(m.DataJson))
-	}
-
-	// Validate RegoSource (default max size: 32768 bytes)
-	if len(m.RegoSource) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RegoSource exceeds max size of 32768 bytes, got: %d", len(m.RegoSource))
 	}
 
 	// Validate InputJson (default max size: 32768 bytes)
@@ -1402,12 +1411,179 @@ func ValidateMapEmpty(m *MapEmpty) error {
 const (
 	MaxSizeSimulateentitlementsrequestClaimsJson  int = 32768
 	MaxSizeSimulatedserviceentitlementServiceName int = 32768
-	MaxSizeEvaluatepolicyrequestRegoSource        int = 32768
 	MaxSizeEvaluatepolicyrequestInputJson         int = 32768
 	MaxSizeEvaluatepolicyrequestQuery             int = 32768
 	MaxSizeEvaluatepolicyrequestDataJson          int = 32768
 	MaxSizeEvaluatepolicyresponseResultJson       int = 32768
 )
+
+// ============================================================
+// TypeDefaults: Config
+// ============================================================
+// ConfigDefaults applies field-level default values to zero-valued fields.
+func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SimulateEntitlementsRequest
+// ============================================================
+// SimulateEntitlementsRequestDefaults applies field-level default values to zero-valued fields.
+func SimulateEntitlementsRequestDefaults(v *SimulateEntitlementsRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SimulateEntitlementsResponse
+// ============================================================
+// SimulateEntitlementsResponseDefaults applies field-level default values to zero-valued fields.
+func SimulateEntitlementsResponseDefaults(v *SimulateEntitlementsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SimulatedServiceEntitlement
+// ============================================================
+// SimulatedServiceEntitlementDefaults applies field-level default values to zero-valued fields.
+func SimulatedServiceEntitlementDefaults(v *SimulatedServiceEntitlement) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: EvaluatePolicyRequest
+// ============================================================
+// EvaluatePolicyRequestDefaults applies field-level default values to zero-valued fields.
+func EvaluatePolicyRequestDefaults(v *EvaluatePolicyRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: EvaluatePolicyResponse
+// ============================================================
+// EvaluatePolicyResponseDefaults applies field-level default values to zero-valued fields.
+func EvaluatePolicyResponseDefaults(v *EvaluatePolicyResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PolicysimConfigState
+// ============================================================
+// PolicysimConfigStateDefaults applies field-level default values to zero-valued fields.
+func PolicysimConfigStateDefaults(v *PolicysimConfigState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SimulateEntitlementsRequest
+// ============================================================
+// SimulateEntitlementsRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SimulateEntitlementsRequestUndefaults(v *SimulateEntitlementsRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SimulateEntitlementsResponse
+// ============================================================
+// SimulateEntitlementsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SimulateEntitlementsResponseUndefaults(v *SimulateEntitlementsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SimulatedServiceEntitlement
+// ============================================================
+// SimulatedServiceEntitlementUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SimulatedServiceEntitlementUndefaults(v *SimulatedServiceEntitlement) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: EvaluatePolicyRequest
+// ============================================================
+// EvaluatePolicyRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func EvaluatePolicyRequestUndefaults(v *EvaluatePolicyRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: EvaluatePolicyResponse
+// ============================================================
+// EvaluatePolicyResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func EvaluatePolicyResponseUndefaults(v *EvaluatePolicyResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PolicysimConfigState
+// ============================================================
+// PolicysimConfigStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PolicysimConfigStateUndefaults(v *PolicysimConfigState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
 
 // ============================================================
 // Merge: SimulateEntitlementsRequest
@@ -1450,8 +1626,8 @@ func MergeSimulatedServiceEntitlement(dst, src *SimulatedServiceEntitlement) {
 // ============================================================
 // MergeEvaluatePolicyRequest fills zero-valued fields in dst from src.
 func MergeEvaluatePolicyRequest(dst, src *EvaluatePolicyRequest) {
-	if dst.RegoSource == "" {
-		dst.RegoSource = src.RegoSource
+	if dst.RegoBundle == nil {
+		dst.RegoBundle = src.RegoBundle
 	}
 	if dst.InputJson == "" {
 		dst.InputJson = src.InputJson

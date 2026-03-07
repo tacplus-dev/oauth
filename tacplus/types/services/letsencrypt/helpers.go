@@ -301,7 +301,6 @@ type letsencryptcertdataJSON struct {
 	CertmagicState json.RawMessage `json:"certmagic_state,omitempty"`
 	LastRenewed    int64           `json:"last_renewed,omitempty"`
 	Fqdn           string          `json:"fqdn,omitempty"`
-	Lock           json.RawMessage `json:"lock,omitempty"`
 }
 
 // LetsEncryptCertDataToJSON converts LetsEncryptCertData to JSON bytes.
@@ -328,13 +327,6 @@ func LetsEncryptCertDataToJSON(v *LetsEncryptCertData) ([]byte, error) {
 		}(),
 		LastRenewed: v.LastRenewed,
 		Fqdn:        v.Fqdn,
-		Lock: func() json.RawMessage {
-			if v.Lock == nil {
-				return nil
-			}
-			data, _ := LockToJSON(v.Lock)
-			return data
-		}(),
 	}
 	return json.Marshal(helper)
 }
@@ -415,13 +407,6 @@ func LetsEncryptCertDataFromJSON(data []byte) (*LetsEncryptCertData, error) {
 	}
 	result.LastRenewed = raw.LastRenewed
 	result.Fqdn = raw.Fqdn
-	// Parse message field: Lock
-	if len(raw.Lock) > 0 {
-		parsed, err := LockFromJSON(raw.Lock)
-		if err == nil {
-			result.Lock = parsed
-		}
-	}
 	return result, nil
 }
 
@@ -723,130 +708,6 @@ func LetsencryptConfigStateToTOML(v *LetsencryptConfigState) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
-// LockJSON represents Lock in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type lockJSON struct {
-	Id      string `json:"id,omitempty"`
-	Counter int64  `json:"counter,omitempty"`
-}
-
-// LockToJSON converts Lock to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func LockToJSON(v *Lock) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "lock is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := lockJSON{
-		Id:      v.Id,
-		Counter: v.Counter,
-	}
-	return json.Marshal(helper)
-}
-
-// LockFromBytes creates Lock from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func LockFromBytes(data []byte) (*Lock, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := LockFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := LockFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := LockFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &Lock{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse Lock: unsupported format or invalid data")
-}
-
-// LockFromJSON creates Lock from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func LockFromJSON(data []byte) (*Lock, error) {
-	// Unmarshal into helper struct with string enums
-	var raw lockJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &Lock{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &Lock{}
-	result.Id = raw.Id
-	result.Counter = raw.Counter
-	return result, nil
-}
-
-// LockToYAML converts Lock to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func LockToYAML(v *Lock) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "lock is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := LockToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// LockToTOML converts Lock to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func LockToTOML(v *Lock) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "lock is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := LockToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
 // MapEmptyJSON represents MapEmpty in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type mapemptyJSON struct {
@@ -1046,11 +907,6 @@ func LetsEncryptCertDataToEnvVar(v *LetsEncryptCertData) map[string]string {
 	}
 	result["PROTO_SERVICES_LETSENCRYPT_LETS_ENCRYPT_CERT_DATA_LAST_RENEWED"] = strconv.FormatInt(v.LastRenewed, 10)
 	result["PROTO_SERVICES_LETSENCRYPT_LETS_ENCRYPT_CERT_DATA_FQDN"] = v.Fqdn
-	if v.Lock != nil {
-		for k, val := range LockToEnvVar(v.Lock) {
-			result[k] = val
-		}
-	}
 	return result
 }
 
@@ -1076,11 +932,6 @@ func LetsEncryptCertDataFromEnvVar(env map[string]string) (*LetsEncryptCertData,
 	}
 	if val, ok := env["PROTO_SERVICES_LETSENCRYPT_LETS_ENCRYPT_CERT_DATA_FQDN"]; ok && val != "" {
 		result.Fqdn = val
-	}
-	if sub, err := LockFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.Lock = sub
 	}
 	return result, nil
 }
@@ -1145,33 +996,6 @@ func LetsencryptConfigStateFromEnvVar(env map[string]string) (*LetsencryptConfig
 		return nil, err
 	} else if sub != nil {
 		result.Config = sub
-	}
-	return result, nil
-}
-
-// LockToEnvVar converts Lock to environment variable key-value pairs.
-func LockToEnvVar(v *Lock) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_LETSENCRYPT_LOCK_ID"] = v.Id
-	result["PROTO_SERVICES_LETSENCRYPT_LOCK_COUNTER"] = strconv.FormatInt(v.Counter, 10)
-	return result
-}
-
-// LockFromEnvVar creates Lock from environment variable key-value pairs.
-func LockFromEnvVar(env map[string]string) (*Lock, error) {
-	result := &Lock{}
-	if val, ok := env["PROTO_SERVICES_LETSENCRYPT_LOCK_ID"]; ok && val != "" {
-		result.Id = val
-	}
-	if val, ok := env["PROTO_SERVICES_LETSENCRYPT_LOCK_COUNTER"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.Counter = parsed
 	}
 	return result, nil
 }
@@ -1241,6 +1065,16 @@ func ValidateLetsEncryptCertData(m *LetsEncryptCertData) error {
 		return nil
 	}
 
+	// Validate TlsCert (assert_required)
+	if m.TlsCert == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field TlsCert is required")
+	}
+
+	// Validate CertmagicState (assert_required)
+	if m.CertmagicState == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CertmagicState is required")
+	}
+
 	// Validate Fqdn (default max size: 32768 bytes)
 	if len(m.Fqdn) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Fqdn exceeds max size of 32768 bytes, got: %d", len(m.Fqdn))
@@ -1274,21 +1108,6 @@ func ValidateLetsencryptConfigState(m *LetsencryptConfigState) error {
 	return nil
 }
 
-// ValidateLock validates all fields in Lock according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateLock(m *Lock) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate Id (default max size: 32768 bytes)
-	if len(m.Id) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Id exceeds max size of 32768 bytes, got: %d", len(m.Id))
-	}
-
-	return nil
-}
-
 // ValidateMapEmpty validates all fields in MapEmpty according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateMapEmpty(m *MapEmpty) error {
@@ -1317,7 +1136,6 @@ const (
 	MaxSizeConfigHttpListen        int = 32768
 	MaxSizeLetsencryptcertdataFqdn int = 32768
 	MaxSizeCertmagicstateValue     int = 32768
-	MaxSizeLockId                  int = 32768
 )
 
 // ============================================================
@@ -1325,6 +1143,9 @@ const (
 // ============================================================
 // ConfigDefaults applies field-level default values to zero-valued fields.
 func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
 	if v.HttpListen == "" {
 		v.HttpListen = DefaultHttpListen
 	}
@@ -1334,12 +1155,61 @@ func ConfigDefaults(v *Config) {
 }
 
 // ============================================================
+// TypeDefaults: LetsEncryptState
+// ============================================================
+// LetsEncryptStateDefaults applies field-level default values to zero-valued fields.
+func LetsEncryptStateDefaults(v *LetsEncryptState) {
+	if v == nil {
+		return
+	}
+	if v.CertData != nil {
+		LetsEncryptCertDataDefaults(v.CertData)
+	}
+}
+
+// ============================================================
+// TypeDefaults: LetsEncryptCertData
+// ============================================================
+// LetsEncryptCertDataDefaults applies field-level default values to zero-valued fields.
+func LetsEncryptCertDataDefaults(v *LetsEncryptCertData) {
+	if v == nil {
+		return
+	}
+	if v.CertmagicState == nil {
+		v.CertmagicState = &CertMagicState{}
+	}
+}
+
+// ============================================================
+// TypeDefaults: CertMagicState
+// ============================================================
+// CertMagicStateDefaults applies field-level default values to zero-valued fields.
+func CertMagicStateDefaults(v *CertMagicState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeDefaults: LetsencryptConfigState
 // ============================================================
 // LetsencryptConfigStateDefaults applies field-level default values to zero-valued fields.
 func LetsencryptConfigStateDefaults(v *LetsencryptConfigState) {
+	if v == nil {
+		return
+	}
 	if v.Config != nil {
 		ConfigDefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
 	}
 }
 
@@ -1349,6 +1219,9 @@ func LetsencryptConfigStateDefaults(v *LetsencryptConfigState) {
 // ConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
 	if v.HttpListen == DefaultHttpListen {
 		v.HttpListen = ""
 	}
@@ -1358,13 +1231,63 @@ func ConfigUndefaults(v *Config) {
 }
 
 // ============================================================
+// TypeUndefaults: LetsEncryptState
+// ============================================================
+// LetsEncryptStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LetsEncryptStateUndefaults(v *LetsEncryptState) {
+	if v == nil {
+		return
+	}
+	if v.CertData != nil {
+		LetsEncryptCertDataUndefaults(v.CertData)
+	}
+}
+
+// ============================================================
+// TypeUndefaults: LetsEncryptCertData
+// ============================================================
+// LetsEncryptCertDataUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LetsEncryptCertDataUndefaults(v *LetsEncryptCertData) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CertMagicState
+// ============================================================
+// CertMagicStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CertMagicStateUndefaults(v *CertMagicState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeUndefaults: LetsencryptConfigState
 // ============================================================
 // LetsencryptConfigStateUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func LetsencryptConfigStateUndefaults(v *LetsencryptConfigState) {
+	if v == nil {
+		return
+	}
 	if v.Config != nil {
 		ConfigUndefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
 	}
 }
 
@@ -1418,11 +1341,6 @@ func MergeLetsEncryptCertData(dst, src *LetsEncryptCertData) {
 	if dst.Fqdn == "" {
 		dst.Fqdn = src.Fqdn
 	}
-	if dst.Lock == nil {
-		dst.Lock = src.Lock
-	} else if src.Lock != nil {
-		MergeLock(dst.Lock, src.Lock)
-	}
 }
 
 // ============================================================
@@ -1450,19 +1368,6 @@ func MergeLetsencryptConfigState(dst, src *LetsencryptConfigState) {
 		dst.Config = src.Config
 	} else if src.Config != nil {
 		MergeConfig(dst.Config, src.Config)
-	}
-}
-
-// ============================================================
-// Merge: Lock
-// ============================================================
-// MergeLock fills zero-valued fields in dst from src.
-func MergeLock(dst, src *Lock) {
-	if dst.Id == "" {
-		dst.Id = src.Id
-	}
-	if dst.Counter == 0 {
-		dst.Counter = src.Counter
 	}
 }
 

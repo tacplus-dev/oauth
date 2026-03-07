@@ -51,7 +51,7 @@ syntax = "proto3";
 package identity;
 option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity";
 
-import "libs/entitlement.proto";
+import "libs/servicename.proto";
 import "libs/jwk.proto";
 import "libs/opa.proto";
 import "google/protobuf/empty.proto";
@@ -95,19 +95,17 @@ message Config {
   // Default: 300 (5 minutes).
   int64 jwk_refetch_interval_seconds = 7;
 
-  // entitlements_policy is a Rego policy evaluated at token exchange time.
-  // Input: {claims: {<flattened IDP claims>}}
-  // Expected output: data.entitlements.main → {profiles: [string]}
-  // Zero profiles = denied. Profile names must match identity_profiles ids.
-  string entitlements_policy = 11;
-
-  // entitlement_mappings maps credentials to service identities (S2S only).
-  repeated entitlement.ServiceEntitlementMapping entitlement_mappings = 8;
+  // entitlements_policy is the OPA policy for determining user entitlements at
+  // token exchange time. Contains a filesystem.Directory bundle of .rego files.
+  // The policy's entry_point rule receives {claims: {<IDP claims>}} and must
+  // return {profiles: [string]}. Profile names are resolved to concrete
+  // entitlements via identity_profiles.
+  opa.OpaPolicy entitlements_policy = 11;
 
   // identity_profiles defines named sets of entitlements for user authorization.
   // OPA entitlements_policy returns profile names; identity resolves those names
   // to concrete entitlements at token exchange time.
-  repeated entitlement.IdentityProfile identity_profiles = 9;
+  repeated servicename.IdentityProfile identity_profiles = 9;
 }
 
 // ============================================================================
@@ -173,12 +171,11 @@ message ProviderConfig {
 // Backend State (stored in kernel)
 // ============================================================================
 
-// EntitlementConfig wraps the entitlement mappings and identity profiles.
+// EntitlementConfig wraps identity profiles for user authorization.
 // Published by Identity from config so other services (policy, policysim)
 // can read them via Watch (RO) without duplicating config.
 message EntitlementConfig {
-  repeated entitlement.ServiceEntitlementMapping entitlement_mappings = 1;
-  repeated entitlement.IdentityProfile identity_profiles = 2;
+  repeated servicename.IdentityProfile identity_profiles = 2;
 }
 
 // IdentityState holds public verifying keys and auth config readable by all

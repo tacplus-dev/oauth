@@ -22,15 +22,15 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	cloudidentity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudidentity"
-	entitlement "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/entitlement"
+	cloudvendor "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudvendor"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	generated "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/generated"
 	healthreport "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
 	host "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/host"
 	jwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
 	logger "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/logger"
 	outputformat "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/outputformat"
 	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
-	config_holder "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/config_holder"
 	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -738,12 +738,9 @@ type bootstrapconfigJSON struct {
 	Listener          json.RawMessage   `json:"listener,omitempty"`
 	Members           []json.RawMessage `json:"members,omitempty"`
 	NodeCount         int32             `json:"node_count,omitempty"`
-	Secret            string            `json:"secret,omitempty"`
 	PartitionCount    int32             `json:"partition_count,omitempty"`
 	Network           json.RawMessage   `json:"network,omitempty"`
 	Logger            json.RawMessage   `json:"logger,omitempty"`
-	EnableMetrics     bool              `json:"enable_metrics,omitempty"`
-	EnableTracing     bool              `json:"enable_tracing,omitempty"`
 	CpSubsystem       json.RawMessage   `json:"cp_subsystem,omitempty"`
 	PersistenceDir    string            `json:"persistence_dir,omitempty"`
 	PersistenceFormat string            `json:"persistence_format,omitempty"`
@@ -784,7 +781,6 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			return result
 		}(),
 		NodeCount:      v.NodeCount,
-		Secret:         v.Secret,
 		PartitionCount: v.PartitionCount,
 		Network: func() json.RawMessage {
 			if v.Network == nil {
@@ -800,8 +796,6 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			data, _ := logger.LoggerConfigToJSON(v.Logger)
 			return data
 		}(),
-		EnableMetrics: v.EnableMetrics,
-		EnableTracing: v.EnableTracing,
 		CpSubsystem: func() json.RawMessage {
 			if v.CpSubsystem == nil {
 				return nil
@@ -919,7 +913,6 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 		}
 	}
 	result.NodeCount = raw.NodeCount
-	result.Secret = raw.Secret
 	result.PartitionCount = raw.PartitionCount
 	// Parse message field: Network
 	if len(raw.Network) > 0 {
@@ -935,8 +928,6 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 			result.Logger = parsed
 		}
 	}
-	result.EnableMetrics = raw.EnableMetrics
-	result.EnableTracing = raw.EnableTracing
 	// Parse message field: CpSubsystem
 	if len(raw.CpSubsystem) > 0 {
 		parsed, err := CPSubsystemConfigFromJSON(raw.CpSubsystem)
@@ -1675,257 +1666,6 @@ func FullDumpHeaderToTOML(v *FullDumpHeader) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
-// SecurityConfigJSON represents SecurityConfig in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type securityconfigJSON struct {
-	Audience        string `json:"audience,omitempty"`
-	TokenTtlSeconds int64  `json:"token_ttl_seconds,omitempty"`
-}
-
-// SecurityConfigToJSON converts SecurityConfig to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func SecurityConfigToJSON(v *SecurityConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "securityconfig is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := securityconfigJSON{
-		Audience:        v.Audience,
-		TokenTtlSeconds: v.TokenTtlSeconds,
-	}
-	return json.Marshal(helper)
-}
-
-// SecurityConfigFromBytes creates SecurityConfig from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func SecurityConfigFromBytes(data []byte) (*SecurityConfig, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := SecurityConfigFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := SecurityConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := SecurityConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &SecurityConfig{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse SecurityConfig: unsupported format or invalid data")
-}
-
-// SecurityConfigFromJSON creates SecurityConfig from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func SecurityConfigFromJSON(data []byte) (*SecurityConfig, error) {
-	// Unmarshal into helper struct with string enums
-	var raw securityconfigJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &SecurityConfig{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &SecurityConfig{}
-	result.Audience = raw.Audience
-	result.TokenTtlSeconds = raw.TokenTtlSeconds
-	return result, nil
-}
-
-// SecurityConfigToYAML converts SecurityConfig to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func SecurityConfigToYAML(v *SecurityConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "securityconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := SecurityConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// SecurityConfigToTOML converts SecurityConfig to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func SecurityConfigToTOML(v *SecurityConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "securityconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := SecurityConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// TokenExchangerConfigJSON represents TokenExchangerConfig in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type tokenexchangerconfigJSON struct {
-	RefreshAudience            string `json:"refresh_audience,omitempty"`
-	KeyRotationIntervalSeconds int64  `json:"key_rotation_interval_seconds,omitempty"`
-	DefaultTokenExpirySeconds  int64  `json:"default_token_expiry_seconds,omitempty"`
-}
-
-// TokenExchangerConfigToJSON converts TokenExchangerConfig to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func TokenExchangerConfigToJSON(v *TokenExchangerConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "tokenexchangerconfig is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := tokenexchangerconfigJSON{
-		RefreshAudience:            v.RefreshAudience,
-		KeyRotationIntervalSeconds: v.KeyRotationIntervalSeconds,
-		DefaultTokenExpirySeconds:  v.DefaultTokenExpirySeconds,
-	}
-	return json.Marshal(helper)
-}
-
-// TokenExchangerConfigFromBytes creates TokenExchangerConfig from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func TokenExchangerConfigFromBytes(data []byte) (*TokenExchangerConfig, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := TokenExchangerConfigFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := TokenExchangerConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := TokenExchangerConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &TokenExchangerConfig{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse TokenExchangerConfig: unsupported format or invalid data")
-}
-
-// TokenExchangerConfigFromJSON creates TokenExchangerConfig from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func TokenExchangerConfigFromJSON(data []byte) (*TokenExchangerConfig, error) {
-	// Unmarshal into helper struct with string enums
-	var raw tokenexchangerconfigJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &TokenExchangerConfig{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &TokenExchangerConfig{}
-	result.RefreshAudience = raw.RefreshAudience
-	result.KeyRotationIntervalSeconds = raw.KeyRotationIntervalSeconds
-	result.DefaultTokenExpirySeconds = raw.DefaultTokenExpirySeconds
-	return result, nil
-}
-
-// TokenExchangerConfigToYAML converts TokenExchangerConfig to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func TokenExchangerConfigToYAML(v *TokenExchangerConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "tokenexchangerconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := TokenExchangerConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// TokenExchangerConfigToTOML converts TokenExchangerConfig to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func TokenExchangerConfigToTOML(v *TokenExchangerConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "tokenexchangerconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := TokenExchangerConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
 // TokenRequestJSON represents TokenRequest in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type tokenrequestJSON struct {
@@ -2361,17 +2101,322 @@ func TrustedCaStateToTOML(v *TrustedCaState) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
+// CloudIdentityMatcherJSON represents CloudIdentityMatcher in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cloudidentitymatcherJSON struct {
+	Vendor           string `json:"vendor,omitempty"`
+	ExpectedIdentity string `json:"expected_identity,omitempty"`
+}
+
+// CloudIdentityMatcherToJSON converts CloudIdentityMatcher to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CloudIdentityMatcherToJSON(v *CloudIdentityMatcher) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cloudidentitymatcher is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cloudidentitymatcherJSON{
+		Vendor:           cloudvendor.CloudVendorToString(v.Vendor),
+		ExpectedIdentity: v.ExpectedIdentity,
+	}
+	return json.Marshal(helper)
+}
+
+// CloudIdentityMatcherFromBytes creates CloudIdentityMatcher from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CloudIdentityMatcherFromBytes(data []byte) (*CloudIdentityMatcher, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CloudIdentityMatcherFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CloudIdentityMatcherFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CloudIdentityMatcherFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CloudIdentityMatcher{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CloudIdentityMatcher: unsupported format or invalid data")
+}
+
+// CloudIdentityMatcherFromJSON creates CloudIdentityMatcher from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CloudIdentityMatcherFromJSON(data []byte) (*CloudIdentityMatcher, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cloudidentitymatcherJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CloudIdentityMatcher{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CloudIdentityMatcher{}
+	// Parse enum field: Vendor
+	if raw.Vendor != "" {
+		if parsed, err := cloudvendor.ParseCloudVendor(raw.Vendor); err == nil {
+			result.Vendor = parsed
+		}
+	}
+	result.ExpectedIdentity = raw.ExpectedIdentity
+	return result, nil
+}
+
+// CloudIdentityMatcherToYAML converts CloudIdentityMatcher to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CloudIdentityMatcherToYAML(v *CloudIdentityMatcher) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cloudidentitymatcher is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CloudIdentityMatcherToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CloudIdentityMatcherToTOML converts CloudIdentityMatcher to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CloudIdentityMatcherToTOML(v *CloudIdentityMatcher) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cloudidentitymatcher is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CloudIdentityMatcherToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// DelegateJSON represents Delegate in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type delegateJSON struct {
+	Name               string            `json:"name,omitempty"`
+	CredPairs          []json.RawMessage `json:"cred_pairs,omitempty"`
+	CloudIdentities    []json.RawMessage `json:"cloud_identities,omitempty"`
+	AuthorizedServices []string          `json:"authorized_services,omitempty"`
+}
+
+// DelegateToJSON converts Delegate to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func DelegateToJSON(v *Delegate) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "delegate is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := delegateJSON{
+		Name: v.Name,
+		CredPairs: func() []json.RawMessage {
+			if len(v.CredPairs) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.CredPairs))
+			for _, item := range v.CredPairs {
+				if item != nil {
+					if data, err := jwk.CredPairToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
+		CloudIdentities: func() []json.RawMessage {
+			if len(v.CloudIdentities) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.CloudIdentities))
+			for _, item := range v.CloudIdentities {
+				if item != nil {
+					if data, err := CloudIdentityMatcherToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
+		AuthorizedServices: v.AuthorizedServices,
+	}
+	return json.Marshal(helper)
+}
+
+// DelegateFromBytes creates Delegate from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func DelegateFromBytes(data []byte) (*Delegate, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := DelegateFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := DelegateFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := DelegateFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &Delegate{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse Delegate: unsupported format or invalid data")
+}
+
+// DelegateFromJSON creates Delegate from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func DelegateFromJSON(data []byte) (*Delegate, error) {
+	// Unmarshal into helper struct with string enums
+	var raw delegateJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &Delegate{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &Delegate{}
+	result.Name = raw.Name
+	// Parse repeated message field: CredPairs
+	if len(raw.CredPairs) > 0 {
+		result.CredPairs = make([]*jwk.CredPair, 0, len(raw.CredPairs))
+		for _, itemJSON := range raw.CredPairs {
+			if len(itemJSON) > 0 {
+				parsed, err := jwk.CredPairFromJSON(itemJSON)
+				if err == nil {
+					result.CredPairs = append(result.CredPairs, parsed)
+				}
+			}
+		}
+	}
+	// Parse repeated message field: CloudIdentities
+	if len(raw.CloudIdentities) > 0 {
+		result.CloudIdentities = make([]*CloudIdentityMatcher, 0, len(raw.CloudIdentities))
+		for _, itemJSON := range raw.CloudIdentities {
+			if len(itemJSON) > 0 {
+				parsed, err := CloudIdentityMatcherFromJSON(itemJSON)
+				if err == nil {
+					result.CloudIdentities = append(result.CloudIdentities, parsed)
+				}
+			}
+		}
+	}
+	result.AuthorizedServices = raw.AuthorizedServices
+	return result, nil
+}
+
+// DelegateToYAML converts Delegate to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func DelegateToYAML(v *Delegate) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "delegate is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := DelegateToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// DelegateToTOML converts Delegate to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func DelegateToTOML(v *Delegate) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "delegate is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := DelegateToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
 // ConfigJSON represents Config in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type configJSON struct {
-	TrustedCas          []json.RawMessage `json:"trusted_cas,omitempty"`
-	RateLimit           json.RawMessage   `json:"rate_limit,omitempty"`
-	Configs             json.RawMessage   `json:"configs,omitempty"`
-	Security            json.RawMessage   `json:"security,omitempty"`
-	TokenExchanger      json.RawMessage   `json:"token_exchanger,omitempty"`
-	CredPairs           []json.RawMessage `json:"cred_pairs,omitempty"`
-	EntitlementMappings []json.RawMessage `json:"entitlement_mappings,omitempty"`
-	ServiceEntitlements []json.RawMessage `json:"service_entitlements,omitempty"`
+	TrustedCas                 []json.RawMessage `json:"trusted_cas,omitempty"`
+	RateLimit                  json.RawMessage   `json:"rate_limit,omitempty"`
+	Configs                    json.RawMessage   `json:"configs,omitempty"`
+	KeyRotationIntervalSeconds int64             `json:"key_rotation_interval_seconds,omitempty"`
+	DefaultTokenExpirySeconds  int64             `json:"default_token_expiry_seconds,omitempty"`
+	Delegates                  []json.RawMessage `json:"delegates,omitempty"`
 }
 
 // ConfigToJSON converts Config to JSON bytes.
@@ -2407,59 +2452,19 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 			if v.Configs == nil {
 				return nil
 			}
-			data, _ := config_holder.ConfigHolderToJSON(v.Configs)
+			data, _ := generated.ServicesToJSON(v.Configs)
 			return data
 		}(),
-		Security: func() json.RawMessage {
-			if v.Security == nil {
+		KeyRotationIntervalSeconds: v.KeyRotationIntervalSeconds,
+		DefaultTokenExpirySeconds:  v.DefaultTokenExpirySeconds,
+		Delegates: func() []json.RawMessage {
+			if len(v.Delegates) == 0 {
 				return nil
 			}
-			data, _ := SecurityConfigToJSON(v.Security)
-			return data
-		}(),
-		TokenExchanger: func() json.RawMessage {
-			if v.TokenExchanger == nil {
-				return nil
-			}
-			data, _ := TokenExchangerConfigToJSON(v.TokenExchanger)
-			return data
-		}(),
-		CredPairs: func() []json.RawMessage {
-			if len(v.CredPairs) == 0 {
-				return nil
-			}
-			result := make([]json.RawMessage, 0, len(v.CredPairs))
-			for _, item := range v.CredPairs {
+			result := make([]json.RawMessage, 0, len(v.Delegates))
+			for _, item := range v.Delegates {
 				if item != nil {
-					if data, err := jwk.CredPairToJSON(item); err == nil {
-						result = append(result, data)
-					}
-				}
-			}
-			return result
-		}(),
-		EntitlementMappings: func() []json.RawMessage {
-			if len(v.EntitlementMappings) == 0 {
-				return nil
-			}
-			result := make([]json.RawMessage, 0, len(v.EntitlementMappings))
-			for _, item := range v.EntitlementMappings {
-				if item != nil {
-					if data, err := entitlement.ServiceEntitlementMappingToJSON(item); err == nil {
-						result = append(result, data)
-					}
-				}
-			}
-			return result
-		}(),
-		ServiceEntitlements: func() []json.RawMessage {
-			if len(v.ServiceEntitlements) == 0 {
-				return nil
-			}
-			result := make([]json.RawMessage, 0, len(v.ServiceEntitlements))
-			for _, item := range v.ServiceEntitlements {
-				if item != nil {
-					if data, err := entitlement.ServiceEntitlementsToJSON(item); err == nil {
+					if data, err := DelegateToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2551,57 +2556,21 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 	}
 	// Parse message field: Configs
 	if len(raw.Configs) > 0 {
-		parsed, err := config_holder.ConfigHolderFromJSON(raw.Configs)
+		parsed, err := generated.ServicesFromJSON(raw.Configs)
 		if err == nil {
 			result.Configs = parsed
 		}
 	}
-	// Parse message field: Security
-	if len(raw.Security) > 0 {
-		parsed, err := SecurityConfigFromJSON(raw.Security)
-		if err == nil {
-			result.Security = parsed
-		}
-	}
-	// Parse message field: TokenExchanger
-	if len(raw.TokenExchanger) > 0 {
-		parsed, err := TokenExchangerConfigFromJSON(raw.TokenExchanger)
-		if err == nil {
-			result.TokenExchanger = parsed
-		}
-	}
-	// Parse repeated message field: CredPairs
-	if len(raw.CredPairs) > 0 {
-		result.CredPairs = make([]*jwk.CredPair, 0, len(raw.CredPairs))
-		for _, itemJSON := range raw.CredPairs {
+	result.KeyRotationIntervalSeconds = raw.KeyRotationIntervalSeconds
+	result.DefaultTokenExpirySeconds = raw.DefaultTokenExpirySeconds
+	// Parse repeated message field: Delegates
+	if len(raw.Delegates) > 0 {
+		result.Delegates = make([]*Delegate, 0, len(raw.Delegates))
+		for _, itemJSON := range raw.Delegates {
 			if len(itemJSON) > 0 {
-				parsed, err := jwk.CredPairFromJSON(itemJSON)
+				parsed, err := DelegateFromJSON(itemJSON)
 				if err == nil {
-					result.CredPairs = append(result.CredPairs, parsed)
-				}
-			}
-		}
-	}
-	// Parse repeated message field: EntitlementMappings
-	if len(raw.EntitlementMappings) > 0 {
-		result.EntitlementMappings = make([]*entitlement.ServiceEntitlementMapping, 0, len(raw.EntitlementMappings))
-		for _, itemJSON := range raw.EntitlementMappings {
-			if len(itemJSON) > 0 {
-				parsed, err := entitlement.ServiceEntitlementMappingFromJSON(itemJSON)
-				if err == nil {
-					result.EntitlementMappings = append(result.EntitlementMappings, parsed)
-				}
-			}
-		}
-	}
-	// Parse repeated message field: ServiceEntitlements
-	if len(raw.ServiceEntitlements) > 0 {
-		result.ServiceEntitlements = make([]*entitlement.ServiceEntitlements, 0, len(raw.ServiceEntitlements))
-		for _, itemJSON := range raw.ServiceEntitlements {
-			if len(itemJSON) > 0 {
-				parsed, err := entitlement.ServiceEntitlementsFromJSON(itemJSON)
-				if err == nil {
-					result.ServiceEntitlements = append(result.ServiceEntitlements, parsed)
+					result.Delegates = append(result.Delegates, parsed)
 				}
 			}
 		}
@@ -28682,7 +28651,6 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 		}
 	}
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_NODE_COUNT"] = strconv.FormatInt(int64(v.NodeCount), 10)
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_SECRET"] = v.Secret
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_PARTITION_COUNT"] = strconv.FormatInt(int64(v.PartitionCount), 10)
 	if v.Network != nil {
 		for k, val := range NetworkConfigToEnvVar(v.Network) {
@@ -28694,8 +28662,6 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 			result[k] = val
 		}
 	}
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_ENABLE_METRICS"] = strconv.FormatBool(v.EnableMetrics)
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_ENABLE_TRACING"] = strconv.FormatBool(v.EnableTracing)
 	if v.CpSubsystem != nil {
 		for k, val := range CPSubsystemConfigToEnvVar(v.CpSubsystem) {
 			result[k] = val
@@ -28731,9 +28697,6 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 		}
 		result.NodeCount = int32(parsed)
 	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_SECRET"]; ok && val != "" {
-		result.Secret = val
-	}
 	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_PARTITION_COUNT"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
@@ -28750,20 +28713,6 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 		return nil, err
 	} else if sub != nil {
 		result.Logger = sub
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_ENABLE_METRICS"]; ok && val != "" {
-		parsed, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, err
-		}
-		result.EnableMetrics = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_ENABLE_TRACING"]; ok && val != "" {
-		parsed, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, err
-		}
-		result.EnableTracing = parsed
 	}
 	if sub, err := CPSubsystemConfigFromEnvVar(env); err != nil {
 		return nil, err
@@ -29017,68 +28966,6 @@ func FullDumpHeaderFromEnvVar(env map[string]string) (*FullDumpHeader, error) {
 	return result, nil
 }
 
-// SecurityConfigToEnvVar converts SecurityConfig to environment variable key-value pairs.
-func SecurityConfigToEnvVar(v *SecurityConfig) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_SECURITY_CONFIG_AUDIENCE"] = v.Audience
-	result["PROTO_SERVICES_KERNEL_SECURITY_CONFIG_TOKEN_TTL_SECONDS"] = strconv.FormatInt(v.TokenTtlSeconds, 10)
-	return result
-}
-
-// SecurityConfigFromEnvVar creates SecurityConfig from environment variable key-value pairs.
-func SecurityConfigFromEnvVar(env map[string]string) (*SecurityConfig, error) {
-	result := &SecurityConfig{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_SECURITY_CONFIG_AUDIENCE"]; ok && val != "" {
-		result.Audience = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_SECURITY_CONFIG_TOKEN_TTL_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.TokenTtlSeconds = parsed
-	}
-	return result, nil
-}
-
-// TokenExchangerConfigToEnvVar converts TokenExchangerConfig to environment variable key-value pairs.
-func TokenExchangerConfigToEnvVar(v *TokenExchangerConfig) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_TOKEN_EXCHANGER_CONFIG_REFRESH_AUDIENCE"] = v.RefreshAudience
-	result["PROTO_SERVICES_KERNEL_TOKEN_EXCHANGER_CONFIG_KEY_ROTATION_INTERVAL_SECONDS"] = strconv.FormatInt(v.KeyRotationIntervalSeconds, 10)
-	result["PROTO_SERVICES_KERNEL_TOKEN_EXCHANGER_CONFIG_DEFAULT_TOKEN_EXPIRY_SECONDS"] = strconv.FormatInt(v.DefaultTokenExpirySeconds, 10)
-	return result
-}
-
-// TokenExchangerConfigFromEnvVar creates TokenExchangerConfig from environment variable key-value pairs.
-func TokenExchangerConfigFromEnvVar(env map[string]string) (*TokenExchangerConfig, error) {
-	result := &TokenExchangerConfig{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_EXCHANGER_CONFIG_REFRESH_AUDIENCE"]; ok && val != "" {
-		result.RefreshAudience = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_EXCHANGER_CONFIG_KEY_ROTATION_INTERVAL_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.KeyRotationIntervalSeconds = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_EXCHANGER_CONFIG_DEFAULT_TOKEN_EXPIRY_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.DefaultTokenExpirySeconds = parsed
-	}
-	return result, nil
-}
-
 // TokenRequestToEnvVar converts TokenRequest to environment variable key-value pairs.
 func TokenRequestToEnvVar(v *TokenRequest) map[string]string {
 	if v == nil {
@@ -29154,6 +29041,58 @@ func TrustedCaStateFromEnvVar(env map[string]string) (*TrustedCaState, error) {
 	return result, nil
 }
 
+// CloudIdentityMatcherToEnvVar converts CloudIdentityMatcher to environment variable key-value pairs.
+func CloudIdentityMatcherToEnvVar(v *CloudIdentityMatcher) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_KERNEL_CLOUD_IDENTITY_MATCHER_VENDOR"] = cloudvendor.CloudVendorToString(v.Vendor)
+	result["PROTO_SERVICES_KERNEL_CLOUD_IDENTITY_MATCHER_EXPECTED_IDENTITY"] = v.ExpectedIdentity
+	return result
+}
+
+// CloudIdentityMatcherFromEnvVar creates CloudIdentityMatcher from environment variable key-value pairs.
+func CloudIdentityMatcherFromEnvVar(env map[string]string) (*CloudIdentityMatcher, error) {
+	result := &CloudIdentityMatcher{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CLOUD_IDENTITY_MATCHER_VENDOR"]; ok && val != "" {
+		parsed, err := cloudvendor.ParseCloudVendor(val)
+		if err != nil {
+			return nil, err
+		}
+		result.Vendor = parsed
+	}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CLOUD_IDENTITY_MATCHER_EXPECTED_IDENTITY"]; ok && val != "" {
+		result.ExpectedIdentity = val
+	}
+	return result, nil
+}
+
+// DelegateToEnvVar converts Delegate to environment variable key-value pairs.
+func DelegateToEnvVar(v *Delegate) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_KERNEL_DELEGATE_NAME"] = v.Name
+	if len(v.AuthorizedServices) > 0 {
+		result["PROTO_SERVICES_KERNEL_DELEGATE_AUTHORIZED_SERVICES"] = strings.Join(v.AuthorizedServices, ",")
+	}
+	return result
+}
+
+// DelegateFromEnvVar creates Delegate from environment variable key-value pairs.
+func DelegateFromEnvVar(env map[string]string) (*Delegate, error) {
+	result := &Delegate{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_DELEGATE_NAME"]; ok && val != "" {
+		result.Name = val
+	}
+	if val, ok := env["PROTO_SERVICES_KERNEL_DELEGATE_AUTHORIZED_SERVICES"]; ok && val != "" {
+		result.AuthorizedServices = strings.Split(val, ",")
+	}
+	return result, nil
+}
+
 // ConfigToEnvVar converts Config to environment variable key-value pairs.
 func ConfigToEnvVar(v *Config) map[string]string {
 	if v == nil {
@@ -29166,20 +29105,12 @@ func ConfigToEnvVar(v *Config) map[string]string {
 		}
 	}
 	if v.Configs != nil {
-		for k, val := range config_holder.ConfigHolderToEnvVar(v.Configs) {
+		for k, val := range generated.ServicesToEnvVar(v.Configs) {
 			result[k] = val
 		}
 	}
-	if v.Security != nil {
-		for k, val := range SecurityConfigToEnvVar(v.Security) {
-			result[k] = val
-		}
-	}
-	if v.TokenExchanger != nil {
-		for k, val := range TokenExchangerConfigToEnvVar(v.TokenExchanger) {
-			result[k] = val
-		}
-	}
+	result["PROTO_SERVICES_KERNEL_CONFIG_KEY_ROTATION_INTERVAL_SECONDS"] = strconv.FormatInt(v.KeyRotationIntervalSeconds, 10)
+	result["PROTO_SERVICES_KERNEL_CONFIG_DEFAULT_TOKEN_EXPIRY_SECONDS"] = strconv.FormatInt(v.DefaultTokenExpirySeconds, 10)
 	return result
 }
 
@@ -29191,20 +29122,24 @@ func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 	} else if sub != nil {
 		result.RateLimit = sub
 	}
-	if sub, err := config_holder.ConfigHolderFromEnvVar(env); err != nil {
+	if sub, err := generated.ServicesFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Configs = sub
 	}
-	if sub, err := SecurityConfigFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.Security = sub
+	if val, ok := env["PROTO_SERVICES_KERNEL_CONFIG_KEY_ROTATION_INTERVAL_SECONDS"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.KeyRotationIntervalSeconds = parsed
 	}
-	if sub, err := TokenExchangerConfigFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.TokenExchanger = sub
+	if val, ok := env["PROTO_SERVICES_KERNEL_CONFIG_DEFAULT_TOKEN_EXPIRY_SECONDS"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.DefaultTokenExpirySeconds = parsed
 	}
 	return result, nil
 }
@@ -33656,6 +33591,21 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 	if m.PartitionCount <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field PartitionCount must be > 0, got: %v", m.PartitionCount)
 	}
+	// Validate Network (assert_required)
+	if m.Network == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Network is required")
+	}
+
+	// Validate Logger (assert_required)
+	if m.Logger == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Logger is required")
+	}
+
+	// Validate CpSubsystem (assert_required)
+	if m.CpSubsystem == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CpSubsystem is required")
+	}
+
 	// Validate LoaderCa (assert_max_items: 16)
 	if len(m.LoaderCa) > 16 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field LoaderCa exceeds max items of 16, got: %d", len(m.LoaderCa))
@@ -33669,11 +33619,6 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 	// Validate ClusterName (default max size: 32768 bytes)
 	if len(m.ClusterName) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClusterName exceeds max size of 32768 bytes, got: %d", len(m.ClusterName))
-	}
-
-	// Validate Secret (default max size: 32768 bytes)
-	if len(m.Secret) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Secret exceeds max size of 32768 bytes, got: %d", len(m.Secret))
 	}
 
 	// Validate PersistenceDir (default max size: 32768 bytes)
@@ -33788,36 +33733,6 @@ func ValidateFullDumpHeader(m *FullDumpHeader) error {
 	return nil
 }
 
-// ValidateSecurityConfig validates all fields in SecurityConfig according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateSecurityConfig(m *SecurityConfig) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate Audience (default max size: 32768 bytes)
-	if len(m.Audience) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Audience exceeds max size of 32768 bytes, got: %d", len(m.Audience))
-	}
-
-	return nil
-}
-
-// ValidateTokenExchangerConfig validates all fields in TokenExchangerConfig according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateTokenExchangerConfig(m *TokenExchangerConfig) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate RefreshAudience (default max size: 32768 bytes)
-	if len(m.RefreshAudience) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshAudience exceeds max size of 32768 bytes, got: %d", len(m.RefreshAudience))
-	}
-
-	return nil
-}
-
 // ValidateTokenRequest validates all fields in TokenRequest according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateTokenRequest(m *TokenRequest) error {
@@ -33863,6 +33778,61 @@ func ValidateTrustedCaState(m *TrustedCaState) error {
 	return nil
 }
 
+// ValidateCloudIdentityMatcher validates all fields in CloudIdentityMatcher according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCloudIdentityMatcher(m *CloudIdentityMatcher) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate ExpectedIdentity (assert_required)
+	if m.ExpectedIdentity == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ExpectedIdentity is required")
+	}
+
+	// Validate ExpectedIdentity (default max size: 32768 bytes)
+	if len(m.ExpectedIdentity) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ExpectedIdentity exceeds max size of 32768 bytes, got: %d", len(m.ExpectedIdentity))
+	}
+
+	return nil
+}
+
+// ValidateDelegate validates all fields in Delegate according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateDelegate(m *Delegate) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate Name (assert_required)
+	if m.Name == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Name is required")
+	}
+
+	// Validate CredPairs (assert_max_items: 8)
+	if len(m.CredPairs) > 8 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CredPairs exceeds max items of 8, got: %d", len(m.CredPairs))
+	}
+
+	// Validate CloudIdentities (assert_max_items: 8)
+	if len(m.CloudIdentities) > 8 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CloudIdentities exceeds max items of 8, got: %d", len(m.CloudIdentities))
+	}
+
+	// Validate AuthorizedServices (assert_max_items: 64)
+	if len(m.AuthorizedServices) > 64 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AuthorizedServices exceeds max items of 64, got: %d", len(m.AuthorizedServices))
+	}
+
+	// Validate Name (default max size: 32768 bytes)
+	if len(m.Name) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Name exceeds max size of 32768 bytes, got: %d", len(m.Name))
+	}
+
+	return nil
+}
+
 // ValidateConfig validates all fields in Config according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateConfig(m *Config) error {
@@ -33875,14 +33845,19 @@ func ValidateConfig(m *Config) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field TrustedCas exceeds max items of 16, got: %d", len(m.TrustedCas))
 	}
 
-	// Validate TokenExchanger (assert_required)
-	if m.TokenExchanger == nil {
-		return protoerrors.NewErrMissingInvalidData(nil, "field TokenExchanger is required")
+	// Validate RateLimit (assert_required)
+	if m.RateLimit == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field RateLimit is required")
 	}
 
-	// Validate CredPairs (assert_max_items: 128)
-	if len(m.CredPairs) > 128 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field CredPairs exceeds max items of 128, got: %d", len(m.CredPairs))
+	// Validate Configs (assert_required)
+	if m.Configs == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Configs is required")
+	}
+
+	// Validate Delegates (assert_max_items: 128)
+	if len(m.Delegates) > 128 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Delegates exceeds max items of 128, got: %d", len(m.Delegates))
 	}
 
 	return nil
@@ -36296,6 +36271,7 @@ func ValidateMapEmpty(m *MapEmpty) error {
 // Constants
 // ============================================================
 const (
+	MinDataCopies                            int64   = 3
 	DefaultPartitionCount                    int64   = 271
 	DefaultPersistenceDir                    string  = "data/kernel"
 	DefaultRaftPort                          int64   = 5002
@@ -36308,9 +36284,6 @@ const (
 	DefaultMissingCpMemberAutoRemovalSeconds int64   = 14400
 	DefaultPollingRate                       float64 = 2.0
 	DefaultUnaryRate                         float64 = 10.0
-	DefaultAudience                          string  = "kernel"
-	DefaultTokenTtlSeconds                   int64   = 3600
-	DefaultRefreshAudience                   string  = "refresh"
 	DefaultKeyRotationIntervalSeconds        int64   = 86400
 	DefaultDefaultTokenExpirySeconds         int64   = 3600
 )
@@ -36319,62 +36292,64 @@ const (
 // Capacity Constants (for utilization monitoring)
 // ============================================================
 const (
-	MaxSizeBootstrapconfigClusterName          int = 32768
-	MaxItemsBootstrapconfigMembers             int = 32
-	MaxSizeBootstrapconfigSecret               int = 32768
-	MaxSizeBootstrapconfigPersistenceDir       int = 32768
-	MaxItemsBootstrapconfigLoaderCa            int = 16
-	MaxSizeRedologentryMapName                 int = 32768
-	MaxSizeRedologentryKey                     int = 32768
-	MaxSizeRedologentryValue                   int = 32768
-	MaxSizeFulldumpheaderNodeId                int = 32768
-	MaxSizeSecurityconfigAudience              int = 32768
-	MaxSizeTokenexchangerconfigRefreshAudience int = 32768
-	MaxSizeTokenrequestInputToken              int = 32768
-	MaxSizeTokenrequestAud                     int = 32768
-	MaxSizeTokenrequestContinuityToken         int = 32768
-	MaxItemsConfigTrustedCas                   int = 16
-	MaxItemsConfigCredPairs                    int = 128
-	MaxSizeUrlloaderUrl                        int = 32768
-	MaxSizeUrlloaderToken                      int = 32768
-	MaxSizeFileloaderPath                      int = 32768
-	MaxSizeAdminsetloglevelrequestLoggerName   int = 32768
-	MaxSizeAdminsetloglevelrequestLevel        int = 32768
-	MaxSizeAdminconfigdumpHazelcastConfigXml   int = 32768
-	MaxSizeQueryvalueStringValue               int = 32768
-	MaxSizePredicateFieldName                  int = 32768
-	MaxSizeSortfieldFieldName                  int = 32768
-	MaxSizeVerifyingkeysgetrequestKey          int = 32768
-	MaxSizeVerifyingkeysputrequestKey          int = 32768
-	MaxSizeTrustedcasgetrequestKey             int = 32768
-	MaxSizeTrustedcasputrequestKey             int = 32768
-	MaxSizeNodemetricsgetrequestKey            int = 32768
-	MaxSizeNodemetricsputrequestKey            int = 32768
-	MaxSizeGrpcstatsgetrequestKey              int = 32768
-	MaxSizeGrpcstatsputrequestKey              int = 32768
-	MaxSizePersistencestatusgetrequestKey      int = 32768
-	MaxSizePersistencestatusputrequestKey      int = 32768
-	MaxSizeNetworkstatsgetrequestKey           int = 32768
-	MaxSizeNetworkstatsputrequestKey           int = 32768
-	MaxSizeThreadinfogetrequestKey             int = 32768
-	MaxSizeThreadinfoputrequestKey             int = 32768
-	MaxSizeTokencachestatsgetrequestKey        int = 32768
-	MaxSizeTokencachestatsputrequestKey        int = 32768
-	MaxSizeMapstatsgetrequestKey               int = 32768
-	MaxSizeMapstatsputrequestKey               int = 32768
-	MaxSizeGraphregistrygetrequestKey          int = 32768
-	MaxSizeGraphregistryputrequestKey          int = 32768
-	MaxSizeServiceconnectionsgetrequestKey     int = 32768
-	MaxSizeServiceconnectionsputrequestKey     int = 32768
-	MaxSizeQueuestatsgetrequestKey             int = 32768
-	MaxSizeQueuestatsputrequestKey             int = 32768
-	MaxSizeTopicstatsgetrequestKey             int = 32768
-	MaxSizeTopicstatsputrequestKey             int = 32768
-	MaxSizeWatchhealthgetrequestKey            int = 32768
-	MaxSizeWatchhealthputrequestKey            int = 32768
-	MaxSizeMutationratesgetrequestKey          int = 32768
-	MaxSizeMutationratesputrequestKey          int = 32768
-	MaxSizeInstancesgetrequestKey              int = 32768
+	MaxSizeBootstrapconfigClusterName           int = 32768
+	MaxItemsBootstrapconfigMembers              int = 32
+	MaxSizeBootstrapconfigPersistenceDir        int = 32768
+	MaxItemsBootstrapconfigLoaderCa             int = 16
+	MaxSizeRedologentryMapName                  int = 32768
+	MaxSizeRedologentryKey                      int = 32768
+	MaxSizeRedologentryValue                    int = 32768
+	MaxSizeFulldumpheaderNodeId                 int = 32768
+	MaxSizeTokenrequestInputToken               int = 32768
+	MaxSizeTokenrequestAud                      int = 32768
+	MaxSizeTokenrequestContinuityToken          int = 32768
+	MaxSizeCloudidentitymatcherExpectedIdentity int = 32768
+	MaxSizeDelegateName                         int = 32768
+	MaxItemsDelegateCredPairs                   int = 8
+	MaxItemsDelegateCloudIdentities             int = 8
+	MaxItemsDelegateAuthorizedServices          int = 64
+	MaxItemsConfigTrustedCas                    int = 16
+	MaxItemsConfigDelegates                     int = 128
+	MaxSizeUrlloaderUrl                         int = 32768
+	MaxSizeUrlloaderToken                       int = 32768
+	MaxSizeFileloaderPath                       int = 32768
+	MaxSizeAdminsetloglevelrequestLoggerName    int = 32768
+	MaxSizeAdminsetloglevelrequestLevel         int = 32768
+	MaxSizeAdminconfigdumpHazelcastConfigXml    int = 32768
+	MaxSizeQueryvalueStringValue                int = 32768
+	MaxSizePredicateFieldName                   int = 32768
+	MaxSizeSortfieldFieldName                   int = 32768
+	MaxSizeVerifyingkeysgetrequestKey           int = 32768
+	MaxSizeVerifyingkeysputrequestKey           int = 32768
+	MaxSizeTrustedcasgetrequestKey              int = 32768
+	MaxSizeTrustedcasputrequestKey              int = 32768
+	MaxSizeNodemetricsgetrequestKey             int = 32768
+	MaxSizeNodemetricsputrequestKey             int = 32768
+	MaxSizeGrpcstatsgetrequestKey               int = 32768
+	MaxSizeGrpcstatsputrequestKey               int = 32768
+	MaxSizePersistencestatusgetrequestKey       int = 32768
+	MaxSizePersistencestatusputrequestKey       int = 32768
+	MaxSizeNetworkstatsgetrequestKey            int = 32768
+	MaxSizeNetworkstatsputrequestKey            int = 32768
+	MaxSizeThreadinfogetrequestKey              int = 32768
+	MaxSizeThreadinfoputrequestKey              int = 32768
+	MaxSizeTokencachestatsgetrequestKey         int = 32768
+	MaxSizeTokencachestatsputrequestKey         int = 32768
+	MaxSizeMapstatsgetrequestKey                int = 32768
+	MaxSizeMapstatsputrequestKey                int = 32768
+	MaxSizeGraphregistrygetrequestKey           int = 32768
+	MaxSizeGraphregistryputrequestKey           int = 32768
+	MaxSizeServiceconnectionsgetrequestKey      int = 32768
+	MaxSizeServiceconnectionsputrequestKey      int = 32768
+	MaxSizeQueuestatsgetrequestKey              int = 32768
+	MaxSizeQueuestatsputrequestKey              int = 32768
+	MaxSizeTopicstatsgetrequestKey              int = 32768
+	MaxSizeTopicstatsputrequestKey              int = 32768
+	MaxSizeWatchhealthgetrequestKey             int = 32768
+	MaxSizeWatchhealthputrequestKey             int = 32768
+	MaxSizeMutationratesgetrequestKey           int = 32768
+	MaxSizeMutationratesputrequestKey           int = 32768
+	MaxSizeInstancesgetrequestKey               int = 32768
 )
 
 // ============================================================
@@ -36382,6 +36357,9 @@ const (
 // ============================================================
 // BootstrapConfigDefaults applies field-level default values to zero-valued fields.
 func BootstrapConfigDefaults(v *BootstrapConfig) {
+	if v == nil {
+		return
+	}
 	if v.PartitionCount == 0 {
 		v.PartitionCount = int32(DefaultPartitionCount)
 	}
@@ -36391,12 +36369,14 @@ func BootstrapConfigDefaults(v *BootstrapConfig) {
 	if v.RaftPort == 0 {
 		v.RaftPort = int32(DefaultRaftPort)
 	}
-	if v.Network != nil {
-		NetworkConfigDefaults(v.Network)
+	if v.Network == nil {
+		v.Network = &NetworkConfig{}
 	}
-	if v.CpSubsystem != nil {
-		CPSubsystemConfigDefaults(v.CpSubsystem)
+	NetworkConfigDefaults(v.Network)
+	if v.CpSubsystem == nil {
+		v.CpSubsystem = &CPSubsystemConfig{}
 	}
+	CPSubsystemConfigDefaults(v.CpSubsystem)
 }
 
 // ============================================================
@@ -36404,6 +36384,9 @@ func BootstrapConfigDefaults(v *BootstrapConfig) {
 // ============================================================
 // NetworkConfigDefaults applies field-level default values to zero-valued fields.
 func NetworkConfigDefaults(v *NetworkConfig) {
+	if v == nil {
+		return
+	}
 	if v.ConnectTimeoutSeconds == 0 {
 		v.ConnectTimeoutSeconds = DefaultConnectTimeoutSeconds
 	}
@@ -36420,6 +36403,9 @@ func NetworkConfigDefaults(v *NetworkConfig) {
 // ============================================================
 // CPSubsystemConfigDefaults applies field-level default values to zero-valued fields.
 func CPSubsystemConfigDefaults(v *CPSubsystemConfig) {
+	if v == nil {
+		return
+	}
 	if v.CpMemberCount == 0 {
 		v.CpMemberCount = int32(DefaultCpMemberCount)
 	}
@@ -36439,6 +36425,9 @@ func CPSubsystemConfigDefaults(v *CPSubsystemConfig) {
 // ============================================================
 // RateLimitConfigDefaults applies field-level default values to zero-valued fields.
 func RateLimitConfigDefaults(v *RateLimitConfig) {
+	if v == nil {
+		return
+	}
 	if v.PollingRate == 0.0 {
 		v.PollingRate = DefaultPollingRate
 	}
@@ -36448,31 +36437,72 @@ func RateLimitConfigDefaults(v *RateLimitConfig) {
 }
 
 // ============================================================
-// TypeDefaults: SecurityConfig
+// TypeDefaults: RedoLogEntry
 // ============================================================
-// SecurityConfigDefaults applies field-level default values to zero-valued fields.
-func SecurityConfigDefaults(v *SecurityConfig) {
-	if v.Audience == "" {
-		v.Audience = DefaultAudience
-	}
-	if v.TokenTtlSeconds == 0 {
-		v.TokenTtlSeconds = DefaultTokenTtlSeconds
+// RedoLogEntryDefaults applies field-level default values to zero-valued fields.
+func RedoLogEntryDefaults(v *RedoLogEntry) {
+	if v == nil {
+		return
 	}
 }
 
 // ============================================================
-// TypeDefaults: TokenExchangerConfig
+// TypeDefaults: FullDumpHeader
 // ============================================================
-// TokenExchangerConfigDefaults applies field-level default values to zero-valued fields.
-func TokenExchangerConfigDefaults(v *TokenExchangerConfig) {
-	if v.RefreshAudience == "" {
-		v.RefreshAudience = DefaultRefreshAudience
+// FullDumpHeaderDefaults applies field-level default values to zero-valued fields.
+func FullDumpHeaderDefaults(v *FullDumpHeader) {
+	if v == nil {
+		return
 	}
-	if v.KeyRotationIntervalSeconds == 0 {
-		v.KeyRotationIntervalSeconds = DefaultKeyRotationIntervalSeconds
+}
+
+// ============================================================
+// TypeDefaults: TokenRequest
+// ============================================================
+// TokenRequestDefaults applies field-level default values to zero-valued fields.
+func TokenRequestDefaults(v *TokenRequest) {
+	if v == nil {
+		return
 	}
-	if v.DefaultTokenExpirySeconds == 0 {
-		v.DefaultTokenExpirySeconds = DefaultDefaultTokenExpirySeconds
+}
+
+// ============================================================
+// TypeDefaults: TokenExchangerState
+// ============================================================
+// TokenExchangerStateDefaults applies field-level default values to zero-valued fields.
+func TokenExchangerStateDefaults(v *TokenExchangerState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCaState
+// ============================================================
+// TrustedCaStateDefaults applies field-level default values to zero-valued fields.
+func TrustedCaStateDefaults(v *TrustedCaState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CloudIdentityMatcher
+// ============================================================
+// CloudIdentityMatcherDefaults applies field-level default values to zero-valued fields.
+func CloudIdentityMatcherDefaults(v *CloudIdentityMatcher) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Delegate
+// ============================================================
+// DelegateDefaults applies field-level default values to zero-valued fields.
+func DelegateDefaults(v *Delegate) {
+	if v == nil {
+		return
 	}
 }
 
@@ -36481,16 +36511,39 @@ func TokenExchangerConfigDefaults(v *TokenExchangerConfig) {
 // ============================================================
 // ConfigDefaults applies field-level default values to zero-valued fields.
 func ConfigDefaults(v *Config) {
-	if v.RateLimit != nil {
-		RateLimitConfigDefaults(v.RateLimit)
+	if v == nil {
+		return
 	}
-	if v.Security != nil {
-		SecurityConfigDefaults(v.Security)
+	if v.KeyRotationIntervalSeconds == 0 {
+		v.KeyRotationIntervalSeconds = DefaultKeyRotationIntervalSeconds
 	}
-	if v.TokenExchanger == nil {
-		v.TokenExchanger = &TokenExchangerConfig{}
+	if v.DefaultTokenExpirySeconds == 0 {
+		v.DefaultTokenExpirySeconds = DefaultDefaultTokenExpirySeconds
 	}
-	TokenExchangerConfigDefaults(v.TokenExchanger)
+	if v.RateLimit == nil {
+		v.RateLimit = &RateLimitConfig{}
+	}
+	RateLimitConfigDefaults(v.RateLimit)
+}
+
+// ============================================================
+// TypeDefaults: UrlLoader
+// ============================================================
+// UrlLoaderDefaults applies field-level default values to zero-valued fields.
+func UrlLoaderDefaults(v *UrlLoader) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: FileLoader
+// ============================================================
+// FileLoaderDefaults applies field-level default values to zero-valued fields.
+func FileLoaderDefaults(v *FileLoader) {
+	if v == nil {
+		return
+	}
 }
 
 // ============================================================
@@ -36498,6 +36551,9 @@ func ConfigDefaults(v *Config) {
 // ============================================================
 // ClusterStateDefaults applies field-level default values to zero-valued fields.
 func ClusterStateDefaults(v *ClusterState) {
+	if v == nil {
+		return
+	}
 	if v.BootstrapConfig != nil {
 		BootstrapConfigDefaults(v.BootstrapConfig)
 	}
@@ -36507,11 +36563,2014 @@ func ClusterStateDefaults(v *ClusterState) {
 }
 
 // ============================================================
+// TypeDefaults: AdminSetLogLevelRequest
+// ============================================================
+// AdminSetLogLevelRequestDefaults applies field-level default values to zero-valued fields.
+func AdminSetLogLevelRequestDefaults(v *AdminSetLogLevelRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminReloadConfigRequest
+// ============================================================
+// AdminReloadConfigRequestDefaults applies field-level default values to zero-valued fields.
+func AdminReloadConfigRequestDefaults(v *AdminReloadConfigRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminConfigDump
+// ============================================================
+// AdminConfigDumpDefaults applies field-level default values to zero-valued fields.
+func AdminConfigDumpDefaults(v *AdminConfigDump) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceHealthState
+// ============================================================
+// ServiceHealthStateDefaults applies field-level default values to zero-valued fields.
+func ServiceHealthStateDefaults(v *ServiceHealthState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueryValue
+// ============================================================
+// QueryValueDefaults applies field-level default values to zero-valued fields.
+func QueryValueDefaults(v *QueryValue) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Predicate
+// ============================================================
+// PredicateDefaults applies field-level default values to zero-valued fields.
+func PredicateDefaults(v *Predicate) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PredicateGroup
+// ============================================================
+// PredicateGroupDefaults applies field-level default values to zero-valued fields.
+func PredicateGroupDefaults(v *PredicateGroup) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SortField
+// ============================================================
+// SortFieldDefaults applies field-level default values to zero-valued fields.
+func SortFieldDefaults(v *SortField) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CollectionQuery
+// ============================================================
+// CollectionQueryDefaults applies field-level default values to zero-valued fields.
+func CollectionQueryDefaults(v *CollectionQuery) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysGetRequest
+// ============================================================
+// VerifyingKeysGetRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysGetRequestDefaults(v *VerifyingKeysGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysPutRequest
+// ============================================================
+// VerifyingKeysPutRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysPutRequestDefaults(v *VerifyingKeysPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysGetAllRequest
+// ============================================================
+// VerifyingKeysGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysGetAllRequestDefaults(v *VerifyingKeysGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysKeysRequest
+// ============================================================
+// VerifyingKeysKeysRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysKeysRequestDefaults(v *VerifyingKeysKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysSizeRequest
+// ============================================================
+// VerifyingKeysSizeRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysSizeRequestDefaults(v *VerifyingKeysSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysClearRequest
+// ============================================================
+// VerifyingKeysClearRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysClearRequestDefaults(v *VerifyingKeysClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysValueResponse
+// ============================================================
+// VerifyingKeysValueResponseDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysValueResponseDefaults(v *VerifyingKeysValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysEntriesResponse
+// ============================================================
+// VerifyingKeysEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysEntriesResponseDefaults(v *VerifyingKeysEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysKeysResponse
+// ============================================================
+// VerifyingKeysKeysResponseDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysKeysResponseDefaults(v *VerifyingKeysKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysSizeResponse
+// ============================================================
+// VerifyingKeysSizeResponseDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysSizeResponseDefaults(v *VerifyingKeysSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysQueryRequest
+// ============================================================
+// VerifyingKeysQueryRequestDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysQueryRequestDefaults(v *VerifyingKeysQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: VerifyingKeysQueryResponse
+// ============================================================
+// VerifyingKeysQueryResponseDefaults applies field-level default values to zero-valued fields.
+func VerifyingKeysQueryResponseDefaults(v *VerifyingKeysQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasGetRequest
+// ============================================================
+// TrustedCasGetRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasGetRequestDefaults(v *TrustedCasGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasPutRequest
+// ============================================================
+// TrustedCasPutRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasPutRequestDefaults(v *TrustedCasPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasGetAllRequest
+// ============================================================
+// TrustedCasGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasGetAllRequestDefaults(v *TrustedCasGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasKeysRequest
+// ============================================================
+// TrustedCasKeysRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasKeysRequestDefaults(v *TrustedCasKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasSizeRequest
+// ============================================================
+// TrustedCasSizeRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasSizeRequestDefaults(v *TrustedCasSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasClearRequest
+// ============================================================
+// TrustedCasClearRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasClearRequestDefaults(v *TrustedCasClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasValueResponse
+// ============================================================
+// TrustedCasValueResponseDefaults applies field-level default values to zero-valued fields.
+func TrustedCasValueResponseDefaults(v *TrustedCasValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasEntriesResponse
+// ============================================================
+// TrustedCasEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func TrustedCasEntriesResponseDefaults(v *TrustedCasEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasKeysResponse
+// ============================================================
+// TrustedCasKeysResponseDefaults applies field-level default values to zero-valued fields.
+func TrustedCasKeysResponseDefaults(v *TrustedCasKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasSizeResponse
+// ============================================================
+// TrustedCasSizeResponseDefaults applies field-level default values to zero-valued fields.
+func TrustedCasSizeResponseDefaults(v *TrustedCasSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasQueryRequest
+// ============================================================
+// TrustedCasQueryRequestDefaults applies field-level default values to zero-valued fields.
+func TrustedCasQueryRequestDefaults(v *TrustedCasQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TrustedCasQueryResponse
+// ============================================================
+// TrustedCasQueryResponseDefaults applies field-level default values to zero-valued fields.
+func TrustedCasQueryResponseDefaults(v *TrustedCasQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsGetRequest
+// ============================================================
+// NodeMetricsGetRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsGetRequestDefaults(v *NodeMetricsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsPutRequest
+// ============================================================
+// NodeMetricsPutRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsPutRequestDefaults(v *NodeMetricsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsGetAllRequest
+// ============================================================
+// NodeMetricsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsGetAllRequestDefaults(v *NodeMetricsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsKeysRequest
+// ============================================================
+// NodeMetricsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsKeysRequestDefaults(v *NodeMetricsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsSizeRequest
+// ============================================================
+// NodeMetricsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsSizeRequestDefaults(v *NodeMetricsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsClearRequest
+// ============================================================
+// NodeMetricsClearRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsClearRequestDefaults(v *NodeMetricsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsValueResponse
+// ============================================================
+// NodeMetricsValueResponseDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsValueResponseDefaults(v *NodeMetricsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsEntriesResponse
+// ============================================================
+// NodeMetricsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsEntriesResponseDefaults(v *NodeMetricsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsKeysResponse
+// ============================================================
+// NodeMetricsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsKeysResponseDefaults(v *NodeMetricsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsSizeResponse
+// ============================================================
+// NodeMetricsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsSizeResponseDefaults(v *NodeMetricsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsQueryRequest
+// ============================================================
+// NodeMetricsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsQueryRequestDefaults(v *NodeMetricsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsQueryResponse
+// ============================================================
+// NodeMetricsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsQueryResponseDefaults(v *NodeMetricsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsGetRequest
+// ============================================================
+// GrpcStatsGetRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsGetRequestDefaults(v *GrpcStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsPutRequest
+// ============================================================
+// GrpcStatsPutRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsPutRequestDefaults(v *GrpcStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsGetAllRequest
+// ============================================================
+// GrpcStatsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsGetAllRequestDefaults(v *GrpcStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsKeysRequest
+// ============================================================
+// GrpcStatsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsKeysRequestDefaults(v *GrpcStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsSizeRequest
+// ============================================================
+// GrpcStatsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsSizeRequestDefaults(v *GrpcStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsClearRequest
+// ============================================================
+// GrpcStatsClearRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsClearRequestDefaults(v *GrpcStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsValueResponse
+// ============================================================
+// GrpcStatsValueResponseDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsValueResponseDefaults(v *GrpcStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsEntriesResponse
+// ============================================================
+// GrpcStatsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsEntriesResponseDefaults(v *GrpcStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsKeysResponse
+// ============================================================
+// GrpcStatsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsKeysResponseDefaults(v *GrpcStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsSizeResponse
+// ============================================================
+// GrpcStatsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsSizeResponseDefaults(v *GrpcStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsQueryRequest
+// ============================================================
+// GrpcStatsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsQueryRequestDefaults(v *GrpcStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsQueryResponse
+// ============================================================
+// GrpcStatsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsQueryResponseDefaults(v *GrpcStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusGetRequest
+// ============================================================
+// PersistenceStatusGetRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusGetRequestDefaults(v *PersistenceStatusGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusPutRequest
+// ============================================================
+// PersistenceStatusPutRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusPutRequestDefaults(v *PersistenceStatusPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusGetAllRequest
+// ============================================================
+// PersistenceStatusGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusGetAllRequestDefaults(v *PersistenceStatusGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusKeysRequest
+// ============================================================
+// PersistenceStatusKeysRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusKeysRequestDefaults(v *PersistenceStatusKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusSizeRequest
+// ============================================================
+// PersistenceStatusSizeRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusSizeRequestDefaults(v *PersistenceStatusSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusClearRequest
+// ============================================================
+// PersistenceStatusClearRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusClearRequestDefaults(v *PersistenceStatusClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusValueResponse
+// ============================================================
+// PersistenceStatusValueResponseDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusValueResponseDefaults(v *PersistenceStatusValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusEntriesResponse
+// ============================================================
+// PersistenceStatusEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusEntriesResponseDefaults(v *PersistenceStatusEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusKeysResponse
+// ============================================================
+// PersistenceStatusKeysResponseDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusKeysResponseDefaults(v *PersistenceStatusKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusSizeResponse
+// ============================================================
+// PersistenceStatusSizeResponseDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusSizeResponseDefaults(v *PersistenceStatusSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusQueryRequest
+// ============================================================
+// PersistenceStatusQueryRequestDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusQueryRequestDefaults(v *PersistenceStatusQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusQueryResponse
+// ============================================================
+// PersistenceStatusQueryResponseDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusQueryResponseDefaults(v *PersistenceStatusQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsGetRequest
+// ============================================================
+// NetworkStatsGetRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsGetRequestDefaults(v *NetworkStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsPutRequest
+// ============================================================
+// NetworkStatsPutRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsPutRequestDefaults(v *NetworkStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsGetAllRequest
+// ============================================================
+// NetworkStatsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsGetAllRequestDefaults(v *NetworkStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsKeysRequest
+// ============================================================
+// NetworkStatsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsKeysRequestDefaults(v *NetworkStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsSizeRequest
+// ============================================================
+// NetworkStatsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsSizeRequestDefaults(v *NetworkStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsClearRequest
+// ============================================================
+// NetworkStatsClearRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsClearRequestDefaults(v *NetworkStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsValueResponse
+// ============================================================
+// NetworkStatsValueResponseDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsValueResponseDefaults(v *NetworkStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsEntriesResponse
+// ============================================================
+// NetworkStatsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsEntriesResponseDefaults(v *NetworkStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsKeysResponse
+// ============================================================
+// NetworkStatsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsKeysResponseDefaults(v *NetworkStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsSizeResponse
+// ============================================================
+// NetworkStatsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsSizeResponseDefaults(v *NetworkStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsQueryRequest
+// ============================================================
+// NetworkStatsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsQueryRequestDefaults(v *NetworkStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsQueryResponse
+// ============================================================
+// NetworkStatsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsQueryResponseDefaults(v *NetworkStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoGetRequest
+// ============================================================
+// ThreadInfoGetRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoGetRequestDefaults(v *ThreadInfoGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoPutRequest
+// ============================================================
+// ThreadInfoPutRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoPutRequestDefaults(v *ThreadInfoPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoGetAllRequest
+// ============================================================
+// ThreadInfoGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoGetAllRequestDefaults(v *ThreadInfoGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoKeysRequest
+// ============================================================
+// ThreadInfoKeysRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoKeysRequestDefaults(v *ThreadInfoKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoSizeRequest
+// ============================================================
+// ThreadInfoSizeRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoSizeRequestDefaults(v *ThreadInfoSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoClearRequest
+// ============================================================
+// ThreadInfoClearRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoClearRequestDefaults(v *ThreadInfoClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoValueResponse
+// ============================================================
+// ThreadInfoValueResponseDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoValueResponseDefaults(v *ThreadInfoValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoEntriesResponse
+// ============================================================
+// ThreadInfoEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoEntriesResponseDefaults(v *ThreadInfoEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoKeysResponse
+// ============================================================
+// ThreadInfoKeysResponseDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoKeysResponseDefaults(v *ThreadInfoKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoSizeResponse
+// ============================================================
+// ThreadInfoSizeResponseDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoSizeResponseDefaults(v *ThreadInfoSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoQueryRequest
+// ============================================================
+// ThreadInfoQueryRequestDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoQueryRequestDefaults(v *ThreadInfoQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoQueryResponse
+// ============================================================
+// ThreadInfoQueryResponseDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoQueryResponseDefaults(v *ThreadInfoQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsGetRequest
+// ============================================================
+// TokenCacheStatsGetRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsGetRequestDefaults(v *TokenCacheStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsPutRequest
+// ============================================================
+// TokenCacheStatsPutRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsPutRequestDefaults(v *TokenCacheStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsGetAllRequest
+// ============================================================
+// TokenCacheStatsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsGetAllRequestDefaults(v *TokenCacheStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsKeysRequest
+// ============================================================
+// TokenCacheStatsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsKeysRequestDefaults(v *TokenCacheStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsSizeRequest
+// ============================================================
+// TokenCacheStatsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsSizeRequestDefaults(v *TokenCacheStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsClearRequest
+// ============================================================
+// TokenCacheStatsClearRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsClearRequestDefaults(v *TokenCacheStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsValueResponse
+// ============================================================
+// TokenCacheStatsValueResponseDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsValueResponseDefaults(v *TokenCacheStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsEntriesResponse
+// ============================================================
+// TokenCacheStatsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsEntriesResponseDefaults(v *TokenCacheStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsKeysResponse
+// ============================================================
+// TokenCacheStatsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsKeysResponseDefaults(v *TokenCacheStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsSizeResponse
+// ============================================================
+// TokenCacheStatsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsSizeResponseDefaults(v *TokenCacheStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsQueryRequest
+// ============================================================
+// TokenCacheStatsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsQueryRequestDefaults(v *TokenCacheStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsQueryResponse
+// ============================================================
+// TokenCacheStatsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsQueryResponseDefaults(v *TokenCacheStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsGetRequest
+// ============================================================
+// MapStatsGetRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsGetRequestDefaults(v *MapStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsPutRequest
+// ============================================================
+// MapStatsPutRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsPutRequestDefaults(v *MapStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsGetAllRequest
+// ============================================================
+// MapStatsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsGetAllRequestDefaults(v *MapStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsKeysRequest
+// ============================================================
+// MapStatsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsKeysRequestDefaults(v *MapStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsSizeRequest
+// ============================================================
+// MapStatsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsSizeRequestDefaults(v *MapStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsClearRequest
+// ============================================================
+// MapStatsClearRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsClearRequestDefaults(v *MapStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsValueResponse
+// ============================================================
+// MapStatsValueResponseDefaults applies field-level default values to zero-valued fields.
+func MapStatsValueResponseDefaults(v *MapStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsEntriesResponse
+// ============================================================
+// MapStatsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func MapStatsEntriesResponseDefaults(v *MapStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsKeysResponse
+// ============================================================
+// MapStatsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func MapStatsKeysResponseDefaults(v *MapStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsSizeResponse
+// ============================================================
+// MapStatsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func MapStatsSizeResponseDefaults(v *MapStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsQueryRequest
+// ============================================================
+// MapStatsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func MapStatsQueryRequestDefaults(v *MapStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsQueryResponse
+// ============================================================
+// MapStatsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func MapStatsQueryResponseDefaults(v *MapStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryGetRequest
+// ============================================================
+// GraphRegistryGetRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryGetRequestDefaults(v *GraphRegistryGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryPutRequest
+// ============================================================
+// GraphRegistryPutRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryPutRequestDefaults(v *GraphRegistryPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryGetAllRequest
+// ============================================================
+// GraphRegistryGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryGetAllRequestDefaults(v *GraphRegistryGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryKeysRequest
+// ============================================================
+// GraphRegistryKeysRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryKeysRequestDefaults(v *GraphRegistryKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistrySizeRequest
+// ============================================================
+// GraphRegistrySizeRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistrySizeRequestDefaults(v *GraphRegistrySizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryClearRequest
+// ============================================================
+// GraphRegistryClearRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryClearRequestDefaults(v *GraphRegistryClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryValueResponse
+// ============================================================
+// GraphRegistryValueResponseDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryValueResponseDefaults(v *GraphRegistryValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryEntriesResponse
+// ============================================================
+// GraphRegistryEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryEntriesResponseDefaults(v *GraphRegistryEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryKeysResponse
+// ============================================================
+// GraphRegistryKeysResponseDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryKeysResponseDefaults(v *GraphRegistryKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistrySizeResponse
+// ============================================================
+// GraphRegistrySizeResponseDefaults applies field-level default values to zero-valued fields.
+func GraphRegistrySizeResponseDefaults(v *GraphRegistrySizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryQueryRequest
+// ============================================================
+// GraphRegistryQueryRequestDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryQueryRequestDefaults(v *GraphRegistryQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GraphRegistryQueryResponse
+// ============================================================
+// GraphRegistryQueryResponseDefaults applies field-level default values to zero-valued fields.
+func GraphRegistryQueryResponseDefaults(v *GraphRegistryQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsGetRequest
+// ============================================================
+// ServiceConnectionsGetRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsGetRequestDefaults(v *ServiceConnectionsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsPutRequest
+// ============================================================
+// ServiceConnectionsPutRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsPutRequestDefaults(v *ServiceConnectionsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsGetAllRequest
+// ============================================================
+// ServiceConnectionsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsGetAllRequestDefaults(v *ServiceConnectionsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsKeysRequest
+// ============================================================
+// ServiceConnectionsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsKeysRequestDefaults(v *ServiceConnectionsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsSizeRequest
+// ============================================================
+// ServiceConnectionsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsSizeRequestDefaults(v *ServiceConnectionsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsClearRequest
+// ============================================================
+// ServiceConnectionsClearRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsClearRequestDefaults(v *ServiceConnectionsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsValueResponse
+// ============================================================
+// ServiceConnectionsValueResponseDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsValueResponseDefaults(v *ServiceConnectionsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsEntriesResponse
+// ============================================================
+// ServiceConnectionsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsEntriesResponseDefaults(v *ServiceConnectionsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsKeysResponse
+// ============================================================
+// ServiceConnectionsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsKeysResponseDefaults(v *ServiceConnectionsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsSizeResponse
+// ============================================================
+// ServiceConnectionsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsSizeResponseDefaults(v *ServiceConnectionsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsQueryRequest
+// ============================================================
+// ServiceConnectionsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsQueryRequestDefaults(v *ServiceConnectionsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceConnectionsQueryResponse
+// ============================================================
+// ServiceConnectionsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func ServiceConnectionsQueryResponseDefaults(v *ServiceConnectionsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsGetRequest
+// ============================================================
+// QueueStatsGetRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsGetRequestDefaults(v *QueueStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsPutRequest
+// ============================================================
+// QueueStatsPutRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsPutRequestDefaults(v *QueueStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsGetAllRequest
+// ============================================================
+// QueueStatsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsGetAllRequestDefaults(v *QueueStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsKeysRequest
+// ============================================================
+// QueueStatsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsKeysRequestDefaults(v *QueueStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsSizeRequest
+// ============================================================
+// QueueStatsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsSizeRequestDefaults(v *QueueStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsClearRequest
+// ============================================================
+// QueueStatsClearRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsClearRequestDefaults(v *QueueStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsValueResponse
+// ============================================================
+// QueueStatsValueResponseDefaults applies field-level default values to zero-valued fields.
+func QueueStatsValueResponseDefaults(v *QueueStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsEntriesResponse
+// ============================================================
+// QueueStatsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func QueueStatsEntriesResponseDefaults(v *QueueStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsKeysResponse
+// ============================================================
+// QueueStatsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func QueueStatsKeysResponseDefaults(v *QueueStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsSizeResponse
+// ============================================================
+// QueueStatsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func QueueStatsSizeResponseDefaults(v *QueueStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsQueryRequest
+// ============================================================
+// QueueStatsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func QueueStatsQueryRequestDefaults(v *QueueStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueStatsQueryResponse
+// ============================================================
+// QueueStatsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func QueueStatsQueryResponseDefaults(v *QueueStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsGetRequest
+// ============================================================
+// TopicStatsGetRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsGetRequestDefaults(v *TopicStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsPutRequest
+// ============================================================
+// TopicStatsPutRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsPutRequestDefaults(v *TopicStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsGetAllRequest
+// ============================================================
+// TopicStatsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsGetAllRequestDefaults(v *TopicStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsKeysRequest
+// ============================================================
+// TopicStatsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsKeysRequestDefaults(v *TopicStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsSizeRequest
+// ============================================================
+// TopicStatsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsSizeRequestDefaults(v *TopicStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsClearRequest
+// ============================================================
+// TopicStatsClearRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsClearRequestDefaults(v *TopicStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsValueResponse
+// ============================================================
+// TopicStatsValueResponseDefaults applies field-level default values to zero-valued fields.
+func TopicStatsValueResponseDefaults(v *TopicStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsEntriesResponse
+// ============================================================
+// TopicStatsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func TopicStatsEntriesResponseDefaults(v *TopicStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsKeysResponse
+// ============================================================
+// TopicStatsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func TopicStatsKeysResponseDefaults(v *TopicStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsSizeResponse
+// ============================================================
+// TopicStatsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func TopicStatsSizeResponseDefaults(v *TopicStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsQueryRequest
+// ============================================================
+// TopicStatsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func TopicStatsQueryRequestDefaults(v *TopicStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicStatsQueryResponse
+// ============================================================
+// TopicStatsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func TopicStatsQueryResponseDefaults(v *TopicStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthGetRequest
+// ============================================================
+// WatchHealthGetRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthGetRequestDefaults(v *WatchHealthGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthPutRequest
+// ============================================================
+// WatchHealthPutRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthPutRequestDefaults(v *WatchHealthPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthGetAllRequest
+// ============================================================
+// WatchHealthGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthGetAllRequestDefaults(v *WatchHealthGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthKeysRequest
+// ============================================================
+// WatchHealthKeysRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthKeysRequestDefaults(v *WatchHealthKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthSizeRequest
+// ============================================================
+// WatchHealthSizeRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthSizeRequestDefaults(v *WatchHealthSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthClearRequest
+// ============================================================
+// WatchHealthClearRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthClearRequestDefaults(v *WatchHealthClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthValueResponse
+// ============================================================
+// WatchHealthValueResponseDefaults applies field-level default values to zero-valued fields.
+func WatchHealthValueResponseDefaults(v *WatchHealthValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthEntriesResponse
+// ============================================================
+// WatchHealthEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func WatchHealthEntriesResponseDefaults(v *WatchHealthEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthKeysResponse
+// ============================================================
+// WatchHealthKeysResponseDefaults applies field-level default values to zero-valued fields.
+func WatchHealthKeysResponseDefaults(v *WatchHealthKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthSizeResponse
+// ============================================================
+// WatchHealthSizeResponseDefaults applies field-level default values to zero-valued fields.
+func WatchHealthSizeResponseDefaults(v *WatchHealthSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthQueryRequest
+// ============================================================
+// WatchHealthQueryRequestDefaults applies field-level default values to zero-valued fields.
+func WatchHealthQueryRequestDefaults(v *WatchHealthQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchHealthQueryResponse
+// ============================================================
+// WatchHealthQueryResponseDefaults applies field-level default values to zero-valued fields.
+func WatchHealthQueryResponseDefaults(v *WatchHealthQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesGetRequest
+// ============================================================
+// MutationRatesGetRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesGetRequestDefaults(v *MutationRatesGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesPutRequest
+// ============================================================
+// MutationRatesPutRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesPutRequestDefaults(v *MutationRatesPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesGetAllRequest
+// ============================================================
+// MutationRatesGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesGetAllRequestDefaults(v *MutationRatesGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesKeysRequest
+// ============================================================
+// MutationRatesKeysRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesKeysRequestDefaults(v *MutationRatesKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesSizeRequest
+// ============================================================
+// MutationRatesSizeRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesSizeRequestDefaults(v *MutationRatesSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesClearRequest
+// ============================================================
+// MutationRatesClearRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesClearRequestDefaults(v *MutationRatesClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesValueResponse
+// ============================================================
+// MutationRatesValueResponseDefaults applies field-level default values to zero-valued fields.
+func MutationRatesValueResponseDefaults(v *MutationRatesValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesEntriesResponse
+// ============================================================
+// MutationRatesEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func MutationRatesEntriesResponseDefaults(v *MutationRatesEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesKeysResponse
+// ============================================================
+// MutationRatesKeysResponseDefaults applies field-level default values to zero-valued fields.
+func MutationRatesKeysResponseDefaults(v *MutationRatesKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesSizeResponse
+// ============================================================
+// MutationRatesSizeResponseDefaults applies field-level default values to zero-valued fields.
+func MutationRatesSizeResponseDefaults(v *MutationRatesSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesQueryRequest
+// ============================================================
+// MutationRatesQueryRequestDefaults applies field-level default values to zero-valued fields.
+func MutationRatesQueryRequestDefaults(v *MutationRatesQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MutationRatesQueryResponse
+// ============================================================
+// MutationRatesQueryResponseDefaults applies field-level default values to zero-valued fields.
+func MutationRatesQueryResponseDefaults(v *MutationRatesQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesGetRequest
+// ============================================================
+// InstancesGetRequestDefaults applies field-level default values to zero-valued fields.
+func InstancesGetRequestDefaults(v *InstancesGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesGetAllRequest
+// ============================================================
+// InstancesGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func InstancesGetAllRequestDefaults(v *InstancesGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesKeysRequest
+// ============================================================
+// InstancesKeysRequestDefaults applies field-level default values to zero-valued fields.
+func InstancesKeysRequestDefaults(v *InstancesKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesSizeRequest
+// ============================================================
+// InstancesSizeRequestDefaults applies field-level default values to zero-valued fields.
+func InstancesSizeRequestDefaults(v *InstancesSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesValueResponse
+// ============================================================
+// InstancesValueResponseDefaults applies field-level default values to zero-valued fields.
+func InstancesValueResponseDefaults(v *InstancesValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesEntriesResponse
+// ============================================================
+// InstancesEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func InstancesEntriesResponseDefaults(v *InstancesEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesKeysResponse
+// ============================================================
+// InstancesKeysResponseDefaults applies field-level default values to zero-valued fields.
+func InstancesKeysResponseDefaults(v *InstancesKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesSizeResponse
+// ============================================================
+// InstancesSizeResponseDefaults applies field-level default values to zero-valued fields.
+func InstancesSizeResponseDefaults(v *InstancesSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesQueryRequest
+// ============================================================
+// InstancesQueryRequestDefaults applies field-level default values to zero-valued fields.
+func InstancesQueryRequestDefaults(v *InstancesQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: InstancesQueryResponse
+// ============================================================
+// InstancesQueryResponseDefaults applies field-level default values to zero-valued fields.
+func InstancesQueryResponseDefaults(v *InstancesQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeUndefaults: BootstrapConfig
 // ============================================================
 // BootstrapConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func BootstrapConfigUndefaults(v *BootstrapConfig) {
+	if v == nil {
+		return
+	}
 	if v.PartitionCount == int32(DefaultPartitionCount) {
 		v.PartitionCount = 0
 	}
@@ -36535,6 +38594,9 @@ func BootstrapConfigUndefaults(v *BootstrapConfig) {
 // NetworkConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func NetworkConfigUndefaults(v *NetworkConfig) {
+	if v == nil {
+		return
+	}
 	if v.ConnectTimeoutSeconds == DefaultConnectTimeoutSeconds {
 		v.ConnectTimeoutSeconds = 0
 	}
@@ -36552,6 +38614,9 @@ func NetworkConfigUndefaults(v *NetworkConfig) {
 // CPSubsystemConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func CPSubsystemConfigUndefaults(v *CPSubsystemConfig) {
+	if v == nil {
+		return
+	}
 	if v.CpMemberCount == int32(DefaultCpMemberCount) {
 		v.CpMemberCount = 0
 	}
@@ -36572,6 +38637,9 @@ func CPSubsystemConfigUndefaults(v *CPSubsystemConfig) {
 // RateLimitConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func RateLimitConfigUndefaults(v *RateLimitConfig) {
+	if v == nil {
+		return
+	}
 	if v.PollingRate == DefaultPollingRate {
 		v.PollingRate = 0.0
 	}
@@ -36581,33 +38649,79 @@ func RateLimitConfigUndefaults(v *RateLimitConfig) {
 }
 
 // ============================================================
-// TypeUndefaults: SecurityConfig
+// TypeUndefaults: RedoLogEntry
 // ============================================================
-// SecurityConfigUndefaults resets fields that match their default values back to zero.
+// RedoLogEntryUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
-func SecurityConfigUndefaults(v *SecurityConfig) {
-	if v.Audience == DefaultAudience {
-		v.Audience = ""
-	}
-	if v.TokenTtlSeconds == DefaultTokenTtlSeconds {
-		v.TokenTtlSeconds = 0
+func RedoLogEntryUndefaults(v *RedoLogEntry) {
+	if v == nil {
+		return
 	}
 }
 
 // ============================================================
-// TypeUndefaults: TokenExchangerConfig
+// TypeUndefaults: FullDumpHeader
 // ============================================================
-// TokenExchangerConfigUndefaults resets fields that match their default values back to zero.
+// FullDumpHeaderUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
-func TokenExchangerConfigUndefaults(v *TokenExchangerConfig) {
-	if v.RefreshAudience == DefaultRefreshAudience {
-		v.RefreshAudience = ""
+func FullDumpHeaderUndefaults(v *FullDumpHeader) {
+	if v == nil {
+		return
 	}
-	if v.KeyRotationIntervalSeconds == DefaultKeyRotationIntervalSeconds {
-		v.KeyRotationIntervalSeconds = 0
+}
+
+// ============================================================
+// TypeUndefaults: TokenRequest
+// ============================================================
+// TokenRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenRequestUndefaults(v *TokenRequest) {
+	if v == nil {
+		return
 	}
-	if v.DefaultTokenExpirySeconds == DefaultDefaultTokenExpirySeconds {
-		v.DefaultTokenExpirySeconds = 0
+}
+
+// ============================================================
+// TypeUndefaults: TokenExchangerState
+// ============================================================
+// TokenExchangerStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenExchangerStateUndefaults(v *TokenExchangerState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCaState
+// ============================================================
+// TrustedCaStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCaStateUndefaults(v *TrustedCaState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CloudIdentityMatcher
+// ============================================================
+// CloudIdentityMatcherUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CloudIdentityMatcherUndefaults(v *CloudIdentityMatcher) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Delegate
+// ============================================================
+// DelegateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func DelegateUndefaults(v *Delegate) {
+	if v == nil {
+		return
 	}
 }
 
@@ -36617,14 +38731,39 @@ func TokenExchangerConfigUndefaults(v *TokenExchangerConfig) {
 // ConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
+	if v.KeyRotationIntervalSeconds == DefaultKeyRotationIntervalSeconds {
+		v.KeyRotationIntervalSeconds = 0
+	}
+	if v.DefaultTokenExpirySeconds == DefaultDefaultTokenExpirySeconds {
+		v.DefaultTokenExpirySeconds = 0
+	}
 	if v.RateLimit != nil {
 		RateLimitConfigUndefaults(v.RateLimit)
 	}
-	if v.Security != nil {
-		SecurityConfigUndefaults(v.Security)
+}
+
+// ============================================================
+// TypeUndefaults: UrlLoader
+// ============================================================
+// UrlLoaderUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func UrlLoaderUndefaults(v *UrlLoader) {
+	if v == nil {
+		return
 	}
-	if v.TokenExchanger != nil {
-		TokenExchangerConfigUndefaults(v.TokenExchanger)
+}
+
+// ============================================================
+// TypeUndefaults: FileLoader
+// ============================================================
+// FileLoaderUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func FileLoaderUndefaults(v *FileLoader) {
+	if v == nil {
+		return
 	}
 }
 
@@ -36634,11 +38773,2214 @@ func ConfigUndefaults(v *Config) {
 // ClusterStateUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ClusterStateUndefaults(v *ClusterState) {
+	if v == nil {
+		return
+	}
 	if v.BootstrapConfig != nil {
 		BootstrapConfigUndefaults(v.BootstrapConfig)
 	}
 	if v.FrontendConfig != nil {
 		ConfigUndefaults(v.FrontendConfig)
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminSetLogLevelRequest
+// ============================================================
+// AdminSetLogLevelRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminSetLogLevelRequestUndefaults(v *AdminSetLogLevelRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminReloadConfigRequest
+// ============================================================
+// AdminReloadConfigRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminReloadConfigRequestUndefaults(v *AdminReloadConfigRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminConfigDump
+// ============================================================
+// AdminConfigDumpUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminConfigDumpUndefaults(v *AdminConfigDump) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceHealthState
+// ============================================================
+// ServiceHealthStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceHealthStateUndefaults(v *ServiceHealthState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueryValue
+// ============================================================
+// QueryValueUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueryValueUndefaults(v *QueryValue) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Predicate
+// ============================================================
+// PredicateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PredicateUndefaults(v *Predicate) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PredicateGroup
+// ============================================================
+// PredicateGroupUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PredicateGroupUndefaults(v *PredicateGroup) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SortField
+// ============================================================
+// SortFieldUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SortFieldUndefaults(v *SortField) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CollectionQuery
+// ============================================================
+// CollectionQueryUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CollectionQueryUndefaults(v *CollectionQuery) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysGetRequest
+// ============================================================
+// VerifyingKeysGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysGetRequestUndefaults(v *VerifyingKeysGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysPutRequest
+// ============================================================
+// VerifyingKeysPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysPutRequestUndefaults(v *VerifyingKeysPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysGetAllRequest
+// ============================================================
+// VerifyingKeysGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysGetAllRequestUndefaults(v *VerifyingKeysGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysKeysRequest
+// ============================================================
+// VerifyingKeysKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysKeysRequestUndefaults(v *VerifyingKeysKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysSizeRequest
+// ============================================================
+// VerifyingKeysSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysSizeRequestUndefaults(v *VerifyingKeysSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysClearRequest
+// ============================================================
+// VerifyingKeysClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysClearRequestUndefaults(v *VerifyingKeysClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysValueResponse
+// ============================================================
+// VerifyingKeysValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysValueResponseUndefaults(v *VerifyingKeysValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysEntriesResponse
+// ============================================================
+// VerifyingKeysEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysEntriesResponseUndefaults(v *VerifyingKeysEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysKeysResponse
+// ============================================================
+// VerifyingKeysKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysKeysResponseUndefaults(v *VerifyingKeysKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysSizeResponse
+// ============================================================
+// VerifyingKeysSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysSizeResponseUndefaults(v *VerifyingKeysSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysQueryRequest
+// ============================================================
+// VerifyingKeysQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysQueryRequestUndefaults(v *VerifyingKeysQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: VerifyingKeysQueryResponse
+// ============================================================
+// VerifyingKeysQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func VerifyingKeysQueryResponseUndefaults(v *VerifyingKeysQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasGetRequest
+// ============================================================
+// TrustedCasGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasGetRequestUndefaults(v *TrustedCasGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasPutRequest
+// ============================================================
+// TrustedCasPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasPutRequestUndefaults(v *TrustedCasPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasGetAllRequest
+// ============================================================
+// TrustedCasGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasGetAllRequestUndefaults(v *TrustedCasGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasKeysRequest
+// ============================================================
+// TrustedCasKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasKeysRequestUndefaults(v *TrustedCasKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasSizeRequest
+// ============================================================
+// TrustedCasSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasSizeRequestUndefaults(v *TrustedCasSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasClearRequest
+// ============================================================
+// TrustedCasClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasClearRequestUndefaults(v *TrustedCasClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasValueResponse
+// ============================================================
+// TrustedCasValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasValueResponseUndefaults(v *TrustedCasValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasEntriesResponse
+// ============================================================
+// TrustedCasEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasEntriesResponseUndefaults(v *TrustedCasEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasKeysResponse
+// ============================================================
+// TrustedCasKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasKeysResponseUndefaults(v *TrustedCasKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasSizeResponse
+// ============================================================
+// TrustedCasSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasSizeResponseUndefaults(v *TrustedCasSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasQueryRequest
+// ============================================================
+// TrustedCasQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasQueryRequestUndefaults(v *TrustedCasQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TrustedCasQueryResponse
+// ============================================================
+// TrustedCasQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TrustedCasQueryResponseUndefaults(v *TrustedCasQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsGetRequest
+// ============================================================
+// NodeMetricsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsGetRequestUndefaults(v *NodeMetricsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsPutRequest
+// ============================================================
+// NodeMetricsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsPutRequestUndefaults(v *NodeMetricsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsGetAllRequest
+// ============================================================
+// NodeMetricsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsGetAllRequestUndefaults(v *NodeMetricsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsKeysRequest
+// ============================================================
+// NodeMetricsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsKeysRequestUndefaults(v *NodeMetricsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsSizeRequest
+// ============================================================
+// NodeMetricsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsSizeRequestUndefaults(v *NodeMetricsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsClearRequest
+// ============================================================
+// NodeMetricsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsClearRequestUndefaults(v *NodeMetricsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsValueResponse
+// ============================================================
+// NodeMetricsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsValueResponseUndefaults(v *NodeMetricsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsEntriesResponse
+// ============================================================
+// NodeMetricsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsEntriesResponseUndefaults(v *NodeMetricsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsKeysResponse
+// ============================================================
+// NodeMetricsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsKeysResponseUndefaults(v *NodeMetricsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsSizeResponse
+// ============================================================
+// NodeMetricsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsSizeResponseUndefaults(v *NodeMetricsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsQueryRequest
+// ============================================================
+// NodeMetricsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsQueryRequestUndefaults(v *NodeMetricsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsQueryResponse
+// ============================================================
+// NodeMetricsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsQueryResponseUndefaults(v *NodeMetricsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsGetRequest
+// ============================================================
+// GrpcStatsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsGetRequestUndefaults(v *GrpcStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsPutRequest
+// ============================================================
+// GrpcStatsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsPutRequestUndefaults(v *GrpcStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsGetAllRequest
+// ============================================================
+// GrpcStatsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsGetAllRequestUndefaults(v *GrpcStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsKeysRequest
+// ============================================================
+// GrpcStatsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsKeysRequestUndefaults(v *GrpcStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsSizeRequest
+// ============================================================
+// GrpcStatsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsSizeRequestUndefaults(v *GrpcStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsClearRequest
+// ============================================================
+// GrpcStatsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsClearRequestUndefaults(v *GrpcStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsValueResponse
+// ============================================================
+// GrpcStatsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsValueResponseUndefaults(v *GrpcStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsEntriesResponse
+// ============================================================
+// GrpcStatsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsEntriesResponseUndefaults(v *GrpcStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsKeysResponse
+// ============================================================
+// GrpcStatsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsKeysResponseUndefaults(v *GrpcStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsSizeResponse
+// ============================================================
+// GrpcStatsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsSizeResponseUndefaults(v *GrpcStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsQueryRequest
+// ============================================================
+// GrpcStatsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsQueryRequestUndefaults(v *GrpcStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsQueryResponse
+// ============================================================
+// GrpcStatsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsQueryResponseUndefaults(v *GrpcStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusGetRequest
+// ============================================================
+// PersistenceStatusGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusGetRequestUndefaults(v *PersistenceStatusGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusPutRequest
+// ============================================================
+// PersistenceStatusPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusPutRequestUndefaults(v *PersistenceStatusPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusGetAllRequest
+// ============================================================
+// PersistenceStatusGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusGetAllRequestUndefaults(v *PersistenceStatusGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusKeysRequest
+// ============================================================
+// PersistenceStatusKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusKeysRequestUndefaults(v *PersistenceStatusKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusSizeRequest
+// ============================================================
+// PersistenceStatusSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusSizeRequestUndefaults(v *PersistenceStatusSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusClearRequest
+// ============================================================
+// PersistenceStatusClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusClearRequestUndefaults(v *PersistenceStatusClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusValueResponse
+// ============================================================
+// PersistenceStatusValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusValueResponseUndefaults(v *PersistenceStatusValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusEntriesResponse
+// ============================================================
+// PersistenceStatusEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusEntriesResponseUndefaults(v *PersistenceStatusEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusKeysResponse
+// ============================================================
+// PersistenceStatusKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusKeysResponseUndefaults(v *PersistenceStatusKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusSizeResponse
+// ============================================================
+// PersistenceStatusSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusSizeResponseUndefaults(v *PersistenceStatusSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusQueryRequest
+// ============================================================
+// PersistenceStatusQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusQueryRequestUndefaults(v *PersistenceStatusQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusQueryResponse
+// ============================================================
+// PersistenceStatusQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusQueryResponseUndefaults(v *PersistenceStatusQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsGetRequest
+// ============================================================
+// NetworkStatsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsGetRequestUndefaults(v *NetworkStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsPutRequest
+// ============================================================
+// NetworkStatsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsPutRequestUndefaults(v *NetworkStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsGetAllRequest
+// ============================================================
+// NetworkStatsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsGetAllRequestUndefaults(v *NetworkStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsKeysRequest
+// ============================================================
+// NetworkStatsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsKeysRequestUndefaults(v *NetworkStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsSizeRequest
+// ============================================================
+// NetworkStatsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsSizeRequestUndefaults(v *NetworkStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsClearRequest
+// ============================================================
+// NetworkStatsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsClearRequestUndefaults(v *NetworkStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsValueResponse
+// ============================================================
+// NetworkStatsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsValueResponseUndefaults(v *NetworkStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsEntriesResponse
+// ============================================================
+// NetworkStatsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsEntriesResponseUndefaults(v *NetworkStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsKeysResponse
+// ============================================================
+// NetworkStatsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsKeysResponseUndefaults(v *NetworkStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsSizeResponse
+// ============================================================
+// NetworkStatsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsSizeResponseUndefaults(v *NetworkStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsQueryRequest
+// ============================================================
+// NetworkStatsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsQueryRequestUndefaults(v *NetworkStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsQueryResponse
+// ============================================================
+// NetworkStatsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsQueryResponseUndefaults(v *NetworkStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoGetRequest
+// ============================================================
+// ThreadInfoGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoGetRequestUndefaults(v *ThreadInfoGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoPutRequest
+// ============================================================
+// ThreadInfoPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoPutRequestUndefaults(v *ThreadInfoPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoGetAllRequest
+// ============================================================
+// ThreadInfoGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoGetAllRequestUndefaults(v *ThreadInfoGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoKeysRequest
+// ============================================================
+// ThreadInfoKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoKeysRequestUndefaults(v *ThreadInfoKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoSizeRequest
+// ============================================================
+// ThreadInfoSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoSizeRequestUndefaults(v *ThreadInfoSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoClearRequest
+// ============================================================
+// ThreadInfoClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoClearRequestUndefaults(v *ThreadInfoClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoValueResponse
+// ============================================================
+// ThreadInfoValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoValueResponseUndefaults(v *ThreadInfoValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoEntriesResponse
+// ============================================================
+// ThreadInfoEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoEntriesResponseUndefaults(v *ThreadInfoEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoKeysResponse
+// ============================================================
+// ThreadInfoKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoKeysResponseUndefaults(v *ThreadInfoKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoSizeResponse
+// ============================================================
+// ThreadInfoSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoSizeResponseUndefaults(v *ThreadInfoSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoQueryRequest
+// ============================================================
+// ThreadInfoQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoQueryRequestUndefaults(v *ThreadInfoQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoQueryResponse
+// ============================================================
+// ThreadInfoQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoQueryResponseUndefaults(v *ThreadInfoQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsGetRequest
+// ============================================================
+// TokenCacheStatsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsGetRequestUndefaults(v *TokenCacheStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsPutRequest
+// ============================================================
+// TokenCacheStatsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsPutRequestUndefaults(v *TokenCacheStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsGetAllRequest
+// ============================================================
+// TokenCacheStatsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsGetAllRequestUndefaults(v *TokenCacheStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsKeysRequest
+// ============================================================
+// TokenCacheStatsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsKeysRequestUndefaults(v *TokenCacheStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsSizeRequest
+// ============================================================
+// TokenCacheStatsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsSizeRequestUndefaults(v *TokenCacheStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsClearRequest
+// ============================================================
+// TokenCacheStatsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsClearRequestUndefaults(v *TokenCacheStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsValueResponse
+// ============================================================
+// TokenCacheStatsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsValueResponseUndefaults(v *TokenCacheStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsEntriesResponse
+// ============================================================
+// TokenCacheStatsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsEntriesResponseUndefaults(v *TokenCacheStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsKeysResponse
+// ============================================================
+// TokenCacheStatsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsKeysResponseUndefaults(v *TokenCacheStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsSizeResponse
+// ============================================================
+// TokenCacheStatsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsSizeResponseUndefaults(v *TokenCacheStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsQueryRequest
+// ============================================================
+// TokenCacheStatsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsQueryRequestUndefaults(v *TokenCacheStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsQueryResponse
+// ============================================================
+// TokenCacheStatsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsQueryResponseUndefaults(v *TokenCacheStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsGetRequest
+// ============================================================
+// MapStatsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsGetRequestUndefaults(v *MapStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsPutRequest
+// ============================================================
+// MapStatsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsPutRequestUndefaults(v *MapStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsGetAllRequest
+// ============================================================
+// MapStatsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsGetAllRequestUndefaults(v *MapStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsKeysRequest
+// ============================================================
+// MapStatsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsKeysRequestUndefaults(v *MapStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsSizeRequest
+// ============================================================
+// MapStatsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsSizeRequestUndefaults(v *MapStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsClearRequest
+// ============================================================
+// MapStatsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsClearRequestUndefaults(v *MapStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsValueResponse
+// ============================================================
+// MapStatsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsValueResponseUndefaults(v *MapStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsEntriesResponse
+// ============================================================
+// MapStatsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsEntriesResponseUndefaults(v *MapStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsKeysResponse
+// ============================================================
+// MapStatsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsKeysResponseUndefaults(v *MapStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsSizeResponse
+// ============================================================
+// MapStatsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsSizeResponseUndefaults(v *MapStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsQueryRequest
+// ============================================================
+// MapStatsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsQueryRequestUndefaults(v *MapStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsQueryResponse
+// ============================================================
+// MapStatsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsQueryResponseUndefaults(v *MapStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryGetRequest
+// ============================================================
+// GraphRegistryGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryGetRequestUndefaults(v *GraphRegistryGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryPutRequest
+// ============================================================
+// GraphRegistryPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryPutRequestUndefaults(v *GraphRegistryPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryGetAllRequest
+// ============================================================
+// GraphRegistryGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryGetAllRequestUndefaults(v *GraphRegistryGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryKeysRequest
+// ============================================================
+// GraphRegistryKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryKeysRequestUndefaults(v *GraphRegistryKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistrySizeRequest
+// ============================================================
+// GraphRegistrySizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistrySizeRequestUndefaults(v *GraphRegistrySizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryClearRequest
+// ============================================================
+// GraphRegistryClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryClearRequestUndefaults(v *GraphRegistryClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryValueResponse
+// ============================================================
+// GraphRegistryValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryValueResponseUndefaults(v *GraphRegistryValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryEntriesResponse
+// ============================================================
+// GraphRegistryEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryEntriesResponseUndefaults(v *GraphRegistryEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryKeysResponse
+// ============================================================
+// GraphRegistryKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryKeysResponseUndefaults(v *GraphRegistryKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistrySizeResponse
+// ============================================================
+// GraphRegistrySizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistrySizeResponseUndefaults(v *GraphRegistrySizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryQueryRequest
+// ============================================================
+// GraphRegistryQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryQueryRequestUndefaults(v *GraphRegistryQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GraphRegistryQueryResponse
+// ============================================================
+// GraphRegistryQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GraphRegistryQueryResponseUndefaults(v *GraphRegistryQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsGetRequest
+// ============================================================
+// ServiceConnectionsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsGetRequestUndefaults(v *ServiceConnectionsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsPutRequest
+// ============================================================
+// ServiceConnectionsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsPutRequestUndefaults(v *ServiceConnectionsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsGetAllRequest
+// ============================================================
+// ServiceConnectionsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsGetAllRequestUndefaults(v *ServiceConnectionsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsKeysRequest
+// ============================================================
+// ServiceConnectionsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsKeysRequestUndefaults(v *ServiceConnectionsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsSizeRequest
+// ============================================================
+// ServiceConnectionsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsSizeRequestUndefaults(v *ServiceConnectionsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsClearRequest
+// ============================================================
+// ServiceConnectionsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsClearRequestUndefaults(v *ServiceConnectionsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsValueResponse
+// ============================================================
+// ServiceConnectionsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsValueResponseUndefaults(v *ServiceConnectionsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsEntriesResponse
+// ============================================================
+// ServiceConnectionsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsEntriesResponseUndefaults(v *ServiceConnectionsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsKeysResponse
+// ============================================================
+// ServiceConnectionsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsKeysResponseUndefaults(v *ServiceConnectionsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsSizeResponse
+// ============================================================
+// ServiceConnectionsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsSizeResponseUndefaults(v *ServiceConnectionsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsQueryRequest
+// ============================================================
+// ServiceConnectionsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsQueryRequestUndefaults(v *ServiceConnectionsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceConnectionsQueryResponse
+// ============================================================
+// ServiceConnectionsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceConnectionsQueryResponseUndefaults(v *ServiceConnectionsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsGetRequest
+// ============================================================
+// QueueStatsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsGetRequestUndefaults(v *QueueStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsPutRequest
+// ============================================================
+// QueueStatsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsPutRequestUndefaults(v *QueueStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsGetAllRequest
+// ============================================================
+// QueueStatsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsGetAllRequestUndefaults(v *QueueStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsKeysRequest
+// ============================================================
+// QueueStatsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsKeysRequestUndefaults(v *QueueStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsSizeRequest
+// ============================================================
+// QueueStatsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsSizeRequestUndefaults(v *QueueStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsClearRequest
+// ============================================================
+// QueueStatsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsClearRequestUndefaults(v *QueueStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsValueResponse
+// ============================================================
+// QueueStatsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsValueResponseUndefaults(v *QueueStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsEntriesResponse
+// ============================================================
+// QueueStatsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsEntriesResponseUndefaults(v *QueueStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsKeysResponse
+// ============================================================
+// QueueStatsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsKeysResponseUndefaults(v *QueueStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsSizeResponse
+// ============================================================
+// QueueStatsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsSizeResponseUndefaults(v *QueueStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsQueryRequest
+// ============================================================
+// QueueStatsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsQueryRequestUndefaults(v *QueueStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueStatsQueryResponse
+// ============================================================
+// QueueStatsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueStatsQueryResponseUndefaults(v *QueueStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsGetRequest
+// ============================================================
+// TopicStatsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsGetRequestUndefaults(v *TopicStatsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsPutRequest
+// ============================================================
+// TopicStatsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsPutRequestUndefaults(v *TopicStatsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsGetAllRequest
+// ============================================================
+// TopicStatsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsGetAllRequestUndefaults(v *TopicStatsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsKeysRequest
+// ============================================================
+// TopicStatsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsKeysRequestUndefaults(v *TopicStatsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsSizeRequest
+// ============================================================
+// TopicStatsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsSizeRequestUndefaults(v *TopicStatsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsClearRequest
+// ============================================================
+// TopicStatsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsClearRequestUndefaults(v *TopicStatsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsValueResponse
+// ============================================================
+// TopicStatsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsValueResponseUndefaults(v *TopicStatsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsEntriesResponse
+// ============================================================
+// TopicStatsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsEntriesResponseUndefaults(v *TopicStatsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsKeysResponse
+// ============================================================
+// TopicStatsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsKeysResponseUndefaults(v *TopicStatsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsSizeResponse
+// ============================================================
+// TopicStatsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsSizeResponseUndefaults(v *TopicStatsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsQueryRequest
+// ============================================================
+// TopicStatsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsQueryRequestUndefaults(v *TopicStatsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicStatsQueryResponse
+// ============================================================
+// TopicStatsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicStatsQueryResponseUndefaults(v *TopicStatsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthGetRequest
+// ============================================================
+// WatchHealthGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthGetRequestUndefaults(v *WatchHealthGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthPutRequest
+// ============================================================
+// WatchHealthPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthPutRequestUndefaults(v *WatchHealthPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthGetAllRequest
+// ============================================================
+// WatchHealthGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthGetAllRequestUndefaults(v *WatchHealthGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthKeysRequest
+// ============================================================
+// WatchHealthKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthKeysRequestUndefaults(v *WatchHealthKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthSizeRequest
+// ============================================================
+// WatchHealthSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthSizeRequestUndefaults(v *WatchHealthSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthClearRequest
+// ============================================================
+// WatchHealthClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthClearRequestUndefaults(v *WatchHealthClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthValueResponse
+// ============================================================
+// WatchHealthValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthValueResponseUndefaults(v *WatchHealthValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthEntriesResponse
+// ============================================================
+// WatchHealthEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthEntriesResponseUndefaults(v *WatchHealthEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthKeysResponse
+// ============================================================
+// WatchHealthKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthKeysResponseUndefaults(v *WatchHealthKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthSizeResponse
+// ============================================================
+// WatchHealthSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthSizeResponseUndefaults(v *WatchHealthSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthQueryRequest
+// ============================================================
+// WatchHealthQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthQueryRequestUndefaults(v *WatchHealthQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchHealthQueryResponse
+// ============================================================
+// WatchHealthQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchHealthQueryResponseUndefaults(v *WatchHealthQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesGetRequest
+// ============================================================
+// MutationRatesGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesGetRequestUndefaults(v *MutationRatesGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesPutRequest
+// ============================================================
+// MutationRatesPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesPutRequestUndefaults(v *MutationRatesPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesGetAllRequest
+// ============================================================
+// MutationRatesGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesGetAllRequestUndefaults(v *MutationRatesGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesKeysRequest
+// ============================================================
+// MutationRatesKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesKeysRequestUndefaults(v *MutationRatesKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesSizeRequest
+// ============================================================
+// MutationRatesSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesSizeRequestUndefaults(v *MutationRatesSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesClearRequest
+// ============================================================
+// MutationRatesClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesClearRequestUndefaults(v *MutationRatesClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesValueResponse
+// ============================================================
+// MutationRatesValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesValueResponseUndefaults(v *MutationRatesValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesEntriesResponse
+// ============================================================
+// MutationRatesEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesEntriesResponseUndefaults(v *MutationRatesEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesKeysResponse
+// ============================================================
+// MutationRatesKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesKeysResponseUndefaults(v *MutationRatesKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesSizeResponse
+// ============================================================
+// MutationRatesSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesSizeResponseUndefaults(v *MutationRatesSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesQueryRequest
+// ============================================================
+// MutationRatesQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesQueryRequestUndefaults(v *MutationRatesQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MutationRatesQueryResponse
+// ============================================================
+// MutationRatesQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MutationRatesQueryResponseUndefaults(v *MutationRatesQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesGetRequest
+// ============================================================
+// InstancesGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesGetRequestUndefaults(v *InstancesGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesGetAllRequest
+// ============================================================
+// InstancesGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesGetAllRequestUndefaults(v *InstancesGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesKeysRequest
+// ============================================================
+// InstancesKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesKeysRequestUndefaults(v *InstancesKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesSizeRequest
+// ============================================================
+// InstancesSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesSizeRequestUndefaults(v *InstancesSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesValueResponse
+// ============================================================
+// InstancesValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesValueResponseUndefaults(v *InstancesValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesEntriesResponse
+// ============================================================
+// InstancesEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesEntriesResponseUndefaults(v *InstancesEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesKeysResponse
+// ============================================================
+// InstancesKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesKeysResponseUndefaults(v *InstancesKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesSizeResponse
+// ============================================================
+// InstancesSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesSizeResponseUndefaults(v *InstancesSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesQueryRequest
+// ============================================================
+// InstancesQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesQueryRequestUndefaults(v *InstancesQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: InstancesQueryResponse
+// ============================================================
+// InstancesQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func InstancesQueryResponseUndefaults(v *InstancesQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
 	}
 }
 
@@ -36659,9 +41001,6 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	if dst.NodeCount == 0 {
 		dst.NodeCount = src.NodeCount
 	}
-	if dst.Secret == "" {
-		dst.Secret = src.Secret
-	}
 	if dst.PartitionCount == 0 {
 		dst.PartitionCount = src.PartitionCount
 	}
@@ -36672,12 +41011,6 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	}
 	if dst.Logger == nil {
 		dst.Logger = src.Logger
-	}
-	if !dst.EnableMetrics {
-		dst.EnableMetrics = src.EnableMetrics
-	}
-	if !dst.EnableTracing {
-		dst.EnableTracing = src.EnableTracing
 	}
 	if dst.CpSubsystem == nil {
 		dst.CpSubsystem = src.CpSubsystem
@@ -36800,35 +41133,6 @@ func MergeFullDumpHeader(dst, src *FullDumpHeader) {
 }
 
 // ============================================================
-// Merge: SecurityConfig
-// ============================================================
-// MergeSecurityConfig fills zero-valued fields in dst from src.
-func MergeSecurityConfig(dst, src *SecurityConfig) {
-	if dst.Audience == "" {
-		dst.Audience = src.Audience
-	}
-	if dst.TokenTtlSeconds == 0 {
-		dst.TokenTtlSeconds = src.TokenTtlSeconds
-	}
-}
-
-// ============================================================
-// Merge: TokenExchangerConfig
-// ============================================================
-// MergeTokenExchangerConfig fills zero-valued fields in dst from src.
-func MergeTokenExchangerConfig(dst, src *TokenExchangerConfig) {
-	if dst.RefreshAudience == "" {
-		dst.RefreshAudience = src.RefreshAudience
-	}
-	if dst.KeyRotationIntervalSeconds == 0 {
-		dst.KeyRotationIntervalSeconds = src.KeyRotationIntervalSeconds
-	}
-	if dst.DefaultTokenExpirySeconds == 0 {
-		dst.DefaultTokenExpirySeconds = src.DefaultTokenExpirySeconds
-	}
-}
-
-// ============================================================
 // Merge: TokenRequest
 // ============================================================
 // MergeTokenRequest fills zero-valued fields in dst from src.
@@ -36871,6 +41175,38 @@ func MergeTrustedCaState(dst, src *TrustedCaState) {
 }
 
 // ============================================================
+// Merge: CloudIdentityMatcher
+// ============================================================
+// MergeCloudIdentityMatcher fills zero-valued fields in dst from src.
+func MergeCloudIdentityMatcher(dst, src *CloudIdentityMatcher) {
+	if dst.Vendor == 0 {
+		dst.Vendor = src.Vendor
+	}
+	if dst.ExpectedIdentity == "" {
+		dst.ExpectedIdentity = src.ExpectedIdentity
+	}
+}
+
+// ============================================================
+// Merge: Delegate
+// ============================================================
+// MergeDelegate fills zero-valued fields in dst from src.
+func MergeDelegate(dst, src *Delegate) {
+	if dst.Name == "" {
+		dst.Name = src.Name
+	}
+	if len(dst.CredPairs) == 0 {
+		dst.CredPairs = src.CredPairs
+	}
+	if len(dst.CloudIdentities) == 0 {
+		dst.CloudIdentities = src.CloudIdentities
+	}
+	if len(dst.AuthorizedServices) == 0 {
+		dst.AuthorizedServices = src.AuthorizedServices
+	}
+}
+
+// ============================================================
 // Merge: Config
 // ============================================================
 // MergeConfig fills zero-valued fields in dst from src.
@@ -36886,24 +41222,14 @@ func MergeConfig(dst, src *Config) {
 	if dst.Configs == nil {
 		dst.Configs = src.Configs
 	}
-	if dst.Security == nil {
-		dst.Security = src.Security
-	} else if src.Security != nil {
-		MergeSecurityConfig(dst.Security, src.Security)
+	if dst.KeyRotationIntervalSeconds == 0 {
+		dst.KeyRotationIntervalSeconds = src.KeyRotationIntervalSeconds
 	}
-	if dst.TokenExchanger == nil {
-		dst.TokenExchanger = src.TokenExchanger
-	} else if src.TokenExchanger != nil {
-		MergeTokenExchangerConfig(dst.TokenExchanger, src.TokenExchanger)
+	if dst.DefaultTokenExpirySeconds == 0 {
+		dst.DefaultTokenExpirySeconds = src.DefaultTokenExpirySeconds
 	}
-	if len(dst.CredPairs) == 0 {
-		dst.CredPairs = src.CredPairs
-	}
-	if len(dst.EntitlementMappings) == 0 {
-		dst.EntitlementMappings = src.EntitlementMappings
-	}
-	if len(dst.ServiceEntitlements) == 0 {
-		dst.ServiceEntitlements = src.ServiceEntitlements
+	if len(dst.Delegates) == 0 {
+		dst.Delegates = src.Delegates
 	}
 }
 
@@ -38467,7 +42793,7 @@ func ConfigLlmTypeDescriptor() string {
 	return `{
   "name": "Config",
   "package": "kernel",
-  "description": "Config is the frontend configuration for BackendDB.\n Unlike BootstrapConfig (read once at boot), Config can be reloaded at any time.",
+  "description": "Config is the frontend configuration for Kernel.\n Unlike BootstrapConfig (read once at boot), Config can be reloaded at any time.",
   "fields": [
     {
       "name": "trusted_cas",
@@ -38500,6 +42826,7 @@ func ConfigLlmTypeDescriptor() string {
       "name": "rate_limit",
       "type": "message",
       "description": "rate_limit configures rate limiting for unary read RPCs to detect polling.",
+      "required": true,
       "message": {
         "name": "RateLimitConfig",
         "package": "kernel",
@@ -38523,10 +42850,11 @@ func ConfigLlmTypeDescriptor() string {
     {
       "name": "configs",
       "type": "message",
-      "description": "configs holds per-frontend-service configurations. On each config load,\n each entry is written to the corresponding ConfigHolder boundary map.",
+      "description": "configs holds per-frontend-service configurations. On each config load,\n each entry is written to the corresponding service config state boundary.",
+      "required": true,
       "message": {
-        "name": "ConfigHolder",
-        "package": "config_holder",
+        "name": "Services",
+        "package": "generated",
         "fields": [
           {
             "name": "sentinel_config",
@@ -38548,6 +42876,7 @@ func ConfigLlmTypeDescriptor() string {
                   "name": "oauth",
                   "type": "message",
                   "description": "oauth configures OAuth2 authentication providers and settings.",
+                  "required": true,
                   "message": {
                     "name": "OAuthConfig",
                     "package": "identity",
@@ -38731,35 +43060,145 @@ func ConfigLlmTypeDescriptor() string {
                 },
                 {
                   "name": "entitlements_policy",
-                  "type": "string",
-                  "description": "entitlements_policy is a Rego policy evaluated at token exchange time.\n Input: {claims: {\u003cflattened IDP claims\u003e}}\n Expected output: data.entitlements.main → {profiles: [string]}\n Zero profiles = denied. Profile names must match identity_profiles ids."
-                },
-                {
-                  "name": "entitlement_mappings",
                   "type": "message",
-                  "description": "entitlement_mappings maps credentials to service identities (S2S only).",
-                  "repeated": true,
+                  "description": "entitlements_policy is the OPA policy for determining user entitlements at\n token exchange time. Contains a filesystem.Directory bundle of .rego files.\n The policy's entry_point rule receives {claims: {\u003cIDP claims\u003e}} and must\n return {profiles: [string]}. Profile names are resolved to concrete\n entitlements via identity_profiles.",
                   "message": {
-                    "name": "ServiceEntitlementMapping",
-                    "package": "entitlement",
-                    "description": "ServiceEntitlementMapping maps a credential to a service identity.\n Used by TokenExchanger (static config) to resolve\n which service a CredPair or cloud credential represents.\n Entitlements for S2S are derived from proto definitions — no entitlements_id needed.",
+                    "name": "OpaPolicy",
+                    "package": "opa",
+                    "description": "OpaPolicy defines an OPA policy bundle for authorization evaluation.\n The bundle is a filesystem.Directory tree containing .rego policy files.",
                     "fields": [
                       {
-                        "name": "credential_id",
+                        "name": "entry_point",
                         "type": "string",
-                        "description": "credential_id is the unique identifier for the authentication credential.\n For CredPairs this is the public_key.kid. For cloud credentials, the\n cloud credential ID (e.g. IAM role ARN).",
-                        "required": true,
+                        "description": "entry_point specifies the main package/decision point for policy evaluation.",
                         "constraints": [
-                          "maximum length: 512"
+                          "minimum length: 1",
+                          "maximum length: 256"
                         ]
                       },
                       {
-                        "name": "service",
+                        "name": "bundle",
+                        "type": "message",
+                        "description": "bundle is the directory tree containing .rego policy files.",
+                        "message": {
+                          "name": "Directory",
+                          "package": "filesystem",
+                          "description": "Directory represents a directory node in a filesystem tree.\n Directories are recursive — each may contain child directories and files.",
+                          "fields": [
+                            {
+                              "name": "name",
+                              "type": "string",
+                              "description": "name is the directory name (not a path)",
+                              "required": true,
+                              "constraints": [
+                                "maximum length: 255"
+                              ]
+                            },
+                            {
+                              "name": "permission",
+                              "type": "message",
+                              "description": "permission is the Unix-style permission for this directory",
+                              "message": {
+                                "name": "Permission",
+                                "package": "filesystem",
+                                "description": "Permission represents Unix-style file permissions (e.g., 755).\n Each field is a 3-bit mask: read (4) + write (2) + execute (1).",
+                                "fields": [
+                                  {
+                                    "name": "owner",
+                                    "type": "uint32",
+                                    "description": "owner permission bits (0-7)",
+                                    "constraints": [
+                                      "must be \u003e= 0",
+                                      "must be \u003c= 7"
+                                    ]
+                                  },
+                                  {
+                                    "name": "group",
+                                    "type": "uint32",
+                                    "description": "group permission bits (0-7)",
+                                    "constraints": [
+                                      "must be \u003c= 7",
+                                      "must be \u003e= 0"
+                                    ]
+                                  },
+                                  {
+                                    "name": "other",
+                                    "type": "uint32",
+                                    "description": "other permission bits (0-7)",
+                                    "constraints": [
+                                      "must be \u003e= 0",
+                                      "must be \u003c= 7"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "directories",
+                              "type": "message (recursive reference: filesystem.Directory)",
+                              "description": "directories holds zero or more child directories",
+                              "repeated": true
+                            },
+                            {
+                              "name": "files",
+                              "type": "message",
+                              "description": "files holds zero or more files in this directory",
+                              "repeated": true,
+                              "message": {
+                                "name": "File",
+                                "package": "filesystem",
+                                "description": "File represents a single file with permissions and content.",
+                                "fields": [
+                                  {
+                                    "name": "name",
+                                    "type": "string",
+                                    "description": "name is the file name (not a path)",
+                                    "required": true,
+                                    "constraints": [
+                                      "maximum length: 255"
+                                    ]
+                                  },
+                                  {
+                                    "name": "permission",
+                                    "type": "message (recursive reference: filesystem.Permission)",
+                                    "description": "permission is the Unix-style permission for this file"
+                                  },
+                                  {
+                                    "name": "content",
+                                    "type": "bytes",
+                                    "description": "content is the raw file content (max 10 MB)"
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "created",
+                        "type": "int64",
+                        "description": "created is the Unix epoch timestamp (seconds) when the policy was created.",
+                        "constraints": [
+                          "must be \u003e= 1735689600",
+                          "must be \u003c= 8045740800"
+                        ]
+                      },
+                      {
+                        "name": "version",
                         "type": "string",
-                        "description": "service is the logical service identity this credential maps to.\n Becomes the \"sub\" claim in S2S tokens.",
+                        "description": "version is an optional version string for this policy (e.g., \"1.0.0\").",
+                        "constraints": [
+                          "must be a valid semantic version",
+                          "maximum length: 64"
+                        ]
+                      },
+                      {
+                        "name": "issuer",
+                        "type": "string",
+                        "description": "issuer is the required token issuer URL. Verified in code BEFORE OPA\n evaluation — tokens from unexpected issuers are rejected before the\n policy runs.",
                         "required": true,
                         "constraints": [
-                          "maximum length: 128"
+                          "must be a valid URL (scheme: URL_SCHEME_HTTPS)"
                         ]
                       }
                     ]
@@ -38772,47 +43211,160 @@ func ConfigLlmTypeDescriptor() string {
                   "repeated": true,
                   "message": {
                     "name": "IdentityProfile",
-                    "package": "entitlement",
-                    "description": "IdentityProfile defines a named set of entitlements for user authorization.\n OPA entitlements_policy returns zero or more profile names; identity resolves\n those names to concrete ServiceEntitlements at token exchange time.",
+                    "package": "servicename",
+                    "description": "IdentityProfile defines a named set of entitlements for user authorization.\n OPA entitlements_policy returns zero or more profile names; identity resolves\n those names to concrete per-service RPC entitlements at token exchange time.",
                     "fields": [
                       {
                         "name": "id",
                         "type": "string",
-                        "description": "id is the profile name (e.g. \"user\", \"admin\", \"reader\").\n Referenced by OPA policy output.",
-                        "required": true,
-                        "constraints": [
-                          "maximum length: 128"
+                        "description": "id is the profile name (e.g. \"user\", \"admin\", \"reader\")."
+                      },
+                      {
+                        "name": "sentinel",
+                        "type": "enum",
+                        "repeated": true,
+                        "enum_values": [
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_CLUSTER_INFO",
+                            "number": 1
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_CLUSTER_HEALTH",
+                            "number": 2
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_NODE_METRICS",
+                            "number": 3
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_GRPC_STATS",
+                            "number": 4
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_PERSISTENCE_STATUS",
+                            "number": 5
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_NETWORK_STATS",
+                            "number": 6
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_THREAD_INFO",
+                            "number": 7
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_TOKEN_CACHE_STATS",
+                            "number": 8
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_MAP_STATS",
+                            "number": 9
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_GET_DASHBOARD",
+                            "number": 10
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_WATCH_DASHBOARD",
+                            "number": 11
+                          },
+                          {
+                            "name": "SENTINEL_SERVICE_RPCS_ANY",
+                            "number": 99
+                          }
                         ]
                       },
                       {
-                        "name": "entitlements",
-                        "type": "message",
-                        "description": "entitlements is the set of services and RPCs this profile grants access to.",
-                        "required": true,
+                        "name": "identity",
+                        "type": "enum",
                         "repeated": true,
-                        "message": {
-                          "name": "ServiceEntitlement",
-                          "package": "entitlement",
-                          "description": "ServiceEntitlement defines what a caller is allowed to do on a target service.\n The service_name becomes the \"aud\" claim in access tokens.\n Every permitted RPC must be listed — there is no wildcard/default-allow.",
-                          "fields": [
-                            {
-                              "name": "service_name",
-                              "type": "string",
-                              "description": "service_name is the target service (matches spec.service_frontend value).",
-                              "required": true,
-                              "constraints": [
-                                "maximum length: 128"
-                              ]
-                            },
-                            {
-                              "name": "allowed_rpcs",
-                              "type": "string",
-                              "description": "allowed_rpcs lists the RPC methods permitted on the target service.\n Format: \"MethodName\" (unqualified). Must not be empty.",
-                              "required": true,
-                              "repeated": true
-                            }
-                          ]
-                        }
+                        "enum_values": [
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_LIST_PROVIDERS",
+                            "number": 1
+                          },
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_AUTHORIZE",
+                            "number": 2
+                          },
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_CALLBACK",
+                            "number": 3
+                          },
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_REFRESH_TOKEN",
+                            "number": 4
+                          },
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN",
+                            "number": 5
+                          },
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_LOGOUT",
+                            "number": 6
+                          },
+                          {
+                            "name": "IDENTITY_SERVICE_RPCS_ANY",
+                            "number": 99
+                          }
+                        ]
+                      },
+                      {
+                        "name": "policy",
+                        "type": "enum",
+                        "repeated": true,
+                        "enum_values": [
+                          {
+                            "name": "POLICY_SERVICE_RPCS_GET_API_CATALOG",
+                            "number": 1
+                          },
+                          {
+                            "name": "POLICY_SERVICE_RPCS_GET_ENTITLEMENTS",
+                            "number": 2
+                          },
+                          {
+                            "name": "POLICY_SERVICE_RPCS_GET_POLICIES",
+                            "number": 3
+                          },
+                          {
+                            "name": "POLICY_SERVICE_RPCS_ANY",
+                            "number": 99
+                          }
+                        ]
+                      },
+                      {
+                        "name": "policysim",
+                        "type": "enum",
+                        "repeated": true,
+                        "enum_values": [
+                          {
+                            "name": "POLICY_SIM_SERVICE_RPCS_SIMULATE_ENTITLEMENTS",
+                            "number": 1
+                          },
+                          {
+                            "name": "POLICY_SIM_SERVICE_RPCS_EVALUATE_POLICY",
+                            "number": 2
+                          },
+                          {
+                            "name": "POLICY_SIM_SERVICE_RPCS_ANY",
+                            "number": 99
+                          }
+                        ]
+                      },
+                      {
+                        "name": "mcp",
+                        "type": "enum",
+                        "repeated": true,
+                        "enum_values": [
+                          {
+                            "name": "MCP_ASSIST_SERVICE_RPCS_ASSIST",
+                            "number": 1
+                          },
+                          {
+                            "name": "MCP_ASSIST_SERVICE_RPCS_ANY",
+                            "number": 99
+                          }
+                        ]
                       }
                     ]
                   }
@@ -38970,34 +43522,10 @@ func ConfigLlmTypeDescriptor() string {
                   ]
                 },
                 {
-                  "name": "peers",
-                  "type": "message",
-                  "description": "peers is the list of other Zero endpoints for Raft peer discovery.\n Used by Zero nodes.",
-                  "repeated": true,
-                  "message": {
-                    "name": "Host",
-                    "package": "host",
-                    "description": "Host identifies a network endpoint by hostname/IP and port.\n The host field accepts either an FQDN or an IP address (v4/v6).",
-                    "fields": [
-                      {
-                        "name": "host",
-                        "type": "string",
-                        "description": "Hostname or IP address (e.g. \"api.example.com\" or \"10.0.0.1\").",
-                        "required": true,
-                        "constraints": [
-                          "must be a valid hostname or IP address"
-                        ]
-                      },
-                      {
-                        "name": "port",
-                        "type": "int32",
-                        "description": "TCP port number (1-65535).",
-                        "constraints": [
-                          "must be a valid network port (1-65535)"
-                        ]
-                      }
-                    ]
-                  }
+                  "name": "zero_count",
+                  "type": "int32",
+                  "description": "zero_count is the expected number of Zero nodes in the cluster.\n Zeros use this to form the Raft quorum. Default: 1.",
+                  "default": 1
                 },
                 {
                   "name": "replicas",
@@ -39006,10 +43534,104 @@ func ConfigLlmTypeDescriptor() string {
                   "default": 1
                 },
                 {
-                  "name": "zeros",
-                  "type": "message (recursive reference: host.Host)",
-                  "description": "zeros is the list of Zero endpoints for Alpha registration.\n Used by Alpha nodes.",
-                  "repeated": true
+                  "name": "access_policy",
+                  "type": "message",
+                  "description": "access_policy controls which principals can read or write.\n When nil, all authenticated principals have full access.",
+                  "message": {
+                    "name": "AccessPolicy",
+                    "package": "dgraph",
+                    "description": "AccessPolicy controls which principals can read or write to this dgraph instance.",
+                    "fields": [
+                      {
+                        "name": "rw",
+                        "type": "enum",
+                        "description": "rw is the list of services allowed to perform write operations.\n Also grants read access. Use SERVICE_NAME_ANY for unrestricted write access.",
+                        "repeated": true,
+                        "enum_values": [
+                          {
+                            "name": "SERVICE_NAME_SENTINEL",
+                            "number": 5
+                          },
+                          {
+                            "name": "SERVICE_NAME_IDENTITY",
+                            "number": 6
+                          },
+                          {
+                            "name": "SERVICE_NAME_GATEWAY",
+                            "number": 7
+                          },
+                          {
+                            "name": "SERVICE_NAME_LETSENCRYPT",
+                            "number": 9
+                          },
+                          {
+                            "name": "SERVICE_NAME_POLICY",
+                            "number": 10
+                          },
+                          {
+                            "name": "SERVICE_NAME_POLICYSIM",
+                            "number": 11
+                          },
+                          {
+                            "name": "SERVICE_NAME_MCP",
+                            "number": 12
+                          },
+                          {
+                            "name": "SERVICE_NAME_DGRAPH",
+                            "number": 13
+                          },
+                          {
+                            "name": "SERVICE_NAME_ANY",
+                            "number": 99
+                          }
+                        ]
+                      },
+                      {
+                        "name": "ro",
+                        "type": "enum",
+                        "description": "ro is the list of services allowed to perform read-only operations.\n Use SERVICE_NAME_ANY for unrestricted read access.",
+                        "repeated": true,
+                        "enum_values": [
+                          {
+                            "name": "SERVICE_NAME_SENTINEL",
+                            "number": 5
+                          },
+                          {
+                            "name": "SERVICE_NAME_IDENTITY",
+                            "number": 6
+                          },
+                          {
+                            "name": "SERVICE_NAME_GATEWAY",
+                            "number": 7
+                          },
+                          {
+                            "name": "SERVICE_NAME_LETSENCRYPT",
+                            "number": 9
+                          },
+                          {
+                            "name": "SERVICE_NAME_POLICY",
+                            "number": 10
+                          },
+                          {
+                            "name": "SERVICE_NAME_POLICYSIM",
+                            "number": 11
+                          },
+                          {
+                            "name": "SERVICE_NAME_MCP",
+                            "number": 12
+                          },
+                          {
+                            "name": "SERVICE_NAME_DGRAPH",
+                            "number": 13
+                          },
+                          {
+                            "name": "SERVICE_NAME_ANY",
+                            "number": 99
+                          }
+                        ]
+                      }
+                    ]
+                  }
                 }
               ]
             }
@@ -39018,224 +43640,226 @@ func ConfigLlmTypeDescriptor() string {
       }
     },
     {
-      "name": "security",
-      "type": "message",
-      "description": "security is the security configuration for token validation and authorization.",
-      "message": {
-        "name": "SecurityConfig",
-        "package": "kernel",
-        "description": "SecurityConfig defines the security policy for the kernel cluster.\n All tokens must have: sub, aud matching audience, and a kid matching a known key.\n Tokens are validated using keys from the JwkVerifyingKeysView.",
-        "fields": [
-          {
-            "name": "audience",
-            "type": "string",
-            "description": "audience is the expected \"aud\" claim in tokens. Tokens whose aud\n does not match are rejected.",
-            "default": "kernel"
-          },
-          {
-            "name": "token_ttl_seconds",
-            "type": "int64",
-            "description": "token_ttl_seconds is the maximum allowed token lifetime.\n Tokens with exp - iat \u003e token_ttl_seconds are rejected.\n Default: 3600 (1 hour). 0 = no limit.",
-            "default": 3600
-          }
-        ]
-      }
+      "name": "key_rotation_interval_seconds",
+      "type": "int64",
+      "description": "key_rotation_interval_seconds is how often the exchanger rotates\n its own signing keys. Default: 24 hours.",
+      "default": 86400
     },
     {
-      "name": "token_exchanger",
-      "type": "message",
-      "description": "token_exchanger configures the token exchange service.",
-      "required": true,
-      "message": {
-        "name": "TokenExchangerConfig",
-        "package": "kernel",
-        "description": "TokenExchangerConfig configures the built-in token exchange service.\n The exchanger validates incoming tokens signed by a CredPair or\n existing refresh tokens, and issues short-lived access tokens\n for backend (kernel) communication.",
-        "fields": [
-          {
-            "name": "refresh_audience",
-            "type": "string",
-            "description": "refresh_audience is the expected \"aud\" claim in refresh tokens.",
-            "default": "refresh"
-          },
-          {
-            "name": "key_rotation_interval_seconds",
-            "type": "int64",
-            "description": "key_rotation_interval_seconds is how often the exchanger rotates\n its own signing keys. Default: 24 hours.",
-            "default": 86400
-          },
-          {
-            "name": "default_token_expiry_seconds",
-            "type": "int64",
-            "description": "default_token_expiry_seconds is the default lifetime for issued\n access tokens when the request does not specify an expiry. Default: 1 hour.",
-            "default": 3600
-          }
-        ]
-      }
+      "name": "default_token_expiry_seconds",
+      "type": "int64",
+      "description": "default_token_expiry_seconds is the default lifetime for issued\n access tokens when the request does not specify an expiry. Default: 1 hour.",
+      "default": 3600
     },
     {
-      "name": "cred_pairs",
+      "name": "delegates",
       "type": "message",
-      "description": "cred_pairs hold public keys for the CredPair token exchange flow.\n Identity mapping (kid → service) is in entitlement_mappings.",
+      "description": "delegates hold credentials for services that can request tokens.\n Each delegate identifies a service and its authorized target services.",
       "repeated": true,
       "message": {
-        "name": "CredPair",
-        "package": "jwk",
-        "description": "CredPair holds a public key for the CredPair token exchange flow.\n A service holding the matching private key mints a throwaway JWT\n (kid + signature only), exchanges it via TokenExchanger for a refresh\n token, then exchanges the refresh token for access tokens.\n\n Identity mapping (kid → service name) is handled separately by\n ServiceEntitlementMapping. The private key lives only in the client's\n config (backendclient.proto), never on the server.",
+        "name": "Delegate",
+        "package": "kernel",
+        "description": "Delegate holds credentials for a service that can request tokens.\n Each delegate is identified by name (becomes \"sub\" in issued tokens)\n and authenticates via CredPair or cloud identity.",
         "fields": [
           {
-            "name": "public_key",
+            "name": "name",
+            "type": "string",
+            "description": "name is the delegate's identity (becomes sub in issued tokens).",
+            "required": true
+          },
+          {
+            "name": "cred_pairs",
             "type": "message",
-            "description": "The public key for signature verification.\n kid (public_key.kid) is used as the collection key and as the\n credential_id in ServiceEntitlementMapping.",
-            "required": true,
+            "description": "Credentials for proving identity. At least one must be set.\n Repeated to allow rotation (old + new credential during transition).",
+            "repeated": true,
             "message": {
-              "name": "Jwk",
+              "name": "CredPair",
               "package": "jwk",
-              "description": "Jwk represents a JSON Web Key as defined in RFC 7517.\n It contains the public key parameters for RSA (e, n), EC (crv, x, y), or OKP (crv, x) keys.\n JWK is used for key distribution and verification in JSON-based protocols like JWT.",
+              "description": "CredPair holds a public key for the CredPair token exchange flow.\n A service holding the matching private key mints a throwaway JWT\n (kid + signature only), exchanges it via TokenExchanger for a refresh\n token, then exchanges the refresh token for access tokens.\n\n Identity mapping (kid → service name) is handled separately by\n ServiceEntitlementMapping. The private key lives only in the client's\n config (backendclient.proto), never on the server.",
               "fields": [
                 {
-                  "name": "kty",
-                  "type": "enum",
-                  "description": "Kty is the key type parameter (RSA, EC, or OKP)",
-                  "enum_values": [
-                    {
-                      "name": "KEY_TYPE_RSA",
-                      "number": 1,
-                      "description": "KeyTypeRsa represents an RSA key type"
-                    },
-                    {
-                      "name": "KEY_TYPE_EC",
-                      "number": 2,
-                      "description": "KeyTypeEc represents an Elliptic Curve key type"
-                    },
-                    {
-                      "name": "KEY_TYPE_OKP",
-                      "number": 3,
-                      "description": "KeyTypeOkp represents an Octet Key Pair (EdDSA) key type"
-                    }
-                  ]
-                },
-                {
-                  "name": "alg",
-                  "type": "string",
-                  "description": "Alg is the algorithm intended for use with the key (e.g., \"RS384\", \"ES256\", \"EdDSA\")",
+                  "name": "public_key",
+                  "type": "message",
+                  "description": "The public key for signature verification.\n kid (public_key.kid) is used as the collection key and as the\n credential_id in ServiceEntitlementMapping.",
                   "required": true,
-                  "constraints": [
-                    "minimum length: 1"
-                  ]
-                },
-                {
-                  "name": "kid",
-                  "type": "string",
-                  "description": "Kid is the key ID used to match keys with signatures",
-                  "required": true,
-                  "constraints": [
-                    "minimum length: 1"
-                  ]
-                },
-                {
-                  "name": "use",
-                  "type": "enum",
-                  "description": "Use indicates the intended use of the key (sig for signatures, enc for encryption)",
-                  "enum_values": [
-                    {
-                      "name": "JWK_USE_TYPE_SIG",
-                      "number": 1,
-                      "description": "JwkUseTypeSig indicates the key is used for digital signatures"
-                    },
-                    {
-                      "name": "JWK_USE_TYPE_ENC",
-                      "number": 2,
-                      "description": "JwkUseTypeEnc indicates the key is used for encryption"
-                    }
-                  ]
-                },
-                {
-                  "name": "e",
-                  "type": "string",
-                  "description": "E is the RSA public exponent (base64url encoded without padding)",
-                  "constraints": [
-                    "must be base64 encoded"
-                  ]
-                },
-                {
-                  "name": "n",
-                  "type": "string",
-                  "description": "N is the RSA modulus (base64url encoded without padding)",
-                  "constraints": [
-                    "must be base64 encoded"
-                  ]
-                },
-                {
-                  "name": "crv",
-                  "type": "string",
-                  "description": "Crv is the elliptic curve name (e.g., P-256, P-384, P-521, Ed25519)"
-                },
-                {
-                  "name": "x",
-                  "type": "string",
-                  "description": "X is the x coordinate for EC keys or the public key for OKP (base64url encoded without padding)",
-                  "constraints": [
-                    "must be base64 encoded"
-                  ]
-                },
-                {
-                  "name": "y",
-                  "type": "string",
-                  "description": "Y is the y coordinate for EC keys (base64url encoded without padding, not used for OKP)",
-                  "constraints": [
-                    "must be base64 encoded"
-                  ]
-                },
-                {
-                  "name": "exp",
-                  "type": "int64",
-                  "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
-                },
-                {
-                  "name": "created",
-                  "type": "int64",
-                  "description": "Created is the Unix epoch timestamp (seconds) when the key was created (optional).\n If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
-                  "constraints": [
-                    "must be \u003e= 1735689600",
-                    "must be \u003c= 8045740800"
-                  ]
+                  "message": {
+                    "name": "Jwk",
+                    "package": "jwk",
+                    "description": "Jwk represents a JSON Web Key as defined in RFC 7517.\n It contains the public key parameters for RSA (e, n), EC (crv, x, y), or OKP (crv, x) keys.\n JWK is used for key distribution and verification in JSON-based protocols like JWT.",
+                    "fields": [
+                      {
+                        "name": "kty",
+                        "type": "enum",
+                        "description": "Kty is the key type parameter (RSA, EC, or OKP)",
+                        "enum_values": [
+                          {
+                            "name": "KEY_TYPE_RSA",
+                            "number": 1,
+                            "description": "KeyTypeRsa represents an RSA key type"
+                          },
+                          {
+                            "name": "KEY_TYPE_EC",
+                            "number": 2,
+                            "description": "KeyTypeEc represents an Elliptic Curve key type"
+                          },
+                          {
+                            "name": "KEY_TYPE_OKP",
+                            "number": 3,
+                            "description": "KeyTypeOkp represents an Octet Key Pair (EdDSA) key type"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "alg",
+                        "type": "string",
+                        "description": "Alg is the algorithm intended for use with the key (e.g., \"RS384\", \"ES256\", \"EdDSA\")",
+                        "required": true,
+                        "constraints": [
+                          "minimum length: 1"
+                        ]
+                      },
+                      {
+                        "name": "kid",
+                        "type": "string",
+                        "description": "Kid is the key ID used to match keys with signatures",
+                        "required": true,
+                        "constraints": [
+                          "minimum length: 1"
+                        ]
+                      },
+                      {
+                        "name": "use",
+                        "type": "enum",
+                        "description": "Use indicates the intended use of the key (sig for signatures, enc for encryption)",
+                        "enum_values": [
+                          {
+                            "name": "JWK_USE_TYPE_SIG",
+                            "number": 1,
+                            "description": "JwkUseTypeSig indicates the key is used for digital signatures"
+                          },
+                          {
+                            "name": "JWK_USE_TYPE_ENC",
+                            "number": 2,
+                            "description": "JwkUseTypeEnc indicates the key is used for encryption"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "e",
+                        "type": "string",
+                        "description": "E is the RSA public exponent (base64url encoded without padding)",
+                        "constraints": [
+                          "must be base64 encoded"
+                        ]
+                      },
+                      {
+                        "name": "n",
+                        "type": "string",
+                        "description": "N is the RSA modulus (base64url encoded without padding)",
+                        "constraints": [
+                          "must be base64 encoded"
+                        ]
+                      },
+                      {
+                        "name": "crv",
+                        "type": "string",
+                        "description": "Crv is the elliptic curve name (e.g., P-256, P-384, P-521, Ed25519)"
+                      },
+                      {
+                        "name": "x",
+                        "type": "string",
+                        "description": "X is the x coordinate for EC keys or the public key for OKP (base64url encoded without padding)",
+                        "constraints": [
+                          "must be base64 encoded"
+                        ]
+                      },
+                      {
+                        "name": "y",
+                        "type": "string",
+                        "description": "Y is the y coordinate for EC keys (base64url encoded without padding, not used for OKP)",
+                        "constraints": [
+                          "must be base64 encoded"
+                        ]
+                      },
+                      {
+                        "name": "exp",
+                        "type": "int64",
+                        "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
+                      },
+                      {
+                        "name": "created",
+                        "type": "int64",
+                        "description": "Created is the Unix epoch timestamp (seconds) when the key was created (optional).\n If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
+                        "constraints": [
+                          "must be \u003e= 1735689600",
+                          "must be \u003c= 8045740800"
+                        ]
+                      }
+                    ]
+                  }
                 }
               ]
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "entitlement_mappings",
-      "type": "message (recursive reference: entitlement.ServiceEntitlementMapping)",
-      "description": "entitlement_mappings maps credential IDs (kid) to service identities.\n TokenExchanger uses these to resolve which service a CredPair represents.",
-      "repeated": true
-    },
-    {
-      "name": "service_entitlements",
-      "type": "message",
-      "description": "service_entitlements holds named entitlement definitions loaded from\n proto/security/*.json at config build time. Used for S2S entitlements\n (derived from proto descriptors) and U2S entitlements (expandWildcard).",
-      "repeated": true,
-      "message": {
-        "name": "ServiceEntitlements",
-        "package": "entitlement",
-        "description": "ServiceEntitlements is a named collection of entitlements, typically one per\n microservice or logical role (e.g. \"sentinel-admin\", \"full-admin\").\n Defined as JSON files in proto/security/ and loaded into service configs\n at config build time.",
-        "fields": [
-          {
-            "name": "id",
-            "type": "string",
-            "description": "id identifies this entitlement set (e.g. \"sentinel-admin\", \"snoopy-reader\").\n Matches the JSON filename in proto/security/.",
-            "required": true,
-            "constraints": [
-              "maximum length: 128"
-            ]
           },
           {
-            "name": "entitlements",
-            "type": "message (recursive reference: entitlement.ServiceEntitlement)",
-            "description": "entitlements is the set of services and RPCs this collection grants access to.",
-            "required": true,
+            "name": "cloud_identities",
+            "type": "message",
+            "repeated": true,
+            "message": {
+              "name": "CloudIdentityMatcher",
+              "package": "kernel",
+              "description": "CloudIdentityMatcher configures which cloud identities a delegate accepts.\n The delegate proves identity using a CloudIdentityProof; this config\n tells kernel what to expect.",
+              "fields": [
+                {
+                  "name": "vendor",
+                  "type": "enum",
+                  "description": "vendor identifies the cloud provider.",
+                  "enum_values": [
+                    {
+                      "name": "CLOUD_VENDOR_AWS",
+                      "number": 1,
+                      "description": "Amazon Web Services (AWS)"
+                    },
+                    {
+                      "name": "CLOUD_VENDOR_AZURE",
+                      "number": 2,
+                      "description": "Microsoft Azure"
+                    },
+                    {
+                      "name": "CLOUD_VENDOR_GCP",
+                      "number": 3,
+                      "description": "Google Cloud Platform (GCP)"
+                    },
+                    {
+                      "name": "CLOUD_VENDOR_ORACLE",
+                      "number": 4,
+                      "description": "Oracle Cloud"
+                    },
+                    {
+                      "name": "CLOUD_VENDOR_ALIBABA",
+                      "number": 5,
+                      "description": "Alibaba Cloud"
+                    },
+                    {
+                      "name": "CLOUD_VENDOR_IBM",
+                      "number": 6,
+                      "description": "IBM Cloud"
+                    }
+                  ]
+                },
+                {
+                  "name": "expected_identity",
+                  "type": "string",
+                  "description": "expected_identity is the cloud identity to match against.\n AWS: IAM role ARN. GCP: service account email. Azure: managed identity client ID.",
+                  "required": true
+                }
+              ]
+            }
+          },
+          {
+            "name": "authorized_services",
+            "type": "string",
+            "description": "authorized_services lists services this delegate can request tokens for.\n Values are service names matching service_frontend annotations.\n The delegate can always request a token for itself (sub=name).",
             "repeated": true
           }
         ]

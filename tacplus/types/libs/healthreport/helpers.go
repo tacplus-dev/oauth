@@ -640,6 +640,27 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: ServiceInstanceHealth
+// ============================================================
+// ServiceInstanceHealthDefaults applies field-level default values to zero-valued fields.
+func ServiceInstanceHealthDefaults(v *ServiceInstanceHealth) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceInstanceHealth
+// ============================================================
+// ServiceInstanceHealthUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceInstanceHealthUndefaults(v *ServiceInstanceHealth) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: ServiceInstanceHealth
 // ============================================================
 // MergeServiceInstanceHealth fills zero-valued fields in dst from src.

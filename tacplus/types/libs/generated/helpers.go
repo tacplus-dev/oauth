@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/config_holder.proto
+// Source: libs/generated.proto
 
-package config_holder
+package generated
 
 import (
 	"bytes"
@@ -36,9 +36,9 @@ import (
 // JSON/YAML/TOML Serialization Helpers
 // ============================================================
 
-// ConfigHolderJSON represents ConfigHolder in external JSON format (with string enums)
+// ServicesJSON represents Services in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
-type configholderJSON struct {
+type servicesJSON struct {
 	SentinelConfig    json.RawMessage `json:"sentinel_config,omitempty"`
 	IdentityConfig    json.RawMessage `json:"identity_config,omitempty"`
 	GatewayConfig     json.RawMessage `json:"gateway_config,omitempty"`
@@ -49,14 +49,14 @@ type configholderJSON struct {
 	DgraphConfig      json.RawMessage `json:"dgraph_config,omitempty"`
 }
 
-// ConfigHolderToJSON converts ConfigHolder to JSON bytes.
+// ServicesToJSON converts Services to JSON bytes.
 // Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func ConfigHolderToJSON(v *ConfigHolder) ([]byte, error) {
+func ServicesToJSON(v *Services) ([]byte, error) {
 	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "configholder is nil")
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "services is nil")
 	}
 	// Convert to JSON helper struct with string enums
-	helper := configholderJSON{
+	helper := servicesJSON{
 		SentinelConfig: func() json.RawMessage {
 			if v.SentinelConfig == nil {
 				return nil
@@ -117,9 +117,9 @@ func ConfigHolderToJSON(v *ConfigHolder) ([]byte, error) {
 	return json.Marshal(helper)
 }
 
-// ConfigHolderFromBytes creates ConfigHolder from bytes, auto-detecting the format.
+// ServicesFromBytes creates Services from bytes, auto-detecting the format.
 // Supports JSON, YAML, TOML, and binary protobuf formats.
-func ConfigHolderFromBytes(data []byte) (*ConfigHolder, error) {
+func ServicesFromBytes(data []byte) (*Services, error) {
 	// Trim leading whitespace to check format
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
@@ -127,7 +127,7 @@ func ConfigHolderFromBytes(data []byte) (*ConfigHolder, error) {
 	}
 	// Try JSON first (most common, starts with { or [)
 	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := ConfigHolderFromJSON(data); err == nil {
+		if result, err := ServicesFromJSON(data); err == nil {
 			return result, nil
 		}
 	}
@@ -137,7 +137,7 @@ func ConfigHolderFromBytes(data []byte) (*ConfigHolder, error) {
 		// Convert TOML to JSON, then parse
 		jsonData, err := json.Marshal(tomlObj)
 		if err == nil {
-			if result, err := ConfigHolderFromJSON(jsonData); err == nil {
+			if result, err := ServicesFromJSON(jsonData); err == nil {
 				return result, nil
 			}
 		}
@@ -148,35 +148,35 @@ func ConfigHolderFromBytes(data []byte) (*ConfigHolder, error) {
 		// Convert YAML to JSON, then parse
 		jsonData, err := json.Marshal(yamlObj)
 		if err == nil {
-			if result, err := ConfigHolderFromJSON(jsonData); err == nil {
+			if result, err := ServicesFromJSON(jsonData); err == nil {
 				return result, nil
 			}
 		}
 	}
 	// Try binary protobuf
-	v := &ConfigHolder{}
+	v := &Services{}
 	if err := proto.Unmarshal(data, v); err == nil {
 		return v, nil
 	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse ConfigHolder: unsupported format or invalid data")
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse Services: unsupported format or invalid data")
 }
 
-// ConfigHolderFromJSON creates ConfigHolder from JSON bytes.
+// ServicesFromJSON creates Services from JSON bytes.
 // Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func ConfigHolderFromJSON(data []byte) (*ConfigHolder, error) {
+func ServicesFromJSON(data []byte) (*Services, error) {
 	// Unmarshal into helper struct with string enums
-	var raw configholderJSON
+	var raw servicesJSON
 	if err := json.Unmarshal(data, &raw); err != nil {
 		// Fall back to protojson which handles proto3 JSON conventions
 		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &ConfigHolder{}
+		v := &Services{}
 		if pErr := protojson.Unmarshal(data, v); pErr != nil {
 			return nil, err
 		}
 		return v, nil
 	}
 	// Build result with parsed enums
-	result := &ConfigHolder{}
+	result := &Services{}
 	// Parse message field: SentinelConfig
 	if len(raw.SentinelConfig) > 0 {
 		parsed, err := sentinel.ConfigFromJSON(raw.SentinelConfig)
@@ -236,14 +236,14 @@ func ConfigHolderFromJSON(data []byte) (*ConfigHolder, error) {
 	return result, nil
 }
 
-// ConfigHolderToYAML converts ConfigHolder to YAML bytes.
+// ServicesToYAML converts Services to YAML bytes.
 // Converts to JSON first, then to YAML for proper protobuf handling.
-func ConfigHolderToYAML(v *ConfigHolder) ([]byte, error) {
+func ServicesToYAML(v *Services) ([]byte, error) {
 	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "configholder is nil")
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "services is nil")
 	}
 	// Convert to JSON first
-	jsonData, err := ConfigHolderToJSON(v)
+	jsonData, err := ServicesToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -255,14 +255,14 @@ func ConfigHolderToYAML(v *ConfigHolder) ([]byte, error) {
 	return yaml.Marshal(obj)
 }
 
-// ConfigHolderToTOML converts ConfigHolder to TOML bytes.
+// ServicesToTOML converts Services to TOML bytes.
 // Converts to JSON first, then to TOML for proper protobuf handling.
-func ConfigHolderToTOML(v *ConfigHolder) ([]byte, error) {
+func ServicesToTOML(v *Services) ([]byte, error) {
 	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "configholder is nil")
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "services is nil")
 	}
 	// Convert to JSON first
-	jsonData, err := ConfigHolderToJSON(v)
+	jsonData, err := ServicesToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -278,8 +278,8 @@ func ConfigHolderToTOML(v *ConfigHolder) ([]byte, error) {
 // Environment Variable Helpers
 // ============================================================
 
-// ConfigHolderToEnvVar converts ConfigHolder to environment variable key-value pairs.
-func ConfigHolderToEnvVar(v *ConfigHolder) map[string]string {
+// ServicesToEnvVar converts Services to environment variable key-value pairs.
+func ServicesToEnvVar(v *Services) map[string]string {
 	if v == nil {
 		return nil
 	}
@@ -327,9 +327,9 @@ func ConfigHolderToEnvVar(v *ConfigHolder) map[string]string {
 	return result
 }
 
-// ConfigHolderFromEnvVar creates ConfigHolder from environment variable key-value pairs.
-func ConfigHolderFromEnvVar(env map[string]string) (*ConfigHolder, error) {
-	result := &ConfigHolder{}
+// ServicesFromEnvVar creates Services from environment variable key-value pairs.
+func ServicesFromEnvVar(env map[string]string) (*Services, error) {
+	result := &Services{}
 	if sub, err := sentinel.ConfigFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
@@ -376,9 +376,9 @@ func ConfigHolderFromEnvVar(env map[string]string) (*ConfigHolder, error) {
 // ============================================================
 // Validation Helpers
 // ============================================================
-// ValidateConfigHolder validates all fields in ConfigHolder according to their annotations.
+// ValidateServices validates all fields in Services according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateConfigHolder(m *ConfigHolder) error {
+func ValidateServices(m *Services) error {
 	if m == nil {
 		return nil
 	}
@@ -388,10 +388,31 @@ func ValidateConfigHolder(m *ConfigHolder) error {
 }
 
 // ============================================================
-// Merge: ConfigHolder
+// TypeDefaults: Services
 // ============================================================
-// MergeConfigHolder fills zero-valued fields in dst from src.
-func MergeConfigHolder(dst, src *ConfigHolder) {
+// ServicesDefaults applies field-level default values to zero-valued fields.
+func ServicesDefaults(v *Services) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Services
+// ============================================================
+// ServicesUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServicesUndefaults(v *Services) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// Merge: Services
+// ============================================================
+// MergeServices fills zero-valued fields in dst from src.
+func MergeServices(dst, src *Services) {
 	if dst.SentinelConfig == nil {
 		dst.SentinelConfig = src.SentinelConfig
 	}

@@ -175,7 +175,6 @@ type LetsEncryptCertData struct {
 	LastRenewed int64 `protobuf:"varint,3,opt,name=last_renewed,json=lastRenewed,proto3" json:"last_renewed,omitempty"`
 	// fqdn is the domain name the certificate was issued for.
 	Fqdn          string `protobuf:"bytes,4,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
-	Lock          *Lock  `protobuf:"bytes,5,opt,name=lock,proto3" json:"lock,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,13 +235,6 @@ func (x *LetsEncryptCertData) GetFqdn() string {
 		return x.Fqdn
 	}
 	return ""
-}
-
-func (x *LetsEncryptCertData) GetLock() *Lock {
-	if x != nil {
-		return x.Lock
-	}
-	return nil
 }
 
 // CertMagicState is the serialized storage tree used by CertMagic.
@@ -362,59 +354,6 @@ func (x *LetsencryptConfigState) GetConfig() *Config {
 	return nil
 }
 
-// Lock provides optimistic concurrency control for atomic state boundaries.
-type Lock struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Counter       int64                  `protobuf:"varint,2,opt,name=counter,proto3" json:"counter,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Lock) Reset() {
-	*x = Lock{}
-	mi := &file_services_letsencrypt_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Lock) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Lock) ProtoMessage() {}
-
-func (x *Lock) ProtoReflect() protoreflect.Message {
-	mi := &file_services_letsencrypt_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Lock.ProtoReflect.Descriptor instead.
-func (*Lock) Descriptor() ([]byte, []int) {
-	return file_services_letsencrypt_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *Lock) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *Lock) GetCounter() int64 {
-	if x != nil {
-		return x.Counter
-	}
-	return 0
-}
-
 type MapEmpty struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -423,7 +362,7 @@ type MapEmpty struct {
 
 func (x *MapEmpty) Reset() {
 	*x = MapEmpty{}
-	mi := &file_services_letsencrypt_proto_msgTypes[6]
+	mi := &file_services_letsencrypt_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +374,7 @@ func (x *MapEmpty) String() string {
 func (*MapEmpty) ProtoMessage() {}
 
 func (x *MapEmpty) ProtoReflect() protoreflect.Message {
-	mi := &file_services_letsencrypt_proto_msgTypes[6]
+	mi := &file_services_letsencrypt_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +387,7 @@ func (x *MapEmpty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapEmpty.ProtoReflect.Descriptor instead.
 func (*MapEmpty) Descriptor() ([]byte, []int) {
-	return file_services_letsencrypt_proto_rawDescGZIP(), []int{6}
+	return file_services_letsencrypt_proto_rawDescGZIP(), []int{5}
 }
 
 var File_services_letsencrypt_proto protoreflect.FileDescriptor
@@ -464,13 +403,12 @@ const file_services_letsencrypt_proto_rawDesc = "" +
 	"\x1erenewal_check_interval_seconds\x18\x04 \x01(\x03B\x05\x90\xa8\x1d\x90\x1cR\x1brenewalCheckIntervalSeconds:\x17Ҩ\x1d\x0f\n" +
 	"\vletsencrypt\x10\t\xe8\xa8\x1d\x01\"q\n" +
 	"\x10LetsEncryptState\x12C\n" +
-	"\tcert_data\x18\x01 \x01(\v2 .letsencrypt.LetsEncryptCertDataB\x04\xe0\xb5\x18\x01R\bcertData:\x18\x9a\xa8\x1d\x10LetsEncryptState\xa0\xa8\x1d\x01\"\xe8\x01\n" +
-	"\x13LetsEncryptCertData\x12-\n" +
-	"\btls_cert\x18\x01 \x01(\v2\x12.x509.X509CertPairR\atlsCert\x12D\n" +
-	"\x0fcertmagic_state\x18\x02 \x01(\v2\x1b.letsencrypt.CertMagicStateR\x0ecertmagicState\x12!\n" +
+	"\tcert_data\x18\x01 \x01(\v2 .letsencrypt.LetsEncryptCertDataB\x04\xe0\xb5\x18\x02R\bcertData:\x18\x9a\xa8\x1d\x10LetsEncryptState\xa0\xa8\x1d\x02\"\xcd\x01\n" +
+	"\x13LetsEncryptCertData\x123\n" +
+	"\btls_cert\x18\x01 \x01(\v2\x12.x509.X509CertPairB\x04\x88\xa6\x1d\x01R\atlsCert\x12J\n" +
+	"\x0fcertmagic_state\x18\x02 \x01(\v2\x1b.letsencrypt.CertMagicStateB\x04\x88\xa6\x1d\x01R\x0ecertmagicState\x12!\n" +
 	"\flast_renewed\x18\x03 \x01(\x03R\vlastRenewed\x12\x12\n" +
-	"\x04fqdn\x18\x04 \x01(\tR\x04fqdn\x12%\n" +
-	"\x04lock\x18\x05 \x01(\v2\x11.letsencrypt.LockR\x04lock\"\xf9\x01\n" +
+	"\x04fqdn\x18\x04 \x01(\tR\x04fqdn\"\xf9\x01\n" +
 	"\x0eCertMagicState\x12\x15\n" +
 	"\x06is_dir\x18\x01 \x01(\bR\x05isDir\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x19\n" +
@@ -480,10 +418,7 @@ const file_services_letsencrypt_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
 	"\x05value\x18\x02 \x01(\v2\x1b.letsencrypt.CertMagicStateR\x05value:\x028\x01\"o\n" +
 	"\x16LetsencryptConfigState\x125\n" +
-	"\x06config\x18\x01 \x01(\v2\x13.letsencrypt.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x1e\x9a\xa8\x1d\x16LetsencryptConfigState\xa0\xa8\x1d\x02\"0\n" +
-	"\x04Lock\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\acounter\x18\x02 \x01(\x03R\acounter\"\n" +
+	"\x06config\x18\x01 \x01(\v2\x13.letsencrypt.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x1e\x9a\xa8\x1d\x16LetsencryptConfigState\xa0\xa8\x1d\x02\"\n" +
 	"\n" +
 	"\bMapEmpty2\x89\x02\n" +
 	"\x1eLetsEncryptStateBackendService\x12G\n" +
@@ -507,44 +442,42 @@ func file_services_letsencrypt_proto_rawDescGZIP() []byte {
 	return file_services_letsencrypt_proto_rawDescData
 }
 
-var file_services_letsencrypt_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_services_letsencrypt_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_services_letsencrypt_proto_goTypes = []any{
 	(*Config)(nil),                 // 0: letsencrypt.Config
 	(*LetsEncryptState)(nil),       // 1: letsencrypt.LetsEncryptState
 	(*LetsEncryptCertData)(nil),    // 2: letsencrypt.LetsEncryptCertData
 	(*CertMagicState)(nil),         // 3: letsencrypt.CertMagicState
 	(*LetsencryptConfigState)(nil), // 4: letsencrypt.LetsencryptConfigState
-	(*Lock)(nil),                   // 5: letsencrypt.Lock
-	(*MapEmpty)(nil),               // 6: letsencrypt.MapEmpty
-	nil,                            // 7: letsencrypt.CertMagicState.ChildrenEntry
-	(*x509.X509CertPair)(nil),      // 8: x509.X509CertPair
-	(*emptypb.Empty)(nil),          // 9: google.protobuf.Empty
+	(*MapEmpty)(nil),               // 5: letsencrypt.MapEmpty
+	nil,                            // 6: letsencrypt.CertMagicState.ChildrenEntry
+	(*x509.X509CertPair)(nil),      // 7: x509.X509CertPair
+	(*emptypb.Empty)(nil),          // 8: google.protobuf.Empty
 }
 var file_services_letsencrypt_proto_depIdxs = []int32{
 	2,  // 0: letsencrypt.LetsEncryptState.cert_data:type_name -> letsencrypt.LetsEncryptCertData
-	8,  // 1: letsencrypt.LetsEncryptCertData.tls_cert:type_name -> x509.X509CertPair
+	7,  // 1: letsencrypt.LetsEncryptCertData.tls_cert:type_name -> x509.X509CertPair
 	3,  // 2: letsencrypt.LetsEncryptCertData.certmagic_state:type_name -> letsencrypt.CertMagicState
-	5,  // 3: letsencrypt.LetsEncryptCertData.lock:type_name -> letsencrypt.Lock
-	7,  // 4: letsencrypt.CertMagicState.children:type_name -> letsencrypt.CertMagicState.ChildrenEntry
-	0,  // 5: letsencrypt.LetsencryptConfigState.config:type_name -> letsencrypt.Config
-	3,  // 6: letsencrypt.CertMagicState.ChildrenEntry.value:type_name -> letsencrypt.CertMagicState
-	9,  // 7: letsencrypt.LetsEncryptStateBackendService.GetCertData:input_type -> google.protobuf.Empty
-	2,  // 8: letsencrypt.LetsEncryptStateBackendService.SetCertData:input_type -> letsencrypt.LetsEncryptCertData
-	9,  // 9: letsencrypt.LetsEncryptStateBackendService.WatchCertData:input_type -> google.protobuf.Empty
-	9,  // 10: letsencrypt.LetsencryptConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
-	0,  // 11: letsencrypt.LetsencryptConfigStateBackendService.SetConfig:input_type -> letsencrypt.Config
-	9,  // 12: letsencrypt.LetsencryptConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
-	2,  // 13: letsencrypt.LetsEncryptStateBackendService.GetCertData:output_type -> letsencrypt.LetsEncryptCertData
-	2,  // 14: letsencrypt.LetsEncryptStateBackendService.SetCertData:output_type -> letsencrypt.LetsEncryptCertData
-	2,  // 15: letsencrypt.LetsEncryptStateBackendService.WatchCertData:output_type -> letsencrypt.LetsEncryptCertData
-	0,  // 16: letsencrypt.LetsencryptConfigStateBackendService.GetConfig:output_type -> letsencrypt.Config
-	0,  // 17: letsencrypt.LetsencryptConfigStateBackendService.SetConfig:output_type -> letsencrypt.Config
-	0,  // 18: letsencrypt.LetsencryptConfigStateBackendService.WatchConfig:output_type -> letsencrypt.Config
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	6,  // 3: letsencrypt.CertMagicState.children:type_name -> letsencrypt.CertMagicState.ChildrenEntry
+	0,  // 4: letsencrypt.LetsencryptConfigState.config:type_name -> letsencrypt.Config
+	3,  // 5: letsencrypt.CertMagicState.ChildrenEntry.value:type_name -> letsencrypt.CertMagicState
+	8,  // 6: letsencrypt.LetsEncryptStateBackendService.GetCertData:input_type -> google.protobuf.Empty
+	2,  // 7: letsencrypt.LetsEncryptStateBackendService.SetCertData:input_type -> letsencrypt.LetsEncryptCertData
+	8,  // 8: letsencrypt.LetsEncryptStateBackendService.WatchCertData:input_type -> google.protobuf.Empty
+	8,  // 9: letsencrypt.LetsencryptConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
+	0,  // 10: letsencrypt.LetsencryptConfigStateBackendService.SetConfig:input_type -> letsencrypt.Config
+	8,  // 11: letsencrypt.LetsencryptConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
+	2,  // 12: letsencrypt.LetsEncryptStateBackendService.GetCertData:output_type -> letsencrypt.LetsEncryptCertData
+	2,  // 13: letsencrypt.LetsEncryptStateBackendService.SetCertData:output_type -> letsencrypt.LetsEncryptCertData
+	2,  // 14: letsencrypt.LetsEncryptStateBackendService.WatchCertData:output_type -> letsencrypt.LetsEncryptCertData
+	0,  // 15: letsencrypt.LetsencryptConfigStateBackendService.GetConfig:output_type -> letsencrypt.Config
+	0,  // 16: letsencrypt.LetsencryptConfigStateBackendService.SetConfig:output_type -> letsencrypt.Config
+	0,  // 17: letsencrypt.LetsencryptConfigStateBackendService.WatchConfig:output_type -> letsencrypt.Config
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_services_letsencrypt_proto_init() }
@@ -558,7 +491,7 @@ func file_services_letsencrypt_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_letsencrypt_proto_rawDesc), len(file_services_letsencrypt_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

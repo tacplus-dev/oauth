@@ -14,6 +14,7 @@
 package opa
 
 import (
+	filesystem "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/filesystem"
 	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -30,22 +31,17 @@ const (
 )
 
 // OpaPolicy defines an OPA policy bundle for authorization evaluation.
-// The bundle is a base64-encoded tar.gz containing .rego policy files.
+// The bundle is a filesystem.Directory tree containing .rego policy files.
 type OpaPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// entry_point specifies the main package/decision point for policy evaluation.
 	EntryPoint string `protobuf:"bytes,1,opt,name=entry_point,json=entryPoint,proto3" json:"entry_point,omitempty"`
-	// bundle contains the base64-encoded OPA policy bundle (tar.gz format).
-	// Optional — policies can be provided as raw source instead.
-	Bundle string `protobuf:"bytes,2,opt,name=bundle,proto3" json:"bundle,omitempty"`
+	// bundle is the directory tree containing .rego policy files.
+	Bundle *filesystem.Directory `protobuf:"bytes,2,opt,name=bundle,proto3" json:"bundle,omitempty"`
 	// created is the Unix epoch timestamp (seconds) when the policy was created.
 	Created int64 `protobuf:"varint,3,opt,name=created,proto3" json:"created,omitempty"`
 	// version is an optional version string for this policy (e.g., "1.0.0").
 	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	// source is the raw .rego policy source code. A builder can compile this
-	// into the bundle field (base64-encoded tar.gz). It may be a directory or
-	// a file
-	Source string `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
 	// issuer is the required token issuer URL. Verified in code BEFORE OPA
 	// evaluation — tokens from unexpected issuers are rejected before the
 	// policy runs.
@@ -91,11 +87,11 @@ func (x *OpaPolicy) GetEntryPoint() string {
 	return ""
 }
 
-func (x *OpaPolicy) GetBundle() string {
+func (x *OpaPolicy) GetBundle() *filesystem.Directory {
 	if x != nil {
 		return x.Bundle
 	}
-	return ""
+	return nil
 }
 
 func (x *OpaPolicy) GetCreated() int64 {
@@ -112,13 +108,6 @@ func (x *OpaPolicy) GetVersion() string {
 	return ""
 }
 
-func (x *OpaPolicy) GetSource() string {
-	if x != nil {
-		return x.Source
-	}
-	return ""
-}
-
 func (x *OpaPolicy) GetIssuer() string {
 	if x != nil {
 		return x.Issuer
@@ -130,14 +119,13 @@ var File_libs_opa_proto protoreflect.FileDescriptor
 
 const file_libs_opa_proto_rawDesc = "" +
 	"\n" +
-	"\x0elibs/opa.proto\x12\x03opa\x1a\x0flibs/spec.proto\"\xf1\x01\n" +
+	"\x0elibs/opa.proto\x12\x03opa\x1a\x0flibs/spec.proto\x1a\x15libs/filesystem.proto\"\xde\x01\n" +
 	"\tOpaPolicy\x12*\n" +
 	"\ventry_point\x18\x01 \x01(\tB\t\x88\xa7\x1d\x01\x90\xa7\x1d\x80\x02R\n" +
-	"entryPoint\x12 \n" +
-	"\x06bundle\x18\x02 \x01(\tB\b\x80\xa7\x1d\x01ا\x1d\x01R\x06bundle\x12*\n" +
+	"entryPoint\x12-\n" +
+	"\x06bundle\x18\x02 \x01(\v2\x15.filesystem.DirectoryR\x06bundle\x12*\n" +
 	"\acreated\x18\x03 \x01(\x03B\x10\xb0\xa7\x1d\x80\x8bһ\x06\xc0\xa7\x1d\x80\x86\xc1\xfc\x1dR\acreated\x12\"\n" +
-	"\aversion\x18\x04 \x01(\tB\b\x90\xa7\x1d@\xe0\xa7\x1d\x01R\aversion\x12\x1e\n" +
-	"\x06source\x18\x05 \x01(\tB\x06\xb8\xa8\x1d\x80\x80@R\x06source\x12 \n" +
+	"\aversion\x18\x04 \x01(\tB\b\x90\xa7\x1d@\xe0\xa7\x1d\x01R\aversion\x12 \n" +
 	"\x06issuer\x18\x06 \x01(\tB\b\x88\xa6\x1d\x01\xa8\xa6\x1d\x02R\x06issuer:\x04\xe8\xa8\x1d\x01BQZOgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opab\x06proto3"
 
 var (
@@ -154,14 +142,16 @@ func file_libs_opa_proto_rawDescGZIP() []byte {
 
 var file_libs_opa_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_libs_opa_proto_goTypes = []any{
-	(*OpaPolicy)(nil), // 0: opa.OpaPolicy
+	(*OpaPolicy)(nil),            // 0: opa.OpaPolicy
+	(*filesystem.Directory)(nil), // 1: filesystem.Directory
 }
 var file_libs_opa_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: opa.OpaPolicy.bundle:type_name -> filesystem.Directory
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_libs_opa_proto_init() }

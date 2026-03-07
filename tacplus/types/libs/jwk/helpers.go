@@ -1625,12 +1625,89 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: Jwk
+// ============================================================
+// JwkDefaults applies field-level default values to zero-valued fields.
+func JwkDefaults(v *Jwk) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Jwks
+// ============================================================
+// JwksDefaults applies field-level default values to zero-valued fields.
+func JwksDefaults(v *Jwks) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: OpenIdConfiguration
+// ============================================================
+// OpenIdConfigurationDefaults applies field-level default values to zero-valued fields.
+func OpenIdConfigurationDefaults(v *OpenIdConfiguration) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeDefaults: CredPair
 // ============================================================
 // CredPairDefaults applies field-level default values to zero-valued fields.
 func CredPairDefaults(v *CredPair) {
+	if v == nil {
+		return
+	}
 	if v.PublicKey == nil {
 		v.PublicKey = &Jwk{}
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Jwk
+// ============================================================
+// JwkUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func JwkUndefaults(v *Jwk) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Jwks
+// ============================================================
+// JwksUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func JwksUndefaults(v *Jwks) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: OpenIdConfiguration
+// ============================================================
+// OpenIdConfigurationUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func OpenIdConfigurationUndefaults(v *OpenIdConfiguration) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CredPair
+// ============================================================
+// CredPairUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CredPairUndefaults(v *CredPair) {
+	if v == nil {
+		return
 	}
 }
 

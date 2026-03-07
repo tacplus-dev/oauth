@@ -537,6 +537,9 @@ const (
 // ============================================================
 // ConfigDefaults applies field-level default values to zero-valued fields.
 func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
 	if v.HealthPollIntervalSeconds == 0 {
 		v.HealthPollIntervalSeconds = DefaultHealthPollIntervalSeconds
 	}
@@ -547,8 +550,21 @@ func ConfigDefaults(v *Config) {
 // ============================================================
 // GatewayConfigStateDefaults applies field-level default values to zero-valued fields.
 func GatewayConfigStateDefaults(v *GatewayConfigState) {
+	if v == nil {
+		return
+	}
 	if v.Config != nil {
 		ConfigDefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
 	}
 }
 
@@ -558,6 +574,9 @@ func GatewayConfigStateDefaults(v *GatewayConfigState) {
 // ConfigUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
 	if v.HealthPollIntervalSeconds == DefaultHealthPollIntervalSeconds {
 		v.HealthPollIntervalSeconds = 0
 	}
@@ -575,8 +594,22 @@ func ConfigUndefaults(v *Config) {
 // GatewayConfigStateUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func GatewayConfigStateUndefaults(v *GatewayConfigState) {
+	if v == nil {
+		return
+	}
 	if v.Config != nil {
 		ConfigUndefaults(v.Config)
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
 	}
 }
 

@@ -1191,6 +1191,69 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: X509Cert
+// ============================================================
+// X509CertDefaults applies field-level default values to zero-valued fields.
+func X509CertDefaults(v *X509Cert) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: X509CertPair
+// ============================================================
+// X509CertPairDefaults applies field-level default values to zero-valued fields.
+func X509CertPairDefaults(v *X509CertPair) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: X509CertRequest
+// ============================================================
+// X509CertRequestDefaults applies field-level default values to zero-valued fields.
+func X509CertRequestDefaults(v *X509CertRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: X509Cert
+// ============================================================
+// X509CertUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func X509CertUndefaults(v *X509Cert) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: X509CertPair
+// ============================================================
+// X509CertPairUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func X509CertPairUndefaults(v *X509CertPair) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: X509CertRequest
+// ============================================================
+// X509CertRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func X509CertRequestUndefaults(v *X509CertRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: X509Cert
 // ============================================================
 // MergeX509Cert fills zero-valued fields in dst from src.

@@ -622,9 +622,9 @@ const file_services_mcp_proto_rawDesc = "" +
 	"\x12AssistResponseType\x12$\n" +
 	" ASSIST_RESPONSE_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bASSIST_RESPONSE_TYPE_RESULT\x10\x01\x122\n" +
-	".ASSIST_RESPONSE_TYPE_REQUEST_ADDITIONAL_ACCESS\x10\x022N\n" +
+	".ASSIST_RESPONSE_TYPE_REQUEST_ADDITIONAL_ACCESS\x10\x022R\n" +
 	"\x10McpAssistService\x121\n" +
-	"\x06Assist\x12\x12.mcp.AssistRequest\x1a\x13.mcp.AssistResponse\x1a\a\xa2\x97\"\x03mcp2\xad\x01\n" +
+	"\x06Assist\x12\x12.mcp.AssistRequest\x1a\x13.mcp.AssistResponse\x1a\v\xa2\x97\"\x03mcpЗ\"\x012\xad\x01\n" +
 	"\x1cMcpConfigStateBackendService\x120\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\v.mcp.Config\x12%\n" +
 	"\tSetConfig\x12\v.mcp.Config\x1a\v.mcp.Config\x124\n" +

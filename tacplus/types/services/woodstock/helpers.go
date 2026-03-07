@@ -2337,6 +2337,279 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: WoodstockState
+// ============================================================
+// WoodstockStateDefaults applies field-level default values to zero-valued fields.
+func WoodstockStateDefaults(v *WoodstockState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TaskItem
+// ============================================================
+// TaskItemDefaults applies field-level default values to zero-valued fields.
+func TaskItemDefaults(v *TaskItem) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: EventData
+// ============================================================
+// EventDataDefaults applies field-level default values to zero-valued fields.
+func EventDataDefaults(v *EventData) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceStatus
+// ============================================================
+// ServiceStatusDefaults applies field-level default values to zero-valued fields.
+func ServiceStatusDefaults(v *ServiceStatus) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Lock
+// ============================================================
+// LockDefaults applies field-level default values to zero-valued fields.
+func LockDefaults(v *Lock) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueReceipt
+// ============================================================
+// QueueReceiptDefaults applies field-level default values to zero-valued fields.
+func QueueReceiptDefaults(v *QueueReceipt) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueueSizeResponse
+// ============================================================
+// QueueSizeResponseDefaults applies field-level default values to zero-valued fields.
+func QueueSizeResponseDefaults(v *QueueSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TopicPublishReceipt
+// ============================================================
+// TopicPublishReceiptDefaults applies field-level default values to zero-valued fields.
+func TopicPublishReceiptDefaults(v *TopicPublishReceipt) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: LeaderRecord
+// ============================================================
+// LeaderRecordDefaults applies field-level default values to zero-valued fields.
+func LeaderRecordDefaults(v *LeaderRecord) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: LeaderElectRequest
+// ============================================================
+// LeaderElectRequestDefaults applies field-level default values to zero-valued fields.
+func LeaderElectRequestDefaults(v *LeaderElectRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: LeaderResignRequest
+// ============================================================
+// LeaderResignRequestDefaults applies field-level default values to zero-valued fields.
+func LeaderResignRequestDefaults(v *LeaderResignRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: LeaderLeaseRenewal
+// ============================================================
+// LeaderLeaseRenewalDefaults applies field-level default values to zero-valued fields.
+func LeaderLeaseRenewalDefaults(v *LeaderLeaseRenewal) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WoodstockState
+// ============================================================
+// WoodstockStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WoodstockStateUndefaults(v *WoodstockState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TaskItem
+// ============================================================
+// TaskItemUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TaskItemUndefaults(v *TaskItem) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: EventData
+// ============================================================
+// EventDataUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func EventDataUndefaults(v *EventData) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceStatus
+// ============================================================
+// ServiceStatusUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceStatusUndefaults(v *ServiceStatus) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Lock
+// ============================================================
+// LockUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LockUndefaults(v *Lock) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueReceipt
+// ============================================================
+// QueueReceiptUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueReceiptUndefaults(v *QueueReceipt) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueueSizeResponse
+// ============================================================
+// QueueSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueueSizeResponseUndefaults(v *QueueSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TopicPublishReceipt
+// ============================================================
+// TopicPublishReceiptUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TopicPublishReceiptUndefaults(v *TopicPublishReceipt) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: LeaderRecord
+// ============================================================
+// LeaderRecordUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LeaderRecordUndefaults(v *LeaderRecord) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: LeaderElectRequest
+// ============================================================
+// LeaderElectRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LeaderElectRequestUndefaults(v *LeaderElectRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: LeaderResignRequest
+// ============================================================
+// LeaderResignRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LeaderResignRequestUndefaults(v *LeaderResignRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: LeaderLeaseRenewal
+// ============================================================
+// LeaderLeaseRenewalUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LeaderLeaseRenewalUndefaults(v *LeaderLeaseRenewal) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: WoodstockState
 // ============================================================
 // MergeWoodstockState fills zero-valued fields in dst from src.

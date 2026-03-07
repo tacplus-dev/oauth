@@ -523,6 +523,69 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: JwkViewResponse
+// ============================================================
+// JwkViewResponseDefaults applies field-level default values to zero-valued fields.
+func JwkViewResponseDefaults(v *JwkViewResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: JwkViewGetRequest
+// ============================================================
+// JwkViewGetRequestDefaults applies field-level default values to zero-valued fields.
+func JwkViewGetRequestDefaults(v *JwkViewGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: JwkViewGetResponse
+// ============================================================
+// JwkViewGetResponseDefaults applies field-level default values to zero-valued fields.
+func JwkViewGetResponseDefaults(v *JwkViewGetResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: JwkViewResponse
+// ============================================================
+// JwkViewResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func JwkViewResponseUndefaults(v *JwkViewResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: JwkViewGetRequest
+// ============================================================
+// JwkViewGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func JwkViewGetRequestUndefaults(v *JwkViewGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: JwkViewGetResponse
+// ============================================================
+// JwkViewGetResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func JwkViewGetResponseUndefaults(v *JwkViewGetResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: JwkViewGetRequest
 // ============================================================
 // MergeJwkViewGetRequest fills zero-valued fields in dst from src.

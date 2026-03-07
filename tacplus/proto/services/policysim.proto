@@ -28,6 +28,7 @@ syntax = "proto3";
 package policysim;
 option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policysim";
 
+import "libs/filesystem.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
@@ -88,8 +89,8 @@ message SimulatedServiceEntitlement {
 
 // EvaluatePolicyRequest evaluates an arbitrary OPA Rego policy.
 message EvaluatePolicyRequest {
-  // rego_source is the Rego policy source code.
-  string rego_source = 1;
+  // rego_bundle is the directory tree containing .rego policy files.
+  filesystem.Directory rego_bundle = 1;
 
   // input_json is JSON-encoded input for the policy.
   string input_json = 2;

@@ -654,6 +654,48 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: KitchenSink
+// ============================================================
+// KitchenSinkDefaults applies field-level default values to zero-valued fields.
+func KitchenSinkDefaults(v *KitchenSink) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: DbDump
+// ============================================================
+// DbDumpDefaults applies field-level default values to zero-valued fields.
+func DbDumpDefaults(v *DbDump) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: KitchenSink
+// ============================================================
+// KitchenSinkUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func KitchenSinkUndefaults(v *KitchenSink) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: DbDump
+// ============================================================
+// DbDumpUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func DbDumpUndefaults(v *DbDump) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: KitchenSink
 // ============================================================
 // MergeKitchenSink fills zero-valued fields in dst from src.

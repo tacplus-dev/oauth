@@ -14,9 +14,9 @@
 package identity
 
 import (
-	entitlement "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/entitlement"
 	jwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
 	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
+	servicename "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/servicename"
 	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -237,17 +237,16 @@ type Config struct {
 	// from the same external IDP. Prevents excessive outbound requests.
 	// Default: 300 (5 minutes).
 	JwkRefetchIntervalSeconds int64 `protobuf:"varint,7,opt,name=jwk_refetch_interval_seconds,json=jwkRefetchIntervalSeconds,proto3" json:"jwk_refetch_interval_seconds,omitempty"`
-	// entitlements_policy is a Rego policy evaluated at token exchange time.
-	// Input: {claims: {<flattened IDP claims>}}
-	// Expected output: data.entitlements.main → {profiles: [string]}
-	// Zero profiles = denied. Profile names must match identity_profiles ids.
-	EntitlementsPolicy string `protobuf:"bytes,11,opt,name=entitlements_policy,json=entitlementsPolicy,proto3" json:"entitlements_policy,omitempty"`
-	// entitlement_mappings maps credentials to service identities (S2S only).
-	EntitlementMappings []*entitlement.ServiceEntitlementMapping `protobuf:"bytes,8,rep,name=entitlement_mappings,json=entitlementMappings,proto3" json:"entitlement_mappings,omitempty"`
+	// entitlements_policy is the OPA policy for determining user entitlements at
+	// token exchange time. Contains a filesystem.Directory bundle of .rego files.
+	// The policy's entry_point rule receives {claims: {<IDP claims>}} and must
+	// return {profiles: [string]}. Profile names are resolved to concrete
+	// entitlements via identity_profiles.
+	EntitlementsPolicy *opa.OpaPolicy `protobuf:"bytes,11,opt,name=entitlements_policy,json=entitlementsPolicy,proto3" json:"entitlements_policy,omitempty"`
 	// identity_profiles defines named sets of entitlements for user authorization.
 	// OPA entitlements_policy returns profile names; identity resolves those names
 	// to concrete entitlements at token exchange time.
-	IdentityProfiles []*entitlement.IdentityProfile `protobuf:"bytes,9,rep,name=identity_profiles,json=identityProfiles,proto3" json:"identity_profiles,omitempty"`
+	IdentityProfiles []*servicename.IdentityProfile `protobuf:"bytes,9,rep,name=identity_profiles,json=identityProfiles,proto3" json:"identity_profiles,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -331,21 +330,14 @@ func (x *Config) GetJwkRefetchIntervalSeconds() int64 {
 	return 0
 }
 
-func (x *Config) GetEntitlementsPolicy() string {
+func (x *Config) GetEntitlementsPolicy() *opa.OpaPolicy {
 	if x != nil {
 		return x.EntitlementsPolicy
-	}
-	return ""
-}
-
-func (x *Config) GetEntitlementMappings() []*entitlement.ServiceEntitlementMapping {
-	if x != nil {
-		return x.EntitlementMappings
 	}
 	return nil
 }
 
-func (x *Config) GetIdentityProfiles() []*entitlement.IdentityProfile {
+func (x *Config) GetIdentityProfiles() []*servicename.IdentityProfile {
 	if x != nil {
 		return x.IdentityProfiles
 	}
@@ -565,15 +557,14 @@ func (x *ProviderConfig) GetAudience() string {
 	return ""
 }
 
-// EntitlementConfig wraps the entitlement mappings and identity profiles.
+// EntitlementConfig wraps identity profiles for user authorization.
 // Published by Identity from config so other services (policy, policysim)
 // can read them via Watch (RO) without duplicating config.
 type EntitlementConfig struct {
-	state               protoimpl.MessageState                   `protogen:"open.v1"`
-	EntitlementMappings []*entitlement.ServiceEntitlementMapping `protobuf:"bytes,1,rep,name=entitlement_mappings,json=entitlementMappings,proto3" json:"entitlement_mappings,omitempty"`
-	IdentityProfiles    []*entitlement.IdentityProfile           `protobuf:"bytes,2,rep,name=identity_profiles,json=identityProfiles,proto3" json:"identity_profiles,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state            protoimpl.MessageState         `protogen:"open.v1"`
+	IdentityProfiles []*servicename.IdentityProfile `protobuf:"bytes,2,rep,name=identity_profiles,json=identityProfiles,proto3" json:"identity_profiles,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EntitlementConfig) Reset() {
@@ -606,14 +597,7 @@ func (*EntitlementConfig) Descriptor() ([]byte, []int) {
 	return file_services_identity_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *EntitlementConfig) GetEntitlementMappings() []*entitlement.ServiceEntitlementMapping {
-	if x != nil {
-		return x.EntitlementMappings
-	}
-	return nil
-}
-
-func (x *EntitlementConfig) GetIdentityProfiles() []*entitlement.IdentityProfile {
+func (x *EntitlementConfig) GetIdentityProfiles() []*servicename.IdentityProfile {
 	if x != nil {
 		return x.IdentityProfiles
 	}
@@ -2991,19 +2975,18 @@ var File_services_identity_proto protoreflect.FileDescriptor
 
 const file_services_identity_proto_rawDesc = "" +
 	"\n" +
-	"\x17services/identity.proto\x12\bidentity\x1a\x0flibs/spec.proto\x1a\x16libs/entitlement.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/opa.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\xb3\x05\n" +
-	"\x06Config\x12+\n" +
-	"\x05oauth\x18\x01 \x01(\v2\x15.identity.OAuthConfigR\x05oauth\x12L\n" +
+	"\x17services/identity.proto\x12\bidentity\x1a\x0flibs/spec.proto\x1a\x16libs/servicename.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/opa.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/api/annotations.proto\"\xee\x04\n" +
+	"\x06Config\x121\n" +
+	"\x05oauth\x18\x01 \x01(\v2\x15.identity.OAuthConfigB\x04\x88\xa6\x1d\x01R\x05oauth\x12L\n" +
 	"\x1daccess_token_lifetime_seconds\x18\x02 \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\x84\aR\x1aaccessTokenLifetimeSeconds\x12O\n" +
 	"\x1erefresh_token_lifetime_seconds\x18\x03 \x01(\x03B\n" +
 	"\xc0\xa6\x1d\x01\x90\xa8\x1d\x80\xa3\x05R\x1brefreshTokenLifetimeSeconds\x12A\n" +
 	"\x14key_lifetime_seconds\x18\x04 \x01(\x03B\x0f\xc0\xa6\x1d\x01Ȧ\x1d\x90\x1c\x90\xa8\x1d\x80\xa3\x05R\x12keyLifetimeSeconds\x12?\n" +
 	"\x14nonce_expire_seconds\x18\x05 \x01(\x03B\r\xc0\xa6\x1d\x01Ȧ\x1d\x01\x90\xa8\x1d\xac\x02R\x12nonceExpireSeconds\x12 \n" +
 	"\x06issuer\x18\x06 \x01(\tB\b\x88\xa6\x1d\x01\xa8\xa6\x1d\x02R\x06issuer\x12J\n" +
-	"\x1cjwk_refetch_interval_seconds\x18\a \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\xac\x02R\x19jwkRefetchIntervalSeconds\x12/\n" +
-	"\x13entitlements_policy\x18\v \x01(\tR\x12entitlementsPolicy\x12Y\n" +
-	"\x14entitlement_mappings\x18\b \x03(\v2&.entitlement.ServiceEntitlementMappingR\x13entitlementMappings\x12I\n" +
-	"\x11identity_profiles\x18\t \x03(\v2\x1c.entitlement.IdentityProfileR\x10identityProfiles:\x14Ҩ\x1d\f\n" +
+	"\x1cjwk_refetch_interval_seconds\x18\a \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\xac\x02R\x19jwkRefetchIntervalSeconds\x12?\n" +
+	"\x13entitlements_policy\x18\v \x01(\v2\x0e.opa.OpaPolicyR\x12entitlementsPolicy\x12I\n" +
+	"\x11identity_profiles\x18\t \x03(\v2\x1c.servicename.IdentityProfileR\x10identityProfiles:\x14Ҩ\x1d\f\n" +
 	"\bidentity\x10\x06\xe8\xa8\x1d\x01\"\xa3\x01\n" +
 	"\vOAuthConfig\x12\x16\n" +
 	"\x06enable\x18\x01 \x01(\bR\x06enable\x12\x16\n" +
@@ -3022,10 +3005,9 @@ const file_services_identity_proto_rawDesc = "" +
 	"\x14end_session_endpoint\x18\t \x01(\tB\x04\xa8\xa6\x1d\x02R\x12endSessionEndpoint\x12\x16\n" +
 	"\x06scopes\x18\n" +
 	" \x03(\tR\x06scopes\x12 \n" +
-	"\baudience\x18\v \x01(\tB\x04\x88\xa7\x1d\x01R\baudience\"\xb9\x01\n" +
-	"\x11EntitlementConfig\x12Y\n" +
-	"\x14entitlement_mappings\x18\x01 \x03(\v2&.entitlement.ServiceEntitlementMappingR\x13entitlementMappings\x12I\n" +
-	"\x11identity_profiles\x18\x02 \x03(\v2\x1c.entitlement.IdentityProfileR\x10identityProfiles\"\x92\x02\n" +
+	"\baudience\x18\v \x01(\tB\x04\x88\xa7\x1d\x01R\baudience\"^\n" +
+	"\x11EntitlementConfig\x12I\n" +
+	"\x11identity_profiles\x18\x02 \x03(\v2\x1c.servicename.IdentityProfileR\x10identityProfiles\"\x92\x02\n" +
 	"\rIdentityState\x12Q\n" +
 	"\x0everifying_keys\x18\x01 \x03(\v2\b.jwk.JwkB \xe0\xb5\x18\x02\xe0\xb6\x18\x01\x9a\xb7\x18\x14JwkVerifyingKeysViewR\rverifyingKeys\x12E\n" +
 	"\x13entitlements_policy\x18\x02 \x01(\v2\x0e.opa.OpaPolicyB\x04\xe0\xb5\x18\x02R\x12entitlementsPolicy\x12P\n" +
@@ -3253,193 +3235,191 @@ func file_services_identity_proto_rawDescGZIP() []byte {
 var file_services_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_services_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_services_identity_proto_goTypes = []any{
-	(ComparisonOp)(0),                             // 0: identity.ComparisonOp
-	(SortDirection)(0),                            // 1: identity.SortDirection
-	(LogicalOp)(0),                                // 2: identity.LogicalOp
-	(*Config)(nil),                                // 3: identity.Config
-	(*OAuthConfig)(nil),                           // 4: identity.OAuthConfig
-	(*ProviderConfig)(nil),                        // 5: identity.ProviderConfig
-	(*EntitlementConfig)(nil),                     // 6: identity.EntitlementConfig
-	(*IdentityState)(nil),                         // 7: identity.IdentityState
-	(*IdentityStateInternal)(nil),                 // 8: identity.IdentityStateInternal
-	(*ExternalJwk)(nil),                           // 9: identity.ExternalJwk
-	(*ListProvidersResponse)(nil),                 // 10: identity.ListProvidersResponse
-	(*ProviderInfo)(nil),                          // 11: identity.ProviderInfo
-	(*AuthorizeRequest)(nil),                      // 12: identity.AuthorizeRequest
-	(*AuthorizeResponse)(nil),                     // 13: identity.AuthorizeResponse
-	(*CallbackRequest)(nil),                       // 14: identity.CallbackRequest
-	(*CallbackResponse)(nil),                      // 15: identity.CallbackResponse
-	(*RefreshTokenRequest)(nil),                   // 16: identity.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil),                  // 17: identity.RefreshTokenResponse
-	(*LogoutRequest)(nil),                         // 18: identity.LogoutRequest
-	(*LogoutResponse)(nil),                        // 19: identity.LogoutResponse
-	(*ExchangeTokenRequest)(nil),                  // 20: identity.ExchangeTokenRequest
-	(*ExchangeTokenResponse)(nil),                 // 21: identity.ExchangeTokenResponse
-	(*IdentityConfigState)(nil),                   // 22: identity.IdentityConfigState
-	(*QueryValue)(nil),                            // 23: identity.QueryValue
-	(*Predicate)(nil),                             // 24: identity.Predicate
-	(*PredicateGroup)(nil),                        // 25: identity.PredicateGroup
-	(*SortField)(nil),                             // 26: identity.SortField
-	(*CollectionQuery)(nil),                       // 27: identity.CollectionQuery
-	(*VerifyingKeysGetRequest)(nil),               // 28: identity.VerifyingKeysGetRequest
-	(*VerifyingKeysPutRequest)(nil),               // 29: identity.VerifyingKeysPutRequest
-	(*VerifyingKeysGetAllRequest)(nil),            // 30: identity.VerifyingKeysGetAllRequest
-	(*VerifyingKeysKeysRequest)(nil),              // 31: identity.VerifyingKeysKeysRequest
-	(*VerifyingKeysSizeRequest)(nil),              // 32: identity.VerifyingKeysSizeRequest
-	(*VerifyingKeysClearRequest)(nil),             // 33: identity.VerifyingKeysClearRequest
-	(*VerifyingKeysValueResponse)(nil),            // 34: identity.VerifyingKeysValueResponse
-	(*VerifyingKeysEntriesResponse)(nil),          // 35: identity.VerifyingKeysEntriesResponse
-	(*VerifyingKeysKeysResponse)(nil),             // 36: identity.VerifyingKeysKeysResponse
-	(*VerifyingKeysSizeResponse)(nil),             // 37: identity.VerifyingKeysSizeResponse
-	(*VerifyingKeysQueryRequest)(nil),             // 38: identity.VerifyingKeysQueryRequest
-	(*VerifyingKeysQueryResponse)(nil),            // 39: identity.VerifyingKeysQueryResponse
-	(*ExternalJwksGetRequest)(nil),                // 40: identity.ExternalJwksGetRequest
-	(*ExternalJwksPutRequest)(nil),                // 41: identity.ExternalJwksPutRequest
-	(*ExternalJwksGetAllRequest)(nil),             // 42: identity.ExternalJwksGetAllRequest
-	(*ExternalJwksKeysRequest)(nil),               // 43: identity.ExternalJwksKeysRequest
-	(*ExternalJwksSizeRequest)(nil),               // 44: identity.ExternalJwksSizeRequest
-	(*ExternalJwksClearRequest)(nil),              // 45: identity.ExternalJwksClearRequest
-	(*ExternalJwksValueResponse)(nil),             // 46: identity.ExternalJwksValueResponse
-	(*ExternalJwksEntriesResponse)(nil),           // 47: identity.ExternalJwksEntriesResponse
-	(*ExternalJwksKeysResponse)(nil),              // 48: identity.ExternalJwksKeysResponse
-	(*ExternalJwksSizeResponse)(nil),              // 49: identity.ExternalJwksSizeResponse
-	(*ExternalJwksQueryRequest)(nil),              // 50: identity.ExternalJwksQueryRequest
-	(*ExternalJwksQueryResponse)(nil),             // 51: identity.ExternalJwksQueryResponse
-	(*MapEmpty)(nil),                              // 52: identity.MapEmpty
-	nil,                                           // 53: identity.VerifyingKeysEntriesResponse.EntriesEntry
-	nil,                                           // 54: identity.ExternalJwksEntriesResponse.EntriesEntry
-	(*entitlement.ServiceEntitlementMapping)(nil), // 55: entitlement.ServiceEntitlementMapping
-	(*entitlement.IdentityProfile)(nil),           // 56: entitlement.IdentityProfile
-	(*jwk.Jwk)(nil),                               // 57: jwk.Jwk
-	(*opa.OpaPolicy)(nil),                         // 58: opa.OpaPolicy
-	(*emptypb.Empty)(nil),                         // 59: google.protobuf.Empty
+	(ComparisonOp)(0),                    // 0: identity.ComparisonOp
+	(SortDirection)(0),                   // 1: identity.SortDirection
+	(LogicalOp)(0),                       // 2: identity.LogicalOp
+	(*Config)(nil),                       // 3: identity.Config
+	(*OAuthConfig)(nil),                  // 4: identity.OAuthConfig
+	(*ProviderConfig)(nil),               // 5: identity.ProviderConfig
+	(*EntitlementConfig)(nil),            // 6: identity.EntitlementConfig
+	(*IdentityState)(nil),                // 7: identity.IdentityState
+	(*IdentityStateInternal)(nil),        // 8: identity.IdentityStateInternal
+	(*ExternalJwk)(nil),                  // 9: identity.ExternalJwk
+	(*ListProvidersResponse)(nil),        // 10: identity.ListProvidersResponse
+	(*ProviderInfo)(nil),                 // 11: identity.ProviderInfo
+	(*AuthorizeRequest)(nil),             // 12: identity.AuthorizeRequest
+	(*AuthorizeResponse)(nil),            // 13: identity.AuthorizeResponse
+	(*CallbackRequest)(nil),              // 14: identity.CallbackRequest
+	(*CallbackResponse)(nil),             // 15: identity.CallbackResponse
+	(*RefreshTokenRequest)(nil),          // 16: identity.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),         // 17: identity.RefreshTokenResponse
+	(*LogoutRequest)(nil),                // 18: identity.LogoutRequest
+	(*LogoutResponse)(nil),               // 19: identity.LogoutResponse
+	(*ExchangeTokenRequest)(nil),         // 20: identity.ExchangeTokenRequest
+	(*ExchangeTokenResponse)(nil),        // 21: identity.ExchangeTokenResponse
+	(*IdentityConfigState)(nil),          // 22: identity.IdentityConfigState
+	(*QueryValue)(nil),                   // 23: identity.QueryValue
+	(*Predicate)(nil),                    // 24: identity.Predicate
+	(*PredicateGroup)(nil),               // 25: identity.PredicateGroup
+	(*SortField)(nil),                    // 26: identity.SortField
+	(*CollectionQuery)(nil),              // 27: identity.CollectionQuery
+	(*VerifyingKeysGetRequest)(nil),      // 28: identity.VerifyingKeysGetRequest
+	(*VerifyingKeysPutRequest)(nil),      // 29: identity.VerifyingKeysPutRequest
+	(*VerifyingKeysGetAllRequest)(nil),   // 30: identity.VerifyingKeysGetAllRequest
+	(*VerifyingKeysKeysRequest)(nil),     // 31: identity.VerifyingKeysKeysRequest
+	(*VerifyingKeysSizeRequest)(nil),     // 32: identity.VerifyingKeysSizeRequest
+	(*VerifyingKeysClearRequest)(nil),    // 33: identity.VerifyingKeysClearRequest
+	(*VerifyingKeysValueResponse)(nil),   // 34: identity.VerifyingKeysValueResponse
+	(*VerifyingKeysEntriesResponse)(nil), // 35: identity.VerifyingKeysEntriesResponse
+	(*VerifyingKeysKeysResponse)(nil),    // 36: identity.VerifyingKeysKeysResponse
+	(*VerifyingKeysSizeResponse)(nil),    // 37: identity.VerifyingKeysSizeResponse
+	(*VerifyingKeysQueryRequest)(nil),    // 38: identity.VerifyingKeysQueryRequest
+	(*VerifyingKeysQueryResponse)(nil),   // 39: identity.VerifyingKeysQueryResponse
+	(*ExternalJwksGetRequest)(nil),       // 40: identity.ExternalJwksGetRequest
+	(*ExternalJwksPutRequest)(nil),       // 41: identity.ExternalJwksPutRequest
+	(*ExternalJwksGetAllRequest)(nil),    // 42: identity.ExternalJwksGetAllRequest
+	(*ExternalJwksKeysRequest)(nil),      // 43: identity.ExternalJwksKeysRequest
+	(*ExternalJwksSizeRequest)(nil),      // 44: identity.ExternalJwksSizeRequest
+	(*ExternalJwksClearRequest)(nil),     // 45: identity.ExternalJwksClearRequest
+	(*ExternalJwksValueResponse)(nil),    // 46: identity.ExternalJwksValueResponse
+	(*ExternalJwksEntriesResponse)(nil),  // 47: identity.ExternalJwksEntriesResponse
+	(*ExternalJwksKeysResponse)(nil),     // 48: identity.ExternalJwksKeysResponse
+	(*ExternalJwksSizeResponse)(nil),     // 49: identity.ExternalJwksSizeResponse
+	(*ExternalJwksQueryRequest)(nil),     // 50: identity.ExternalJwksQueryRequest
+	(*ExternalJwksQueryResponse)(nil),    // 51: identity.ExternalJwksQueryResponse
+	(*MapEmpty)(nil),                     // 52: identity.MapEmpty
+	nil,                                  // 53: identity.VerifyingKeysEntriesResponse.EntriesEntry
+	nil,                                  // 54: identity.ExternalJwksEntriesResponse.EntriesEntry
+	(*opa.OpaPolicy)(nil),                // 55: opa.OpaPolicy
+	(*servicename.IdentityProfile)(nil),  // 56: servicename.IdentityProfile
+	(*jwk.Jwk)(nil),                      // 57: jwk.Jwk
+	(*emptypb.Empty)(nil),                // 58: google.protobuf.Empty
 }
 var file_services_identity_proto_depIdxs = []int32{
 	4,  // 0: identity.Config.oauth:type_name -> identity.OAuthConfig
-	55, // 1: identity.Config.entitlement_mappings:type_name -> entitlement.ServiceEntitlementMapping
-	56, // 2: identity.Config.identity_profiles:type_name -> entitlement.IdentityProfile
+	55, // 1: identity.Config.entitlements_policy:type_name -> opa.OpaPolicy
+	56, // 2: identity.Config.identity_profiles:type_name -> servicename.IdentityProfile
 	5,  // 3: identity.OAuthConfig.providers:type_name -> identity.ProviderConfig
-	55, // 4: identity.EntitlementConfig.entitlement_mappings:type_name -> entitlement.ServiceEntitlementMapping
-	56, // 5: identity.EntitlementConfig.identity_profiles:type_name -> entitlement.IdentityProfile
-	57, // 6: identity.IdentityState.verifying_keys:type_name -> jwk.Jwk
-	58, // 7: identity.IdentityState.entitlements_policy:type_name -> opa.OpaPolicy
-	6,  // 8: identity.IdentityState.entitlement_config:type_name -> identity.EntitlementConfig
-	9,  // 9: identity.IdentityStateInternal.external_jwks:type_name -> identity.ExternalJwk
-	57, // 10: identity.ExternalJwk.key:type_name -> jwk.Jwk
-	11, // 11: identity.ListProvidersResponse.providers:type_name -> identity.ProviderInfo
-	3,  // 12: identity.IdentityConfigState.config:type_name -> identity.Config
-	0,  // 13: identity.Predicate.op:type_name -> identity.ComparisonOp
-	23, // 14: identity.Predicate.value:type_name -> identity.QueryValue
-	23, // 15: identity.Predicate.values:type_name -> identity.QueryValue
-	2,  // 16: identity.PredicateGroup.op:type_name -> identity.LogicalOp
-	24, // 17: identity.PredicateGroup.predicates:type_name -> identity.Predicate
-	25, // 18: identity.PredicateGroup.groups:type_name -> identity.PredicateGroup
-	1,  // 19: identity.SortField.direction:type_name -> identity.SortDirection
-	25, // 20: identity.CollectionQuery.where:type_name -> identity.PredicateGroup
-	26, // 21: identity.CollectionQuery.order_by:type_name -> identity.SortField
-	57, // 22: identity.VerifyingKeysPutRequest.value:type_name -> jwk.Jwk
-	57, // 23: identity.VerifyingKeysValueResponse.value:type_name -> jwk.Jwk
-	53, // 24: identity.VerifyingKeysEntriesResponse.entries:type_name -> identity.VerifyingKeysEntriesResponse.EntriesEntry
-	27, // 25: identity.VerifyingKeysQueryRequest.query:type_name -> identity.CollectionQuery
-	57, // 26: identity.VerifyingKeysQueryResponse.results:type_name -> jwk.Jwk
-	9,  // 27: identity.ExternalJwksPutRequest.value:type_name -> identity.ExternalJwk
-	9,  // 28: identity.ExternalJwksValueResponse.value:type_name -> identity.ExternalJwk
-	54, // 29: identity.ExternalJwksEntriesResponse.entries:type_name -> identity.ExternalJwksEntriesResponse.EntriesEntry
-	27, // 30: identity.ExternalJwksQueryRequest.query:type_name -> identity.CollectionQuery
-	9,  // 31: identity.ExternalJwksQueryResponse.results:type_name -> identity.ExternalJwk
-	57, // 32: identity.VerifyingKeysEntriesResponse.EntriesEntry.value:type_name -> jwk.Jwk
-	9,  // 33: identity.ExternalJwksEntriesResponse.EntriesEntry.value:type_name -> identity.ExternalJwk
-	59, // 34: identity.IdentityService.ListProviders:input_type -> google.protobuf.Empty
-	12, // 35: identity.IdentityService.Authorize:input_type -> identity.AuthorizeRequest
-	14, // 36: identity.IdentityService.Callback:input_type -> identity.CallbackRequest
-	16, // 37: identity.IdentityService.RefreshToken:input_type -> identity.RefreshTokenRequest
-	20, // 38: identity.IdentityService.ExchangeToken:input_type -> identity.ExchangeTokenRequest
-	18, // 39: identity.IdentityService.Logout:input_type -> identity.LogoutRequest
-	59, // 40: identity.IdentityStateBackendService.GetEntitlementsPolicy:input_type -> google.protobuf.Empty
-	58, // 41: identity.IdentityStateBackendService.SetEntitlementsPolicy:input_type -> opa.OpaPolicy
-	59, // 42: identity.IdentityStateBackendService.WatchEntitlementsPolicy:input_type -> google.protobuf.Empty
-	59, // 43: identity.IdentityStateBackendService.GetEntitlementConfig:input_type -> google.protobuf.Empty
-	6,  // 44: identity.IdentityStateBackendService.SetEntitlementConfig:input_type -> identity.EntitlementConfig
-	59, // 45: identity.IdentityStateBackendService.WatchEntitlementConfig:input_type -> google.protobuf.Empty
-	28, // 46: identity.IdentityStateBackendService.GetVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
-	29, // 47: identity.IdentityStateBackendService.PutVerifyingKeys:input_type -> identity.VerifyingKeysPutRequest
-	29, // 48: identity.IdentityStateBackendService.SetVerifyingKeys:input_type -> identity.VerifyingKeysPutRequest
-	28, // 49: identity.IdentityStateBackendService.RemoveVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
-	28, // 50: identity.IdentityStateBackendService.DeleteVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
-	28, // 51: identity.IdentityStateBackendService.ContainsKeyVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
-	30, // 52: identity.IdentityStateBackendService.GetAllVerifyingKeys:input_type -> identity.VerifyingKeysGetAllRequest
-	31, // 53: identity.IdentityStateBackendService.KeySetVerifyingKeys:input_type -> identity.VerifyingKeysKeysRequest
-	32, // 54: identity.IdentityStateBackendService.SizeVerifyingKeys:input_type -> identity.VerifyingKeysSizeRequest
-	33, // 55: identity.IdentityStateBackendService.ClearVerifyingKeys:input_type -> identity.VerifyingKeysClearRequest
-	29, // 56: identity.IdentityStateBackendService.PutIfAbsentVerifyingKeys:input_type -> identity.VerifyingKeysPutRequest
-	59, // 57: identity.IdentityStateBackendService.WatchVerifyingKeys:input_type -> google.protobuf.Empty
-	38, // 58: identity.IdentityStateBackendService.QueryVerifyingKeys:input_type -> identity.VerifyingKeysQueryRequest
-	38, // 59: identity.IdentityStateBackendService.WatchQueryVerifyingKeys:input_type -> identity.VerifyingKeysQueryRequest
-	40, // 60: identity.IdentityStateInternalBackendService.GetExternalJwks:input_type -> identity.ExternalJwksGetRequest
-	41, // 61: identity.IdentityStateInternalBackendService.PutExternalJwks:input_type -> identity.ExternalJwksPutRequest
-	41, // 62: identity.IdentityStateInternalBackendService.SetExternalJwks:input_type -> identity.ExternalJwksPutRequest
-	40, // 63: identity.IdentityStateInternalBackendService.RemoveExternalJwks:input_type -> identity.ExternalJwksGetRequest
-	40, // 64: identity.IdentityStateInternalBackendService.DeleteExternalJwks:input_type -> identity.ExternalJwksGetRequest
-	40, // 65: identity.IdentityStateInternalBackendService.ContainsKeyExternalJwks:input_type -> identity.ExternalJwksGetRequest
-	42, // 66: identity.IdentityStateInternalBackendService.GetAllExternalJwks:input_type -> identity.ExternalJwksGetAllRequest
-	43, // 67: identity.IdentityStateInternalBackendService.KeySetExternalJwks:input_type -> identity.ExternalJwksKeysRequest
-	44, // 68: identity.IdentityStateInternalBackendService.SizeExternalJwks:input_type -> identity.ExternalJwksSizeRequest
-	45, // 69: identity.IdentityStateInternalBackendService.ClearExternalJwks:input_type -> identity.ExternalJwksClearRequest
-	41, // 70: identity.IdentityStateInternalBackendService.PutIfAbsentExternalJwks:input_type -> identity.ExternalJwksPutRequest
-	59, // 71: identity.IdentityStateInternalBackendService.WatchExternalJwks:input_type -> google.protobuf.Empty
-	50, // 72: identity.IdentityStateInternalBackendService.QueryExternalJwks:input_type -> identity.ExternalJwksQueryRequest
-	50, // 73: identity.IdentityStateInternalBackendService.WatchQueryExternalJwks:input_type -> identity.ExternalJwksQueryRequest
-	59, // 74: identity.IdentityConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
-	3,  // 75: identity.IdentityConfigStateBackendService.SetConfig:input_type -> identity.Config
-	59, // 76: identity.IdentityConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
-	10, // 77: identity.IdentityService.ListProviders:output_type -> identity.ListProvidersResponse
-	13, // 78: identity.IdentityService.Authorize:output_type -> identity.AuthorizeResponse
-	15, // 79: identity.IdentityService.Callback:output_type -> identity.CallbackResponse
-	17, // 80: identity.IdentityService.RefreshToken:output_type -> identity.RefreshTokenResponse
-	21, // 81: identity.IdentityService.ExchangeToken:output_type -> identity.ExchangeTokenResponse
-	19, // 82: identity.IdentityService.Logout:output_type -> identity.LogoutResponse
-	58, // 83: identity.IdentityStateBackendService.GetEntitlementsPolicy:output_type -> opa.OpaPolicy
-	58, // 84: identity.IdentityStateBackendService.SetEntitlementsPolicy:output_type -> opa.OpaPolicy
-	58, // 85: identity.IdentityStateBackendService.WatchEntitlementsPolicy:output_type -> opa.OpaPolicy
-	6,  // 86: identity.IdentityStateBackendService.GetEntitlementConfig:output_type -> identity.EntitlementConfig
-	6,  // 87: identity.IdentityStateBackendService.SetEntitlementConfig:output_type -> identity.EntitlementConfig
-	6,  // 88: identity.IdentityStateBackendService.WatchEntitlementConfig:output_type -> identity.EntitlementConfig
-	34, // 89: identity.IdentityStateBackendService.GetVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
-	34, // 90: identity.IdentityStateBackendService.PutVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
-	52, // 91: identity.IdentityStateBackendService.SetVerifyingKeys:output_type -> identity.MapEmpty
-	34, // 92: identity.IdentityStateBackendService.RemoveVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
-	52, // 93: identity.IdentityStateBackendService.DeleteVerifyingKeys:output_type -> identity.MapEmpty
-	34, // 94: identity.IdentityStateBackendService.ContainsKeyVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
-	35, // 95: identity.IdentityStateBackendService.GetAllVerifyingKeys:output_type -> identity.VerifyingKeysEntriesResponse
-	36, // 96: identity.IdentityStateBackendService.KeySetVerifyingKeys:output_type -> identity.VerifyingKeysKeysResponse
-	37, // 97: identity.IdentityStateBackendService.SizeVerifyingKeys:output_type -> identity.VerifyingKeysSizeResponse
-	52, // 98: identity.IdentityStateBackendService.ClearVerifyingKeys:output_type -> identity.MapEmpty
-	34, // 99: identity.IdentityStateBackendService.PutIfAbsentVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
-	35, // 100: identity.IdentityStateBackendService.WatchVerifyingKeys:output_type -> identity.VerifyingKeysEntriesResponse
-	39, // 101: identity.IdentityStateBackendService.QueryVerifyingKeys:output_type -> identity.VerifyingKeysQueryResponse
-	39, // 102: identity.IdentityStateBackendService.WatchQueryVerifyingKeys:output_type -> identity.VerifyingKeysQueryResponse
-	46, // 103: identity.IdentityStateInternalBackendService.GetExternalJwks:output_type -> identity.ExternalJwksValueResponse
-	46, // 104: identity.IdentityStateInternalBackendService.PutExternalJwks:output_type -> identity.ExternalJwksValueResponse
-	52, // 105: identity.IdentityStateInternalBackendService.SetExternalJwks:output_type -> identity.MapEmpty
-	46, // 106: identity.IdentityStateInternalBackendService.RemoveExternalJwks:output_type -> identity.ExternalJwksValueResponse
-	52, // 107: identity.IdentityStateInternalBackendService.DeleteExternalJwks:output_type -> identity.MapEmpty
-	46, // 108: identity.IdentityStateInternalBackendService.ContainsKeyExternalJwks:output_type -> identity.ExternalJwksValueResponse
-	47, // 109: identity.IdentityStateInternalBackendService.GetAllExternalJwks:output_type -> identity.ExternalJwksEntriesResponse
-	48, // 110: identity.IdentityStateInternalBackendService.KeySetExternalJwks:output_type -> identity.ExternalJwksKeysResponse
-	49, // 111: identity.IdentityStateInternalBackendService.SizeExternalJwks:output_type -> identity.ExternalJwksSizeResponse
-	52, // 112: identity.IdentityStateInternalBackendService.ClearExternalJwks:output_type -> identity.MapEmpty
-	46, // 113: identity.IdentityStateInternalBackendService.PutIfAbsentExternalJwks:output_type -> identity.ExternalJwksValueResponse
-	47, // 114: identity.IdentityStateInternalBackendService.WatchExternalJwks:output_type -> identity.ExternalJwksEntriesResponse
-	51, // 115: identity.IdentityStateInternalBackendService.QueryExternalJwks:output_type -> identity.ExternalJwksQueryResponse
-	51, // 116: identity.IdentityStateInternalBackendService.WatchQueryExternalJwks:output_type -> identity.ExternalJwksQueryResponse
-	3,  // 117: identity.IdentityConfigStateBackendService.GetConfig:output_type -> identity.Config
-	3,  // 118: identity.IdentityConfigStateBackendService.SetConfig:output_type -> identity.Config
-	3,  // 119: identity.IdentityConfigStateBackendService.WatchConfig:output_type -> identity.Config
-	77, // [77:120] is the sub-list for method output_type
-	34, // [34:77] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	56, // 4: identity.EntitlementConfig.identity_profiles:type_name -> servicename.IdentityProfile
+	57, // 5: identity.IdentityState.verifying_keys:type_name -> jwk.Jwk
+	55, // 6: identity.IdentityState.entitlements_policy:type_name -> opa.OpaPolicy
+	6,  // 7: identity.IdentityState.entitlement_config:type_name -> identity.EntitlementConfig
+	9,  // 8: identity.IdentityStateInternal.external_jwks:type_name -> identity.ExternalJwk
+	57, // 9: identity.ExternalJwk.key:type_name -> jwk.Jwk
+	11, // 10: identity.ListProvidersResponse.providers:type_name -> identity.ProviderInfo
+	3,  // 11: identity.IdentityConfigState.config:type_name -> identity.Config
+	0,  // 12: identity.Predicate.op:type_name -> identity.ComparisonOp
+	23, // 13: identity.Predicate.value:type_name -> identity.QueryValue
+	23, // 14: identity.Predicate.values:type_name -> identity.QueryValue
+	2,  // 15: identity.PredicateGroup.op:type_name -> identity.LogicalOp
+	24, // 16: identity.PredicateGroup.predicates:type_name -> identity.Predicate
+	25, // 17: identity.PredicateGroup.groups:type_name -> identity.PredicateGroup
+	1,  // 18: identity.SortField.direction:type_name -> identity.SortDirection
+	25, // 19: identity.CollectionQuery.where:type_name -> identity.PredicateGroup
+	26, // 20: identity.CollectionQuery.order_by:type_name -> identity.SortField
+	57, // 21: identity.VerifyingKeysPutRequest.value:type_name -> jwk.Jwk
+	57, // 22: identity.VerifyingKeysValueResponse.value:type_name -> jwk.Jwk
+	53, // 23: identity.VerifyingKeysEntriesResponse.entries:type_name -> identity.VerifyingKeysEntriesResponse.EntriesEntry
+	27, // 24: identity.VerifyingKeysQueryRequest.query:type_name -> identity.CollectionQuery
+	57, // 25: identity.VerifyingKeysQueryResponse.results:type_name -> jwk.Jwk
+	9,  // 26: identity.ExternalJwksPutRequest.value:type_name -> identity.ExternalJwk
+	9,  // 27: identity.ExternalJwksValueResponse.value:type_name -> identity.ExternalJwk
+	54, // 28: identity.ExternalJwksEntriesResponse.entries:type_name -> identity.ExternalJwksEntriesResponse.EntriesEntry
+	27, // 29: identity.ExternalJwksQueryRequest.query:type_name -> identity.CollectionQuery
+	9,  // 30: identity.ExternalJwksQueryResponse.results:type_name -> identity.ExternalJwk
+	57, // 31: identity.VerifyingKeysEntriesResponse.EntriesEntry.value:type_name -> jwk.Jwk
+	9,  // 32: identity.ExternalJwksEntriesResponse.EntriesEntry.value:type_name -> identity.ExternalJwk
+	58, // 33: identity.IdentityService.ListProviders:input_type -> google.protobuf.Empty
+	12, // 34: identity.IdentityService.Authorize:input_type -> identity.AuthorizeRequest
+	14, // 35: identity.IdentityService.Callback:input_type -> identity.CallbackRequest
+	16, // 36: identity.IdentityService.RefreshToken:input_type -> identity.RefreshTokenRequest
+	20, // 37: identity.IdentityService.ExchangeToken:input_type -> identity.ExchangeTokenRequest
+	18, // 38: identity.IdentityService.Logout:input_type -> identity.LogoutRequest
+	58, // 39: identity.IdentityStateBackendService.GetEntitlementsPolicy:input_type -> google.protobuf.Empty
+	55, // 40: identity.IdentityStateBackendService.SetEntitlementsPolicy:input_type -> opa.OpaPolicy
+	58, // 41: identity.IdentityStateBackendService.WatchEntitlementsPolicy:input_type -> google.protobuf.Empty
+	58, // 42: identity.IdentityStateBackendService.GetEntitlementConfig:input_type -> google.protobuf.Empty
+	6,  // 43: identity.IdentityStateBackendService.SetEntitlementConfig:input_type -> identity.EntitlementConfig
+	58, // 44: identity.IdentityStateBackendService.WatchEntitlementConfig:input_type -> google.protobuf.Empty
+	28, // 45: identity.IdentityStateBackendService.GetVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
+	29, // 46: identity.IdentityStateBackendService.PutVerifyingKeys:input_type -> identity.VerifyingKeysPutRequest
+	29, // 47: identity.IdentityStateBackendService.SetVerifyingKeys:input_type -> identity.VerifyingKeysPutRequest
+	28, // 48: identity.IdentityStateBackendService.RemoveVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
+	28, // 49: identity.IdentityStateBackendService.DeleteVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
+	28, // 50: identity.IdentityStateBackendService.ContainsKeyVerifyingKeys:input_type -> identity.VerifyingKeysGetRequest
+	30, // 51: identity.IdentityStateBackendService.GetAllVerifyingKeys:input_type -> identity.VerifyingKeysGetAllRequest
+	31, // 52: identity.IdentityStateBackendService.KeySetVerifyingKeys:input_type -> identity.VerifyingKeysKeysRequest
+	32, // 53: identity.IdentityStateBackendService.SizeVerifyingKeys:input_type -> identity.VerifyingKeysSizeRequest
+	33, // 54: identity.IdentityStateBackendService.ClearVerifyingKeys:input_type -> identity.VerifyingKeysClearRequest
+	29, // 55: identity.IdentityStateBackendService.PutIfAbsentVerifyingKeys:input_type -> identity.VerifyingKeysPutRequest
+	58, // 56: identity.IdentityStateBackendService.WatchVerifyingKeys:input_type -> google.protobuf.Empty
+	38, // 57: identity.IdentityStateBackendService.QueryVerifyingKeys:input_type -> identity.VerifyingKeysQueryRequest
+	38, // 58: identity.IdentityStateBackendService.WatchQueryVerifyingKeys:input_type -> identity.VerifyingKeysQueryRequest
+	40, // 59: identity.IdentityStateInternalBackendService.GetExternalJwks:input_type -> identity.ExternalJwksGetRequest
+	41, // 60: identity.IdentityStateInternalBackendService.PutExternalJwks:input_type -> identity.ExternalJwksPutRequest
+	41, // 61: identity.IdentityStateInternalBackendService.SetExternalJwks:input_type -> identity.ExternalJwksPutRequest
+	40, // 62: identity.IdentityStateInternalBackendService.RemoveExternalJwks:input_type -> identity.ExternalJwksGetRequest
+	40, // 63: identity.IdentityStateInternalBackendService.DeleteExternalJwks:input_type -> identity.ExternalJwksGetRequest
+	40, // 64: identity.IdentityStateInternalBackendService.ContainsKeyExternalJwks:input_type -> identity.ExternalJwksGetRequest
+	42, // 65: identity.IdentityStateInternalBackendService.GetAllExternalJwks:input_type -> identity.ExternalJwksGetAllRequest
+	43, // 66: identity.IdentityStateInternalBackendService.KeySetExternalJwks:input_type -> identity.ExternalJwksKeysRequest
+	44, // 67: identity.IdentityStateInternalBackendService.SizeExternalJwks:input_type -> identity.ExternalJwksSizeRequest
+	45, // 68: identity.IdentityStateInternalBackendService.ClearExternalJwks:input_type -> identity.ExternalJwksClearRequest
+	41, // 69: identity.IdentityStateInternalBackendService.PutIfAbsentExternalJwks:input_type -> identity.ExternalJwksPutRequest
+	58, // 70: identity.IdentityStateInternalBackendService.WatchExternalJwks:input_type -> google.protobuf.Empty
+	50, // 71: identity.IdentityStateInternalBackendService.QueryExternalJwks:input_type -> identity.ExternalJwksQueryRequest
+	50, // 72: identity.IdentityStateInternalBackendService.WatchQueryExternalJwks:input_type -> identity.ExternalJwksQueryRequest
+	58, // 73: identity.IdentityConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
+	3,  // 74: identity.IdentityConfigStateBackendService.SetConfig:input_type -> identity.Config
+	58, // 75: identity.IdentityConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
+	10, // 76: identity.IdentityService.ListProviders:output_type -> identity.ListProvidersResponse
+	13, // 77: identity.IdentityService.Authorize:output_type -> identity.AuthorizeResponse
+	15, // 78: identity.IdentityService.Callback:output_type -> identity.CallbackResponse
+	17, // 79: identity.IdentityService.RefreshToken:output_type -> identity.RefreshTokenResponse
+	21, // 80: identity.IdentityService.ExchangeToken:output_type -> identity.ExchangeTokenResponse
+	19, // 81: identity.IdentityService.Logout:output_type -> identity.LogoutResponse
+	55, // 82: identity.IdentityStateBackendService.GetEntitlementsPolicy:output_type -> opa.OpaPolicy
+	55, // 83: identity.IdentityStateBackendService.SetEntitlementsPolicy:output_type -> opa.OpaPolicy
+	55, // 84: identity.IdentityStateBackendService.WatchEntitlementsPolicy:output_type -> opa.OpaPolicy
+	6,  // 85: identity.IdentityStateBackendService.GetEntitlementConfig:output_type -> identity.EntitlementConfig
+	6,  // 86: identity.IdentityStateBackendService.SetEntitlementConfig:output_type -> identity.EntitlementConfig
+	6,  // 87: identity.IdentityStateBackendService.WatchEntitlementConfig:output_type -> identity.EntitlementConfig
+	34, // 88: identity.IdentityStateBackendService.GetVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
+	34, // 89: identity.IdentityStateBackendService.PutVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
+	52, // 90: identity.IdentityStateBackendService.SetVerifyingKeys:output_type -> identity.MapEmpty
+	34, // 91: identity.IdentityStateBackendService.RemoveVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
+	52, // 92: identity.IdentityStateBackendService.DeleteVerifyingKeys:output_type -> identity.MapEmpty
+	34, // 93: identity.IdentityStateBackendService.ContainsKeyVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
+	35, // 94: identity.IdentityStateBackendService.GetAllVerifyingKeys:output_type -> identity.VerifyingKeysEntriesResponse
+	36, // 95: identity.IdentityStateBackendService.KeySetVerifyingKeys:output_type -> identity.VerifyingKeysKeysResponse
+	37, // 96: identity.IdentityStateBackendService.SizeVerifyingKeys:output_type -> identity.VerifyingKeysSizeResponse
+	52, // 97: identity.IdentityStateBackendService.ClearVerifyingKeys:output_type -> identity.MapEmpty
+	34, // 98: identity.IdentityStateBackendService.PutIfAbsentVerifyingKeys:output_type -> identity.VerifyingKeysValueResponse
+	35, // 99: identity.IdentityStateBackendService.WatchVerifyingKeys:output_type -> identity.VerifyingKeysEntriesResponse
+	39, // 100: identity.IdentityStateBackendService.QueryVerifyingKeys:output_type -> identity.VerifyingKeysQueryResponse
+	39, // 101: identity.IdentityStateBackendService.WatchQueryVerifyingKeys:output_type -> identity.VerifyingKeysQueryResponse
+	46, // 102: identity.IdentityStateInternalBackendService.GetExternalJwks:output_type -> identity.ExternalJwksValueResponse
+	46, // 103: identity.IdentityStateInternalBackendService.PutExternalJwks:output_type -> identity.ExternalJwksValueResponse
+	52, // 104: identity.IdentityStateInternalBackendService.SetExternalJwks:output_type -> identity.MapEmpty
+	46, // 105: identity.IdentityStateInternalBackendService.RemoveExternalJwks:output_type -> identity.ExternalJwksValueResponse
+	52, // 106: identity.IdentityStateInternalBackendService.DeleteExternalJwks:output_type -> identity.MapEmpty
+	46, // 107: identity.IdentityStateInternalBackendService.ContainsKeyExternalJwks:output_type -> identity.ExternalJwksValueResponse
+	47, // 108: identity.IdentityStateInternalBackendService.GetAllExternalJwks:output_type -> identity.ExternalJwksEntriesResponse
+	48, // 109: identity.IdentityStateInternalBackendService.KeySetExternalJwks:output_type -> identity.ExternalJwksKeysResponse
+	49, // 110: identity.IdentityStateInternalBackendService.SizeExternalJwks:output_type -> identity.ExternalJwksSizeResponse
+	52, // 111: identity.IdentityStateInternalBackendService.ClearExternalJwks:output_type -> identity.MapEmpty
+	46, // 112: identity.IdentityStateInternalBackendService.PutIfAbsentExternalJwks:output_type -> identity.ExternalJwksValueResponse
+	47, // 113: identity.IdentityStateInternalBackendService.WatchExternalJwks:output_type -> identity.ExternalJwksEntriesResponse
+	51, // 114: identity.IdentityStateInternalBackendService.QueryExternalJwks:output_type -> identity.ExternalJwksQueryResponse
+	51, // 115: identity.IdentityStateInternalBackendService.WatchQueryExternalJwks:output_type -> identity.ExternalJwksQueryResponse
+	3,  // 116: identity.IdentityConfigStateBackendService.GetConfig:output_type -> identity.Config
+	3,  // 117: identity.IdentityConfigStateBackendService.SetConfig:output_type -> identity.Config
+	3,  // 118: identity.IdentityConfigStateBackendService.WatchConfig:output_type -> identity.Config
+	76, // [76:119] is the sub-list for method output_type
+	33, // [33:76] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_services_identity_proto_init() }

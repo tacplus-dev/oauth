@@ -9,9 +9,9 @@
 // If changes are needed, update the tacplus compiler at:
 // gitlab.com/secondstarcavalier/controlplane/services/tacplus
 //
-// Source: services/config_holder.proto
+// Source: libs/generated.proto
 
-package config_holder
+package generated
 
 import (
 	dgraph "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/dgraph"
@@ -36,7 +36,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ConfigHolder struct {
+type Services struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	SentinelConfig    *sentinel.Config       `protobuf:"bytes,5,opt,name=sentinel_config,json=sentinelConfig,proto3" json:"sentinel_config,omitempty"`
 	IdentityConfig    *identity.Config       `protobuf:"bytes,6,opt,name=identity_config,json=identityConfig,proto3" json:"identity_config,omitempty"`
@@ -50,21 +50,21 @@ type ConfigHolder struct {
 	sizeCache         protoimpl.SizeCache
 }
 
-func (x *ConfigHolder) Reset() {
-	*x = ConfigHolder{}
-	mi := &file_services_config_holder_proto_msgTypes[0]
+func (x *Services) Reset() {
+	*x = Services{}
+	mi := &file_libs_generated_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ConfigHolder) String() string {
+func (x *Services) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ConfigHolder) ProtoMessage() {}
+func (*Services) ProtoMessage() {}
 
-func (x *ConfigHolder) ProtoReflect() protoreflect.Message {
-	mi := &file_services_config_holder_proto_msgTypes[0]
+func (x *Services) ProtoReflect() protoreflect.Message {
+	mi := &file_libs_generated_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -75,73 +75,73 @@ func (x *ConfigHolder) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ConfigHolder.ProtoReflect.Descriptor instead.
-func (*ConfigHolder) Descriptor() ([]byte, []int) {
-	return file_services_config_holder_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use Services.ProtoReflect.Descriptor instead.
+func (*Services) Descriptor() ([]byte, []int) {
+	return file_libs_generated_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ConfigHolder) GetSentinelConfig() *sentinel.Config {
+func (x *Services) GetSentinelConfig() *sentinel.Config {
 	if x != nil {
 		return x.SentinelConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetIdentityConfig() *identity.Config {
+func (x *Services) GetIdentityConfig() *identity.Config {
 	if x != nil {
 		return x.IdentityConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetGatewayConfig() *gateway.Config {
+func (x *Services) GetGatewayConfig() *gateway.Config {
 	if x != nil {
 		return x.GatewayConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetLetsencryptConfig() *letsencrypt.Config {
+func (x *Services) GetLetsencryptConfig() *letsencrypt.Config {
 	if x != nil {
 		return x.LetsencryptConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetPolicyConfig() *policy.Config {
+func (x *Services) GetPolicyConfig() *policy.Config {
 	if x != nil {
 		return x.PolicyConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetPolicysimConfig() *policysim.Config {
+func (x *Services) GetPolicysimConfig() *policysim.Config {
 	if x != nil {
 		return x.PolicysimConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetMcpConfig() *mcp.Config {
+func (x *Services) GetMcpConfig() *mcp.Config {
 	if x != nil {
 		return x.McpConfig
 	}
 	return nil
 }
 
-func (x *ConfigHolder) GetDgraphConfig() *dgraph.Config {
+func (x *Services) GetDgraphConfig() *dgraph.Config {
 	if x != nil {
 		return x.DgraphConfig
 	}
 	return nil
 }
 
-var File_services_config_holder_proto protoreflect.FileDescriptor
+var File_libs_generated_proto protoreflect.FileDescriptor
 
-const file_services_config_holder_proto_rawDesc = "" +
+const file_libs_generated_proto_rawDesc = "" +
 	"\n" +
-	"\x1cservices/config_holder.proto\x12\rconfig_holder\x1a\x17services/sentinel.proto\x1a\x17services/identity.proto\x1a\x16services/gateway.proto\x1a\x1aservices/letsencrypt.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x12services/mcp.proto\x1a\x15services/dgraph.proto\"\xd4\x03\n" +
-	"\fConfigHolder\x129\n" +
+	"\x14libs/generated.proto\x12\tgenerated\x1a\x17services/sentinel.proto\x1a\x17services/identity.proto\x1a\x16services/gateway.proto\x1a\x1aservices/letsencrypt.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x12services/mcp.proto\x1a\x15services/dgraph.proto\"\xd0\x03\n" +
+	"\bServices\x129\n" +
 	"\x0fsentinel_config\x18\x05 \x01(\v2\x10.sentinel.ConfigR\x0esentinelConfig\x129\n" +
 	"\x0fidentity_config\x18\x06 \x01(\v2\x10.identity.ConfigR\x0eidentityConfig\x126\n" +
 	"\x0egateway_config\x18\a \x01(\v2\x0f.gateway.ConfigR\rgatewayConfig\x12B\n" +
@@ -151,23 +151,23 @@ const file_services_config_holder_proto_rawDesc = "" +
 	"\x10policysim_config\x18\v \x01(\v2\x11.policysim.ConfigR\x0fpolicysimConfig\x12*\n" +
 	"\n" +
 	"mcp_config\x18\f \x01(\v2\v.mcp.ConfigR\tmcpConfig\x123\n" +
-	"\rdgraph_config\x18\r \x01(\v2\x0e.dgraph.ConfigR\fdgraphConfigB_Z]gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/config_holderb\x06proto3"
+	"\rdgraph_config\x18\r \x01(\v2\x0e.dgraph.ConfigR\fdgraphConfigBWZUgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/generatedb\x06proto3"
 
 var (
-	file_services_config_holder_proto_rawDescOnce sync.Once
-	file_services_config_holder_proto_rawDescData []byte
+	file_libs_generated_proto_rawDescOnce sync.Once
+	file_libs_generated_proto_rawDescData []byte
 )
 
-func file_services_config_holder_proto_rawDescGZIP() []byte {
-	file_services_config_holder_proto_rawDescOnce.Do(func() {
-		file_services_config_holder_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_services_config_holder_proto_rawDesc), len(file_services_config_holder_proto_rawDesc)))
+func file_libs_generated_proto_rawDescGZIP() []byte {
+	file_libs_generated_proto_rawDescOnce.Do(func() {
+		file_libs_generated_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_libs_generated_proto_rawDesc), len(file_libs_generated_proto_rawDesc)))
 	})
-	return file_services_config_holder_proto_rawDescData
+	return file_libs_generated_proto_rawDescData
 }
 
-var file_services_config_holder_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_services_config_holder_proto_goTypes = []any{
-	(*ConfigHolder)(nil),       // 0: config_holder.ConfigHolder
+var file_libs_generated_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_libs_generated_proto_goTypes = []any{
+	(*Services)(nil),           // 0: generated.Services
 	(*sentinel.Config)(nil),    // 1: sentinel.Config
 	(*identity.Config)(nil),    // 2: identity.Config
 	(*gateway.Config)(nil),     // 3: gateway.Config
@@ -177,15 +177,15 @@ var file_services_config_holder_proto_goTypes = []any{
 	(*mcp.Config)(nil),         // 7: mcp.Config
 	(*dgraph.Config)(nil),      // 8: dgraph.Config
 }
-var file_services_config_holder_proto_depIdxs = []int32{
-	1, // 0: config_holder.ConfigHolder.sentinel_config:type_name -> sentinel.Config
-	2, // 1: config_holder.ConfigHolder.identity_config:type_name -> identity.Config
-	3, // 2: config_holder.ConfigHolder.gateway_config:type_name -> gateway.Config
-	4, // 3: config_holder.ConfigHolder.letsencrypt_config:type_name -> letsencrypt.Config
-	5, // 4: config_holder.ConfigHolder.policy_config:type_name -> policy.Config
-	6, // 5: config_holder.ConfigHolder.policysim_config:type_name -> policysim.Config
-	7, // 6: config_holder.ConfigHolder.mcp_config:type_name -> mcp.Config
-	8, // 7: config_holder.ConfigHolder.dgraph_config:type_name -> dgraph.Config
+var file_libs_generated_proto_depIdxs = []int32{
+	1, // 0: generated.Services.sentinel_config:type_name -> sentinel.Config
+	2, // 1: generated.Services.identity_config:type_name -> identity.Config
+	3, // 2: generated.Services.gateway_config:type_name -> gateway.Config
+	4, // 3: generated.Services.letsencrypt_config:type_name -> letsencrypt.Config
+	5, // 4: generated.Services.policy_config:type_name -> policy.Config
+	6, // 5: generated.Services.policysim_config:type_name -> policysim.Config
+	7, // 6: generated.Services.mcp_config:type_name -> mcp.Config
+	8, // 7: generated.Services.dgraph_config:type_name -> dgraph.Config
 	8, // [8:8] is the sub-list for method output_type
 	8, // [8:8] is the sub-list for method input_type
 	8, // [8:8] is the sub-list for extension type_name
@@ -193,26 +193,26 @@ var file_services_config_holder_proto_depIdxs = []int32{
 	0, // [0:8] is the sub-list for field type_name
 }
 
-func init() { file_services_config_holder_proto_init() }
-func file_services_config_holder_proto_init() {
-	if File_services_config_holder_proto != nil {
+func init() { file_libs_generated_proto_init() }
+func file_libs_generated_proto_init() {
+	if File_libs_generated_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_config_holder_proto_rawDesc), len(file_services_config_holder_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_libs_generated_proto_rawDesc), len(file_libs_generated_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_services_config_holder_proto_goTypes,
-		DependencyIndexes: file_services_config_holder_proto_depIdxs,
-		MessageInfos:      file_services_config_holder_proto_msgTypes,
+		GoTypes:           file_libs_generated_proto_goTypes,
+		DependencyIndexes: file_libs_generated_proto_depIdxs,
+		MessageInfos:      file_libs_generated_proto_msgTypes,
 	}.Build()
-	File_services_config_holder_proto = out.File
-	file_services_config_holder_proto_goTypes = nil
-	file_services_config_holder_proto_depIdxs = nil
+	File_libs_generated_proto = out.File
+	file_libs_generated_proto_goTypes = nil
+	file_libs_generated_proto_depIdxs = nil
 }

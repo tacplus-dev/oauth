@@ -475,18 +475,17 @@ const file_services_policy_proto_rawDesc = "" +
 	"\fentitlements\x18\x02 \x03(\v2\x1e.policy.ServiceEntitlementInfoR\fentitlements\"O\n" +
 	"\x16ServiceEntitlementInfo\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x12\n" +
-	"\x04rpcs\x18\x02 \x03(\tR\x04rpcs\"V\n" +
-	"\x13GetPoliciesResponse\x12?\n" +
-	"\x13entitlements_policy\x18\x01 \x01(\v2\x0e.opa.OpaPolicyR\x12entitlementsPolicy\"`\n" +
+	"\x04rpcs\x18\x02 \x03(\tR\x04rpcs\"\\\n" +
+	"\x13GetPoliciesResponse\x12E\n" +
+	"\x13entitlements_policy\x18\x01 \x01(\v2\x0e.opa.OpaPolicyB\x04\x88\xa6\x1d\x01R\x12entitlementsPolicy\"`\n" +
 	"\x11PolicyConfigState\x120\n" +
 	"\x06config\x18\x01 \x01(\v2\x0e.policy.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x19\x9a\xa8\x1d\x11PolicyConfigState\xa0\xa8\x1d\x02\"\n" +
 	"\n" +
-	"\bMapEmpty2\xe1\x02\n" +
+	"\bMapEmpty2\xe5\x02\n" +
 	"\rPolicyService\x12c\n" +
 	"\rGetApiCatalog\x12\x16.google.protobuf.Empty\x1a\x1a.policy.ApiCatalogResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/policy/v1/catalog\x12z\n" +
 	"\x0fGetEntitlements\x12\x1e.policy.GetEntitlementsRequest\x1a\x1f.policy.GetEntitlementsResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/policy/v1/entitlements\x12c\n" +
-	"\vGetPolicies\x12\x16.google.protobuf.Empty\x1a\x1b.policy.GetPoliciesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/policy/v1/policies\x1a\n" +
-	"\xa2\x97\"\x06policy2\xbc\x01\n" +
+	"\vGetPolicies\x12\x16.google.protobuf.Empty\x1a\x1b.policy.GetPoliciesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/policy/v1/policies\x1a\x0e\xa2\x97\"\x06policyЗ\"\x012\xbc\x01\n" +
 	"\x1fPolicyConfigStateBackendService\x123\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x0e.policy.Config\x12+\n" +
 	"\tSetConfig\x12\x0e.policy.Config\x1a\x0e.policy.Config\x127\n" +

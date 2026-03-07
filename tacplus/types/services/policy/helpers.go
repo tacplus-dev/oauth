@@ -1479,7 +1479,11 @@ func ValidateGetPoliciesResponse(m *GetPoliciesResponse) error {
 		return nil
 	}
 
-	// No field validations defined
+	// Validate EntitlementsPolicy (assert_required)
+	if m.EntitlementsPolicy == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field EntitlementsPolicy is required")
+	}
+
 	return nil
 }
 
@@ -1512,6 +1516,195 @@ const (
 	MaxSizeGetentitlementsrequestAccessToken int = 32768
 	MaxSizeServiceentitlementinfoServiceName int = 32768
 )
+
+// ============================================================
+// TypeDefaults: Config
+// ============================================================
+// ConfigDefaults applies field-level default values to zero-valued fields.
+func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ApiCatalogResponse
+// ============================================================
+// ApiCatalogResponseDefaults applies field-level default values to zero-valued fields.
+func ApiCatalogResponseDefaults(v *ApiCatalogResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ApiCatalogEntry
+// ============================================================
+// ApiCatalogEntryDefaults applies field-level default values to zero-valued fields.
+func ApiCatalogEntryDefaults(v *ApiCatalogEntry) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GetEntitlementsRequest
+// ============================================================
+// GetEntitlementsRequestDefaults applies field-level default values to zero-valued fields.
+func GetEntitlementsRequestDefaults(v *GetEntitlementsRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GetEntitlementsResponse
+// ============================================================
+// GetEntitlementsResponseDefaults applies field-level default values to zero-valued fields.
+func GetEntitlementsResponseDefaults(v *GetEntitlementsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ServiceEntitlementInfo
+// ============================================================
+// ServiceEntitlementInfoDefaults applies field-level default values to zero-valued fields.
+func ServiceEntitlementInfoDefaults(v *ServiceEntitlementInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GetPoliciesResponse
+// ============================================================
+// GetPoliciesResponseDefaults applies field-level default values to zero-valued fields.
+func GetPoliciesResponseDefaults(v *GetPoliciesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PolicyConfigState
+// ============================================================
+// PolicyConfigStateDefaults applies field-level default values to zero-valued fields.
+func PolicyConfigStateDefaults(v *PolicyConfigState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ApiCatalogResponse
+// ============================================================
+// ApiCatalogResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ApiCatalogResponseUndefaults(v *ApiCatalogResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ApiCatalogEntry
+// ============================================================
+// ApiCatalogEntryUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ApiCatalogEntryUndefaults(v *ApiCatalogEntry) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GetEntitlementsRequest
+// ============================================================
+// GetEntitlementsRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GetEntitlementsRequestUndefaults(v *GetEntitlementsRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GetEntitlementsResponse
+// ============================================================
+// GetEntitlementsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GetEntitlementsResponseUndefaults(v *GetEntitlementsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ServiceEntitlementInfo
+// ============================================================
+// ServiceEntitlementInfoUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ServiceEntitlementInfoUndefaults(v *ServiceEntitlementInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GetPoliciesResponse
+// ============================================================
+// GetPoliciesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GetPoliciesResponseUndefaults(v *GetPoliciesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PolicyConfigState
+// ============================================================
+// PolicyConfigStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PolicyConfigStateUndefaults(v *PolicyConfigState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
 
 // ============================================================
 // Merge: ApiCatalogResponse

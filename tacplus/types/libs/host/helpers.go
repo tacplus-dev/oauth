@@ -231,6 +231,27 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: Host
+// ============================================================
+// HostDefaults applies field-level default values to zero-valued fields.
+func HostDefaults(v *Host) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Host
+// ============================================================
+// HostUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func HostUndefaults(v *Host) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: Host
 // ============================================================
 // MergeHost fills zero-valued fields in dst from src.

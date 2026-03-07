@@ -79,7 +79,6 @@ message LetsEncryptCertData {
 
   // fqdn is the domain name the certificate was issued for.
   string fqdn = 4;
-  Lock lock = 5;
 }
 
 // CertMagicState is the serialized storage tree used by CertMagic.
@@ -97,12 +96,6 @@ message CertMagicState {
 message LetsencryptConfigState {
 
   letsencrypt.Config config = 1;
-}
-
-// Lock provides optimistic concurrency control for atomic state boundaries.
-message Lock {
-  string id = 1;
-  int64 counter = 2;
 }
 
 // ============================================================================

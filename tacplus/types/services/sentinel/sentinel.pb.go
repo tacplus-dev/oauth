@@ -3722,10 +3722,10 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\x17TokenCacheStatsResponse\x124\n" +
 	"\x05items\x18\x01 \x03(\v2\x1e.sentinel.AdminTokenCacheStatsR\x05items\"A\n" +
 	"\x10MapStatsResponse\x12-\n" +
-	"\x05items\x18\x01 \x03(\v2\x17.sentinel.AdminMapStatsR\x05items\"\xe0\x04\n" +
-	"\x11DashboardResponse\x12=\n" +
-	"\fcluster_info\x18\x01 \x01(\v2\x1a.sentinel.AdminClusterInfoR\vclusterInfo\x12C\n" +
-	"\x0ecluster_health\x18\x02 \x01(\v2\x1c.sentinel.AdminClusterHealthR\rclusterHealth\x12=\n" +
+	"\x05items\x18\x01 \x03(\v2\x17.sentinel.AdminMapStatsR\x05items\"\xec\x04\n" +
+	"\x11DashboardResponse\x12C\n" +
+	"\fcluster_info\x18\x01 \x01(\v2\x1a.sentinel.AdminClusterInfoB\x04\x88\xa6\x1d\x01R\vclusterInfo\x12I\n" +
+	"\x0ecluster_health\x18\x02 \x01(\v2\x1c.sentinel.AdminClusterHealthB\x04\x88\xa6\x1d\x01R\rclusterHealth\x12=\n" +
 	"\fnode_metrics\x18\x03 \x03(\v2\x1a.sentinel.AdminNodeMetricsR\vnodeMetrics\x127\n" +
 	"\n" +
 	"grpc_stats\x18\x04 \x03(\v2\x18.sentinel.AdminGrpcStatsR\tgrpcStats\x12O\n" +
@@ -3762,12 +3762,12 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\fcluster_size\x18\x05 \x01(\x05R\vclusterSize\x12\x1d\n" +
 	"\n" +
 	"has_quorum\x18\x06 \x01(\bR\thasQuorum\x120\n" +
-	"\x14migration_queue_size\x18\a \x01(\x05R\x12migrationQueueSize\"\xe7\x01\n" +
+	"\x14migration_queue_size\x18\a \x01(\x05R\x12migrationQueueSize\"\xf9\x01\n" +
 	"\x10AdminNodeMetrics\x12\x1d\n" +
-	"\anode_id\x18\x01 \x01(\tB\x04е\x18\x01R\x06nodeId\x124\n" +
-	"\x06memory\x18\x02 \x01(\v2\x1c.sentinel.AdminMemoryMetricsR\x06memory\x12+\n" +
-	"\x03cpu\x18\x03 \x01(\v2\x19.sentinel.AdminCpuMetricsR\x03cpu\x12.\n" +
-	"\x04disk\x18\x04 \x01(\v2\x1a.sentinel.AdminDiskMetricsR\x04disk\x12!\n" +
+	"\anode_id\x18\x01 \x01(\tB\x04е\x18\x01R\x06nodeId\x12:\n" +
+	"\x06memory\x18\x02 \x01(\v2\x1c.sentinel.AdminMemoryMetricsB\x04\x88\xa6\x1d\x01R\x06memory\x121\n" +
+	"\x03cpu\x18\x03 \x01(\v2\x19.sentinel.AdminCpuMetricsB\x04\x88\xa6\x1d\x01R\x03cpu\x124\n" +
+	"\x04disk\x18\x04 \x01(\v2\x1a.sentinel.AdminDiskMetricsB\x04\x88\xa6\x1d\x01R\x04disk\x12!\n" +
 	"\ftimestamp_ms\x18\x05 \x01(\x03R\vtimestampMs\"\xfc\x01\n" +
 	"\x12AdminMemoryMetrics\x12&\n" +
 	"\x0fheap_used_bytes\x18\x01 \x01(\x03R\rheapUsedBytes\x12$\n" +
@@ -3801,7 +3801,7 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\vconsistency\x18\x05 \x01(\tR\vconsistency\x12 \n" +
 	"\vpersistence\x18\x06 \x01(\bR\vpersistence\x12\x1d\n" +
 	"\n" +
-	"value_type\x18\a \x01(\tR\tvalueType\"\x9a\x12\n" +
+	"value_type\x18\a \x01(\tR\tvalueType\"\xa0\x12\n" +
 	"\x16AdminServiceConnection\x12\x14\n" +
 	"\x02id\x18\x01 \x01(\tB\x04е\x18\x01R\x02id\x12\x1d\n" +
 	"\n" +
@@ -3833,8 +3833,8 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\x17per_method_rate_limited\x18\x17 \x03(\v2:.sentinel.AdminServiceConnection.PerMethodRateLimitedEntryR\x14perMethodRateLimited\x12!\n" +
 	"\ftotal_errors\x18\x18 \x01(\x03R\vtotalErrors\x12k\n" +
 	"\x15per_error_code_counts\x18\x19 \x03(\v28.sentinel.AdminServiceConnection.PerErrorCodeCountsEntryR\x12perErrorCodeCounts\x12q\n" +
-	"\x17per_method_error_counts\x18\x1a \x03(\v2:.sentinel.AdminServiceConnection.PerMethodErrorCountsEntryR\x14perMethodErrorCounts\x125\n" +
-	"\alatency\x18\x1b \x01(\v2\x1b.sentinel.AdminLatencyStatsR\alatency\x12J\n" +
+	"\x17per_method_error_counts\x18\x1a \x03(\v2:.sentinel.AdminServiceConnection.PerMethodErrorCountsEntryR\x14perMethodErrorCounts\x12;\n" +
+	"\alatency\x18\x1b \x01(\v2\x1b.sentinel.AdminLatencyStatsB\x04\x88\xa6\x1d\x01R\alatency\x12J\n" +
 	"\x12per_method_latency\x18\x1c \x03(\v2\x1c.sentinel.AdminMethodLatencyR\x10perMethodLatency\x12%\n" +
 	"\x0ebytes_received\x18\x1d \x01(\x03R\rbytesReceived\x12\x1d\n" +
 	"\n" +
@@ -3983,10 +3983,10 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\x06max_us\x18\x05 \x01(\x03R\x05maxUs\x12\x15\n" +
 	"\x06min_us\x18\x06 \x01(\x03R\x05minUs\x12\x17\n" +
 	"\amean_us\x18\a \x01(\x01R\x06meanUs\x12!\n" +
-	"\fsample_count\x18\b \x01(\x03R\vsampleCount\"c\n" +
+	"\fsample_count\x18\b \x01(\x03R\vsampleCount\"i\n" +
 	"\x12AdminMethodLatency\x12\x16\n" +
-	"\x06method\x18\x01 \x01(\tR\x06method\x125\n" +
-	"\alatency\x18\x02 \x01(\v2\x1b.sentinel.AdminLatencyStatsR\alatency\"\xe7\x02\n" +
+	"\x06method\x18\x01 \x01(\tR\x06method\x12;\n" +
+	"\alatency\x18\x02 \x01(\v2\x1b.sentinel.AdminLatencyStatsB\x04\x88\xa6\x1d\x01R\alatency\"\xe7\x02\n" +
 	"\x12AdminMethodPayload\x12\x16\n" +
 	"\x06method\x18\x01 \x01(\tR\x06method\x12.\n" +
 	"\x13total_request_bytes\x18\x02 \x01(\x03R\x11totalRequestBytes\x120\n" +
@@ -4091,7 +4091,7 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\x1fADMIN_GRAPH_TYPE_PRIORITY_QUEUE\x10\x03\x12\x1a\n" +
 	"\x16ADMIN_GRAPH_TYPE_TOPIC\x10\x04\x12\x19\n" +
 	"\x15ADMIN_GRAPH_TYPE_VIEW\x10\x05\x12\x1c\n" +
-	"\x18ADMIN_GRAPH_TYPE_COMMAND\x10\x062\x85\n" +
+	"\x18ADMIN_GRAPH_TYPE_COMMAND\x10\x062\x89\n" +
 	"\n" +
 	"\x0fSentinelService\x12k\n" +
 	"\x0eGetClusterInfo\x12\x16.google.protobuf.Empty\x1a\x1a.sentinel.AdminClusterInfo\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/sentinel/v1/cluster-info\x12q\n" +
@@ -4104,7 +4104,7 @@ const file_services_sentinel_proto_rawDesc = "" +
 	"\x12GetTokenCacheStats\x12\x16.google.protobuf.Empty\x1a!.sentinel.TokenCacheStatsResponse\"*\x82\xd3\xe4\x93\x02$\x12\"/api/sentinel/v1/token-cache-stats\x12e\n" +
 	"\vGetMapStats\x12\x16.google.protobuf.Empty\x1a\x1a.sentinel.MapStatsResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/sentinel/v1/map-stats\x12g\n" +
 	"\fGetDashboard\x12\x16.google.protobuf.Empty\x1a\x1b.sentinel.DashboardResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/sentinel/v1/dashboard\x12z\n" +
-	"\x0eWatchDashboard\x12\x1f.sentinel.WatchDashboardRequest\x1a\x1b.sentinel.DashboardResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /api/sentinel/v1/dashboard/watch0\x01\x1a\f\xa2\x97\"\bsentinel2\x1d\n" +
+	"\x0eWatchDashboard\x12\x1f.sentinel.WatchDashboardRequest\x1a\x1b.sentinel.DashboardResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /api/sentinel/v1/dashboard/watch0\x01\x1a\x10\xa2\x97\"\bsentinelЗ\"\x012\x1d\n" +
 	"\x1bSentinelStateBackendService2\xc6\x01\n" +
 	"!SentinelConfigStateBackendService\x125\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x10.sentinel.Config\x12/\n" +

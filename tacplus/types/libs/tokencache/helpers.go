@@ -239,6 +239,27 @@ func ValidateConfig(m *Config) error {
 }
 
 // ============================================================
+// TypeDefaults: Config
+// ============================================================
+// ConfigDefaults applies field-level default values to zero-valued fields.
+func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: Config
 // ============================================================
 // MergeConfig fills zero-valued fields in dst from src.

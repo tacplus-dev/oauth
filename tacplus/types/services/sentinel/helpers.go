@@ -8274,7 +8274,16 @@ func ValidateDashboardResponse(m *DashboardResponse) error {
 		return nil
 	}
 
-	// No field validations defined
+	// Validate ClusterInfo (assert_required)
+	if m.ClusterInfo == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClusterInfo is required")
+	}
+
+	// Validate ClusterHealth (assert_required)
+	if m.ClusterHealth == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClusterHealth is required")
+	}
+
 	return nil
 }
 
@@ -8348,6 +8357,21 @@ func ValidateAdminClusterHealth(m *AdminClusterHealth) error {
 func ValidateAdminNodeMetrics(m *AdminNodeMetrics) error {
 	if m == nil {
 		return nil
+	}
+
+	// Validate Memory (assert_required)
+	if m.Memory == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Memory is required")
+	}
+
+	// Validate Cpu (assert_required)
+	if m.Cpu == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Cpu is required")
+	}
+
+	// Validate Disk (assert_required)
+	if m.Disk == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Disk is required")
 	}
 
 	// Validate NodeId (default max size: 32768 bytes)
@@ -8435,6 +8459,11 @@ func ValidateAdminGraphInfo(m *AdminGraphInfo) error {
 func ValidateAdminServiceConnection(m *AdminServiceConnection) error {
 	if m == nil {
 		return nil
+	}
+
+	// Validate Latency (assert_required)
+	if m.Latency == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Latency is required")
 	}
 
 	// Validate Id (default max size: 32768 bytes)
@@ -8628,6 +8657,11 @@ func ValidateAdminMethodLatency(m *AdminMethodLatency) error {
 		return nil
 	}
 
+	// Validate Latency (assert_required)
+	if m.Latency == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Latency is required")
+	}
+
 	// Validate Method (default max size: 32768 bytes)
 	if len(m.Method) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Method exceeds max size of 32768 bytes, got: %d", len(m.Method))
@@ -8818,6 +8852,11 @@ func ValidateMapEmpty(m *MapEmpty) error {
 }
 
 // ============================================================
+// Constants
+// ============================================================
+const ()
+
+// ============================================================
 // Capacity Constants (for utilization monitoring)
 // ============================================================
 const (
@@ -8875,6 +8914,825 @@ const (
 	MaxSizeAdminmutationrateBoundary               int = 32768
 	MaxSizeAdminmutationrateNodeId                 int = 32768
 )
+
+// ============================================================
+// TypeDefaults: Config
+// ============================================================
+// ConfigDefaults applies field-level default values to zero-valued fields.
+func ConfigDefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SentinelState
+// ============================================================
+// SentinelStateDefaults applies field-level default values to zero-valued fields.
+func SentinelStateDefaults(v *SentinelState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: WatchDashboardRequest
+// ============================================================
+// WatchDashboardRequestDefaults applies field-level default values to zero-valued fields.
+func WatchDashboardRequestDefaults(v *WatchDashboardRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NodeMetricsResponse
+// ============================================================
+// NodeMetricsResponseDefaults applies field-level default values to zero-valued fields.
+func NodeMetricsResponseDefaults(v *NodeMetricsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: GrpcStatsResponse
+// ============================================================
+// GrpcStatsResponseDefaults applies field-level default values to zero-valued fields.
+func GrpcStatsResponseDefaults(v *GrpcStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PersistenceStatusResponse
+// ============================================================
+// PersistenceStatusResponseDefaults applies field-level default values to zero-valued fields.
+func PersistenceStatusResponseDefaults(v *PersistenceStatusResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NetworkStatsResponse
+// ============================================================
+// NetworkStatsResponseDefaults applies field-level default values to zero-valued fields.
+func NetworkStatsResponseDefaults(v *NetworkStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ThreadInfoResponse
+// ============================================================
+// ThreadInfoResponseDefaults applies field-level default values to zero-valued fields.
+func ThreadInfoResponseDefaults(v *ThreadInfoResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenCacheStatsResponse
+// ============================================================
+// TokenCacheStatsResponseDefaults applies field-level default values to zero-valued fields.
+func TokenCacheStatsResponseDefaults(v *TokenCacheStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapStatsResponse
+// ============================================================
+// MapStatsResponseDefaults applies field-level default values to zero-valued fields.
+func MapStatsResponseDefaults(v *MapStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: DashboardResponse
+// ============================================================
+// DashboardResponseDefaults applies field-level default values to zero-valued fields.
+func DashboardResponseDefaults(v *DashboardResponse) {
+	if v == nil {
+		return
+	}
+	if v.ClusterInfo == nil {
+		v.ClusterInfo = &AdminClusterInfo{}
+	}
+	if v.ClusterHealth == nil {
+		v.ClusterHealth = &AdminClusterHealth{}
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminClusterInfo
+// ============================================================
+// AdminClusterInfoDefaults applies field-level default values to zero-valued fields.
+func AdminClusterInfoDefaults(v *AdminClusterInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMember
+// ============================================================
+// AdminMemberDefaults applies field-level default values to zero-valued fields.
+func AdminMemberDefaults(v *AdminMember) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminClusterHealth
+// ============================================================
+// AdminClusterHealthDefaults applies field-level default values to zero-valued fields.
+func AdminClusterHealthDefaults(v *AdminClusterHealth) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminNodeMetrics
+// ============================================================
+// AdminNodeMetricsDefaults applies field-level default values to zero-valued fields.
+func AdminNodeMetricsDefaults(v *AdminNodeMetrics) {
+	if v == nil {
+		return
+	}
+	if v.Memory == nil {
+		v.Memory = &AdminMemoryMetrics{}
+	}
+	if v.Cpu == nil {
+		v.Cpu = &AdminCpuMetrics{}
+	}
+	if v.Disk == nil {
+		v.Disk = &AdminDiskMetrics{}
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMemoryMetrics
+// ============================================================
+// AdminMemoryMetricsDefaults applies field-level default values to zero-valued fields.
+func AdminMemoryMetricsDefaults(v *AdminMemoryMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminCpuMetrics
+// ============================================================
+// AdminCpuMetricsDefaults applies field-level default values to zero-valued fields.
+func AdminCpuMetricsDefaults(v *AdminCpuMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminDiskMetrics
+// ============================================================
+// AdminDiskMetricsDefaults applies field-level default values to zero-valued fields.
+func AdminDiskMetricsDefaults(v *AdminDiskMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminGraphInfo
+// ============================================================
+// AdminGraphInfoDefaults applies field-level default values to zero-valued fields.
+func AdminGraphInfoDefaults(v *AdminGraphInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminServiceConnection
+// ============================================================
+// AdminServiceConnectionDefaults applies field-level default values to zero-valued fields.
+func AdminServiceConnectionDefaults(v *AdminServiceConnection) {
+	if v == nil {
+		return
+	}
+	if v.Latency == nil {
+		v.Latency = &AdminLatencyStats{}
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminPeerActivity
+// ============================================================
+// AdminPeerActivityDefaults applies field-level default values to zero-valued fields.
+func AdminPeerActivityDefaults(v *AdminPeerActivity) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMapStats
+// ============================================================
+// AdminMapStatsDefaults applies field-level default values to zero-valued fields.
+func AdminMapStatsDefaults(v *AdminMapStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminGrpcStats
+// ============================================================
+// AdminGrpcStatsDefaults applies field-level default values to zero-valued fields.
+func AdminGrpcStatsDefaults(v *AdminGrpcStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminPersistenceStatus
+// ============================================================
+// AdminPersistenceStatusDefaults applies field-level default values to zero-valued fields.
+func AdminPersistenceStatusDefaults(v *AdminPersistenceStatus) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminNetworkStats
+// ============================================================
+// AdminNetworkStatsDefaults applies field-level default values to zero-valued fields.
+func AdminNetworkStatsDefaults(v *AdminNetworkStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMemberConnection
+// ============================================================
+// AdminMemberConnectionDefaults applies field-level default values to zero-valued fields.
+func AdminMemberConnectionDefaults(v *AdminMemberConnection) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminThreadInfo
+// ============================================================
+// AdminThreadInfoDefaults applies field-level default values to zero-valued fields.
+func AdminThreadInfoDefaults(v *AdminThreadInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminTokenCacheStats
+// ============================================================
+// AdminTokenCacheStatsDefaults applies field-level default values to zero-valued fields.
+func AdminTokenCacheStatsDefaults(v *AdminTokenCacheStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminLatencyStats
+// ============================================================
+// AdminLatencyStatsDefaults applies field-level default values to zero-valued fields.
+func AdminLatencyStatsDefaults(v *AdminLatencyStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMethodLatency
+// ============================================================
+// AdminMethodLatencyDefaults applies field-level default values to zero-valued fields.
+func AdminMethodLatencyDefaults(v *AdminMethodLatency) {
+	if v == nil {
+		return
+	}
+	if v.Latency == nil {
+		v.Latency = &AdminLatencyStats{}
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMethodPayload
+// ============================================================
+// AdminMethodPayloadDefaults applies field-level default values to zero-valued fields.
+func AdminMethodPayloadDefaults(v *AdminMethodPayload) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminQueueStats
+// ============================================================
+// AdminQueueStatsDefaults applies field-level default values to zero-valued fields.
+func AdminQueueStatsDefaults(v *AdminQueueStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminTopicStats
+// ============================================================
+// AdminTopicStatsDefaults applies field-level default values to zero-valued fields.
+func AdminTopicStatsDefaults(v *AdminTopicStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminTopicSubscriber
+// ============================================================
+// AdminTopicSubscriberDefaults applies field-level default values to zero-valued fields.
+func AdminTopicSubscriberDefaults(v *AdminTopicSubscriber) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminWatchHealth
+// ============================================================
+// AdminWatchHealthDefaults applies field-level default values to zero-valued fields.
+func AdminWatchHealthDefaults(v *AdminWatchHealth) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AdminMutationRate
+// ============================================================
+// AdminMutationRateDefaults applies field-level default values to zero-valued fields.
+func AdminMutationRateDefaults(v *AdminMutationRate) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SentinelConfigState
+// ============================================================
+// SentinelConfigStateDefaults applies field-level default values to zero-valued fields.
+func SentinelConfigStateDefaults(v *SentinelConfigState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Config
+// ============================================================
+// ConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConfigUndefaults(v *Config) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SentinelState
+// ============================================================
+// SentinelStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SentinelStateUndefaults(v *SentinelState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: WatchDashboardRequest
+// ============================================================
+// WatchDashboardRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func WatchDashboardRequestUndefaults(v *WatchDashboardRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NodeMetricsResponse
+// ============================================================
+// NodeMetricsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NodeMetricsResponseUndefaults(v *NodeMetricsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: GrpcStatsResponse
+// ============================================================
+// GrpcStatsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func GrpcStatsResponseUndefaults(v *GrpcStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PersistenceStatusResponse
+// ============================================================
+// PersistenceStatusResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PersistenceStatusResponseUndefaults(v *PersistenceStatusResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NetworkStatsResponse
+// ============================================================
+// NetworkStatsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NetworkStatsResponseUndefaults(v *NetworkStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ThreadInfoResponse
+// ============================================================
+// ThreadInfoResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ThreadInfoResponseUndefaults(v *ThreadInfoResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenCacheStatsResponse
+// ============================================================
+// TokenCacheStatsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenCacheStatsResponseUndefaults(v *TokenCacheStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapStatsResponse
+// ============================================================
+// MapStatsResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapStatsResponseUndefaults(v *MapStatsResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: DashboardResponse
+// ============================================================
+// DashboardResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func DashboardResponseUndefaults(v *DashboardResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminClusterInfo
+// ============================================================
+// AdminClusterInfoUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminClusterInfoUndefaults(v *AdminClusterInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMember
+// ============================================================
+// AdminMemberUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMemberUndefaults(v *AdminMember) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminClusterHealth
+// ============================================================
+// AdminClusterHealthUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminClusterHealthUndefaults(v *AdminClusterHealth) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminNodeMetrics
+// ============================================================
+// AdminNodeMetricsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminNodeMetricsUndefaults(v *AdminNodeMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMemoryMetrics
+// ============================================================
+// AdminMemoryMetricsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMemoryMetricsUndefaults(v *AdminMemoryMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminCpuMetrics
+// ============================================================
+// AdminCpuMetricsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminCpuMetricsUndefaults(v *AdminCpuMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminDiskMetrics
+// ============================================================
+// AdminDiskMetricsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminDiskMetricsUndefaults(v *AdminDiskMetrics) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminGraphInfo
+// ============================================================
+// AdminGraphInfoUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminGraphInfoUndefaults(v *AdminGraphInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminServiceConnection
+// ============================================================
+// AdminServiceConnectionUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminServiceConnectionUndefaults(v *AdminServiceConnection) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminPeerActivity
+// ============================================================
+// AdminPeerActivityUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminPeerActivityUndefaults(v *AdminPeerActivity) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMapStats
+// ============================================================
+// AdminMapStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMapStatsUndefaults(v *AdminMapStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminGrpcStats
+// ============================================================
+// AdminGrpcStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminGrpcStatsUndefaults(v *AdminGrpcStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminPersistenceStatus
+// ============================================================
+// AdminPersistenceStatusUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminPersistenceStatusUndefaults(v *AdminPersistenceStatus) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminNetworkStats
+// ============================================================
+// AdminNetworkStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminNetworkStatsUndefaults(v *AdminNetworkStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMemberConnection
+// ============================================================
+// AdminMemberConnectionUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMemberConnectionUndefaults(v *AdminMemberConnection) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminThreadInfo
+// ============================================================
+// AdminThreadInfoUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminThreadInfoUndefaults(v *AdminThreadInfo) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminTokenCacheStats
+// ============================================================
+// AdminTokenCacheStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminTokenCacheStatsUndefaults(v *AdminTokenCacheStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminLatencyStats
+// ============================================================
+// AdminLatencyStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminLatencyStatsUndefaults(v *AdminLatencyStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMethodLatency
+// ============================================================
+// AdminMethodLatencyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMethodLatencyUndefaults(v *AdminMethodLatency) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMethodPayload
+// ============================================================
+// AdminMethodPayloadUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMethodPayloadUndefaults(v *AdminMethodPayload) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminQueueStats
+// ============================================================
+// AdminQueueStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminQueueStatsUndefaults(v *AdminQueueStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminTopicStats
+// ============================================================
+// AdminTopicStatsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminTopicStatsUndefaults(v *AdminTopicStats) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminTopicSubscriber
+// ============================================================
+// AdminTopicSubscriberUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminTopicSubscriberUndefaults(v *AdminTopicSubscriber) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminWatchHealth
+// ============================================================
+// AdminWatchHealthUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminWatchHealthUndefaults(v *AdminWatchHealth) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AdminMutationRate
+// ============================================================
+// AdminMutationRateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AdminMutationRateUndefaults(v *AdminMutationRate) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SentinelConfigState
+// ============================================================
+// SentinelConfigStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SentinelConfigStateUndefaults(v *SentinelConfigState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
 
 // ============================================================
 // Merge: WatchDashboardRequest

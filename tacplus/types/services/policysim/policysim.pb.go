@@ -14,6 +14,7 @@
 package policysim
 
 import (
+	filesystem "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/filesystem"
 	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -228,8 +229,8 @@ func (x *SimulatedServiceEntitlement) GetRpcs() []string {
 // EvaluatePolicyRequest evaluates an arbitrary OPA Rego policy.
 type EvaluatePolicyRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// rego_source is the Rego policy source code.
-	RegoSource string `protobuf:"bytes,1,opt,name=rego_source,json=regoSource,proto3" json:"rego_source,omitempty"`
+	// rego_bundle is the directory tree containing .rego policy files.
+	RegoBundle *filesystem.Directory `protobuf:"bytes,1,opt,name=rego_bundle,json=regoBundle,proto3" json:"rego_bundle,omitempty"`
 	// input_json is JSON-encoded input for the policy.
 	InputJson string `protobuf:"bytes,2,opt,name=input_json,json=inputJson,proto3" json:"input_json,omitempty"`
 	// query is the Rego query to evaluate. Default: "data.authz.allow".
@@ -270,11 +271,11 @@ func (*EvaluatePolicyRequest) Descriptor() ([]byte, []int) {
 	return file_services_policysim_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *EvaluatePolicyRequest) GetRegoSource() string {
+func (x *EvaluatePolicyRequest) GetRegoBundle() *filesystem.Directory {
 	if x != nil {
-		return x.RegoSource
+		return x.RegoBundle
 	}
-	return ""
+	return nil
 }
 
 func (x *EvaluatePolicyRequest) GetInputJson() string {
@@ -448,7 +449,7 @@ var File_services_policysim_proto protoreflect.FileDescriptor
 
 const file_services_policysim_proto_rawDesc = "" +
 	"\n" +
-	"\x18services/policysim.proto\x12\tpolicysim\x1a\x0flibs/spec.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x1b\n" +
+	"\x18services/policysim.proto\x12\tpolicysim\x1a\x0flibs/spec.proto\x1a\x15libs/filesystem.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x1b\n" +
 	"\x06Config:\x11Ҩ\x1d\r\n" +
 	"\tpolicysim\x10\v\"J\n" +
 	"\x1bSimulateEntitlementsRequest\x12+\n" +
@@ -460,11 +461,10 @@ const file_services_policysim_proto_rawDesc = "" +
 	"\fentitlements\x18\x02 \x03(\v2&.policysim.SimulatedServiceEntitlementR\fentitlements\"T\n" +
 	"\x1bSimulatedServiceEntitlement\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x12\n" +
-	"\x04rpcs\x18\x02 \x03(\tR\x04rpcs\"\xb1\x01\n" +
-	"\x15EvaluatePolicyRequest\x12+\n" +
-	"\vrego_source\x18\x01 \x01(\tB\n" +
-	"\x88\xa6\x1d\x01\x90\xa7\x1d\x80\x80\x04R\n" +
-	"regoSource\x12)\n" +
+	"\x04rpcs\x18\x02 \x03(\tR\x04rpcs\"\xc2\x01\n" +
+	"\x15EvaluatePolicyRequest\x12<\n" +
+	"\vrego_bundle\x18\x01 \x01(\v2\x15.filesystem.DirectoryB\x04\x88\xa6\x1d\x01R\n" +
+	"regoBundle\x12)\n" +
 	"\n" +
 	"input_json\x18\x02 \x01(\tB\n" +
 	"\x88\xa6\x1d\x01\x90\xa7\x1d\x80\x80\x04R\tinputJson\x12\x1b\n" +
@@ -478,10 +478,10 @@ const file_services_policysim_proto_rawDesc = "" +
 	"\x14PolicysimConfigState\x123\n" +
 	"\x06config\x18\x01 \x01(\v2\x11.policysim.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x1c\x9a\xa8\x1d\x14PolicysimConfigState\xa0\xa8\x1d\x02\"\n" +
 	"\n" +
-	"\bMapEmpty2\xbd\x02\n" +
+	"\bMapEmpty2\xc1\x02\n" +
 	"\x10PolicySimService\x12\x9b\x01\n" +
 	"\x14SimulateEntitlements\x12&.policysim.SimulateEntitlementsRequest\x1a'.policysim.SimulateEntitlementsResponse\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/policysim/v1/simulate-entitlements\x12|\n" +
-	"\x0eEvaluatePolicy\x12 .policysim.EvaluatePolicyRequest\x1a!.policysim.EvaluatePolicyResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/policysim/v1/evaluate\x1a\r\xa2\x97\"\tpolicysim2\xcb\x01\n" +
+	"\x0eEvaluatePolicy\x12 .policysim.EvaluatePolicyRequest\x1a!.policysim.EvaluatePolicyResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/policysim/v1/evaluate\x1a\x11\xa2\x97\"\tpolicysimЗ\"\x012\xcb\x01\n" +
 	"\"PolicysimConfigStateBackendService\x126\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x11.policysim.Config\x121\n" +
 	"\tSetConfig\x12\x11.policysim.Config\x1a\x11.policysim.Config\x12:\n" +
@@ -509,26 +509,28 @@ var file_services_policysim_proto_goTypes = []any{
 	(*EvaluatePolicyResponse)(nil),       // 5: policysim.EvaluatePolicyResponse
 	(*PolicysimConfigState)(nil),         // 6: policysim.PolicysimConfigState
 	(*MapEmpty)(nil),                     // 7: policysim.MapEmpty
-	(*emptypb.Empty)(nil),                // 8: google.protobuf.Empty
+	(*filesystem.Directory)(nil),         // 8: filesystem.Directory
+	(*emptypb.Empty)(nil),                // 9: google.protobuf.Empty
 }
 var file_services_policysim_proto_depIdxs = []int32{
 	3, // 0: policysim.SimulateEntitlementsResponse.entitlements:type_name -> policysim.SimulatedServiceEntitlement
-	0, // 1: policysim.PolicysimConfigState.config:type_name -> policysim.Config
-	1, // 2: policysim.PolicySimService.SimulateEntitlements:input_type -> policysim.SimulateEntitlementsRequest
-	4, // 3: policysim.PolicySimService.EvaluatePolicy:input_type -> policysim.EvaluatePolicyRequest
-	8, // 4: policysim.PolicysimConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
-	0, // 5: policysim.PolicysimConfigStateBackendService.SetConfig:input_type -> policysim.Config
-	8, // 6: policysim.PolicysimConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
-	2, // 7: policysim.PolicySimService.SimulateEntitlements:output_type -> policysim.SimulateEntitlementsResponse
-	5, // 8: policysim.PolicySimService.EvaluatePolicy:output_type -> policysim.EvaluatePolicyResponse
-	0, // 9: policysim.PolicysimConfigStateBackendService.GetConfig:output_type -> policysim.Config
-	0, // 10: policysim.PolicysimConfigStateBackendService.SetConfig:output_type -> policysim.Config
-	0, // 11: policysim.PolicysimConfigStateBackendService.WatchConfig:output_type -> policysim.Config
-	7, // [7:12] is the sub-list for method output_type
-	2, // [2:7] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	8, // 1: policysim.EvaluatePolicyRequest.rego_bundle:type_name -> filesystem.Directory
+	0, // 2: policysim.PolicysimConfigState.config:type_name -> policysim.Config
+	1, // 3: policysim.PolicySimService.SimulateEntitlements:input_type -> policysim.SimulateEntitlementsRequest
+	4, // 4: policysim.PolicySimService.EvaluatePolicy:input_type -> policysim.EvaluatePolicyRequest
+	9, // 5: policysim.PolicysimConfigStateBackendService.GetConfig:input_type -> google.protobuf.Empty
+	0, // 6: policysim.PolicysimConfigStateBackendService.SetConfig:input_type -> policysim.Config
+	9, // 7: policysim.PolicysimConfigStateBackendService.WatchConfig:input_type -> google.protobuf.Empty
+	2, // 8: policysim.PolicySimService.SimulateEntitlements:output_type -> policysim.SimulateEntitlementsResponse
+	5, // 9: policysim.PolicySimService.EvaluatePolicy:output_type -> policysim.EvaluatePolicyResponse
+	0, // 10: policysim.PolicysimConfigStateBackendService.GetConfig:output_type -> policysim.Config
+	0, // 11: policysim.PolicysimConfigStateBackendService.SetConfig:output_type -> policysim.Config
+	0, // 12: policysim.PolicysimConfigStateBackendService.WatchConfig:output_type -> policysim.Config
+	8, // [8:13] is the sub-list for method output_type
+	3, // [3:8] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_services_policysim_proto_init() }

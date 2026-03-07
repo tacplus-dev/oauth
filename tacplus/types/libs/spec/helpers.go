@@ -539,6 +539,128 @@ func UrlSchemeToSpecName(v UrlScheme) string {
 	}
 }
 
+// SqlPermitValues returns all valid SqlPermit values (excluding UNDEFINED)
+func SqlPermitValues() []SqlPermit {
+	return []SqlPermit{
+		SqlPermit_SQL_PERMIT_SELECT,
+		SqlPermit_SQL_PERMIT_DML,
+		SqlPermit_SQL_PERMIT_DDL,
+		SqlPermit_SQL_PERMIT_ANY,
+	}
+}
+
+// SqlPermitStringValues returns all valid SqlPermit names as strings
+func SqlPermitStringValues() []string {
+	return []string{"select", "dml", "ddl", "any"}
+}
+
+// ParseSqlPermit converts a string to a SqlPermit enum value
+// Accepts both hyphen and underscore formats for compatibility (case-insensitive)
+func ParseSqlPermit(s string) (SqlPermit, error) {
+	// Normalize: convert to lowercase and replace underscores with hyphens for case-insensitive comparison
+	normalized := strings.ReplaceAll(strings.ToLower(s), "_", "-")
+	switch normalized {
+	case "":
+		return SqlPermit_SQL_PERMIT_UNSPECIFIED, nil
+	case "select", "sql-permit-select":
+		return SqlPermit_SQL_PERMIT_SELECT, nil
+	case "dml", "sql-permit-dml":
+		return SqlPermit_SQL_PERMIT_DML, nil
+	case "ddl", "sql-permit-ddl":
+		return SqlPermit_SQL_PERMIT_DDL, nil
+	case "any", "sql-permit-any":
+		return SqlPermit_SQL_PERMIT_ANY, nil
+	default:
+		return SqlPermit_SQL_PERMIT_UNSPECIFIED, protoerrors.NewErrMissingInvalidData(nil, "invalid sqlpermit %s, expecting one of: %v", s, SqlPermitStringValues())
+	}
+}
+
+// ParseSqlPermits converts a comma-separated string to a slice of SqlPermit enum values
+// Returns an error if any value is invalid
+func ParseSqlPermits(s string) ([]SqlPermit, error) {
+	if s == "" {
+		return nil, nil
+	}
+	parts := strings.Split(s, ",")
+	result := make([]SqlPermit, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		val, err := ParseSqlPermit(trimmed)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, val)
+	}
+	return result, nil
+}
+
+// SqlPermitToString converts a SqlPermit to its lowercase string representation
+func SqlPermitToString(v SqlPermit) string {
+	switch v {
+	case SqlPermit_SQL_PERMIT_SELECT:
+		return "select"
+	case SqlPermit_SQL_PERMIT_DML:
+		return "dml"
+	case SqlPermit_SQL_PERMIT_DDL:
+		return "ddl"
+	case SqlPermit_SQL_PERMIT_ANY:
+		return "any"
+	default:
+		return ""
+	}
+}
+
+// ParseSqlPermitLiberal parses a SqlPermit liberally, accepting:
+// - Integer values (as string or int)
+// - Enum names in any case
+// - RFC-compliant JSON names
+func ParseSqlPermitLiberal(s string) SqlPermit {
+	if s == "" {
+		return SqlPermit_SQL_PERMIT_UNSPECIFIED
+	}
+	// Try parsing as integer
+	if num, err := strconv.Atoi(s); err == nil {
+		return SqlPermit(num)
+	}
+	// Normalize and try parsing
+	normalized := strings.ToLower(strings.TrimSpace(s))
+	normalized = strings.ReplaceAll(normalized, "_", "-")
+	normalized = strings.ReplaceAll(normalized, " ", "-")
+	switch normalized {
+	case "select", "sql-permit-select":
+		return SqlPermit_SQL_PERMIT_SELECT
+	case "dml", "sql-permit-dml":
+		return SqlPermit_SQL_PERMIT_DML
+	case "ddl", "sql-permit-ddl":
+		return SqlPermit_SQL_PERMIT_DDL
+	case "any", "sql-permit-any":
+		return SqlPermit_SQL_PERMIT_ANY
+	default:
+		return SqlPermit_SQL_PERMIT_UNSPECIFIED
+	}
+}
+
+// SqlPermitToSpecName converts a SqlPermit to its canonical protobuf spec name
+func SqlPermitToSpecName(v SqlPermit) string {
+	switch v {
+	case SqlPermit_SQL_PERMIT_UNSPECIFIED:
+		return "SQL_PERMIT_UNSPECIFIED"
+	case SqlPermit_SQL_PERMIT_SELECT:
+		return "SQL_PERMIT_SELECT"
+	case SqlPermit_SQL_PERMIT_DML:
+		return "SQL_PERMIT_DML"
+	case SqlPermit_SQL_PERMIT_DDL:
+		return "SQL_PERMIT_DDL"
+	case SqlPermit_SQL_PERMIT_ANY:
+		return "SQL_PERMIT_ANY"
+	default:
+		return ""
+	}
+}
+
 // DurationTypeValues returns all valid DurationType values (excluding UNDEFINED)
 func DurationTypeValues() []DurationType {
 	return []DurationType{
@@ -4654,6 +4776,342 @@ const (
 	MaxSizeSortfieldFieldName                  int = 32768
 	MaxSizeLockId                              int = 32768
 )
+
+// ============================================================
+// TypeDefaults: StringConst
+// ============================================================
+// StringConstDefaults applies field-level default values to zero-valued fields.
+func StringConstDefaults(v *StringConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: IntConst
+// ============================================================
+// IntConstDefaults applies field-level default values to zero-valued fields.
+func IntConstDefaults(v *IntConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: FloatConst
+// ============================================================
+// FloatConstDefaults applies field-level default values to zero-valued fields.
+func FloatConstDefaults(v *FloatConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: BoolConst
+// ============================================================
+// BoolConstDefaults applies field-level default values to zero-valued fields.
+func BoolConstDefaults(v *BoolConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: NumericConstraint
+// ============================================================
+// NumericConstraintDefaults applies field-level default values to zero-valued fields.
+func NumericConstraintDefaults(v *NumericConstraint) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: FloatConstraint
+// ============================================================
+// FloatConstraintDefaults applies field-level default values to zero-valued fields.
+func FloatConstraintDefaults(v *FloatConstraint) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ParamMapConfig
+// ============================================================
+// ParamMapConfigDefaults applies field-level default values to zero-valued fields.
+func ParamMapConfigDefaults(v *ParamMapConfig) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: ConditionalRequirement
+// ============================================================
+// ConditionalRequirementDefaults applies field-level default values to zero-valued fields.
+func ConditionalRequirementDefaults(v *ConditionalRequirement) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: FrontendConfigAnnotation
+// ============================================================
+// FrontendConfigAnnotationDefaults applies field-level default values to zero-valued fields.
+func FrontendConfigAnnotationDefaults(v *FrontendConfigAnnotation) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: BackendPerms
+// ============================================================
+// BackendPermsDefaults applies field-level default values to zero-valued fields.
+func BackendPermsDefaults(v *BackendPerms) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: QueryValue
+// ============================================================
+// QueryValueDefaults applies field-level default values to zero-valued fields.
+func QueryValueDefaults(v *QueryValue) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Predicate
+// ============================================================
+// PredicateDefaults applies field-level default values to zero-valued fields.
+func PredicateDefaults(v *Predicate) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: PredicateGroup
+// ============================================================
+// PredicateGroupDefaults applies field-level default values to zero-valued fields.
+func PredicateGroupDefaults(v *PredicateGroup) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: SortField
+// ============================================================
+// SortFieldDefaults applies field-level default values to zero-valued fields.
+func SortFieldDefaults(v *SortField) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CollectionQuery
+// ============================================================
+// CollectionQueryDefaults applies field-level default values to zero-valued fields.
+func CollectionQueryDefaults(v *CollectionQuery) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Lock
+// ============================================================
+// LockDefaults applies field-level default values to zero-valued fields.
+func LockDefaults(v *Lock) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: StringConst
+// ============================================================
+// StringConstUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func StringConstUndefaults(v *StringConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: IntConst
+// ============================================================
+// IntConstUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func IntConstUndefaults(v *IntConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: FloatConst
+// ============================================================
+// FloatConstUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func FloatConstUndefaults(v *FloatConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: BoolConst
+// ============================================================
+// BoolConstUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func BoolConstUndefaults(v *BoolConst) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: NumericConstraint
+// ============================================================
+// NumericConstraintUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func NumericConstraintUndefaults(v *NumericConstraint) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: FloatConstraint
+// ============================================================
+// FloatConstraintUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func FloatConstraintUndefaults(v *FloatConstraint) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ParamMapConfig
+// ============================================================
+// ParamMapConfigUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ParamMapConfigUndefaults(v *ParamMapConfig) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: ConditionalRequirement
+// ============================================================
+// ConditionalRequirementUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ConditionalRequirementUndefaults(v *ConditionalRequirement) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: FrontendConfigAnnotation
+// ============================================================
+// FrontendConfigAnnotationUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func FrontendConfigAnnotationUndefaults(v *FrontendConfigAnnotation) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: BackendPerms
+// ============================================================
+// BackendPermsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func BackendPermsUndefaults(v *BackendPerms) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: QueryValue
+// ============================================================
+// QueryValueUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func QueryValueUndefaults(v *QueryValue) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Predicate
+// ============================================================
+// PredicateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PredicateUndefaults(v *Predicate) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: PredicateGroup
+// ============================================================
+// PredicateGroupUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func PredicateGroupUndefaults(v *PredicateGroup) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: SortField
+// ============================================================
+// SortFieldUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func SortFieldUndefaults(v *SortField) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CollectionQuery
+// ============================================================
+// CollectionQueryUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CollectionQueryUndefaults(v *CollectionQuery) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Lock
+// ============================================================
+// LockUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func LockUndefaults(v *Lock) {
+	if v == nil {
+		return
+	}
+}
 
 // ============================================================
 // Merge: StringConst

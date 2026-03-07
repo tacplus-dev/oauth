@@ -104,11 +104,13 @@ func (sm *ServiceManager) Run(h Handler) error {
 	if err != nil {
 		return fmt.Errorf("fetch runtime config: %w", err)
 	}
+	serviceconfig_pb.ConfigDefaults(runtimeCfg)
 
 	// Override runtime config with local config file values (e.g., listen_address).
 	// Local config takes precedence — zero-valued local fields fall back to runtime.
 	localCfg, _ := serviceconfig.LoadLocalConfig()
 	if localCfg != nil {
+		serviceconfig_pb.ConfigDefaults(localCfg)
 		serviceconfig_pb.MergeConfig(localCfg, runtimeCfg)
 		runtimeCfg = localCfg
 	}
@@ -124,12 +126,13 @@ func (sm *ServiceManager) Run(h Handler) error {
 		zap.L().Info("Runtime config updated")
 	})
 
-	// 3. Fetch initial typed config from config_holder.
+	// 3. Fetch initial typed config from config state boundary.
 	configHolder := sm.bc.Services().SentinelConfigState()
 	typedConfig, err := configHolder.Config().Fetch(sm.ctx)
 	if err != nil {
 		return fmt.Errorf("fetch config: %w", err)
 	}
+	pb.ConfigDefaults(typedConfig)
 
 	// Deliver initial config.
 	if err := h.HandleConfig(typedConfig); err != nil {
@@ -151,6 +154,7 @@ func (sm *ServiceManager) Run(h Handler) error {
 	// Wire typed config changes: notify handler only (infrastructure config
 	// comes from BootstrapConfig, runtime config from ServiceConfigState).
 	configHolder.Config().OnChange(func(newCfg *pb.Config) {
+		pb.ConfigDefaults(newCfg)
 		if err := h.HandleConfig(newCfg); err != nil {
 			zap.L().Error("HandleConfig failed on update", zap.Error(err))
 		}

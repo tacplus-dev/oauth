@@ -320,3 +320,45 @@ func ValidateMapEmpty(m *MapEmpty) error {
 	// No field validations defined
 	return nil
 }
+
+// ============================================================
+// TypeDefaults: OrchestratorState
+// ============================================================
+// OrchestratorStateDefaults applies field-level default values to zero-valued fields.
+func OrchestratorStateDefaults(v *OrchestratorState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: MapEmpty
+// ============================================================
+// MapEmptyDefaults applies field-level default values to zero-valued fields.
+func MapEmptyDefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: OrchestratorState
+// ============================================================
+// OrchestratorStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func OrchestratorStateUndefaults(v *OrchestratorState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: MapEmpty
+// ============================================================
+// MapEmptyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func MapEmptyUndefaults(v *MapEmpty) {
+	if v == nil {
+		return
+	}
+}

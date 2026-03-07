@@ -1691,6 +1691,69 @@ const (
 )
 
 // ============================================================
+// TypeDefaults: Token
+// ============================================================
+// TokenDefaults applies field-level default values to zero-valued fields.
+func TokenDefaults(v *Token) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: Exchange
+// ============================================================
+// ExchangeDefaults applies field-level default values to zero-valued fields.
+func ExchangeDefaults(v *Exchange) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: TokenRequestParams
+// ============================================================
+// TokenRequestParamsDefaults applies field-level default values to zero-valued fields.
+func TokenRequestParamsDefaults(v *TokenRequestParams) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Token
+// ============================================================
+// TokenUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenUndefaults(v *Token) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: Exchange
+// ============================================================
+// ExchangeUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func ExchangeUndefaults(v *Exchange) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: TokenRequestParams
+// ============================================================
+// TokenRequestParamsUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func TokenRequestParamsUndefaults(v *TokenRequestParams) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // Merge: Token
 // ============================================================
 // MergeToken fills zero-valued fields in dst from src.

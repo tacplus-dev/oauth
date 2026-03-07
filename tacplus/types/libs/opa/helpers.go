@@ -20,6 +20,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	filesystem "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/filesystem"
 	utils "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/utils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -33,12 +34,11 @@ import (
 // OpaPolicyJSON represents OpaPolicy in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type opapolicyJSON struct {
-	EntryPoint string `json:"entry_point,omitempty"`
-	Bundle     string `json:"bundle,omitempty"`
-	Created    int64  `json:"created,omitempty"`
-	Version    string `json:"version,omitempty"`
-	Source     string `json:"source,omitempty"`
-	Issuer     string `json:"issuer,omitempty"`
+	EntryPoint string          `json:"entry_point,omitempty"`
+	Bundle     json.RawMessage `json:"bundle,omitempty"`
+	Created    int64           `json:"created,omitempty"`
+	Version    string          `json:"version,omitempty"`
+	Issuer     string          `json:"issuer,omitempty"`
 }
 
 // OpaPolicyToJSON converts OpaPolicy to JSON bytes.
@@ -50,11 +50,16 @@ func OpaPolicyToJSON(v *OpaPolicy) ([]byte, error) {
 	// Convert to JSON helper struct with string enums
 	helper := opapolicyJSON{
 		EntryPoint: v.EntryPoint,
-		Bundle:     v.Bundle,
-		Created:    v.Created,
-		Version:    v.Version,
-		Source:     v.Source,
-		Issuer:     v.Issuer,
+		Bundle: func() json.RawMessage {
+			if v.Bundle == nil {
+				return nil
+			}
+			data, _ := filesystem.DirectoryToJSON(v.Bundle)
+			return data
+		}(),
+		Created: v.Created,
+		Version: v.Version,
+		Issuer:  v.Issuer,
 	}
 	return json.Marshal(helper)
 }
@@ -120,10 +125,15 @@ func OpaPolicyFromJSON(data []byte) (*OpaPolicy, error) {
 	// Build result with parsed enums
 	result := &OpaPolicy{}
 	result.EntryPoint = raw.EntryPoint
-	result.Bundle = raw.Bundle
+	// Parse message field: Bundle
+	if len(raw.Bundle) > 0 {
+		parsed, err := filesystem.DirectoryFromJSON(raw.Bundle)
+		if err == nil {
+			result.Bundle = parsed
+		}
+	}
 	result.Created = raw.Created
 	result.Version = raw.Version
-	result.Source = raw.Source
 	result.Issuer = raw.Issuer
 	return result, nil
 }
@@ -177,10 +187,13 @@ func OpaPolicyToEnvVar(v *OpaPolicy) map[string]string {
 	}
 	result := make(map[string]string)
 	result["PROTO_LIBS_OPA_OPA_POLICY_ENTRY_POINT"] = v.EntryPoint
-	result["PROTO_LIBS_OPA_OPA_POLICY_BUNDLE"] = v.Bundle
+	if v.Bundle != nil {
+		for k, val := range filesystem.DirectoryToEnvVar(v.Bundle) {
+			result[k] = val
+		}
+	}
 	result["PROTO_LIBS_OPA_OPA_POLICY_CREATED"] = strconv.FormatInt(v.Created, 10)
 	result["PROTO_LIBS_OPA_OPA_POLICY_VERSION"] = v.Version
-	result["PROTO_LIBS_OPA_OPA_POLICY_SOURCE"] = v.Source
 	result["PROTO_LIBS_OPA_OPA_POLICY_ISSUER"] = v.Issuer
 	return result
 }
@@ -191,8 +204,10 @@ func OpaPolicyFromEnvVar(env map[string]string) (*OpaPolicy, error) {
 	if val, ok := env["PROTO_LIBS_OPA_OPA_POLICY_ENTRY_POINT"]; ok && val != "" {
 		result.EntryPoint = val
 	}
-	if val, ok := env["PROTO_LIBS_OPA_OPA_POLICY_BUNDLE"]; ok && val != "" {
-		result.Bundle = val
+	if sub, err := filesystem.DirectoryFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Bundle = sub
 	}
 	if val, ok := env["PROTO_LIBS_OPA_OPA_POLICY_CREATED"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 64)
@@ -203,9 +218,6 @@ func OpaPolicyFromEnvVar(env map[string]string) (*OpaPolicy, error) {
 	}
 	if val, ok := env["PROTO_LIBS_OPA_OPA_POLICY_VERSION"]; ok && val != "" {
 		result.Version = val
-	}
-	if val, ok := env["PROTO_LIBS_OPA_OPA_POLICY_SOURCE"]; ok && val != "" {
-		result.Source = val
 	}
 	if val, ok := env["PROTO_LIBS_OPA_OPA_POLICY_ISSUER"]; ok && val != "" {
 		result.Issuer = val
@@ -233,13 +245,6 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at most 256 characters, got: %d", len(m.EntryPoint))
 	}
 
-	// Validate Bundle (assert_base64)
-	if m.Bundle != "" {
-		if err := utils.ValidateAssertBase64(m.Bundle); err != nil {
-			return protoerrors.NewErrMissingInvalidData(err, "field Bundle base64 validation failed")
-		}
-	}
-
 	// Validate Created (assert_ge: 1735689600)
 	if m.Created < 1735689600 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be >= 1735689600, got: %v", m.Created)
@@ -260,11 +265,6 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Version must be at most 64 characters, got: %d", len(m.Version))
 	}
 
-	// Validate Source (assert_max_size: 1048576 bytes)
-	if len(m.Source) > 1048576 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Source exceeds max size of 1048576 bytes, got: %d", len(m.Source))
-	}
-
 	// Validate Issuer (assert_required)
 	if m.Issuer == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
@@ -280,11 +280,6 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 	// Validate EntryPoint (default max size: 32768 bytes)
 	if len(m.EntryPoint) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint exceeds max size of 32768 bytes, got: %d", len(m.EntryPoint))
-	}
-
-	// Validate Bundle (default max size: 5242880 bytes)
-	if len(m.Bundle) > 5242880 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Bundle exceeds max size of 5242880 bytes, got: %d", len(m.Bundle))
 	}
 
 	// Validate Version (default max size: 32768 bytes)
@@ -305,11 +300,30 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 // ============================================================
 const (
 	MaxSizeOpapolicyEntryPoint int = 32768
-	MaxSizeOpapolicyBundle     int = 5242880
 	MaxSizeOpapolicyVersion    int = 32768
-	MaxSizeOpapolicySource     int = 1048576
 	MaxSizeOpapolicyIssuer     int = 32768
 )
+
+// ============================================================
+// TypeDefaults: OpaPolicy
+// ============================================================
+// OpaPolicyDefaults applies field-level default values to zero-valued fields.
+func OpaPolicyDefaults(v *OpaPolicy) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: OpaPolicy
+// ============================================================
+// OpaPolicyUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func OpaPolicyUndefaults(v *OpaPolicy) {
+	if v == nil {
+		return
+	}
+}
 
 // ============================================================
 // Merge: OpaPolicy
@@ -319,7 +333,7 @@ func MergeOpaPolicy(dst, src *OpaPolicy) {
 	if dst.EntryPoint == "" {
 		dst.EntryPoint = src.EntryPoint
 	}
-	if dst.Bundle == "" {
+	if dst.Bundle == nil {
 		dst.Bundle = src.Bundle
 	}
 	if dst.Created == 0 {
@@ -327,9 +341,6 @@ func MergeOpaPolicy(dst, src *OpaPolicy) {
 	}
 	if dst.Version == "" {
 		dst.Version = src.Version
-	}
-	if dst.Source == "" {
-		dst.Source = src.Source
 	}
 	if dst.Issuer == "" {
 		dst.Issuer = src.Issuer
@@ -344,7 +355,7 @@ func OpaPolicyLlmTypeDescriptor() string {
 	return `{
   "name": "OpaPolicy",
   "package": "opa",
-  "description": "OpaPolicy defines an OPA policy bundle for authorization evaluation.\n The bundle is a base64-encoded tar.gz containing .rego policy files.",
+  "description": "OpaPolicy defines an OPA policy bundle for authorization evaluation.\n The bundle is a filesystem.Directory tree containing .rego policy files.",
   "fields": [
     {
       "name": "entry_point",
@@ -357,12 +368,101 @@ func OpaPolicyLlmTypeDescriptor() string {
     },
     {
       "name": "bundle",
-      "type": "string",
-      "description": "bundle contains the base64-encoded OPA policy bundle (tar.gz format).\n Optional — policies can be provided as raw source instead.",
-      "constraints": [
-        "must be base64 encoded",
-        "must be a valid OPA/Rego policy"
-      ]
+      "type": "message",
+      "description": "bundle is the directory tree containing .rego policy files.",
+      "message": {
+        "name": "Directory",
+        "package": "filesystem",
+        "description": "Directory represents a directory node in a filesystem tree.\n Directories are recursive — each may contain child directories and files.",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string",
+            "description": "name is the directory name (not a path)",
+            "required": true,
+            "constraints": [
+              "maximum length: 255"
+            ]
+          },
+          {
+            "name": "permission",
+            "type": "message",
+            "description": "permission is the Unix-style permission for this directory",
+            "message": {
+              "name": "Permission",
+              "package": "filesystem",
+              "description": "Permission represents Unix-style file permissions (e.g., 755).\n Each field is a 3-bit mask: read (4) + write (2) + execute (1).",
+              "fields": [
+                {
+                  "name": "owner",
+                  "type": "uint32",
+                  "description": "owner permission bits (0-7)",
+                  "constraints": [
+                    "must be \u003e= 0",
+                    "must be \u003c= 7"
+                  ]
+                },
+                {
+                  "name": "group",
+                  "type": "uint32",
+                  "description": "group permission bits (0-7)",
+                  "constraints": [
+                    "must be \u003c= 7",
+                    "must be \u003e= 0"
+                  ]
+                },
+                {
+                  "name": "other",
+                  "type": "uint32",
+                  "description": "other permission bits (0-7)",
+                  "constraints": [
+                    "must be \u003e= 0",
+                    "must be \u003c= 7"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "directories",
+            "type": "message (recursive reference: filesystem.Directory)",
+            "description": "directories holds zero or more child directories",
+            "repeated": true
+          },
+          {
+            "name": "files",
+            "type": "message",
+            "description": "files holds zero or more files in this directory",
+            "repeated": true,
+            "message": {
+              "name": "File",
+              "package": "filesystem",
+              "description": "File represents a single file with permissions and content.",
+              "fields": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "description": "name is the file name (not a path)",
+                  "required": true,
+                  "constraints": [
+                    "maximum length: 255"
+                  ]
+                },
+                {
+                  "name": "permission",
+                  "type": "message (recursive reference: filesystem.Permission)",
+                  "description": "permission is the Unix-style permission for this file"
+                },
+                {
+                  "name": "content",
+                  "type": "bytes",
+                  "description": "content is the raw file content (max 10 MB)"
+                }
+              ]
+            }
+          }
+        ]
+      }
     },
     {
       "name": "created",
@@ -381,11 +481,6 @@ func OpaPolicyLlmTypeDescriptor() string {
         "must be a valid semantic version",
         "maximum length: 64"
       ]
-    },
-    {
-      "name": "source",
-      "type": "string",
-      "description": "source is the raw .rego policy source code. A builder can compile this\n into the bundle field (base64-encoded tar.gz). It may be a directory or\n a file"
     },
     {
       "name": "issuer",
