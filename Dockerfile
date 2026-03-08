@@ -5,7 +5,8 @@ RUN apk add --no-cache ca-certificates tzdata && \
 
 WORKDIR /app
 
-COPY bin/sentinel /app/sentinel
+ARG TARGETARCH
+COPY bin/sentinel-${TARGETARCH} /app/sentinel
 
 USER sentinel
 
