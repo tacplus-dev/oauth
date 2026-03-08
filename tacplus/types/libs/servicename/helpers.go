@@ -399,13 +399,14 @@ func IdentityServiceRPCsValues() []IdentityServiceRPCs {
 		IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_REFRESH_TOKEN,
 		IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN,
 		IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT,
+		IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY,
 		IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY,
 	}
 }
 
 // IdentityServiceRPCsStringValues returns all valid IdentityServiceRPCs names as strings
 func IdentityServiceRPCsStringValues() []string {
-	return []string{"identity-service-rpcs-list-providers", "identity-service-rpcs-authorize", "identity-service-rpcs-callback", "identity-service-rpcs-refresh-token", "identity-service-rpcs-exchange-token", "identity-service-rpcs-logout", "identity-service-rpcs-any"}
+	return []string{"identity-service-rpcs-list-providers", "identity-service-rpcs-authorize", "identity-service-rpcs-callback", "identity-service-rpcs-refresh-token", "identity-service-rpcs-exchange-token", "identity-service-rpcs-logout", "identity-service-rpcs-authenticate-api-key", "identity-service-rpcs-any"}
 }
 
 // ParseIdentityServiceRPCs converts a string to a IdentityServiceRPCs enum value
@@ -428,6 +429,8 @@ func ParseIdentityServiceRPCs(s string) (IdentityServiceRPCs, error) {
 		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN, nil
 	case "identity-service-rpcs-logout":
 		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT, nil
+	case "identity-service-rpcs-authenticate-api-key":
+		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY, nil
 	case "identity-service-rpcs-any":
 		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY, nil
 	default:
@@ -472,6 +475,8 @@ func IdentityServiceRPCsToString(v IdentityServiceRPCs) string {
 		return "identity-service-rpcs-exchange-token"
 	case IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT:
 		return "identity-service-rpcs-logout"
+	case IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY:
+		return "identity-service-rpcs-authenticate-api-key"
 	case IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY:
 		return "identity-service-rpcs-any"
 	default:
@@ -508,6 +513,8 @@ func ParseIdentityServiceRPCsLiberal(s string) IdentityServiceRPCs {
 		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN
 	case "identity-service-rpcs-logout":
 		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT
+	case "identity-service-rpcs-authenticate-api-key":
+		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY
 	case "identity-service-rpcs-any":
 		return IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY
 	default:
@@ -532,6 +539,8 @@ func IdentityServiceRPCsToSpecName(v IdentityServiceRPCs) string {
 		return "IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN"
 	case IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT:
 		return "IDENTITY_SERVICE_RPCS_LOGOUT"
+	case IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY:
+		return "IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY"
 	case IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY:
 		return "IDENTITY_SERVICE_RPCS_ANY"
 	default:

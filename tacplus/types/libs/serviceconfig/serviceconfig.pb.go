@@ -108,8 +108,8 @@ type BootstrapConfig struct {
 	// If empty, a random ID is generated at client creation time.
 	InstanceId string `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
 	// private_key is used to mint throwaway bootstrap JWTs for the
-	// CredPair token exchange flow. The kid is in private_key.id;
-	// identity (subject/audience) comes from the CredPair looked up
+	// token exchange flow. The kid is in private_key.id;
+	// identity (subject/audience) comes from the delegate looked up
 	// by TokenExchanger using the matching kid.
 	// If absent, cloud-native authentication is attempted.
 	PrivateKey *key.Key `protobuf:"bytes,3,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`

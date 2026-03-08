@@ -56,6 +56,7 @@ import "libs/jwk.proto";
 import "libs/opa.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
+import "common/tokenrequest.proto";
 // ============================================================================
 // Config
 // ============================================================================
@@ -106,6 +107,16 @@ message Config {
   // OPA entitlements_policy returns profile names; identity resolves those names
   // to concrete entitlements at token exchange time.
   repeated servicename.IdentityProfile identity_profiles = 9;
+
+  // api_keys configures machine-to-machine API key authentication.
+  // Each API key maps a JWK credential to a named identity profile,
+  // bypassing OAuth. The caller signs a JWT with the matching private key
+  // and exchanges it for a short-lived service-specific access token.
+  repeated ApiKey api_keys = 12;
+
+  // api_key_token_lifetime_seconds is the lifetime for tokens issued to API keys.
+  // Default: 300 (5 minutes). Kept short since machines can re-authenticate instantly.
+  int64 api_key_token_lifetime_seconds = 13;
 }
 
 // ============================================================================
@@ -265,13 +276,20 @@ service IdentityService {
   // access token with entitlements. The entitlements are determined by evaluating
   // the entitlements_policy (OPA) to get profile names, then resolving those
   // profiles to concrete entitlements via identity_profiles config.
-  rpc ExchangeToken(ExchangeTokenRequest) returns (ExchangeTokenResponse) {
+  rpc ExchangeToken(tokenrequest.TokenRequest) returns (ExchangeTokenResponse) {
     option (google.api.http) = { post: "/api/identity/v1/exchange" body: "*" };
   }
 
   // Logout invalidates the session and optionally redirects to the IDP logout.
   rpc Logout(LogoutRequest) returns (LogoutResponse) {
     option (google.api.http) = { post: "/api/identity/v1/logout" body: "*" };
+  }
+
+  // AuthenticateApiKey exchanges a signed JWT from a machine client for a
+  // short-lived service-specific access token with entitlements.
+  // No OAuth, no refresh token — the machine re-authenticates as needed.
+  rpc AuthenticateApiKey(AuthenticateApiKeyRequest) returns (AuthenticateApiKeyResponse) {
+    option (google.api.http) = { post: "/api/identity/v1/apikey" body: "*" };
   }
 }
 
@@ -375,21 +393,48 @@ message LogoutResponse {
   string redirect_url = 1;
 }
 
-// ExchangeTokenRequest exchanges a generic access token for a service-specific one.
-message ExchangeTokenRequest {
-  // access_token is a generic access token (no entitlements) issued by Identity.
-  string access_token = 1;
-
-  // audience is the target service name (e.g. "sentinel").
-  string audience = 2;
-}
-
 // ExchangeTokenResponse contains a service-specific access token with entitlements.
 message ExchangeTokenResponse {
   // access_token is the service-specific access token with entitlements.
   string access_token = 1;
 
   // expires_in is the access token lifetime in seconds.
+  int64 expires_in = 2;
+}
+
+// ============================================================================
+// API Key Authentication (machine-to-machine)
+// ============================================================================
+
+// ApiKey maps a JWK credential to a named identity profile for machine auth.
+// Bypasses OAuth — the caller signs a JWT with the matching private key.
+message ApiKey {
+  // name identifies this API key (becomes "sub" in issued tokens).
+  string name = 1;
+
+  // Public keys for verifying the caller's signed JWT.
+  // Repeated to allow key rotation.
+  repeated jwk.Jwk cred_pairs = 2;
+
+  // profile is the identity profile this key maps to.
+  // Must match an id in identity_profiles or a builtin profile.
+  string profile = 3;
+}
+
+// AuthenticateApiKeyRequest authenticates a machine client via API key.
+message AuthenticateApiKeyRequest {
+  // token is a JWT signed by the API key's private key.
+  // kid header must match a configured api_key cred_pair.
+  // aud claim specifies the target frontend service.
+  string token = 1;
+}
+
+// AuthenticateApiKeyResponse contains the issued access token.
+message AuthenticateApiKeyResponse {
+  // access_token is a short-lived service-specific token with entitlements.
+  string access_token = 1;
+
+  // expires_in is the token lifetime in seconds.
   int64 expires_in = 2;
 }
 

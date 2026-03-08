@@ -608,13 +608,13 @@ func ValidatePermission(m *Permission) error {
 		return nil
 	}
 
-	// Validate Owner (assert_le: 7)
-	if m.Owner > 7 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Owner must be <= 7, got: %v", m.Owner)
-	}
 	// Validate Owner (assert_ge: 0)
 	if m.Owner < 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Owner must be >= 0, got: %v", m.Owner)
+	}
+	// Validate Owner (assert_le: 7)
+	if m.Owner > 7 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Owner must be <= 7, got: %v", m.Owner)
 	}
 	// Validate Group (assert_ge: 0)
 	if m.Group < 0 {

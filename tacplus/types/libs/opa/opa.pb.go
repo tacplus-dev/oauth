@@ -41,11 +41,7 @@ type OpaPolicy struct {
 	// created is the Unix epoch timestamp (seconds) when the policy was created.
 	Created int64 `protobuf:"varint,3,opt,name=created,proto3" json:"created,omitempty"`
 	// version is an optional version string for this policy (e.g., "1.0.0").
-	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	// issuer is the required token issuer URL. Verified in code BEFORE OPA
-	// evaluation — tokens from unexpected issuers are rejected before the
-	// policy runs.
-	Issuer        string `protobuf:"bytes,6,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Version       string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -108,25 +104,17 @@ func (x *OpaPolicy) GetVersion() string {
 	return ""
 }
 
-func (x *OpaPolicy) GetIssuer() string {
-	if x != nil {
-		return x.Issuer
-	}
-	return ""
-}
-
 var File_libs_opa_proto protoreflect.FileDescriptor
 
 const file_libs_opa_proto_rawDesc = "" +
 	"\n" +
-	"\x0elibs/opa.proto\x12\x03opa\x1a\x0flibs/spec.proto\x1a\x15libs/filesystem.proto\"\xde\x01\n" +
+	"\x0elibs/opa.proto\x12\x03opa\x1a\x0flibs/spec.proto\x1a\x15libs/filesystem.proto\"\xbc\x01\n" +
 	"\tOpaPolicy\x12*\n" +
 	"\ventry_point\x18\x01 \x01(\tB\t\x88\xa7\x1d\x01\x90\xa7\x1d\x80\x02R\n" +
 	"entryPoint\x12-\n" +
 	"\x06bundle\x18\x02 \x01(\v2\x15.filesystem.DirectoryR\x06bundle\x12*\n" +
 	"\acreated\x18\x03 \x01(\x03B\x10\xb0\xa7\x1d\x80\x8bһ\x06\xc0\xa7\x1d\x80\x86\xc1\xfc\x1dR\acreated\x12\"\n" +
-	"\aversion\x18\x04 \x01(\tB\b\x90\xa7\x1d@\xe0\xa7\x1d\x01R\aversion\x12 \n" +
-	"\x06issuer\x18\x06 \x01(\tB\b\x88\xa6\x1d\x01\xa8\xa6\x1d\x02R\x06issuer:\x04\xe8\xa8\x1d\x01BQZOgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opab\x06proto3"
+	"\aversion\x18\x04 \x01(\tB\b\x90\xa7\x1d@\xe0\xa7\x1d\x01R\aversion:\x04\xe8\xa8\x1d\x01BQZOgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opab\x06proto3"
 
 var (
 	file_libs_opa_proto_rawDescOnce sync.Once

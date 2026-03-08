@@ -28,8 +28,4 @@ message OpaPolicy {
   // version is an optional version string for this policy (e.g., "1.0.0").
   string version = 4;
 
-  // issuer is the required token issuer URL. Verified in code BEFORE OPA
-  // evaluation — tokens from unexpected issuers are rejected before the
-  // policy runs.
-  string issuer = 6;
 }

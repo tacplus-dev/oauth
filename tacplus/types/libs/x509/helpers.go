@@ -1104,16 +1104,16 @@ func ValidateX509Cert(m *X509Cert) error {
 		return nil
 	}
 
-	// Validate Base64 (assert_required)
-	if m.Base64 == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Base64 is required")
-	}
-
 	// Validate Base64 (assert_base64)
 	if m.Base64 != "" {
 		if err := utils.ValidateAssertBase64(m.Base64); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Base64 base64 validation failed")
 		}
+	}
+
+	// Validate Base64 (assert_required)
+	if m.Base64 == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Base64 is required")
 	}
 
 	// Validate Id (default max size: 32768 bytes)

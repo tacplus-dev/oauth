@@ -680,139 +680,6 @@ func OpenIdConfigurationToTOML(v *OpenIdConfiguration) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
-// CredPairJSON represents CredPair in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type credpairJSON struct {
-	PublicKey json.RawMessage `json:"public_key,omitempty"`
-}
-
-// CredPairToJSON converts CredPair to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func CredPairToJSON(v *CredPair) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "credpair is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := credpairJSON{
-		PublicKey: func() json.RawMessage {
-			if v.PublicKey == nil {
-				return nil
-			}
-			data, _ := JwkToJSON(v.PublicKey)
-			return data
-		}(),
-	}
-	return json.Marshal(helper)
-}
-
-// CredPairFromBytes creates CredPair from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func CredPairFromBytes(data []byte) (*CredPair, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := CredPairFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := CredPairFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := CredPairFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &CredPair{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CredPair: unsupported format or invalid data")
-}
-
-// CredPairFromJSON creates CredPair from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func CredPairFromJSON(data []byte) (*CredPair, error) {
-	// Unmarshal into helper struct with string enums
-	var raw credpairJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &CredPair{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &CredPair{}
-	// Parse message field: PublicKey
-	if len(raw.PublicKey) > 0 {
-		parsed, err := JwkFromJSON(raw.PublicKey)
-		if err == nil {
-			result.PublicKey = parsed
-		}
-	}
-	return result, nil
-}
-
-// CredPairToYAML converts CredPair to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func CredPairToYAML(v *CredPair) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "credpair is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := CredPairToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// CredPairToTOML converts CredPair to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func CredPairToTOML(v *CredPair) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "credpair is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := CredPairToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
 // ============================================================
 // Environment Variable Helpers
 // ============================================================
@@ -1130,31 +997,6 @@ func OpenIdConfigurationFromEnvVar(env map[string]string) (*OpenIdConfiguration,
 	}
 	if val, ok := env["PROTO_LIBS_JWK_OPEN_ID_CONFIGURATION_DPOP_SIGNING_ALG_VALUES_SUPPORTED"]; ok && val != "" {
 		result.DpopSigningAlgValuesSupported = strings.Split(val, ",")
-	}
-	return result, nil
-}
-
-// CredPairToEnvVar converts CredPair to environment variable key-value pairs.
-func CredPairToEnvVar(v *CredPair) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	if v.PublicKey != nil {
-		for k, val := range JwkToEnvVar(v.PublicKey) {
-			result[k] = val
-		}
-	}
-	return result
-}
-
-// CredPairFromEnvVar creates CredPair from environment variable key-value pairs.
-func CredPairFromEnvVar(env map[string]string) (*CredPair, error) {
-	result := &CredPair{}
-	if sub, err := JwkFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.PublicKey = sub
 	}
 	return result, nil
 }
@@ -1556,21 +1398,6 @@ func ValidateOpenIdConfiguration(m *OpenIdConfiguration) error {
 	return nil
 }
 
-// ValidateCredPair validates all fields in CredPair according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateCredPair(m *CredPair) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate PublicKey (assert_required)
-	if m.PublicKey == nil {
-		return protoerrors.NewErrMissingInvalidData(nil, "field PublicKey is required")
-	}
-
-	return nil
-}
-
 // ============================================================
 // Constants
 // ============================================================
@@ -1655,19 +1482,6 @@ func OpenIdConfigurationDefaults(v *OpenIdConfiguration) {
 }
 
 // ============================================================
-// TypeDefaults: CredPair
-// ============================================================
-// CredPairDefaults applies field-level default values to zero-valued fields.
-func CredPairDefaults(v *CredPair) {
-	if v == nil {
-		return
-	}
-	if v.PublicKey == nil {
-		v.PublicKey = &Jwk{}
-	}
-}
-
-// ============================================================
 // TypeUndefaults: Jwk
 // ============================================================
 // JwkUndefaults resets fields that match their default values back to zero.
@@ -1695,17 +1509,6 @@ func JwksUndefaults(v *Jwks) {
 // OpenIdConfigurationUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func OpenIdConfigurationUndefaults(v *OpenIdConfiguration) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
-// TypeUndefaults: CredPair
-// ============================================================
-// CredPairUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func CredPairUndefaults(v *CredPair) {
 	if v == nil {
 		return
 	}
@@ -1882,17 +1685,5 @@ func MergeOpenIdConfiguration(dst, src *OpenIdConfiguration) {
 	}
 	if len(dst.DpopSigningAlgValuesSupported) == 0 {
 		dst.DpopSigningAlgValuesSupported = src.DpopSigningAlgValuesSupported
-	}
-}
-
-// ============================================================
-// Merge: CredPair
-// ============================================================
-// MergeCredPair fills zero-valued fields in dst from src.
-func MergeCredPair(dst, src *CredPair) {
-	if dst.PublicKey == nil {
-		dst.PublicKey = src.PublicKey
-	} else if src.PublicKey != nil {
-		MergeJwk(dst.PublicKey, src.PublicKey)
 	}
 }

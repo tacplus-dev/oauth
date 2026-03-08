@@ -611,13 +611,13 @@ func ValidateRetryConfig(m *RetryConfig) error {
 		return nil
 	}
 
-	// Validate MaxRetries (assert_ge: 0)
-	if m.MaxRetries < 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 0, got: %v", m.MaxRetries)
-	}
 	// Validate MaxRetries (assert_le: 10)
 	if m.MaxRetries > 10 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be <= 10, got: %v", m.MaxRetries)
+	}
+	// Validate MaxRetries (assert_ge: 0)
+	if m.MaxRetries < 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 0, got: %v", m.MaxRetries)
 	}
 	// Validate InitialBackoffMs (assert_duration: POSITIVE)
 	if m.InitialBackoffMs <= 0 {

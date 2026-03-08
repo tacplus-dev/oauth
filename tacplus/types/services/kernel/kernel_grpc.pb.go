@@ -15,8 +15,10 @@ package kernel
 
 import (
 	context "context"
+	tokenrequest "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/tokenrequest"
 	healthreport "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
 	token "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/token"
+	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
 	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -44,7 +46,7 @@ const (
 type TokenExchangerServiceClient interface {
 	// ExchangeToken validates the input token, evaluates OPA policy,
 	// and returns a signed access token.
-	ExchangeToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*token.Token, error)
+	ExchangeToken(ctx context.Context, in *tokenrequest.TokenRequest, opts ...grpc.CallOption) (*token.Token, error)
 }
 
 type tokenExchangerServiceClient struct {
@@ -55,7 +57,7 @@ func NewTokenExchangerServiceClient(cc grpc.ClientConnInterface) TokenExchangerS
 	return &tokenExchangerServiceClient{cc}
 }
 
-func (c *tokenExchangerServiceClient) ExchangeToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*token.Token, error) {
+func (c *tokenExchangerServiceClient) ExchangeToken(ctx context.Context, in *tokenrequest.TokenRequest, opts ...grpc.CallOption) (*token.Token, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(token.Token)
 	err := c.cc.Invoke(ctx, TokenExchangerService_ExchangeToken_FullMethodName, in, out, cOpts...)
@@ -76,7 +78,7 @@ func (c *tokenExchangerServiceClient) ExchangeToken(ctx context.Context, in *Tok
 type TokenExchangerServiceServer interface {
 	// ExchangeToken validates the input token, evaluates OPA policy,
 	// and returns a signed access token.
-	ExchangeToken(context.Context, *TokenRequest) (*token.Token, error)
+	ExchangeToken(context.Context, *tokenrequest.TokenRequest) (*token.Token, error)
 	mustEmbedUnimplementedTokenExchangerServiceServer()
 }
 
@@ -87,7 +89,7 @@ type TokenExchangerServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTokenExchangerServiceServer struct{}
 
-func (UnimplementedTokenExchangerServiceServer) ExchangeToken(context.Context, *TokenRequest) (*token.Token, error) {
+func (UnimplementedTokenExchangerServiceServer) ExchangeToken(context.Context, *tokenrequest.TokenRequest) (*token.Token, error) {
 	return nil, status.Error(codes.Unimplemented, "method ExchangeToken not implemented")
 }
 func (UnimplementedTokenExchangerServiceServer) mustEmbedUnimplementedTokenExchangerServiceServer() {}
@@ -112,7 +114,7 @@ func RegisterTokenExchangerServiceServer(s grpc.ServiceRegistrar, srv TokenExcha
 }
 
 func _TokenExchangerService_ExchangeToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TokenRequest)
+	in := new(tokenrequest.TokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -124,7 +126,7 @@ func _TokenExchangerService_ExchangeToken_Handler(srv interface{}, ctx context.C
 		FullMethod: TokenExchangerService_ExchangeToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TokenExchangerServiceServer).ExchangeToken(ctx, req.(*TokenRequest))
+		return srv.(TokenExchangerServiceServer).ExchangeToken(ctx, req.(*tokenrequest.TokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -139,6 +141,119 @@ var TokenExchangerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ExchangeToken",
 			Handler:    _TokenExchangerService_ExchangeToken_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "services/kernel.proto",
+}
+
+const (
+	X509CertExchangerService_SignCert_FullMethodName = "/kernel.X509CertExchangerService/SignCert"
+)
+
+// X509CertExchangerServiceClient is the client API for X509CertExchangerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// X509CertExchangerService signs X.509 certificate requests using the node's CA key.
+type X509CertExchangerServiceClient interface {
+	// SignCert signs an X509CertRequest with this node's CA keypair.
+	// The caller's identity (sub from S2S token) is encoded into the
+	// certificate's Subject CN.
+	SignCert(ctx context.Context, in *x509.X509CertRequest, opts ...grpc.CallOption) (*x509.X509Cert, error)
+}
+
+type x509CertExchangerServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewX509CertExchangerServiceClient(cc grpc.ClientConnInterface) X509CertExchangerServiceClient {
+	return &x509CertExchangerServiceClient{cc}
+}
+
+func (c *x509CertExchangerServiceClient) SignCert(ctx context.Context, in *x509.X509CertRequest, opts ...grpc.CallOption) (*x509.X509Cert, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(x509.X509Cert)
+	err := c.cc.Invoke(ctx, X509CertExchangerService_SignCert_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// X509CertExchangerServiceServer is the server API for X509CertExchangerService service.
+// All implementations must embed UnimplementedX509CertExchangerServiceServer
+// for forward compatibility.
+//
+// X509CertExchangerService signs X.509 certificate requests using the node's CA key.
+type X509CertExchangerServiceServer interface {
+	// SignCert signs an X509CertRequest with this node's CA keypair.
+	// The caller's identity (sub from S2S token) is encoded into the
+	// certificate's Subject CN.
+	SignCert(context.Context, *x509.X509CertRequest) (*x509.X509Cert, error)
+	mustEmbedUnimplementedX509CertExchangerServiceServer()
+}
+
+// UnimplementedX509CertExchangerServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedX509CertExchangerServiceServer struct{}
+
+func (UnimplementedX509CertExchangerServiceServer) SignCert(context.Context, *x509.X509CertRequest) (*x509.X509Cert, error) {
+	return nil, status.Error(codes.Unimplemented, "method SignCert not implemented")
+}
+func (UnimplementedX509CertExchangerServiceServer) mustEmbedUnimplementedX509CertExchangerServiceServer() {
+}
+func (UnimplementedX509CertExchangerServiceServer) testEmbeddedByValue() {}
+
+// UnsafeX509CertExchangerServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to X509CertExchangerServiceServer will
+// result in compilation errors.
+type UnsafeX509CertExchangerServiceServer interface {
+	mustEmbedUnimplementedX509CertExchangerServiceServer()
+}
+
+func RegisterX509CertExchangerServiceServer(s grpc.ServiceRegistrar, srv X509CertExchangerServiceServer) {
+	// If the following call panics, it indicates UnimplementedX509CertExchangerServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&X509CertExchangerService_ServiceDesc, srv)
+}
+
+func _X509CertExchangerService_SignCert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(x509.X509CertRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(X509CertExchangerServiceServer).SignCert(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: X509CertExchangerService_SignCert_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(X509CertExchangerServiceServer).SignCert(ctx, req.(*x509.X509CertRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// X509CertExchangerService_ServiceDesc is the grpc.ServiceDesc for X509CertExchangerService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var X509CertExchangerService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "kernel.X509CertExchangerService",
+	HandlerType: (*X509CertExchangerServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SignCert",
+			Handler:    _X509CertExchangerService_SignCert_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -9290,6 +9405,611 @@ var ServiceHealthStateBackendService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "WatchQueryInstances",
 			Handler:       _ServiceHealthStateBackendService_WatchQueryInstances_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "services/kernel.proto",
+}
+
+const (
+	CaStateBackendService_GetCaCerts_FullMethodName         = "/kernel.CaStateBackendService/GetCaCerts"
+	CaStateBackendService_PutCaCerts_FullMethodName         = "/kernel.CaStateBackendService/PutCaCerts"
+	CaStateBackendService_SetCaCerts_FullMethodName         = "/kernel.CaStateBackendService/SetCaCerts"
+	CaStateBackendService_RemoveCaCerts_FullMethodName      = "/kernel.CaStateBackendService/RemoveCaCerts"
+	CaStateBackendService_DeleteCaCerts_FullMethodName      = "/kernel.CaStateBackendService/DeleteCaCerts"
+	CaStateBackendService_ContainsKeyCaCerts_FullMethodName = "/kernel.CaStateBackendService/ContainsKeyCaCerts"
+	CaStateBackendService_GetAllCaCerts_FullMethodName      = "/kernel.CaStateBackendService/GetAllCaCerts"
+	CaStateBackendService_KeySetCaCerts_FullMethodName      = "/kernel.CaStateBackendService/KeySetCaCerts"
+	CaStateBackendService_SizeCaCerts_FullMethodName        = "/kernel.CaStateBackendService/SizeCaCerts"
+	CaStateBackendService_ClearCaCerts_FullMethodName       = "/kernel.CaStateBackendService/ClearCaCerts"
+	CaStateBackendService_PutIfAbsentCaCerts_FullMethodName = "/kernel.CaStateBackendService/PutIfAbsentCaCerts"
+	CaStateBackendService_WatchCaCerts_FullMethodName       = "/kernel.CaStateBackendService/WatchCaCerts"
+	CaStateBackendService_QueryCaCerts_FullMethodName       = "/kernel.CaStateBackendService/QueryCaCerts"
+	CaStateBackendService_WatchQueryCaCerts_FullMethodName  = "/kernel.CaStateBackendService/WatchQueryCaCerts"
+)
+
+// CaStateBackendServiceClient is the client API for CaStateBackendService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CaStateBackendServiceClient interface {
+	// Collection: CaCerts
+	GetCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error)
+	PutCaCerts(ctx context.Context, in *CaCertsPutRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error)
+	SetCaCerts(ctx context.Context, in *CaCertsPutRequest, opts ...grpc.CallOption) (*MapEmpty, error)
+	RemoveCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error)
+	DeleteCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*MapEmpty, error)
+	ContainsKeyCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error)
+	GetAllCaCerts(ctx context.Context, in *CaCertsGetAllRequest, opts ...grpc.CallOption) (*CaCertsEntriesResponse, error)
+	KeySetCaCerts(ctx context.Context, in *CaCertsKeysRequest, opts ...grpc.CallOption) (*CaCertsKeysResponse, error)
+	SizeCaCerts(ctx context.Context, in *CaCertsSizeRequest, opts ...grpc.CallOption) (*CaCertsSizeResponse, error)
+	ClearCaCerts(ctx context.Context, in *CaCertsClearRequest, opts ...grpc.CallOption) (*MapEmpty, error)
+	PutIfAbsentCaCerts(ctx context.Context, in *CaCertsPutRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error)
+	WatchCaCerts(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CaCertsEntriesResponse], error)
+	QueryCaCerts(ctx context.Context, in *CaCertsQueryRequest, opts ...grpc.CallOption) (*CaCertsQueryResponse, error)
+	WatchQueryCaCerts(ctx context.Context, in *CaCertsQueryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CaCertsQueryResponse], error)
+}
+
+type caStateBackendServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCaStateBackendServiceClient(cc grpc.ClientConnInterface) CaStateBackendServiceClient {
+	return &caStateBackendServiceClient{cc}
+}
+
+func (c *caStateBackendServiceClient) GetCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsValueResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_GetCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) PutCaCerts(ctx context.Context, in *CaCertsPutRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsValueResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_PutCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) SetCaCerts(ctx context.Context, in *CaCertsPutRequest, opts ...grpc.CallOption) (*MapEmpty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MapEmpty)
+	err := c.cc.Invoke(ctx, CaStateBackendService_SetCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) RemoveCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsValueResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_RemoveCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) DeleteCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*MapEmpty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MapEmpty)
+	err := c.cc.Invoke(ctx, CaStateBackendService_DeleteCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) ContainsKeyCaCerts(ctx context.Context, in *CaCertsGetRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsValueResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_ContainsKeyCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) GetAllCaCerts(ctx context.Context, in *CaCertsGetAllRequest, opts ...grpc.CallOption) (*CaCertsEntriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsEntriesResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_GetAllCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) KeySetCaCerts(ctx context.Context, in *CaCertsKeysRequest, opts ...grpc.CallOption) (*CaCertsKeysResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsKeysResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_KeySetCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) SizeCaCerts(ctx context.Context, in *CaCertsSizeRequest, opts ...grpc.CallOption) (*CaCertsSizeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsSizeResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_SizeCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) ClearCaCerts(ctx context.Context, in *CaCertsClearRequest, opts ...grpc.CallOption) (*MapEmpty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MapEmpty)
+	err := c.cc.Invoke(ctx, CaStateBackendService_ClearCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) PutIfAbsentCaCerts(ctx context.Context, in *CaCertsPutRequest, opts ...grpc.CallOption) (*CaCertsValueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsValueResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_PutIfAbsentCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) WatchCaCerts(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CaCertsEntriesResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &CaStateBackendService_ServiceDesc.Streams[0], CaStateBackendService_WatchCaCerts_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[emptypb.Empty, CaCertsEntriesResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CaStateBackendService_WatchCaCertsClient = grpc.ServerStreamingClient[CaCertsEntriesResponse]
+
+func (c *caStateBackendServiceClient) QueryCaCerts(ctx context.Context, in *CaCertsQueryRequest, opts ...grpc.CallOption) (*CaCertsQueryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CaCertsQueryResponse)
+	err := c.cc.Invoke(ctx, CaStateBackendService_QueryCaCerts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *caStateBackendServiceClient) WatchQueryCaCerts(ctx context.Context, in *CaCertsQueryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[CaCertsQueryResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &CaStateBackendService_ServiceDesc.Streams[1], CaStateBackendService_WatchQueryCaCerts_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[CaCertsQueryRequest, CaCertsQueryResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CaStateBackendService_WatchQueryCaCertsClient = grpc.ServerStreamingClient[CaCertsQueryResponse]
+
+// CaStateBackendServiceServer is the server API for CaStateBackendService service.
+// All implementations must embed UnimplementedCaStateBackendServiceServer
+// for forward compatibility.
+type CaStateBackendServiceServer interface {
+	// Collection: CaCerts
+	GetCaCerts(context.Context, *CaCertsGetRequest) (*CaCertsValueResponse, error)
+	PutCaCerts(context.Context, *CaCertsPutRequest) (*CaCertsValueResponse, error)
+	SetCaCerts(context.Context, *CaCertsPutRequest) (*MapEmpty, error)
+	RemoveCaCerts(context.Context, *CaCertsGetRequest) (*CaCertsValueResponse, error)
+	DeleteCaCerts(context.Context, *CaCertsGetRequest) (*MapEmpty, error)
+	ContainsKeyCaCerts(context.Context, *CaCertsGetRequest) (*CaCertsValueResponse, error)
+	GetAllCaCerts(context.Context, *CaCertsGetAllRequest) (*CaCertsEntriesResponse, error)
+	KeySetCaCerts(context.Context, *CaCertsKeysRequest) (*CaCertsKeysResponse, error)
+	SizeCaCerts(context.Context, *CaCertsSizeRequest) (*CaCertsSizeResponse, error)
+	ClearCaCerts(context.Context, *CaCertsClearRequest) (*MapEmpty, error)
+	PutIfAbsentCaCerts(context.Context, *CaCertsPutRequest) (*CaCertsValueResponse, error)
+	WatchCaCerts(*emptypb.Empty, grpc.ServerStreamingServer[CaCertsEntriesResponse]) error
+	QueryCaCerts(context.Context, *CaCertsQueryRequest) (*CaCertsQueryResponse, error)
+	WatchQueryCaCerts(*CaCertsQueryRequest, grpc.ServerStreamingServer[CaCertsQueryResponse]) error
+	mustEmbedUnimplementedCaStateBackendServiceServer()
+}
+
+// UnimplementedCaStateBackendServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedCaStateBackendServiceServer struct{}
+
+func (UnimplementedCaStateBackendServiceServer) GetCaCerts(context.Context, *CaCertsGetRequest) (*CaCertsValueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) PutCaCerts(context.Context, *CaCertsPutRequest) (*CaCertsValueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PutCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) SetCaCerts(context.Context, *CaCertsPutRequest) (*MapEmpty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) RemoveCaCerts(context.Context, *CaCertsGetRequest) (*CaCertsValueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) DeleteCaCerts(context.Context, *CaCertsGetRequest) (*MapEmpty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) ContainsKeyCaCerts(context.Context, *CaCertsGetRequest) (*CaCertsValueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ContainsKeyCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) GetAllCaCerts(context.Context, *CaCertsGetAllRequest) (*CaCertsEntriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAllCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) KeySetCaCerts(context.Context, *CaCertsKeysRequest) (*CaCertsKeysResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method KeySetCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) SizeCaCerts(context.Context, *CaCertsSizeRequest) (*CaCertsSizeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SizeCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) ClearCaCerts(context.Context, *CaCertsClearRequest) (*MapEmpty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClearCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) PutIfAbsentCaCerts(context.Context, *CaCertsPutRequest) (*CaCertsValueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PutIfAbsentCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) WatchCaCerts(*emptypb.Empty, grpc.ServerStreamingServer[CaCertsEntriesResponse]) error {
+	return status.Error(codes.Unimplemented, "method WatchCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) QueryCaCerts(context.Context, *CaCertsQueryRequest) (*CaCertsQueryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method QueryCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) WatchQueryCaCerts(*CaCertsQueryRequest, grpc.ServerStreamingServer[CaCertsQueryResponse]) error {
+	return status.Error(codes.Unimplemented, "method WatchQueryCaCerts not implemented")
+}
+func (UnimplementedCaStateBackendServiceServer) mustEmbedUnimplementedCaStateBackendServiceServer() {}
+func (UnimplementedCaStateBackendServiceServer) testEmbeddedByValue()                               {}
+
+// UnsafeCaStateBackendServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CaStateBackendServiceServer will
+// result in compilation errors.
+type UnsafeCaStateBackendServiceServer interface {
+	mustEmbedUnimplementedCaStateBackendServiceServer()
+}
+
+func RegisterCaStateBackendServiceServer(s grpc.ServiceRegistrar, srv CaStateBackendServiceServer) {
+	// If the following call panics, it indicates UnimplementedCaStateBackendServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&CaStateBackendService_ServiceDesc, srv)
+}
+
+func _CaStateBackendService_GetCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).GetCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_GetCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).GetCaCerts(ctx, req.(*CaCertsGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_PutCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsPutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).PutCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_PutCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).PutCaCerts(ctx, req.(*CaCertsPutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_SetCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsPutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).SetCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_SetCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).SetCaCerts(ctx, req.(*CaCertsPutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_RemoveCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).RemoveCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_RemoveCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).RemoveCaCerts(ctx, req.(*CaCertsGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_DeleteCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).DeleteCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_DeleteCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).DeleteCaCerts(ctx, req.(*CaCertsGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_ContainsKeyCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).ContainsKeyCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_ContainsKeyCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).ContainsKeyCaCerts(ctx, req.(*CaCertsGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_GetAllCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsGetAllRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).GetAllCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_GetAllCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).GetAllCaCerts(ctx, req.(*CaCertsGetAllRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_KeySetCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).KeySetCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_KeySetCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).KeySetCaCerts(ctx, req.(*CaCertsKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_SizeCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsSizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).SizeCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_SizeCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).SizeCaCerts(ctx, req.(*CaCertsSizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_ClearCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsClearRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).ClearCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_ClearCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).ClearCaCerts(ctx, req.(*CaCertsClearRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_PutIfAbsentCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsPutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).PutIfAbsentCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_PutIfAbsentCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).PutIfAbsentCaCerts(ctx, req.(*CaCertsPutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_WatchCaCerts_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CaStateBackendServiceServer).WatchCaCerts(m, &grpc.GenericServerStream[emptypb.Empty, CaCertsEntriesResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CaStateBackendService_WatchCaCertsServer = grpc.ServerStreamingServer[CaCertsEntriesResponse]
+
+func _CaStateBackendService_QueryCaCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CaCertsQueryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CaStateBackendServiceServer).QueryCaCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CaStateBackendService_QueryCaCerts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CaStateBackendServiceServer).QueryCaCerts(ctx, req.(*CaCertsQueryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CaStateBackendService_WatchQueryCaCerts_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(CaCertsQueryRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CaStateBackendServiceServer).WatchQueryCaCerts(m, &grpc.GenericServerStream[CaCertsQueryRequest, CaCertsQueryResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CaStateBackendService_WatchQueryCaCertsServer = grpc.ServerStreamingServer[CaCertsQueryResponse]
+
+// CaStateBackendService_ServiceDesc is the grpc.ServiceDesc for CaStateBackendService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var CaStateBackendService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "kernel.CaStateBackendService",
+	HandlerType: (*CaStateBackendServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetCaCerts",
+			Handler:    _CaStateBackendService_GetCaCerts_Handler,
+		},
+		{
+			MethodName: "PutCaCerts",
+			Handler:    _CaStateBackendService_PutCaCerts_Handler,
+		},
+		{
+			MethodName: "SetCaCerts",
+			Handler:    _CaStateBackendService_SetCaCerts_Handler,
+		},
+		{
+			MethodName: "RemoveCaCerts",
+			Handler:    _CaStateBackendService_RemoveCaCerts_Handler,
+		},
+		{
+			MethodName: "DeleteCaCerts",
+			Handler:    _CaStateBackendService_DeleteCaCerts_Handler,
+		},
+		{
+			MethodName: "ContainsKeyCaCerts",
+			Handler:    _CaStateBackendService_ContainsKeyCaCerts_Handler,
+		},
+		{
+			MethodName: "GetAllCaCerts",
+			Handler:    _CaStateBackendService_GetAllCaCerts_Handler,
+		},
+		{
+			MethodName: "KeySetCaCerts",
+			Handler:    _CaStateBackendService_KeySetCaCerts_Handler,
+		},
+		{
+			MethodName: "SizeCaCerts",
+			Handler:    _CaStateBackendService_SizeCaCerts_Handler,
+		},
+		{
+			MethodName: "ClearCaCerts",
+			Handler:    _CaStateBackendService_ClearCaCerts_Handler,
+		},
+		{
+			MethodName: "PutIfAbsentCaCerts",
+			Handler:    _CaStateBackendService_PutIfAbsentCaCerts_Handler,
+		},
+		{
+			MethodName: "QueryCaCerts",
+			Handler:    _CaStateBackendService_QueryCaCerts_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WatchCaCerts",
+			Handler:       _CaStateBackendService_WatchCaCerts_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WatchQueryCaCerts",
+			Handler:       _CaStateBackendService_WatchQueryCaCerts_Handler,
 			ServerStreams: true,
 		},
 	},

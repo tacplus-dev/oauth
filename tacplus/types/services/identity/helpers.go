@@ -442,6 +442,8 @@ type configJSON struct {
 	JwkRefetchIntervalSeconds   int64             `json:"jwk_refetch_interval_seconds,omitempty"`
 	EntitlementsPolicy          json.RawMessage   `json:"entitlements_policy,omitempty"`
 	IdentityProfiles            []json.RawMessage `json:"identity_profiles,omitempty"`
+	ApiKeys                     []json.RawMessage `json:"api_keys,omitempty"`
+	ApiKeyTokenLifetimeSeconds  int64             `json:"api_key_token_lifetime_seconds,omitempty"`
 }
 
 // ConfigToJSON converts Config to JSON bytes.
@@ -486,6 +488,21 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 			}
 			return result
 		}(),
+		ApiKeys: func() []json.RawMessage {
+			if len(v.ApiKeys) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.ApiKeys))
+			for _, item := range v.ApiKeys {
+				if item != nil {
+					if data, err := ApiKeyToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
+		ApiKeyTokenLifetimeSeconds: v.ApiKeyTokenLifetimeSeconds,
 	}
 	return json.Marshal(helper)
 }
@@ -582,6 +599,19 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 			}
 		}
 	}
+	// Parse repeated message field: ApiKeys
+	if len(raw.ApiKeys) > 0 {
+		result.ApiKeys = make([]*ApiKey, 0, len(raw.ApiKeys))
+		for _, itemJSON := range raw.ApiKeys {
+			if len(itemJSON) > 0 {
+				parsed, err := ApiKeyFromJSON(itemJSON)
+				if err == nil {
+					result.ApiKeys = append(result.ApiKeys, parsed)
+				}
+			}
+		}
+	}
+	result.ApiKeyTokenLifetimeSeconds = raw.ApiKeyTokenLifetimeSeconds
 	return result, nil
 }
 
@@ -2802,130 +2832,6 @@ func LogoutResponseToTOML(v *LogoutResponse) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
-// ExchangeTokenRequestJSON represents ExchangeTokenRequest in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type exchangetokenrequestJSON struct {
-	AccessToken string `json:"access_token,omitempty"`
-	Audience    string `json:"audience,omitempty"`
-}
-
-// ExchangeTokenRequestToJSON converts ExchangeTokenRequest to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func ExchangeTokenRequestToJSON(v *ExchangeTokenRequest) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "exchangetokenrequest is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := exchangetokenrequestJSON{
-		AccessToken: v.AccessToken,
-		Audience:    v.Audience,
-	}
-	return json.Marshal(helper)
-}
-
-// ExchangeTokenRequestFromBytes creates ExchangeTokenRequest from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func ExchangeTokenRequestFromBytes(data []byte) (*ExchangeTokenRequest, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := ExchangeTokenRequestFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := ExchangeTokenRequestFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := ExchangeTokenRequestFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &ExchangeTokenRequest{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse ExchangeTokenRequest: unsupported format or invalid data")
-}
-
-// ExchangeTokenRequestFromJSON creates ExchangeTokenRequest from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func ExchangeTokenRequestFromJSON(data []byte) (*ExchangeTokenRequest, error) {
-	// Unmarshal into helper struct with string enums
-	var raw exchangetokenrequestJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &ExchangeTokenRequest{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &ExchangeTokenRequest{}
-	result.AccessToken = raw.AccessToken
-	result.Audience = raw.Audience
-	return result, nil
-}
-
-// ExchangeTokenRequestToYAML converts ExchangeTokenRequest to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func ExchangeTokenRequestToYAML(v *ExchangeTokenRequest) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "exchangetokenrequest is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := ExchangeTokenRequestToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// ExchangeTokenRequestToTOML converts ExchangeTokenRequest to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func ExchangeTokenRequestToTOML(v *ExchangeTokenRequest) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "exchangetokenrequest is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := ExchangeTokenRequestToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
 // ExchangeTokenResponseJSON represents ExchangeTokenResponse in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type exchangetokenresponseJSON struct {
@@ -3039,6 +2945,402 @@ func ExchangeTokenResponseToTOML(v *ExchangeTokenResponse) ([]byte, error) {
 	}
 	// Convert to JSON first
 	jsonData, err := ExchangeTokenResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// ApiKeyJSON represents ApiKey in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type apikeyJSON struct {
+	Name      string            `json:"name,omitempty"`
+	CredPairs []json.RawMessage `json:"cred_pairs,omitempty"`
+	Profile   string            `json:"profile,omitempty"`
+}
+
+// ApiKeyToJSON converts ApiKey to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func ApiKeyToJSON(v *ApiKey) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "apikey is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := apikeyJSON{
+		Name: v.Name,
+		CredPairs: func() []json.RawMessage {
+			if len(v.CredPairs) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.CredPairs))
+			for _, item := range v.CredPairs {
+				if item != nil {
+					if data, err := jwk.JwkToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
+		Profile: v.Profile,
+	}
+	return json.Marshal(helper)
+}
+
+// ApiKeyFromBytes creates ApiKey from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func ApiKeyFromBytes(data []byte) (*ApiKey, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := ApiKeyFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := ApiKeyFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := ApiKeyFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &ApiKey{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse ApiKey: unsupported format or invalid data")
+}
+
+// ApiKeyFromJSON creates ApiKey from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func ApiKeyFromJSON(data []byte) (*ApiKey, error) {
+	// Unmarshal into helper struct with string enums
+	var raw apikeyJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &ApiKey{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &ApiKey{}
+	result.Name = raw.Name
+	// Parse repeated message field: CredPairs
+	if len(raw.CredPairs) > 0 {
+		result.CredPairs = make([]*jwk.Jwk, 0, len(raw.CredPairs))
+		for _, itemJSON := range raw.CredPairs {
+			if len(itemJSON) > 0 {
+				parsed, err := jwk.JwkFromJSON(itemJSON)
+				if err == nil {
+					result.CredPairs = append(result.CredPairs, parsed)
+				}
+			}
+		}
+	}
+	result.Profile = raw.Profile
+	return result, nil
+}
+
+// ApiKeyToYAML converts ApiKey to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func ApiKeyToYAML(v *ApiKey) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "apikey is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := ApiKeyToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// ApiKeyToTOML converts ApiKey to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func ApiKeyToTOML(v *ApiKey) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "apikey is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := ApiKeyToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// AuthenticateApiKeyRequestJSON represents AuthenticateApiKeyRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type authenticateapikeyrequestJSON struct {
+	Token string `json:"token,omitempty"`
+}
+
+// AuthenticateApiKeyRequestToJSON converts AuthenticateApiKeyRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func AuthenticateApiKeyRequestToJSON(v *AuthenticateApiKeyRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "authenticateapikeyrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := authenticateapikeyrequestJSON{
+		Token: v.Token,
+	}
+	return json.Marshal(helper)
+}
+
+// AuthenticateApiKeyRequestFromBytes creates AuthenticateApiKeyRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func AuthenticateApiKeyRequestFromBytes(data []byte) (*AuthenticateApiKeyRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := AuthenticateApiKeyRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := AuthenticateApiKeyRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := AuthenticateApiKeyRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &AuthenticateApiKeyRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse AuthenticateApiKeyRequest: unsupported format or invalid data")
+}
+
+// AuthenticateApiKeyRequestFromJSON creates AuthenticateApiKeyRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func AuthenticateApiKeyRequestFromJSON(data []byte) (*AuthenticateApiKeyRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw authenticateapikeyrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &AuthenticateApiKeyRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &AuthenticateApiKeyRequest{}
+	result.Token = raw.Token
+	return result, nil
+}
+
+// AuthenticateApiKeyRequestToYAML converts AuthenticateApiKeyRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func AuthenticateApiKeyRequestToYAML(v *AuthenticateApiKeyRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "authenticateapikeyrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := AuthenticateApiKeyRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// AuthenticateApiKeyRequestToTOML converts AuthenticateApiKeyRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func AuthenticateApiKeyRequestToTOML(v *AuthenticateApiKeyRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "authenticateapikeyrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := AuthenticateApiKeyRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// AuthenticateApiKeyResponseJSON represents AuthenticateApiKeyResponse in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type authenticateapikeyresponseJSON struct {
+	AccessToken string `json:"access_token,omitempty"`
+	ExpiresIn   int64  `json:"expires_in,omitempty"`
+}
+
+// AuthenticateApiKeyResponseToJSON converts AuthenticateApiKeyResponse to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func AuthenticateApiKeyResponseToJSON(v *AuthenticateApiKeyResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "authenticateapikeyresponse is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := authenticateapikeyresponseJSON{
+		AccessToken: v.AccessToken,
+		ExpiresIn:   v.ExpiresIn,
+	}
+	return json.Marshal(helper)
+}
+
+// AuthenticateApiKeyResponseFromBytes creates AuthenticateApiKeyResponse from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func AuthenticateApiKeyResponseFromBytes(data []byte) (*AuthenticateApiKeyResponse, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := AuthenticateApiKeyResponseFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := AuthenticateApiKeyResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := AuthenticateApiKeyResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &AuthenticateApiKeyResponse{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse AuthenticateApiKeyResponse: unsupported format or invalid data")
+}
+
+// AuthenticateApiKeyResponseFromJSON creates AuthenticateApiKeyResponse from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func AuthenticateApiKeyResponseFromJSON(data []byte) (*AuthenticateApiKeyResponse, error) {
+	// Unmarshal into helper struct with string enums
+	var raw authenticateapikeyresponseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &AuthenticateApiKeyResponse{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &AuthenticateApiKeyResponse{}
+	result.AccessToken = raw.AccessToken
+	result.ExpiresIn = raw.ExpiresIn
+	return result, nil
+}
+
+// AuthenticateApiKeyResponseToYAML converts AuthenticateApiKeyResponse to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func AuthenticateApiKeyResponseToYAML(v *AuthenticateApiKeyResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "authenticateapikeyresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := AuthenticateApiKeyResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// AuthenticateApiKeyResponseToTOML converts AuthenticateApiKeyResponse to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func AuthenticateApiKeyResponseToTOML(v *AuthenticateApiKeyResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "authenticateapikeyresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := AuthenticateApiKeyResponseToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -7097,6 +7399,7 @@ func ConfigToEnvVar(v *Config) map[string]string {
 			result[k] = val
 		}
 	}
+	result["PROTO_SERVICES_IDENTITY_CONFIG_API_KEY_TOKEN_LIFETIME_SECONDS"] = strconv.FormatInt(v.ApiKeyTokenLifetimeSeconds, 10)
 	return result
 }
 
@@ -7150,6 +7453,13 @@ func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 		return nil, err
 	} else if sub != nil {
 		result.EntitlementsPolicy = sub
+	}
+	if val, ok := env["PROTO_SERVICES_IDENTITY_CONFIG_API_KEY_TOKEN_LIFETIME_SECONDS"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.ApiKeyTokenLifetimeSeconds = parsed
 	}
 	return result, nil
 }
@@ -7612,29 +7922,6 @@ func LogoutResponseFromEnvVar(env map[string]string) (*LogoutResponse, error) {
 	return result, nil
 }
 
-// ExchangeTokenRequestToEnvVar converts ExchangeTokenRequest to environment variable key-value pairs.
-func ExchangeTokenRequestToEnvVar(v *ExchangeTokenRequest) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_IDENTITY_EXCHANGE_TOKEN_REQUEST_ACCESS_TOKEN"] = v.AccessToken
-	result["PROTO_SERVICES_IDENTITY_EXCHANGE_TOKEN_REQUEST_AUDIENCE"] = v.Audience
-	return result
-}
-
-// ExchangeTokenRequestFromEnvVar creates ExchangeTokenRequest from environment variable key-value pairs.
-func ExchangeTokenRequestFromEnvVar(env map[string]string) (*ExchangeTokenRequest, error) {
-	result := &ExchangeTokenRequest{}
-	if val, ok := env["PROTO_SERVICES_IDENTITY_EXCHANGE_TOKEN_REQUEST_ACCESS_TOKEN"]; ok && val != "" {
-		result.AccessToken = val
-	}
-	if val, ok := env["PROTO_SERVICES_IDENTITY_EXCHANGE_TOKEN_REQUEST_AUDIENCE"]; ok && val != "" {
-		result.Audience = val
-	}
-	return result, nil
-}
-
 // ExchangeTokenResponseToEnvVar converts ExchangeTokenResponse to environment variable key-value pairs.
 func ExchangeTokenResponseToEnvVar(v *ExchangeTokenResponse) map[string]string {
 	if v == nil {
@@ -7653,6 +7940,75 @@ func ExchangeTokenResponseFromEnvVar(env map[string]string) (*ExchangeTokenRespo
 		result.AccessToken = val
 	}
 	if val, ok := env["PROTO_SERVICES_IDENTITY_EXCHANGE_TOKEN_RESPONSE_EXPIRES_IN"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.ExpiresIn = parsed
+	}
+	return result, nil
+}
+
+// ApiKeyToEnvVar converts ApiKey to environment variable key-value pairs.
+func ApiKeyToEnvVar(v *ApiKey) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_IDENTITY_API_KEY_NAME"] = v.Name
+	result["PROTO_SERVICES_IDENTITY_API_KEY_PROFILE"] = v.Profile
+	return result
+}
+
+// ApiKeyFromEnvVar creates ApiKey from environment variable key-value pairs.
+func ApiKeyFromEnvVar(env map[string]string) (*ApiKey, error) {
+	result := &ApiKey{}
+	if val, ok := env["PROTO_SERVICES_IDENTITY_API_KEY_NAME"]; ok && val != "" {
+		result.Name = val
+	}
+	if val, ok := env["PROTO_SERVICES_IDENTITY_API_KEY_PROFILE"]; ok && val != "" {
+		result.Profile = val
+	}
+	return result, nil
+}
+
+// AuthenticateApiKeyRequestToEnvVar converts AuthenticateApiKeyRequest to environment variable key-value pairs.
+func AuthenticateApiKeyRequestToEnvVar(v *AuthenticateApiKeyRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_IDENTITY_AUTHENTICATE_API_KEY_REQUEST_TOKEN"] = v.Token
+	return result
+}
+
+// AuthenticateApiKeyRequestFromEnvVar creates AuthenticateApiKeyRequest from environment variable key-value pairs.
+func AuthenticateApiKeyRequestFromEnvVar(env map[string]string) (*AuthenticateApiKeyRequest, error) {
+	result := &AuthenticateApiKeyRequest{}
+	if val, ok := env["PROTO_SERVICES_IDENTITY_AUTHENTICATE_API_KEY_REQUEST_TOKEN"]; ok && val != "" {
+		result.Token = val
+	}
+	return result, nil
+}
+
+// AuthenticateApiKeyResponseToEnvVar converts AuthenticateApiKeyResponse to environment variable key-value pairs.
+func AuthenticateApiKeyResponseToEnvVar(v *AuthenticateApiKeyResponse) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_IDENTITY_AUTHENTICATE_API_KEY_RESPONSE_ACCESS_TOKEN"] = v.AccessToken
+	result["PROTO_SERVICES_IDENTITY_AUTHENTICATE_API_KEY_RESPONSE_EXPIRES_IN"] = strconv.FormatInt(v.ExpiresIn, 10)
+	return result
+}
+
+// AuthenticateApiKeyResponseFromEnvVar creates AuthenticateApiKeyResponse from environment variable key-value pairs.
+func AuthenticateApiKeyResponseFromEnvVar(env map[string]string) (*AuthenticateApiKeyResponse, error) {
+	result := &AuthenticateApiKeyResponse{}
+	if val, ok := env["PROTO_SERVICES_IDENTITY_AUTHENTICATE_API_KEY_RESPONSE_ACCESS_TOKEN"]; ok && val != "" {
+		result.AccessToken = val
+	}
+	if val, ok := env["PROTO_SERVICES_IDENTITY_AUTHENTICATE_API_KEY_RESPONSE_EXPIRES_IN"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
 			return nil, err
@@ -8419,6 +8775,11 @@ func ValidateConfig(m *Config) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field JwkRefetchIntervalSeconds must be positive (> 0), got: %d", m.JwkRefetchIntervalSeconds)
 	}
 
+	// Validate ApiKeyTokenLifetimeSeconds (assert_duration: POSITIVE)
+	if m.ApiKeyTokenLifetimeSeconds <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ApiKeyTokenLifetimeSeconds must be positive (> 0), got: %d", m.ApiKeyTokenLifetimeSeconds)
+	}
+
 	// Validate Issuer (default max size: 32768 bytes)
 	if len(m.Issuer) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer exceeds max size of 32768 bytes, got: %d", len(m.Issuer))
@@ -8481,14 +8842,14 @@ func ValidateProviderConfig(m *ProviderConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId must be at least 1 characters, got: %d", len(m.ClientId))
 	}
 
-	// Validate ClientSecret (assert_required)
-	if m.ClientSecret == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
-	}
-
 	// Validate ClientSecret (assert_min_length: 1)
 	if len(m.ClientSecret) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
+	}
+
+	// Validate ClientSecret (assert_required)
+	if m.ClientSecret == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
 	}
 
 	// Validate AuthorizationEndpoint (assert_url: URL_SCHEME_HTTPS)
@@ -8613,16 +8974,16 @@ func ValidateExternalJwk(m *ExternalJwk) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Key is required")
 	}
 
-	// Validate Issuer (assert_required)
-	if m.Issuer == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
-	}
-
 	// Validate Issuer (assert_url: URL_SCHEME_HTTPS)
 	if m.Issuer != "" {
 		if err := utils.ValidateAssertURL_URL_SCHEME_HTTPS(m.Issuer); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Issuer URL validation failed")
 		}
+	}
+
+	// Validate Issuer (assert_required)
+	if m.Issuer == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
 	}
 
 	// Validate FetchedAt (assert_gt: 0)
@@ -8660,14 +9021,14 @@ func ValidateProviderInfo(m *ProviderInfo) error {
 		return nil
 	}
 
-	// Validate Name (assert_min_length: 1)
-	if len(m.Name) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Name must be at least 1 characters, got: %d", len(m.Name))
-	}
-
 	// Validate Name (assert_required)
 	if m.Name == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Name is required")
+	}
+
+	// Validate Name (assert_min_length: 1)
+	if len(m.Name) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Name must be at least 1 characters, got: %d", len(m.Name))
 	}
 
 	// Validate ProviderIndex (assert_ge: 0)
@@ -8777,14 +9138,14 @@ func ValidateCallbackResponse(m *CallbackResponse) error {
 		return nil
 	}
 
-	// Validate RefreshToken (assert_min_length: 1)
-	if len(m.RefreshToken) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken must be at least 1 characters, got: %d", len(m.RefreshToken))
-	}
-
 	// Validate RefreshToken (assert_required)
 	if m.RefreshToken == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken is required")
+	}
+
+	// Validate RefreshToken (assert_min_length: 1)
+	if len(m.RefreshToken) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field RefreshToken must be at least 1 characters, got: %d", len(m.RefreshToken))
 	}
 
 	// Validate AccessToken (assert_required)
@@ -8938,9 +9299,9 @@ func ValidateLogoutResponse(m *LogoutResponse) error {
 	return nil
 }
 
-// ValidateExchangeTokenRequest validates all fields in ExchangeTokenRequest according to their annotations.
+// ValidateExchangeTokenResponse validates all fields in ExchangeTokenResponse according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateExchangeTokenRequest(m *ExchangeTokenRequest) error {
+func ValidateExchangeTokenResponse(m *ExchangeTokenResponse) error {
 	if m == nil {
 		return nil
 	}
@@ -8950,32 +9311,91 @@ func ValidateExchangeTokenRequest(m *ExchangeTokenRequest) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
 	}
 
-	// Validate Audience (assert_required)
-	if m.Audience == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Audience is required")
+	// Validate AccessToken (assert_min_length: 1)
+	if len(m.AccessToken) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken must be at least 1 characters, got: %d", len(m.AccessToken))
 	}
 
-	// Validate Audience (assert_min_length: 1)
-	if len(m.Audience) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Audience must be at least 1 characters, got: %d", len(m.Audience))
+	// Validate ExpiresIn (assert_gt: 0)
+	if m.ExpiresIn <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ExpiresIn must be > 0, got: %v", m.ExpiresIn)
 	}
-
 	// Validate AccessToken (default max size: 32768 bytes)
 	if len(m.AccessToken) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken exceeds max size of 32768 bytes, got: %d", len(m.AccessToken))
 	}
 
-	// Validate Audience (default max size: 32768 bytes)
-	if len(m.Audience) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Audience exceeds max size of 32768 bytes, got: %d", len(m.Audience))
+	return nil
+}
+
+// ValidateApiKey validates all fields in ApiKey according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateApiKey(m *ApiKey) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate Name (assert_required)
+	if m.Name == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Name is required")
+	}
+
+	// Validate Name (assert_min_length: 1)
+	if len(m.Name) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Name must be at least 1 characters, got: %d", len(m.Name))
+	}
+
+	// Validate CredPairs (assert_max_items: 8)
+	if len(m.CredPairs) > 8 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CredPairs exceeds max items of 8, got: %d", len(m.CredPairs))
+	}
+
+	// Validate Profile (assert_required)
+	if m.Profile == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Profile is required")
+	}
+
+	// Validate Profile (assert_min_length: 1)
+	if len(m.Profile) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Profile must be at least 1 characters, got: %d", len(m.Profile))
+	}
+
+	// Validate Name (default max size: 32768 bytes)
+	if len(m.Name) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Name exceeds max size of 32768 bytes, got: %d", len(m.Name))
+	}
+
+	// Validate Profile (default max size: 32768 bytes)
+	if len(m.Profile) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Profile exceeds max size of 32768 bytes, got: %d", len(m.Profile))
 	}
 
 	return nil
 }
 
-// ValidateExchangeTokenResponse validates all fields in ExchangeTokenResponse according to their annotations.
+// ValidateAuthenticateApiKeyRequest validates all fields in AuthenticateApiKeyRequest according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateExchangeTokenResponse(m *ExchangeTokenResponse) error {
+func ValidateAuthenticateApiKeyRequest(m *AuthenticateApiKeyRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate Token (assert_required)
+	if m.Token == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Token is required")
+	}
+
+	// Validate Token (default max size: 32768 bytes)
+	if len(m.Token) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Token exceeds max size of 32768 bytes, got: %d", len(m.Token))
+	}
+
+	return nil
+}
+
+// ValidateAuthenticateApiKeyResponse validates all fields in AuthenticateApiKeyResponse according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateAuthenticateApiKeyResponse(m *AuthenticateApiKeyResponse) error {
 	if m == nil {
 		return nil
 	}
@@ -9375,6 +9795,7 @@ const (
 	DefaultKeyLifetimeSeconds          int64  = 86400
 	DefaultNonceExpireSeconds          int64  = 300
 	DefaultJwkRefetchIntervalSeconds   int64  = 300
+	DefaultApiKeyTokenLifetimeSeconds  int64  = 300
 	DefaultAudience                    string = "identity"
 )
 
@@ -9382,42 +9803,45 @@ const (
 // Capacity Constants (for utilization monitoring)
 // ============================================================
 const (
-	MaxSizeConfigIssuer                        int = 32768
-	MaxSizeOauthconfigAudience                 int = 32768
-	MaxSizeProviderconfigName                  int = 32768
-	MaxSizeProviderconfigIssuer                int = 32768
-	MaxSizeProviderconfigClientId              int = 32768
-	MaxSizeProviderconfigClientSecret          int = 32768
-	MaxSizeProviderconfigAuthorizationEndpoint int = 32768
-	MaxSizeProviderconfigTokenEndpoint         int = 32768
-	MaxSizeProviderconfigEndSessionEndpoint    int = 32768
-	MaxSizeProviderconfigAudience              int = 32768
-	MaxSizeExternaljwkKid                      int = 32768
-	MaxSizeExternaljwkIssuer                   int = 32768
-	MaxSizeProviderinfoName                    int = 32768
-	MaxSizeAuthorizerequestCallbackUrl         int = 32768
-	MaxSizeAuthorizeresponseRedirectUrl        int = 32768
-	MaxSizeCallbackrequestCode                 int = 32768
-	MaxSizeCallbackrequestState                int = 32768
-	MaxSizeCallbackresponseRefreshToken        int = 32768
-	MaxSizeCallbackresponseAccessToken         int = 32768
-	MaxSizeCallbackresponseCallbackUrl         int = 32768
-	MaxSizeRefreshtokenrequestRefreshToken     int = 32768
-	MaxSizeRefreshtokenrequestAudience         int = 32768
-	MaxSizeRefreshtokenresponseAccessToken     int = 32768
-	MaxSizeLogoutrequestPostLogoutRedirectUrl  int = 32768
-	MaxSizeLogoutrequestIdTokenHint            int = 32768
-	MaxSizeLogoutresponseRedirectUrl           int = 32768
-	MaxSizeExchangetokenrequestAccessToken     int = 32768
-	MaxSizeExchangetokenrequestAudience        int = 32768
-	MaxSizeExchangetokenresponseAccessToken    int = 32768
-	MaxSizeQueryvalueStringValue               int = 32768
-	MaxSizePredicateFieldName                  int = 32768
-	MaxSizeSortfieldFieldName                  int = 32768
-	MaxSizeVerifyingkeysgetrequestKey          int = 32768
-	MaxSizeVerifyingkeysputrequestKey          int = 32768
-	MaxSizeExternaljwksgetrequestKey           int = 32768
-	MaxSizeExternaljwksputrequestKey           int = 32768
+	MaxSizeConfigIssuer                          int = 32768
+	MaxSizeOauthconfigAudience                   int = 32768
+	MaxSizeProviderconfigName                    int = 32768
+	MaxSizeProviderconfigIssuer                  int = 32768
+	MaxSizeProviderconfigClientId                int = 32768
+	MaxSizeProviderconfigClientSecret            int = 32768
+	MaxSizeProviderconfigAuthorizationEndpoint   int = 32768
+	MaxSizeProviderconfigTokenEndpoint           int = 32768
+	MaxSizeProviderconfigEndSessionEndpoint      int = 32768
+	MaxSizeProviderconfigAudience                int = 32768
+	MaxSizeExternaljwkKid                        int = 32768
+	MaxSizeExternaljwkIssuer                     int = 32768
+	MaxSizeProviderinfoName                      int = 32768
+	MaxSizeAuthorizerequestCallbackUrl           int = 32768
+	MaxSizeAuthorizeresponseRedirectUrl          int = 32768
+	MaxSizeCallbackrequestCode                   int = 32768
+	MaxSizeCallbackrequestState                  int = 32768
+	MaxSizeCallbackresponseRefreshToken          int = 32768
+	MaxSizeCallbackresponseAccessToken           int = 32768
+	MaxSizeCallbackresponseCallbackUrl           int = 32768
+	MaxSizeRefreshtokenrequestRefreshToken       int = 32768
+	MaxSizeRefreshtokenrequestAudience           int = 32768
+	MaxSizeRefreshtokenresponseAccessToken       int = 32768
+	MaxSizeLogoutrequestPostLogoutRedirectUrl    int = 32768
+	MaxSizeLogoutrequestIdTokenHint              int = 32768
+	MaxSizeLogoutresponseRedirectUrl             int = 32768
+	MaxSizeExchangetokenresponseAccessToken      int = 32768
+	MaxSizeApikeyName                            int = 32768
+	MaxItemsApikeyCredPairs                      int = 8
+	MaxSizeApikeyProfile                         int = 32768
+	MaxSizeAuthenticateapikeyrequestToken        int = 32768
+	MaxSizeAuthenticateapikeyresponseAccessToken int = 32768
+	MaxSizeQueryvalueStringValue                 int = 32768
+	MaxSizePredicateFieldName                    int = 32768
+	MaxSizeSortfieldFieldName                    int = 32768
+	MaxSizeVerifyingkeysgetrequestKey            int = 32768
+	MaxSizeVerifyingkeysputrequestKey            int = 32768
+	MaxSizeExternaljwksgetrequestKey             int = 32768
+	MaxSizeExternaljwksputrequestKey             int = 32768
 )
 
 // ============================================================
@@ -9442,6 +9866,9 @@ func ConfigDefaults(v *Config) {
 	}
 	if v.JwkRefetchIntervalSeconds == 0 {
 		v.JwkRefetchIntervalSeconds = DefaultJwkRefetchIntervalSeconds
+	}
+	if v.ApiKeyTokenLifetimeSeconds == 0 {
+		v.ApiKeyTokenLifetimeSeconds = DefaultApiKeyTokenLifetimeSeconds
 	}
 	if v.Oauth == nil {
 		v.Oauth = &OAuthConfig{}
@@ -9613,20 +10040,40 @@ func LogoutResponseDefaults(v *LogoutResponse) {
 }
 
 // ============================================================
-// TypeDefaults: ExchangeTokenRequest
+// TypeDefaults: ExchangeTokenResponse
 // ============================================================
-// ExchangeTokenRequestDefaults applies field-level default values to zero-valued fields.
-func ExchangeTokenRequestDefaults(v *ExchangeTokenRequest) {
+// ExchangeTokenResponseDefaults applies field-level default values to zero-valued fields.
+func ExchangeTokenResponseDefaults(v *ExchangeTokenResponse) {
 	if v == nil {
 		return
 	}
 }
 
 // ============================================================
-// TypeDefaults: ExchangeTokenResponse
+// TypeDefaults: ApiKey
 // ============================================================
-// ExchangeTokenResponseDefaults applies field-level default values to zero-valued fields.
-func ExchangeTokenResponseDefaults(v *ExchangeTokenResponse) {
+// ApiKeyDefaults applies field-level default values to zero-valued fields.
+func ApiKeyDefaults(v *ApiKey) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AuthenticateApiKeyRequest
+// ============================================================
+// AuthenticateApiKeyRequestDefaults applies field-level default values to zero-valued fields.
+func AuthenticateApiKeyRequestDefaults(v *AuthenticateApiKeyRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: AuthenticateApiKeyResponse
+// ============================================================
+// AuthenticateApiKeyResponseDefaults applies field-level default values to zero-valued fields.
+func AuthenticateApiKeyResponseDefaults(v *AuthenticateApiKeyResponse) {
 	if v == nil {
 		return
 	}
@@ -9969,6 +10416,9 @@ func ConfigUndefaults(v *Config) {
 	if v.JwkRefetchIntervalSeconds == DefaultJwkRefetchIntervalSeconds {
 		v.JwkRefetchIntervalSeconds = 0
 	}
+	if v.ApiKeyTokenLifetimeSeconds == DefaultApiKeyTokenLifetimeSeconds {
+		v.ApiKeyTokenLifetimeSeconds = 0
+	}
 	if v.Oauth != nil {
 		OAuthConfigUndefaults(v.Oauth)
 	}
@@ -10154,22 +10604,44 @@ func LogoutResponseUndefaults(v *LogoutResponse) {
 }
 
 // ============================================================
-// TypeUndefaults: ExchangeTokenRequest
+// TypeUndefaults: ExchangeTokenResponse
 // ============================================================
-// ExchangeTokenRequestUndefaults resets fields that match their default values back to zero.
+// ExchangeTokenResponseUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
-func ExchangeTokenRequestUndefaults(v *ExchangeTokenRequest) {
+func ExchangeTokenResponseUndefaults(v *ExchangeTokenResponse) {
 	if v == nil {
 		return
 	}
 }
 
 // ============================================================
-// TypeUndefaults: ExchangeTokenResponse
+// TypeUndefaults: ApiKey
 // ============================================================
-// ExchangeTokenResponseUndefaults resets fields that match their default values back to zero.
+// ApiKeyUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
-func ExchangeTokenResponseUndefaults(v *ExchangeTokenResponse) {
+func ApiKeyUndefaults(v *ApiKey) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AuthenticateApiKeyRequest
+// ============================================================
+// AuthenticateApiKeyRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AuthenticateApiKeyRequestUndefaults(v *AuthenticateApiKeyRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: AuthenticateApiKeyResponse
+// ============================================================
+// AuthenticateApiKeyResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func AuthenticateApiKeyResponseUndefaults(v *AuthenticateApiKeyResponse) {
 	if v == nil {
 		return
 	}
@@ -10553,6 +11025,12 @@ func MergeConfig(dst, src *Config) {
 	if len(dst.IdentityProfiles) == 0 {
 		dst.IdentityProfiles = src.IdentityProfiles
 	}
+	if len(dst.ApiKeys) == 0 {
+		dst.ApiKeys = src.ApiKeys
+	}
+	if dst.ApiKeyTokenLifetimeSeconds == 0 {
+		dst.ApiKeyTokenLifetimeSeconds = src.ApiKeyTokenLifetimeSeconds
+	}
 }
 
 // ============================================================
@@ -10805,23 +11283,49 @@ func MergeLogoutResponse(dst, src *LogoutResponse) {
 }
 
 // ============================================================
-// Merge: ExchangeTokenRequest
-// ============================================================
-// MergeExchangeTokenRequest fills zero-valued fields in dst from src.
-func MergeExchangeTokenRequest(dst, src *ExchangeTokenRequest) {
-	if dst.AccessToken == "" {
-		dst.AccessToken = src.AccessToken
-	}
-	if dst.Audience == "" {
-		dst.Audience = src.Audience
-	}
-}
-
-// ============================================================
 // Merge: ExchangeTokenResponse
 // ============================================================
 // MergeExchangeTokenResponse fills zero-valued fields in dst from src.
 func MergeExchangeTokenResponse(dst, src *ExchangeTokenResponse) {
+	if dst.AccessToken == "" {
+		dst.AccessToken = src.AccessToken
+	}
+	if dst.ExpiresIn == 0 {
+		dst.ExpiresIn = src.ExpiresIn
+	}
+}
+
+// ============================================================
+// Merge: ApiKey
+// ============================================================
+// MergeApiKey fills zero-valued fields in dst from src.
+func MergeApiKey(dst, src *ApiKey) {
+	if dst.Name == "" {
+		dst.Name = src.Name
+	}
+	if len(dst.CredPairs) == 0 {
+		dst.CredPairs = src.CredPairs
+	}
+	if dst.Profile == "" {
+		dst.Profile = src.Profile
+	}
+}
+
+// ============================================================
+// Merge: AuthenticateApiKeyRequest
+// ============================================================
+// MergeAuthenticateApiKeyRequest fills zero-valued fields in dst from src.
+func MergeAuthenticateApiKeyRequest(dst, src *AuthenticateApiKeyRequest) {
+	if dst.Token == "" {
+		dst.Token = src.Token
+	}
+}
+
+// ============================================================
+// Merge: AuthenticateApiKeyResponse
+// ============================================================
+// MergeAuthenticateApiKeyResponse fills zero-valued fields in dst from src.
+func MergeAuthenticateApiKeyResponse(dst, src *AuthenticateApiKeyResponse) {
 	if dst.AccessToken == "" {
 		dst.AccessToken = src.AccessToken
 	}
@@ -11258,8 +11762,8 @@ func ConfigLlmTypeDescriptor() string {
       "description": "key_lifetime_seconds controls how long each instance's signing key is used.\n On rotation the instance generates a new key pair, publishes the new JWK\n to kernel (consumers receive it immediately via Watch), and starts\n signing with the new key. The old JWK remains in verifying_keys until\n all tokens signed by it have expired (access_token_lifetime_seconds).\n Minimum: 3600 (1 hour). Default: 86400 (24 hours).",
       "default": 86400,
       "constraints": [
-        "minimum value: 3600",
-        "duration constraint: DURATION_TYPE_POSITIVE"
+        "duration constraint: DURATION_TYPE_POSITIVE",
+        "minimum value: 3600"
       ]
     },
     {
@@ -11349,8 +11853,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "uint32",
                         "description": "group permission bits (0-7)",
                         "constraints": [
-                          "must be \u003e= 0",
-                          "must be \u003c= 7"
+                          "must be \u003c= 7",
+                          "must be \u003e= 0"
                         ]
                       },
                       {
@@ -11358,8 +11862,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "uint32",
                         "description": "other permission bits (0-7)",
                         "constraints": [
-                          "must be \u003e= 0",
-                          "must be \u003c= 7"
+                          "must be \u003c= 7",
+                          "must be \u003e= 0"
                         ]
                       }
                     ]
@@ -11422,15 +11926,6 @@ func ConfigLlmTypeDescriptor() string {
             "constraints": [
               "must be a valid semantic version",
               "maximum length: 64"
-            ]
-          },
-          {
-            "name": "issuer",
-            "type": "string",
-            "description": "issuer is the required token issuer URL. Verified in code BEFORE OPA\n evaluation — tokens from unexpected issuers are rejected before the\n policy runs.",
-            "required": true,
-            "constraints": [
-              "must be a valid URL (scheme: URL_SCHEME_HTTPS)"
             ]
           }
         ]
@@ -11536,6 +12031,10 @@ func ConfigLlmTypeDescriptor() string {
                 "number": 6
               },
               {
+                "name": "IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY",
+                "number": 7
+              },
+              {
                 "name": "IDENTITY_SERVICE_RPCS_ANY",
                 "number": 99
               }
@@ -11600,6 +12099,167 @@ func ConfigLlmTypeDescriptor() string {
           }
         ]
       }
+    },
+    {
+      "name": "api_keys",
+      "type": "message",
+      "description": "api_keys configures machine-to-machine API key authentication.\n Each API key maps a JWK credential to a named identity profile,\n bypassing OAuth. The caller signs a JWT with the matching private key\n and exchanges it for a short-lived service-specific access token.",
+      "repeated": true,
+      "message": {
+        "name": "ApiKey",
+        "package": "identity",
+        "description": "ApiKey maps a JWK credential to a named identity profile for machine auth.\n Bypasses OAuth — the caller signs a JWT with the matching private key.",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string",
+            "description": "name identifies this API key (becomes \"sub\" in issued tokens).",
+            "required": true,
+            "constraints": [
+              "minimum length: 1"
+            ]
+          },
+          {
+            "name": "cred_pairs",
+            "type": "message",
+            "description": "Public keys for verifying the caller's signed JWT.\n Repeated to allow key rotation.",
+            "repeated": true,
+            "message": {
+              "name": "Jwk",
+              "package": "jwk",
+              "description": "Jwk represents a JSON Web Key as defined in RFC 7517.\n It contains the public key parameters for RSA (e, n), EC (crv, x, y), or OKP (crv, x) keys.\n JWK is used for key distribution and verification in JSON-based protocols like JWT.",
+              "fields": [
+                {
+                  "name": "kty",
+                  "type": "enum",
+                  "description": "Kty is the key type parameter (RSA, EC, or OKP)",
+                  "enum_values": [
+                    {
+                      "name": "KEY_TYPE_RSA",
+                      "number": 1,
+                      "description": "KeyTypeRsa represents an RSA key type"
+                    },
+                    {
+                      "name": "KEY_TYPE_EC",
+                      "number": 2,
+                      "description": "KeyTypeEc represents an Elliptic Curve key type"
+                    },
+                    {
+                      "name": "KEY_TYPE_OKP",
+                      "number": 3,
+                      "description": "KeyTypeOkp represents an Octet Key Pair (EdDSA) key type"
+                    }
+                  ]
+                },
+                {
+                  "name": "alg",
+                  "type": "string",
+                  "description": "Alg is the algorithm intended for use with the key (e.g., \"RS384\", \"ES256\", \"EdDSA\")",
+                  "required": true,
+                  "constraints": [
+                    "minimum length: 1"
+                  ]
+                },
+                {
+                  "name": "kid",
+                  "type": "string",
+                  "description": "Kid is the key ID used to match keys with signatures",
+                  "required": true,
+                  "constraints": [
+                    "minimum length: 1"
+                  ]
+                },
+                {
+                  "name": "use",
+                  "type": "enum",
+                  "description": "Use indicates the intended use of the key (sig for signatures, enc for encryption)",
+                  "enum_values": [
+                    {
+                      "name": "JWK_USE_TYPE_SIG",
+                      "number": 1,
+                      "description": "JwkUseTypeSig indicates the key is used for digital signatures"
+                    },
+                    {
+                      "name": "JWK_USE_TYPE_ENC",
+                      "number": 2,
+                      "description": "JwkUseTypeEnc indicates the key is used for encryption"
+                    }
+                  ]
+                },
+                {
+                  "name": "e",
+                  "type": "string",
+                  "description": "E is the RSA public exponent (base64url encoded without padding)",
+                  "constraints": [
+                    "must be base64 encoded"
+                  ]
+                },
+                {
+                  "name": "n",
+                  "type": "string",
+                  "description": "N is the RSA modulus (base64url encoded without padding)",
+                  "constraints": [
+                    "must be base64 encoded"
+                  ]
+                },
+                {
+                  "name": "crv",
+                  "type": "string",
+                  "description": "Crv is the elliptic curve name (e.g., P-256, P-384, P-521, Ed25519)"
+                },
+                {
+                  "name": "x",
+                  "type": "string",
+                  "description": "X is the x coordinate for EC keys or the public key for OKP (base64url encoded without padding)",
+                  "constraints": [
+                    "must be base64 encoded"
+                  ]
+                },
+                {
+                  "name": "y",
+                  "type": "string",
+                  "description": "Y is the y coordinate for EC keys (base64url encoded without padding, not used for OKP)",
+                  "constraints": [
+                    "must be base64 encoded"
+                  ]
+                },
+                {
+                  "name": "exp",
+                  "type": "int64",
+                  "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
+                },
+                {
+                  "name": "created",
+                  "type": "int64",
+                  "description": "Created is the Unix epoch timestamp (seconds) when the key was created (optional).\n If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
+                  "constraints": [
+                    "must be \u003e= 1735689600",
+                    "must be \u003c= 8045740800"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "profile",
+            "type": "string",
+            "description": "profile is the identity profile this key maps to.\n Must match an id in identity_profiles or a builtin profile.",
+            "required": true,
+            "constraints": [
+              "minimum length: 1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "api_key_token_lifetime_seconds",
+      "type": "int64",
+      "description": "api_key_token_lifetime_seconds is the lifetime for tokens issued to API keys.\n Default: 300 (5 minutes). Kept short since machines can re-authenticate instantly.",
+      "default": 300,
+      "constraints": [
+        "duration constraint: DURATION_TYPE_POSITIVE"
+      ]
     }
   ]
 }`

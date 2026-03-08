@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
-	cloudidentity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudidentity"
 	cloudvendor "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudvendor"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
 	generated "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/generated"
@@ -1666,151 +1665,6 @@ func FullDumpHeaderToTOML(v *FullDumpHeader) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
-// TokenRequestJSON represents TokenRequest in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type tokenrequestJSON struct {
-	InputToken      string          `json:"input_token,omitempty"`
-	Aud             string          `json:"aud,omitempty"`
-	Exp             int64           `json:"exp,omitempty"`
-	ContinuityToken string          `json:"continuity_token,omitempty"`
-	CloudProof      json.RawMessage `json:"cloud_proof,omitempty"`
-}
-
-// TokenRequestToJSON converts TokenRequest to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func TokenRequestToJSON(v *TokenRequest) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "tokenrequest is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := tokenrequestJSON{
-		InputToken:      v.InputToken,
-		Aud:             v.Aud,
-		Exp:             v.Exp,
-		ContinuityToken: v.ContinuityToken,
-		CloudProof: func() json.RawMessage {
-			if v.CloudProof == nil {
-				return nil
-			}
-			data, _ := cloudidentity.CloudIdentityProofToJSON(v.CloudProof)
-			return data
-		}(),
-	}
-	return json.Marshal(helper)
-}
-
-// TokenRequestFromBytes creates TokenRequest from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func TokenRequestFromBytes(data []byte) (*TokenRequest, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := TokenRequestFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := TokenRequestFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := TokenRequestFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &TokenRequest{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse TokenRequest: unsupported format or invalid data")
-}
-
-// TokenRequestFromJSON creates TokenRequest from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func TokenRequestFromJSON(data []byte) (*TokenRequest, error) {
-	// Unmarshal into helper struct with string enums
-	var raw tokenrequestJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &TokenRequest{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &TokenRequest{}
-	result.InputToken = raw.InputToken
-	result.Aud = raw.Aud
-	result.Exp = raw.Exp
-	result.ContinuityToken = raw.ContinuityToken
-	// Parse message field: CloudProof
-	if len(raw.CloudProof) > 0 {
-		parsed, err := cloudidentity.CloudIdentityProofFromJSON(raw.CloudProof)
-		if err == nil {
-			result.CloudProof = parsed
-		}
-	}
-	return result, nil
-}
-
-// TokenRequestToYAML converts TokenRequest to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func TokenRequestToYAML(v *TokenRequest) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "tokenrequest is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := TokenRequestToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// TokenRequestToTOML converts TokenRequest to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func TokenRequestToTOML(v *TokenRequest) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "tokenrequest is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := TokenRequestToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
 // TokenExchangerStateJSON represents TokenExchangerState in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type tokenexchangerstateJSON struct {
@@ -2255,7 +2109,7 @@ func DelegateToJSON(v *Delegate) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.CredPairs))
 			for _, item := range v.CredPairs {
 				if item != nil {
-					if data, err := jwk.CredPairToJSON(item); err == nil {
+					if data, err := jwk.JwkToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2344,10 +2198,10 @@ func DelegateFromJSON(data []byte) (*Delegate, error) {
 	result.Name = raw.Name
 	// Parse repeated message field: CredPairs
 	if len(raw.CredPairs) > 0 {
-		result.CredPairs = make([]*jwk.CredPair, 0, len(raw.CredPairs))
+		result.CredPairs = make([]*jwk.Jwk, 0, len(raw.CredPairs))
 		for _, itemJSON := range raw.CredPairs {
 			if len(itemJSON) > 0 {
-				parsed, err := jwk.CredPairFromJSON(itemJSON)
+				parsed, err := jwk.JwkFromJSON(itemJSON)
 				if err == nil {
 					result.CredPairs = append(result.CredPairs, parsed)
 				}
@@ -2417,6 +2271,7 @@ type configJSON struct {
 	KeyRotationIntervalSeconds int64             `json:"key_rotation_interval_seconds,omitempty"`
 	DefaultTokenExpirySeconds  int64             `json:"default_token_expiry_seconds,omitempty"`
 	Delegates                  []json.RawMessage `json:"delegates,omitempty"`
+	CaCertLifetimeSeconds      int64             `json:"ca_cert_lifetime_seconds,omitempty"`
 }
 
 // ConfigToJSON converts Config to JSON bytes.
@@ -2471,6 +2326,7 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 			}
 			return result
 		}(),
+		CaCertLifetimeSeconds: v.CaCertLifetimeSeconds,
 	}
 	return json.Marshal(helper)
 }
@@ -2575,6 +2431,7 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 			}
 		}
 	}
+	result.CaCertLifetimeSeconds = raw.CaCertLifetimeSeconds
 	return result, nil
 }
 
@@ -3935,6 +3792,151 @@ func ServiceHealthStateToTOML(v *ServiceHealthState) ([]byte, error) {
 	}
 	// Convert to JSON first
 	jsonData, err := ServiceHealthStateToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaStateJSON represents CaState in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type castateJSON struct {
+	CaCerts []json.RawMessage `json:"ca_certs,omitempty"`
+}
+
+// CaStateToJSON converts CaState to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaStateToJSON(v *CaState) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "castate is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := castateJSON{
+		CaCerts: func() []json.RawMessage {
+			if len(v.CaCerts) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.CaCerts))
+			for _, item := range v.CaCerts {
+				if item != nil {
+					if data, err := x509.X509CertToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
+	}
+	return json.Marshal(helper)
+}
+
+// CaStateFromBytes creates CaState from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaStateFromBytes(data []byte) (*CaState, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaStateFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaStateFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaStateFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaState{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaState: unsupported format or invalid data")
+}
+
+// CaStateFromJSON creates CaState from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaStateFromJSON(data []byte) (*CaState, error) {
+	// Unmarshal into helper struct with string enums
+	var raw castateJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaState{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaState{}
+	// Parse repeated message field: CaCerts
+	if len(raw.CaCerts) > 0 {
+		result.CaCerts = make([]*x509.X509Cert, 0, len(raw.CaCerts))
+		for _, itemJSON := range raw.CaCerts {
+			if len(itemJSON) > 0 {
+				parsed, err := x509.X509CertFromJSON(itemJSON)
+				if err == nil {
+					result.CaCerts = append(result.CaCerts, parsed)
+				}
+			}
+		}
+	}
+	return result, nil
+}
+
+// CaStateToYAML converts CaState to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaStateToYAML(v *CaState) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "castate is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaStateToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaStateToTOML converts CaState to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaStateToTOML(v *CaState) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "castate is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaStateToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -28517,6 +28519,1510 @@ func InstancesQueryResponseToTOML(v *InstancesQueryResponse) ([]byte, error) {
 	return toml.Marshal(obj)
 }
 
+// CaCertsGetRequestJSON represents CaCertsGetRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsgetrequestJSON struct {
+	Key string `json:"key,omitempty"`
+}
+
+// CaCertsGetRequestToJSON converts CaCertsGetRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsGetRequestToJSON(v *CaCertsGetRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsgetrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsgetrequestJSON{
+		Key: v.Key,
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsGetRequestFromBytes creates CaCertsGetRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsGetRequestFromBytes(data []byte) (*CaCertsGetRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsGetRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsGetRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsGetRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsGetRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsGetRequest: unsupported format or invalid data")
+}
+
+// CaCertsGetRequestFromJSON creates CaCertsGetRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsGetRequestFromJSON(data []byte) (*CaCertsGetRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsgetrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsGetRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsGetRequest{}
+	result.Key = raw.Key
+	return result, nil
+}
+
+// CaCertsGetRequestToYAML converts CaCertsGetRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsGetRequestToYAML(v *CaCertsGetRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsgetrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsGetRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsGetRequestToTOML converts CaCertsGetRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsGetRequestToTOML(v *CaCertsGetRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsgetrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsGetRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsPutRequestJSON represents CaCertsPutRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsputrequestJSON struct {
+	Key         string          `json:"key,omitempty"`
+	Value       json.RawMessage `json:"value,omitempty"`
+	LockCounter int64           `json:"lock_counter,omitempty"`
+}
+
+// CaCertsPutRequestToJSON converts CaCertsPutRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsPutRequestToJSON(v *CaCertsPutRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsputrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsputrequestJSON{
+		Key: v.Key,
+		Value: func() json.RawMessage {
+			if v.Value == nil {
+				return nil
+			}
+			data, _ := x509.X509CertToJSON(v.Value)
+			return data
+		}(),
+		LockCounter: v.LockCounter,
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsPutRequestFromBytes creates CaCertsPutRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsPutRequestFromBytes(data []byte) (*CaCertsPutRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsPutRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsPutRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsPutRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsPutRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsPutRequest: unsupported format or invalid data")
+}
+
+// CaCertsPutRequestFromJSON creates CaCertsPutRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsPutRequestFromJSON(data []byte) (*CaCertsPutRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsputrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsPutRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsPutRequest{}
+	result.Key = raw.Key
+	// Parse message field: Value
+	if len(raw.Value) > 0 {
+		parsed, err := x509.X509CertFromJSON(raw.Value)
+		if err == nil {
+			result.Value = parsed
+		}
+	}
+	result.LockCounter = raw.LockCounter
+	return result, nil
+}
+
+// CaCertsPutRequestToYAML converts CaCertsPutRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsPutRequestToYAML(v *CaCertsPutRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsputrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsPutRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsPutRequestToTOML converts CaCertsPutRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsPutRequestToTOML(v *CaCertsPutRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsputrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsPutRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsGetAllRequestJSON represents CaCertsGetAllRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsgetallrequestJSON struct {
+}
+
+// CaCertsGetAllRequestToJSON converts CaCertsGetAllRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsGetAllRequestToJSON(v *CaCertsGetAllRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsgetallrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsgetallrequestJSON{}
+	return json.Marshal(helper)
+}
+
+// CaCertsGetAllRequestFromBytes creates CaCertsGetAllRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsGetAllRequestFromBytes(data []byte) (*CaCertsGetAllRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsGetAllRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsGetAllRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsGetAllRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsGetAllRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsGetAllRequest: unsupported format or invalid data")
+}
+
+// CaCertsGetAllRequestFromJSON creates CaCertsGetAllRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsGetAllRequestFromJSON(data []byte) (*CaCertsGetAllRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsgetallrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsGetAllRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsGetAllRequest{}
+	return result, nil
+}
+
+// CaCertsGetAllRequestToYAML converts CaCertsGetAllRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsGetAllRequestToYAML(v *CaCertsGetAllRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsgetallrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsGetAllRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsGetAllRequestToTOML converts CaCertsGetAllRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsGetAllRequestToTOML(v *CaCertsGetAllRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsgetallrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsGetAllRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsKeysRequestJSON represents CaCertsKeysRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertskeysrequestJSON struct {
+}
+
+// CaCertsKeysRequestToJSON converts CaCertsKeysRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsKeysRequestToJSON(v *CaCertsKeysRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertskeysrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertskeysrequestJSON{}
+	return json.Marshal(helper)
+}
+
+// CaCertsKeysRequestFromBytes creates CaCertsKeysRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsKeysRequestFromBytes(data []byte) (*CaCertsKeysRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsKeysRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsKeysRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsKeysRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsKeysRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsKeysRequest: unsupported format or invalid data")
+}
+
+// CaCertsKeysRequestFromJSON creates CaCertsKeysRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsKeysRequestFromJSON(data []byte) (*CaCertsKeysRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertskeysrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsKeysRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsKeysRequest{}
+	return result, nil
+}
+
+// CaCertsKeysRequestToYAML converts CaCertsKeysRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsKeysRequestToYAML(v *CaCertsKeysRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertskeysrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsKeysRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsKeysRequestToTOML converts CaCertsKeysRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsKeysRequestToTOML(v *CaCertsKeysRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertskeysrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsKeysRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsSizeRequestJSON represents CaCertsSizeRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertssizerequestJSON struct {
+}
+
+// CaCertsSizeRequestToJSON converts CaCertsSizeRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsSizeRequestToJSON(v *CaCertsSizeRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertssizerequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertssizerequestJSON{}
+	return json.Marshal(helper)
+}
+
+// CaCertsSizeRequestFromBytes creates CaCertsSizeRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsSizeRequestFromBytes(data []byte) (*CaCertsSizeRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsSizeRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsSizeRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsSizeRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsSizeRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsSizeRequest: unsupported format or invalid data")
+}
+
+// CaCertsSizeRequestFromJSON creates CaCertsSizeRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsSizeRequestFromJSON(data []byte) (*CaCertsSizeRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertssizerequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsSizeRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsSizeRequest{}
+	return result, nil
+}
+
+// CaCertsSizeRequestToYAML converts CaCertsSizeRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsSizeRequestToYAML(v *CaCertsSizeRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertssizerequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsSizeRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsSizeRequestToTOML converts CaCertsSizeRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsSizeRequestToTOML(v *CaCertsSizeRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertssizerequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsSizeRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsClearRequestJSON represents CaCertsClearRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsclearrequestJSON struct {
+}
+
+// CaCertsClearRequestToJSON converts CaCertsClearRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsClearRequestToJSON(v *CaCertsClearRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsclearrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsclearrequestJSON{}
+	return json.Marshal(helper)
+}
+
+// CaCertsClearRequestFromBytes creates CaCertsClearRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsClearRequestFromBytes(data []byte) (*CaCertsClearRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsClearRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsClearRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsClearRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsClearRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsClearRequest: unsupported format or invalid data")
+}
+
+// CaCertsClearRequestFromJSON creates CaCertsClearRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsClearRequestFromJSON(data []byte) (*CaCertsClearRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsclearrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsClearRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsClearRequest{}
+	return result, nil
+}
+
+// CaCertsClearRequestToYAML converts CaCertsClearRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsClearRequestToYAML(v *CaCertsClearRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsclearrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsClearRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsClearRequestToTOML converts CaCertsClearRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsClearRequestToTOML(v *CaCertsClearRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsclearrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsClearRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsValueResponseJSON represents CaCertsValueResponse in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsvalueresponseJSON struct {
+	Value json.RawMessage `json:"value,omitempty"`
+	Found bool            `json:"found,omitempty"`
+}
+
+// CaCertsValueResponseToJSON converts CaCertsValueResponse to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsValueResponseToJSON(v *CaCertsValueResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsvalueresponse is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsvalueresponseJSON{
+		Value: func() json.RawMessage {
+			if v.Value == nil {
+				return nil
+			}
+			data, _ := x509.X509CertToJSON(v.Value)
+			return data
+		}(),
+		Found: v.Found,
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsValueResponseFromBytes creates CaCertsValueResponse from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsValueResponseFromBytes(data []byte) (*CaCertsValueResponse, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsValueResponseFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsValueResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsValueResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsValueResponse{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsValueResponse: unsupported format or invalid data")
+}
+
+// CaCertsValueResponseFromJSON creates CaCertsValueResponse from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsValueResponseFromJSON(data []byte) (*CaCertsValueResponse, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsvalueresponseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsValueResponse{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsValueResponse{}
+	// Parse message field: Value
+	if len(raw.Value) > 0 {
+		parsed, err := x509.X509CertFromJSON(raw.Value)
+		if err == nil {
+			result.Value = parsed
+		}
+	}
+	result.Found = raw.Found
+	return result, nil
+}
+
+// CaCertsValueResponseToYAML converts CaCertsValueResponse to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsValueResponseToYAML(v *CaCertsValueResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsvalueresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsValueResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsValueResponseToTOML converts CaCertsValueResponse to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsValueResponseToTOML(v *CaCertsValueResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsvalueresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsValueResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsEntriesResponseJSON represents CaCertsEntriesResponse in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsentriesresponseJSON struct {
+}
+
+// CaCertsEntriesResponseToJSON converts CaCertsEntriesResponse to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsEntriesResponseToJSON(v *CaCertsEntriesResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsentriesresponse is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsentriesresponseJSON{}
+	return json.Marshal(helper)
+}
+
+// CaCertsEntriesResponseFromBytes creates CaCertsEntriesResponse from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsEntriesResponseFromBytes(data []byte) (*CaCertsEntriesResponse, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsEntriesResponseFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsEntriesResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsEntriesResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsEntriesResponse{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsEntriesResponse: unsupported format or invalid data")
+}
+
+// CaCertsEntriesResponseFromJSON creates CaCertsEntriesResponse from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsEntriesResponseFromJSON(data []byte) (*CaCertsEntriesResponse, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsentriesresponseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsEntriesResponse{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsEntriesResponse{}
+	return result, nil
+}
+
+// CaCertsEntriesResponseToYAML converts CaCertsEntriesResponse to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsEntriesResponseToYAML(v *CaCertsEntriesResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsentriesresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsEntriesResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsEntriesResponseToTOML converts CaCertsEntriesResponse to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsEntriesResponseToTOML(v *CaCertsEntriesResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsentriesresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsEntriesResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsKeysResponseJSON represents CaCertsKeysResponse in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertskeysresponseJSON struct {
+	Keys []string `json:"keys,omitempty"`
+}
+
+// CaCertsKeysResponseToJSON converts CaCertsKeysResponse to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsKeysResponseToJSON(v *CaCertsKeysResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertskeysresponse is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertskeysresponseJSON{
+		Keys: v.Keys,
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsKeysResponseFromBytes creates CaCertsKeysResponse from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsKeysResponseFromBytes(data []byte) (*CaCertsKeysResponse, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsKeysResponseFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsKeysResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsKeysResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsKeysResponse{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsKeysResponse: unsupported format or invalid data")
+}
+
+// CaCertsKeysResponseFromJSON creates CaCertsKeysResponse from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsKeysResponseFromJSON(data []byte) (*CaCertsKeysResponse, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertskeysresponseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsKeysResponse{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsKeysResponse{}
+	result.Keys = raw.Keys
+	return result, nil
+}
+
+// CaCertsKeysResponseToYAML converts CaCertsKeysResponse to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsKeysResponseToYAML(v *CaCertsKeysResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertskeysresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsKeysResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsKeysResponseToTOML converts CaCertsKeysResponse to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsKeysResponseToTOML(v *CaCertsKeysResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertskeysresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsKeysResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsSizeResponseJSON represents CaCertsSizeResponse in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertssizeresponseJSON struct {
+	Size int32 `json:"size,omitempty"`
+}
+
+// CaCertsSizeResponseToJSON converts CaCertsSizeResponse to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsSizeResponseToJSON(v *CaCertsSizeResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertssizeresponse is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertssizeresponseJSON{
+		Size: v.Size,
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsSizeResponseFromBytes creates CaCertsSizeResponse from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsSizeResponseFromBytes(data []byte) (*CaCertsSizeResponse, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsSizeResponseFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsSizeResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsSizeResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsSizeResponse{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsSizeResponse: unsupported format or invalid data")
+}
+
+// CaCertsSizeResponseFromJSON creates CaCertsSizeResponse from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsSizeResponseFromJSON(data []byte) (*CaCertsSizeResponse, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertssizeresponseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsSizeResponse{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsSizeResponse{}
+	result.Size = raw.Size
+	return result, nil
+}
+
+// CaCertsSizeResponseToYAML converts CaCertsSizeResponse to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsSizeResponseToYAML(v *CaCertsSizeResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertssizeresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsSizeResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsSizeResponseToTOML converts CaCertsSizeResponse to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsSizeResponseToTOML(v *CaCertsSizeResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertssizeresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsSizeResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsQueryRequestJSON represents CaCertsQueryRequest in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsqueryrequestJSON struct {
+	Query json.RawMessage `json:"query,omitempty"`
+}
+
+// CaCertsQueryRequestToJSON converts CaCertsQueryRequest to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsQueryRequestToJSON(v *CaCertsQueryRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsqueryrequest is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsqueryrequestJSON{
+		Query: func() json.RawMessage {
+			if v.Query == nil {
+				return nil
+			}
+			data, _ := CollectionQueryToJSON(v.Query)
+			return data
+		}(),
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsQueryRequestFromBytes creates CaCertsQueryRequest from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsQueryRequestFromBytes(data []byte) (*CaCertsQueryRequest, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsQueryRequestFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsQueryRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsQueryRequestFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsQueryRequest{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsQueryRequest: unsupported format or invalid data")
+}
+
+// CaCertsQueryRequestFromJSON creates CaCertsQueryRequest from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsQueryRequestFromJSON(data []byte) (*CaCertsQueryRequest, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsqueryrequestJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsQueryRequest{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsQueryRequest{}
+	// Parse message field: Query
+	if len(raw.Query) > 0 {
+		parsed, err := CollectionQueryFromJSON(raw.Query)
+		if err == nil {
+			result.Query = parsed
+		}
+	}
+	return result, nil
+}
+
+// CaCertsQueryRequestToYAML converts CaCertsQueryRequest to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsQueryRequestToYAML(v *CaCertsQueryRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsqueryrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsQueryRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsQueryRequestToTOML converts CaCertsQueryRequest to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsQueryRequestToTOML(v *CaCertsQueryRequest) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsqueryrequest is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsQueryRequestToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
+// CaCertsQueryResponseJSON represents CaCertsQueryResponse in external JSON format (with string enums)
+// MARKER: JSON helper struct generated from serial.go
+type cacertsqueryresponseJSON struct {
+	Results    []json.RawMessage `json:"results,omitempty"`
+	TotalCount int32             `json:"total_count,omitempty"`
+}
+
+// CaCertsQueryResponseToJSON converts CaCertsQueryResponse to JSON bytes.
+// Uses custom JSON helper for friendly enum strings and proper int64 handling.
+func CaCertsQueryResponseToJSON(v *CaCertsQueryResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsqueryresponse is nil")
+	}
+	// Convert to JSON helper struct with string enums
+	helper := cacertsqueryresponseJSON{
+		Results: func() []json.RawMessage {
+			if len(v.Results) == 0 {
+				return nil
+			}
+			result := make([]json.RawMessage, 0, len(v.Results))
+			for _, item := range v.Results {
+				if item != nil {
+					if data, err := x509.X509CertToJSON(item); err == nil {
+						result = append(result, data)
+					}
+				}
+			}
+			return result
+		}(),
+		TotalCount: v.TotalCount,
+	}
+	return json.Marshal(helper)
+}
+
+// CaCertsQueryResponseFromBytes creates CaCertsQueryResponse from bytes, auto-detecting the format.
+// Supports JSON, YAML, TOML, and binary protobuf formats.
+func CaCertsQueryResponseFromBytes(data []byte) (*CaCertsQueryResponse, error) {
+	// Trim leading whitespace to check format
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
+	}
+	// Try JSON first (most common, starts with { or [)
+	if trimmed[0] == '{' || trimmed[0] == '[' {
+		if result, err := CaCertsQueryResponseFromJSON(data); err == nil {
+			return result, nil
+		}
+	}
+	// Try TOML (try before YAML since YAML is more permissive)
+	var tomlObj any
+	if err := toml.Unmarshal(data, &tomlObj); err == nil {
+		// Convert TOML to JSON, then parse
+		jsonData, err := json.Marshal(tomlObj)
+		if err == nil {
+			if result, err := CaCertsQueryResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try YAML
+	var yamlObj any
+	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
+		// Convert YAML to JSON, then parse
+		jsonData, err := json.Marshal(yamlObj)
+		if err == nil {
+			if result, err := CaCertsQueryResponseFromJSON(jsonData); err == nil {
+				return result, nil
+			}
+		}
+	}
+	// Try binary protobuf
+	v := &CaCertsQueryResponse{}
+	if err := proto.Unmarshal(data, v); err == nil {
+		return v, nil
+	}
+	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CaCertsQueryResponse: unsupported format or invalid data")
+}
+
+// CaCertsQueryResponseFromJSON creates CaCertsQueryResponse from JSON bytes.
+// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
+func CaCertsQueryResponseFromJSON(data []byte) (*CaCertsQueryResponse, error) {
+	// Unmarshal into helper struct with string enums
+	var raw cacertsqueryresponseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		// Fall back to protojson which handles proto3 JSON conventions
+		// (string-encoded int64/uint64, standard enum names, etc.)
+		v := &CaCertsQueryResponse{}
+		if pErr := protojson.Unmarshal(data, v); pErr != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	// Build result with parsed enums
+	result := &CaCertsQueryResponse{}
+	// Parse repeated message field: Results
+	if len(raw.Results) > 0 {
+		result.Results = make([]*x509.X509Cert, 0, len(raw.Results))
+		for _, itemJSON := range raw.Results {
+			if len(itemJSON) > 0 {
+				parsed, err := x509.X509CertFromJSON(itemJSON)
+				if err == nil {
+					result.Results = append(result.Results, parsed)
+				}
+			}
+		}
+	}
+	result.TotalCount = raw.TotalCount
+	return result, nil
+}
+
+// CaCertsQueryResponseToYAML converts CaCertsQueryResponse to YAML bytes.
+// Converts to JSON first, then to YAML for proper protobuf handling.
+func CaCertsQueryResponseToYAML(v *CaCertsQueryResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsqueryresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsQueryResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to YAML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(obj)
+}
+
+// CaCertsQueryResponseToTOML converts CaCertsQueryResponse to TOML bytes.
+// Converts to JSON first, then to TOML for proper protobuf handling.
+func CaCertsQueryResponseToTOML(v *CaCertsQueryResponse) ([]byte, error) {
+	if v == nil {
+		return nil, protoerrors.NewErrMissingInvalidData(nil, "cacertsqueryresponse is nil")
+	}
+	// Convert to JSON first
+	jsonData, err := CaCertsQueryResponseToJSON(v)
+	if err != nil {
+		return nil, err
+	}
+	// Convert JSON to TOML
+	var obj any
+	if err := json.Unmarshal(jsonData, &obj); err != nil {
+		return nil, err
+	}
+	return toml.Marshal(obj)
+}
+
 // MapEmptyJSON represents MapEmpty in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type mapemptyJSON struct {
@@ -28966,51 +30472,6 @@ func FullDumpHeaderFromEnvVar(env map[string]string) (*FullDumpHeader, error) {
 	return result, nil
 }
 
-// TokenRequestToEnvVar converts TokenRequest to environment variable key-value pairs.
-func TokenRequestToEnvVar(v *TokenRequest) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_INPUT_TOKEN"] = v.InputToken
-	result["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_AUD"] = v.Aud
-	result["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_EXP"] = strconv.FormatInt(v.Exp, 10)
-	result["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_CONTINUITY_TOKEN"] = v.ContinuityToken
-	if v.CloudProof != nil {
-		for k, val := range cloudidentity.CloudIdentityProofToEnvVar(v.CloudProof) {
-			result[k] = val
-		}
-	}
-	return result
-}
-
-// TokenRequestFromEnvVar creates TokenRequest from environment variable key-value pairs.
-func TokenRequestFromEnvVar(env map[string]string) (*TokenRequest, error) {
-	result := &TokenRequest{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_INPUT_TOKEN"]; ok && val != "" {
-		result.InputToken = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_AUD"]; ok && val != "" {
-		result.Aud = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_EXP"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.Exp = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_REQUEST_CONTINUITY_TOKEN"]; ok && val != "" {
-		result.ContinuityToken = val
-	}
-	if sub, err := cloudidentity.CloudIdentityProofFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.CloudProof = sub
-	}
-	return result, nil
-}
-
 // TokenExchangerStateToEnvVar converts TokenExchangerState to environment variable key-value pairs.
 func TokenExchangerStateToEnvVar(v *TokenExchangerState) map[string]string {
 	if v == nil {
@@ -29111,6 +30572,7 @@ func ConfigToEnvVar(v *Config) map[string]string {
 	}
 	result["PROTO_SERVICES_KERNEL_CONFIG_KEY_ROTATION_INTERVAL_SECONDS"] = strconv.FormatInt(v.KeyRotationIntervalSeconds, 10)
 	result["PROTO_SERVICES_KERNEL_CONFIG_DEFAULT_TOKEN_EXPIRY_SECONDS"] = strconv.FormatInt(v.DefaultTokenExpirySeconds, 10)
+	result["PROTO_SERVICES_KERNEL_CONFIG_CA_CERT_LIFETIME_SECONDS"] = strconv.FormatInt(v.CaCertLifetimeSeconds, 10)
 	return result
 }
 
@@ -29140,6 +30602,13 @@ func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 			return nil, err
 		}
 		result.DefaultTokenExpirySeconds = parsed
+	}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CONFIG_CA_CERT_LIFETIME_SECONDS"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.CaCertLifetimeSeconds = parsed
 	}
 	return result, nil
 }
@@ -29348,6 +30817,21 @@ func ServiceHealthStateToEnvVar(v *ServiceHealthState) map[string]string {
 // ServiceHealthStateFromEnvVar creates ServiceHealthState from environment variable key-value pairs.
 func ServiceHealthStateFromEnvVar(env map[string]string) (*ServiceHealthState, error) {
 	result := &ServiceHealthState{}
+	return result, nil
+}
+
+// CaStateToEnvVar converts CaState to environment variable key-value pairs.
+func CaStateToEnvVar(v *CaState) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// CaStateFromEnvVar creates CaState from environment variable key-value pairs.
+func CaStateFromEnvVar(env map[string]string) (*CaState, error) {
+	result := &CaState{}
 	return result, nil
 }
 
@@ -33538,6 +35022,262 @@ func InstancesQueryResponseFromEnvVar(env map[string]string) (*InstancesQueryRes
 	return result, nil
 }
 
+// CaCertsGetRequestToEnvVar converts CaCertsGetRequest to environment variable key-value pairs.
+func CaCertsGetRequestToEnvVar(v *CaCertsGetRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_KERNEL_CA_CERTS_GET_REQUEST_KEY"] = v.Key
+	return result
+}
+
+// CaCertsGetRequestFromEnvVar creates CaCertsGetRequest from environment variable key-value pairs.
+func CaCertsGetRequestFromEnvVar(env map[string]string) (*CaCertsGetRequest, error) {
+	result := &CaCertsGetRequest{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_GET_REQUEST_KEY"]; ok && val != "" {
+		result.Key = val
+	}
+	return result, nil
+}
+
+// CaCertsPutRequestToEnvVar converts CaCertsPutRequest to environment variable key-value pairs.
+func CaCertsPutRequestToEnvVar(v *CaCertsPutRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_KERNEL_CA_CERTS_PUT_REQUEST_KEY"] = v.Key
+	if v.Value != nil {
+		for k, val := range x509.X509CertToEnvVar(v.Value) {
+			result[k] = val
+		}
+	}
+	result["PROTO_SERVICES_KERNEL_CA_CERTS_PUT_REQUEST_LOCK_COUNTER"] = strconv.FormatInt(v.LockCounter, 10)
+	return result
+}
+
+// CaCertsPutRequestFromEnvVar creates CaCertsPutRequest from environment variable key-value pairs.
+func CaCertsPutRequestFromEnvVar(env map[string]string) (*CaCertsPutRequest, error) {
+	result := &CaCertsPutRequest{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_PUT_REQUEST_KEY"]; ok && val != "" {
+		result.Key = val
+	}
+	if sub, err := x509.X509CertFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Value = sub
+	}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_PUT_REQUEST_LOCK_COUNTER"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result.LockCounter = parsed
+	}
+	return result, nil
+}
+
+// CaCertsGetAllRequestToEnvVar converts CaCertsGetAllRequest to environment variable key-value pairs.
+func CaCertsGetAllRequestToEnvVar(v *CaCertsGetAllRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// CaCertsGetAllRequestFromEnvVar creates CaCertsGetAllRequest from environment variable key-value pairs.
+func CaCertsGetAllRequestFromEnvVar(env map[string]string) (*CaCertsGetAllRequest, error) {
+	result := &CaCertsGetAllRequest{}
+	return result, nil
+}
+
+// CaCertsKeysRequestToEnvVar converts CaCertsKeysRequest to environment variable key-value pairs.
+func CaCertsKeysRequestToEnvVar(v *CaCertsKeysRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// CaCertsKeysRequestFromEnvVar creates CaCertsKeysRequest from environment variable key-value pairs.
+func CaCertsKeysRequestFromEnvVar(env map[string]string) (*CaCertsKeysRequest, error) {
+	result := &CaCertsKeysRequest{}
+	return result, nil
+}
+
+// CaCertsSizeRequestToEnvVar converts CaCertsSizeRequest to environment variable key-value pairs.
+func CaCertsSizeRequestToEnvVar(v *CaCertsSizeRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// CaCertsSizeRequestFromEnvVar creates CaCertsSizeRequest from environment variable key-value pairs.
+func CaCertsSizeRequestFromEnvVar(env map[string]string) (*CaCertsSizeRequest, error) {
+	result := &CaCertsSizeRequest{}
+	return result, nil
+}
+
+// CaCertsClearRequestToEnvVar converts CaCertsClearRequest to environment variable key-value pairs.
+func CaCertsClearRequestToEnvVar(v *CaCertsClearRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// CaCertsClearRequestFromEnvVar creates CaCertsClearRequest from environment variable key-value pairs.
+func CaCertsClearRequestFromEnvVar(env map[string]string) (*CaCertsClearRequest, error) {
+	result := &CaCertsClearRequest{}
+	return result, nil
+}
+
+// CaCertsValueResponseToEnvVar converts CaCertsValueResponse to environment variable key-value pairs.
+func CaCertsValueResponseToEnvVar(v *CaCertsValueResponse) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	if v.Value != nil {
+		for k, val := range x509.X509CertToEnvVar(v.Value) {
+			result[k] = val
+		}
+	}
+	result["PROTO_SERVICES_KERNEL_CA_CERTS_VALUE_RESPONSE_FOUND"] = strconv.FormatBool(v.Found)
+	return result
+}
+
+// CaCertsValueResponseFromEnvVar creates CaCertsValueResponse from environment variable key-value pairs.
+func CaCertsValueResponseFromEnvVar(env map[string]string) (*CaCertsValueResponse, error) {
+	result := &CaCertsValueResponse{}
+	if sub, err := x509.X509CertFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Value = sub
+	}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_VALUE_RESPONSE_FOUND"]; ok && val != "" {
+		parsed, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		result.Found = parsed
+	}
+	return result, nil
+}
+
+// CaCertsEntriesResponseToEnvVar converts CaCertsEntriesResponse to environment variable key-value pairs.
+func CaCertsEntriesResponseToEnvVar(v *CaCertsEntriesResponse) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	return result
+}
+
+// CaCertsEntriesResponseFromEnvVar creates CaCertsEntriesResponse from environment variable key-value pairs.
+func CaCertsEntriesResponseFromEnvVar(env map[string]string) (*CaCertsEntriesResponse, error) {
+	result := &CaCertsEntriesResponse{}
+	return result, nil
+}
+
+// CaCertsKeysResponseToEnvVar converts CaCertsKeysResponse to environment variable key-value pairs.
+func CaCertsKeysResponseToEnvVar(v *CaCertsKeysResponse) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	if len(v.Keys) > 0 {
+		result["PROTO_SERVICES_KERNEL_CA_CERTS_KEYS_RESPONSE_KEYS"] = strings.Join(v.Keys, ",")
+	}
+	return result
+}
+
+// CaCertsKeysResponseFromEnvVar creates CaCertsKeysResponse from environment variable key-value pairs.
+func CaCertsKeysResponseFromEnvVar(env map[string]string) (*CaCertsKeysResponse, error) {
+	result := &CaCertsKeysResponse{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_KEYS_RESPONSE_KEYS"]; ok && val != "" {
+		result.Keys = strings.Split(val, ",")
+	}
+	return result, nil
+}
+
+// CaCertsSizeResponseToEnvVar converts CaCertsSizeResponse to environment variable key-value pairs.
+func CaCertsSizeResponseToEnvVar(v *CaCertsSizeResponse) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_KERNEL_CA_CERTS_SIZE_RESPONSE_SIZE"] = strconv.FormatInt(int64(v.Size), 10)
+	return result
+}
+
+// CaCertsSizeResponseFromEnvVar creates CaCertsSizeResponse from environment variable key-value pairs.
+func CaCertsSizeResponseFromEnvVar(env map[string]string) (*CaCertsSizeResponse, error) {
+	result := &CaCertsSizeResponse{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_SIZE_RESPONSE_SIZE"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		result.Size = int32(parsed)
+	}
+	return result, nil
+}
+
+// CaCertsQueryRequestToEnvVar converts CaCertsQueryRequest to environment variable key-value pairs.
+func CaCertsQueryRequestToEnvVar(v *CaCertsQueryRequest) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	if v.Query != nil {
+		for k, val := range CollectionQueryToEnvVar(v.Query) {
+			result[k] = val
+		}
+	}
+	return result
+}
+
+// CaCertsQueryRequestFromEnvVar creates CaCertsQueryRequest from environment variable key-value pairs.
+func CaCertsQueryRequestFromEnvVar(env map[string]string) (*CaCertsQueryRequest, error) {
+	result := &CaCertsQueryRequest{}
+	if sub, err := CollectionQueryFromEnvVar(env); err != nil {
+		return nil, err
+	} else if sub != nil {
+		result.Query = sub
+	}
+	return result, nil
+}
+
+// CaCertsQueryResponseToEnvVar converts CaCertsQueryResponse to environment variable key-value pairs.
+func CaCertsQueryResponseToEnvVar(v *CaCertsQueryResponse) map[string]string {
+	if v == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	result["PROTO_SERVICES_KERNEL_CA_CERTS_QUERY_RESPONSE_TOTAL_COUNT"] = strconv.FormatInt(int64(v.TotalCount), 10)
+	return result
+}
+
+// CaCertsQueryResponseFromEnvVar creates CaCertsQueryResponse from environment variable key-value pairs.
+func CaCertsQueryResponseFromEnvVar(env map[string]string) (*CaCertsQueryResponse, error) {
+	result := &CaCertsQueryResponse{}
+	if val, ok := env["PROTO_SERVICES_KERNEL_CA_CERTS_QUERY_RESPONSE_TOTAL_COUNT"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		result.TotalCount = int32(parsed)
+	}
+	return result, nil
+}
+
 // MapEmptyToEnvVar converts MapEmpty to environment variable key-value pairs.
 func MapEmptyToEnvVar(v *MapEmpty) map[string]string {
 	if v == nil {
@@ -33573,14 +35313,14 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Listener is required")
 	}
 
-	// Validate Members (assert_required)
-	if len(m.Members) == 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Members is required")
-	}
-
 	// Validate Members (assert_max_items: 32)
 	if len(m.Members) > 32 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Members exceeds max items of 32, got: %d", len(m.Members))
+	}
+
+	// Validate Members (assert_required)
+	if len(m.Members) == 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Members is required")
 	}
 
 	// Validate NodeCount (assert_gt: 0)
@@ -33733,31 +35473,6 @@ func ValidateFullDumpHeader(m *FullDumpHeader) error {
 	return nil
 }
 
-// ValidateTokenRequest validates all fields in TokenRequest according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateTokenRequest(m *TokenRequest) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate InputToken (default max size: 32768 bytes)
-	if len(m.InputToken) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field InputToken exceeds max size of 32768 bytes, got: %d", len(m.InputToken))
-	}
-
-	// Validate Aud (default max size: 32768 bytes)
-	if len(m.Aud) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Aud exceeds max size of 32768 bytes, got: %d", len(m.Aud))
-	}
-
-	// Validate ContinuityToken (default max size: 32768 bytes)
-	if len(m.ContinuityToken) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ContinuityToken exceeds max size of 32768 bytes, got: %d", len(m.ContinuityToken))
-	}
-
-	return nil
-}
-
 // ValidateTokenExchangerState validates all fields in TokenExchangerState according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateTokenExchangerState(m *TokenExchangerState) error {
@@ -33858,6 +35573,11 @@ func ValidateConfig(m *Config) error {
 	// Validate Delegates (assert_max_items: 128)
 	if len(m.Delegates) > 128 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Delegates exceeds max items of 128, got: %d", len(m.Delegates))
+	}
+
+	// Validate CaCertLifetimeSeconds (assert_duration: POSITIVE)
+	if m.CaCertLifetimeSeconds <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field CaCertLifetimeSeconds must be positive (> 0), got: %d", m.CaCertLifetimeSeconds)
 	}
 
 	return nil
@@ -33972,6 +35692,16 @@ func ValidateAdminConfigDump(m *AdminConfigDump) error {
 // ValidateServiceHealthState validates all fields in ServiceHealthState according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateServiceHealthState(m *ServiceHealthState) error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// ValidateCaState validates all fields in CaState according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaState(m *CaState) error {
 	if m == nil {
 		return nil
 	}
@@ -36256,6 +37986,146 @@ func ValidateInstancesQueryResponse(m *InstancesQueryResponse) error {
 	return nil
 }
 
+// ValidateCaCertsGetRequest validates all fields in CaCertsGetRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsGetRequest(m *CaCertsGetRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate Key (default max size: 32768 bytes)
+	if len(m.Key) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Key exceeds max size of 32768 bytes, got: %d", len(m.Key))
+	}
+
+	return nil
+}
+
+// ValidateCaCertsPutRequest validates all fields in CaCertsPutRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsPutRequest(m *CaCertsPutRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// Validate Key (default max size: 32768 bytes)
+	if len(m.Key) > 32768 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Key exceeds max size of 32768 bytes, got: %d", len(m.Key))
+	}
+
+	return nil
+}
+
+// ValidateCaCertsGetAllRequest validates all fields in CaCertsGetAllRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsGetAllRequest(m *CaCertsGetAllRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsKeysRequest validates all fields in CaCertsKeysRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsKeysRequest(m *CaCertsKeysRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsSizeRequest validates all fields in CaCertsSizeRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsSizeRequest(m *CaCertsSizeRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsClearRequest validates all fields in CaCertsClearRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsClearRequest(m *CaCertsClearRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsValueResponse validates all fields in CaCertsValueResponse according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsValueResponse(m *CaCertsValueResponse) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsEntriesResponse validates all fields in CaCertsEntriesResponse according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsEntriesResponse(m *CaCertsEntriesResponse) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsKeysResponse validates all fields in CaCertsKeysResponse according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsKeysResponse(m *CaCertsKeysResponse) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsSizeResponse validates all fields in CaCertsSizeResponse according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsSizeResponse(m *CaCertsSizeResponse) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsQueryRequest validates all fields in CaCertsQueryRequest according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsQueryRequest(m *CaCertsQueryRequest) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
+// ValidateCaCertsQueryResponse validates all fields in CaCertsQueryResponse according to their annotations.
+// Returns a BlueErr if validation fails, or nil if all validations pass.
+func ValidateCaCertsQueryResponse(m *CaCertsQueryResponse) error {
+	if m == nil {
+		return nil
+	}
+
+	// No field validations defined
+	return nil
+}
+
 // ValidateMapEmpty validates all fields in MapEmpty according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateMapEmpty(m *MapEmpty) error {
@@ -36286,6 +38156,7 @@ const (
 	DefaultUnaryRate                         float64 = 10.0
 	DefaultKeyRotationIntervalSeconds        int64   = 86400
 	DefaultDefaultTokenExpirySeconds         int64   = 3600
+	DefaultCaCertLifetimeSeconds             int64   = 31536000
 )
 
 // ============================================================
@@ -36300,9 +38171,6 @@ const (
 	MaxSizeRedologentryKey                      int = 32768
 	MaxSizeRedologentryValue                    int = 32768
 	MaxSizeFulldumpheaderNodeId                 int = 32768
-	MaxSizeTokenrequestInputToken               int = 32768
-	MaxSizeTokenrequestAud                      int = 32768
-	MaxSizeTokenrequestContinuityToken          int = 32768
 	MaxSizeCloudidentitymatcherExpectedIdentity int = 32768
 	MaxSizeDelegateName                         int = 32768
 	MaxItemsDelegateCredPairs                   int = 8
@@ -36350,6 +38218,8 @@ const (
 	MaxSizeMutationratesgetrequestKey           int = 32768
 	MaxSizeMutationratesputrequestKey           int = 32768
 	MaxSizeInstancesgetrequestKey               int = 32768
+	MaxSizeCacertsgetrequestKey                 int = 32768
+	MaxSizeCacertsputrequestKey                 int = 32768
 )
 
 // ============================================================
@@ -36457,16 +38327,6 @@ func FullDumpHeaderDefaults(v *FullDumpHeader) {
 }
 
 // ============================================================
-// TypeDefaults: TokenRequest
-// ============================================================
-// TokenRequestDefaults applies field-level default values to zero-valued fields.
-func TokenRequestDefaults(v *TokenRequest) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
 // TypeDefaults: TokenExchangerState
 // ============================================================
 // TokenExchangerStateDefaults applies field-level default values to zero-valued fields.
@@ -36519,6 +38379,9 @@ func ConfigDefaults(v *Config) {
 	}
 	if v.DefaultTokenExpirySeconds == 0 {
 		v.DefaultTokenExpirySeconds = DefaultDefaultTokenExpirySeconds
+	}
+	if v.CaCertLifetimeSeconds == 0 {
+		v.CaCertLifetimeSeconds = DefaultCaCertLifetimeSeconds
 	}
 	if v.RateLimit == nil {
 		v.RateLimit = &RateLimitConfig{}
@@ -36597,6 +38460,16 @@ func AdminConfigDumpDefaults(v *AdminConfigDump) {
 // ============================================================
 // ServiceHealthStateDefaults applies field-level default values to zero-valued fields.
 func ServiceHealthStateDefaults(v *ServiceHealthState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaState
+// ============================================================
+// CaStateDefaults applies field-level default values to zero-valued fields.
+func CaStateDefaults(v *CaState) {
 	if v == nil {
 		return
 	}
@@ -38553,6 +40426,126 @@ func InstancesQueryResponseDefaults(v *InstancesQueryResponse) {
 }
 
 // ============================================================
+// TypeDefaults: CaCertsGetRequest
+// ============================================================
+// CaCertsGetRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsGetRequestDefaults(v *CaCertsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsPutRequest
+// ============================================================
+// CaCertsPutRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsPutRequestDefaults(v *CaCertsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsGetAllRequest
+// ============================================================
+// CaCertsGetAllRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsGetAllRequestDefaults(v *CaCertsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsKeysRequest
+// ============================================================
+// CaCertsKeysRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsKeysRequestDefaults(v *CaCertsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsSizeRequest
+// ============================================================
+// CaCertsSizeRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsSizeRequestDefaults(v *CaCertsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsClearRequest
+// ============================================================
+// CaCertsClearRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsClearRequestDefaults(v *CaCertsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsValueResponse
+// ============================================================
+// CaCertsValueResponseDefaults applies field-level default values to zero-valued fields.
+func CaCertsValueResponseDefaults(v *CaCertsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsEntriesResponse
+// ============================================================
+// CaCertsEntriesResponseDefaults applies field-level default values to zero-valued fields.
+func CaCertsEntriesResponseDefaults(v *CaCertsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsKeysResponse
+// ============================================================
+// CaCertsKeysResponseDefaults applies field-level default values to zero-valued fields.
+func CaCertsKeysResponseDefaults(v *CaCertsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsSizeResponse
+// ============================================================
+// CaCertsSizeResponseDefaults applies field-level default values to zero-valued fields.
+func CaCertsSizeResponseDefaults(v *CaCertsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsQueryRequest
+// ============================================================
+// CaCertsQueryRequestDefaults applies field-level default values to zero-valued fields.
+func CaCertsQueryRequestDefaults(v *CaCertsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeDefaults: CaCertsQueryResponse
+// ============================================================
+// CaCertsQueryResponseDefaults applies field-level default values to zero-valued fields.
+func CaCertsQueryResponseDefaults(v *CaCertsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeDefaults: MapEmpty
 // ============================================================
 // MapEmptyDefaults applies field-level default values to zero-valued fields.
@@ -38671,17 +40664,6 @@ func FullDumpHeaderUndefaults(v *FullDumpHeader) {
 }
 
 // ============================================================
-// TypeUndefaults: TokenRequest
-// ============================================================
-// TokenRequestUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func TokenRequestUndefaults(v *TokenRequest) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
 // TypeUndefaults: TokenExchangerState
 // ============================================================
 // TokenExchangerStateUndefaults resets fields that match their default values back to zero.
@@ -38739,6 +40721,9 @@ func ConfigUndefaults(v *Config) {
 	}
 	if v.DefaultTokenExpirySeconds == DefaultDefaultTokenExpirySeconds {
 		v.DefaultTokenExpirySeconds = 0
+	}
+	if v.CaCertLifetimeSeconds == DefaultCaCertLifetimeSeconds {
+		v.CaCertLifetimeSeconds = 0
 	}
 	if v.RateLimit != nil {
 		RateLimitConfigUndefaults(v.RateLimit)
@@ -38823,6 +40808,17 @@ func AdminConfigDumpUndefaults(v *AdminConfigDump) {
 // ServiceHealthStateUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ServiceHealthStateUndefaults(v *ServiceHealthState) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaState
+// ============================================================
+// CaStateUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaStateUndefaults(v *CaState) {
 	if v == nil {
 		return
 	}
@@ -40974,6 +42970,138 @@ func InstancesQueryResponseUndefaults(v *InstancesQueryResponse) {
 }
 
 // ============================================================
+// TypeUndefaults: CaCertsGetRequest
+// ============================================================
+// CaCertsGetRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsGetRequestUndefaults(v *CaCertsGetRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsPutRequest
+// ============================================================
+// CaCertsPutRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsPutRequestUndefaults(v *CaCertsPutRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsGetAllRequest
+// ============================================================
+// CaCertsGetAllRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsGetAllRequestUndefaults(v *CaCertsGetAllRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsKeysRequest
+// ============================================================
+// CaCertsKeysRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsKeysRequestUndefaults(v *CaCertsKeysRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsSizeRequest
+// ============================================================
+// CaCertsSizeRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsSizeRequestUndefaults(v *CaCertsSizeRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsClearRequest
+// ============================================================
+// CaCertsClearRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsClearRequestUndefaults(v *CaCertsClearRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsValueResponse
+// ============================================================
+// CaCertsValueResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsValueResponseUndefaults(v *CaCertsValueResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsEntriesResponse
+// ============================================================
+// CaCertsEntriesResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsEntriesResponseUndefaults(v *CaCertsEntriesResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsKeysResponse
+// ============================================================
+// CaCertsKeysResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsKeysResponseUndefaults(v *CaCertsKeysResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsSizeResponse
+// ============================================================
+// CaCertsSizeResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsSizeResponseUndefaults(v *CaCertsSizeResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsQueryRequest
+// ============================================================
+// CaCertsQueryRequestUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsQueryRequestUndefaults(v *CaCertsQueryRequest) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
+// TypeUndefaults: CaCertsQueryResponse
+// ============================================================
+// CaCertsQueryResponseUndefaults resets fields that match their default values back to zero.
+// Use before persisting to store only explicit user overrides.
+func CaCertsQueryResponseUndefaults(v *CaCertsQueryResponse) {
+	if v == nil {
+		return
+	}
+}
+
+// ============================================================
 // TypeUndefaults: MapEmpty
 // ============================================================
 // MapEmptyUndefaults resets fields that match their default values back to zero.
@@ -41133,28 +43261,6 @@ func MergeFullDumpHeader(dst, src *FullDumpHeader) {
 }
 
 // ============================================================
-// Merge: TokenRequest
-// ============================================================
-// MergeTokenRequest fills zero-valued fields in dst from src.
-func MergeTokenRequest(dst, src *TokenRequest) {
-	if dst.InputToken == "" {
-		dst.InputToken = src.InputToken
-	}
-	if dst.Aud == "" {
-		dst.Aud = src.Aud
-	}
-	if dst.Exp == 0 {
-		dst.Exp = src.Exp
-	}
-	if dst.ContinuityToken == "" {
-		dst.ContinuityToken = src.ContinuityToken
-	}
-	if dst.CloudProof == nil {
-		dst.CloudProof = src.CloudProof
-	}
-}
-
-// ============================================================
 // Merge: TokenExchangerState
 // ============================================================
 // MergeTokenExchangerState fills zero-valued fields in dst from src.
@@ -41230,6 +43336,9 @@ func MergeConfig(dst, src *Config) {
 	}
 	if len(dst.Delegates) == 0 {
 		dst.Delegates = src.Delegates
+	}
+	if dst.CaCertLifetimeSeconds == 0 {
+		dst.CaCertLifetimeSeconds = src.CaCertLifetimeSeconds
 	}
 }
 
@@ -41373,6 +43482,16 @@ func MergeAdminConfigDump(dst, src *AdminConfigDump) {
 func MergeServiceHealthState(dst, src *ServiceHealthState) {
 	if len(dst.Instances) == 0 {
 		dst.Instances = src.Instances
+	}
+}
+
+// ============================================================
+// Merge: CaState
+// ============================================================
+// MergeCaState fills zero-valued fields in dst from src.
+func MergeCaState(dst, src *CaState) {
+	if len(dst.CaCerts) == 0 {
+		dst.CaCerts = src.CaCerts
 	}
 }
 
@@ -42785,6 +44904,90 @@ func MergeInstancesQueryResponse(dst, src *InstancesQueryResponse) {
 	}
 }
 
+// ============================================================
+// Merge: CaCertsGetRequest
+// ============================================================
+// MergeCaCertsGetRequest fills zero-valued fields in dst from src.
+func MergeCaCertsGetRequest(dst, src *CaCertsGetRequest) {
+	if dst.Key == "" {
+		dst.Key = src.Key
+	}
+}
+
+// ============================================================
+// Merge: CaCertsPutRequest
+// ============================================================
+// MergeCaCertsPutRequest fills zero-valued fields in dst from src.
+func MergeCaCertsPutRequest(dst, src *CaCertsPutRequest) {
+	if dst.Key == "" {
+		dst.Key = src.Key
+	}
+	if dst.Value == nil {
+		dst.Value = src.Value
+	}
+	if dst.LockCounter == 0 {
+		dst.LockCounter = src.LockCounter
+	}
+}
+
+// ============================================================
+// Merge: CaCertsValueResponse
+// ============================================================
+// MergeCaCertsValueResponse fills zero-valued fields in dst from src.
+func MergeCaCertsValueResponse(dst, src *CaCertsValueResponse) {
+	if dst.Value == nil {
+		dst.Value = src.Value
+	}
+	if !dst.Found {
+		dst.Found = src.Found
+	}
+}
+
+// ============================================================
+// Merge: CaCertsKeysResponse
+// ============================================================
+// MergeCaCertsKeysResponse fills zero-valued fields in dst from src.
+func MergeCaCertsKeysResponse(dst, src *CaCertsKeysResponse) {
+	if len(dst.Keys) == 0 {
+		dst.Keys = src.Keys
+	}
+}
+
+// ============================================================
+// Merge: CaCertsSizeResponse
+// ============================================================
+// MergeCaCertsSizeResponse fills zero-valued fields in dst from src.
+func MergeCaCertsSizeResponse(dst, src *CaCertsSizeResponse) {
+	if dst.Size == 0 {
+		dst.Size = src.Size
+	}
+}
+
+// ============================================================
+// Merge: CaCertsQueryRequest
+// ============================================================
+// MergeCaCertsQueryRequest fills zero-valued fields in dst from src.
+func MergeCaCertsQueryRequest(dst, src *CaCertsQueryRequest) {
+	if dst.Query == nil {
+		dst.Query = src.Query
+	} else if src.Query != nil {
+		MergeCollectionQuery(dst.Query, src.Query)
+	}
+}
+
+// ============================================================
+// Merge: CaCertsQueryResponse
+// ============================================================
+// MergeCaCertsQueryResponse fills zero-valued fields in dst from src.
+func MergeCaCertsQueryResponse(dst, src *CaCertsQueryResponse) {
+	if len(dst.Results) == 0 {
+		dst.Results = src.Results
+	}
+	if dst.TotalCount == 0 {
+		dst.TotalCount = src.TotalCount
+	}
+}
+
 // ConfigLlmTypeDescriptor returns a JSON description of Config for LLM-assisted construction.
 // The description includes field names, types, comments, constraints, defaults,
 // nested message structures, and enum values — everything an LLM needs to
@@ -43117,8 +45320,8 @@ func ConfigLlmTypeDescriptor() string {
                                     "type": "uint32",
                                     "description": "group permission bits (0-7)",
                                     "constraints": [
-                                      "must be \u003c= 7",
-                                      "must be \u003e= 0"
+                                      "must be \u003e= 0",
+                                      "must be \u003c= 7"
                                     ]
                                   },
                                   {
@@ -43190,15 +45393,6 @@ func ConfigLlmTypeDescriptor() string {
                         "constraints": [
                           "must be a valid semantic version",
                           "maximum length: 64"
-                        ]
-                      },
-                      {
-                        "name": "issuer",
-                        "type": "string",
-                        "description": "issuer is the required token issuer URL. Verified in code BEFORE OPA\n evaluation — tokens from unexpected issuers are rejected before the\n policy runs.",
-                        "required": true,
-                        "constraints": [
-                          "must be a valid URL (scheme: URL_SCHEME_HTTPS)"
                         ]
                       }
                     ]
@@ -43304,6 +45498,10 @@ func ConfigLlmTypeDescriptor() string {
                             "number": 6
                           },
                           {
+                            "name": "IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY",
+                            "number": 7
+                          },
+                          {
                             "name": "IDENTITY_SERVICE_RPCS_ANY",
                             "number": 99
                           }
@@ -43368,6 +45566,167 @@ func ConfigLlmTypeDescriptor() string {
                       }
                     ]
                   }
+                },
+                {
+                  "name": "api_keys",
+                  "type": "message",
+                  "description": "api_keys configures machine-to-machine API key authentication.\n Each API key maps a JWK credential to a named identity profile,\n bypassing OAuth. The caller signs a JWT with the matching private key\n and exchanges it for a short-lived service-specific access token.",
+                  "repeated": true,
+                  "message": {
+                    "name": "ApiKey",
+                    "package": "identity",
+                    "description": "ApiKey maps a JWK credential to a named identity profile for machine auth.\n Bypasses OAuth — the caller signs a JWT with the matching private key.",
+                    "fields": [
+                      {
+                        "name": "name",
+                        "type": "string",
+                        "description": "name identifies this API key (becomes \"sub\" in issued tokens).",
+                        "required": true,
+                        "constraints": [
+                          "minimum length: 1"
+                        ]
+                      },
+                      {
+                        "name": "cred_pairs",
+                        "type": "message",
+                        "description": "Public keys for verifying the caller's signed JWT.\n Repeated to allow key rotation.",
+                        "repeated": true,
+                        "message": {
+                          "name": "Jwk",
+                          "package": "jwk",
+                          "description": "Jwk represents a JSON Web Key as defined in RFC 7517.\n It contains the public key parameters for RSA (e, n), EC (crv, x, y), or OKP (crv, x) keys.\n JWK is used for key distribution and verification in JSON-based protocols like JWT.",
+                          "fields": [
+                            {
+                              "name": "kty",
+                              "type": "enum",
+                              "description": "Kty is the key type parameter (RSA, EC, or OKP)",
+                              "enum_values": [
+                                {
+                                  "name": "KEY_TYPE_RSA",
+                                  "number": 1,
+                                  "description": "KeyTypeRsa represents an RSA key type"
+                                },
+                                {
+                                  "name": "KEY_TYPE_EC",
+                                  "number": 2,
+                                  "description": "KeyTypeEc represents an Elliptic Curve key type"
+                                },
+                                {
+                                  "name": "KEY_TYPE_OKP",
+                                  "number": 3,
+                                  "description": "KeyTypeOkp represents an Octet Key Pair (EdDSA) key type"
+                                }
+                              ]
+                            },
+                            {
+                              "name": "alg",
+                              "type": "string",
+                              "description": "Alg is the algorithm intended for use with the key (e.g., \"RS384\", \"ES256\", \"EdDSA\")",
+                              "required": true,
+                              "constraints": [
+                                "minimum length: 1"
+                              ]
+                            },
+                            {
+                              "name": "kid",
+                              "type": "string",
+                              "description": "Kid is the key ID used to match keys with signatures",
+                              "required": true,
+                              "constraints": [
+                                "minimum length: 1"
+                              ]
+                            },
+                            {
+                              "name": "use",
+                              "type": "enum",
+                              "description": "Use indicates the intended use of the key (sig for signatures, enc for encryption)",
+                              "enum_values": [
+                                {
+                                  "name": "JWK_USE_TYPE_SIG",
+                                  "number": 1,
+                                  "description": "JwkUseTypeSig indicates the key is used for digital signatures"
+                                },
+                                {
+                                  "name": "JWK_USE_TYPE_ENC",
+                                  "number": 2,
+                                  "description": "JwkUseTypeEnc indicates the key is used for encryption"
+                                }
+                              ]
+                            },
+                            {
+                              "name": "e",
+                              "type": "string",
+                              "description": "E is the RSA public exponent (base64url encoded without padding)",
+                              "constraints": [
+                                "must be base64 encoded"
+                              ]
+                            },
+                            {
+                              "name": "n",
+                              "type": "string",
+                              "description": "N is the RSA modulus (base64url encoded without padding)",
+                              "constraints": [
+                                "must be base64 encoded"
+                              ]
+                            },
+                            {
+                              "name": "crv",
+                              "type": "string",
+                              "description": "Crv is the elliptic curve name (e.g., P-256, P-384, P-521, Ed25519)"
+                            },
+                            {
+                              "name": "x",
+                              "type": "string",
+                              "description": "X is the x coordinate for EC keys or the public key for OKP (base64url encoded without padding)",
+                              "constraints": [
+                                "must be base64 encoded"
+                              ]
+                            },
+                            {
+                              "name": "y",
+                              "type": "string",
+                              "description": "Y is the y coordinate for EC keys (base64url encoded without padding, not used for OKP)",
+                              "constraints": [
+                                "must be base64 encoded"
+                              ]
+                            },
+                            {
+                              "name": "exp",
+                              "type": "int64",
+                              "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
+                            },
+                            {
+                              "name": "created",
+                              "type": "int64",
+                              "description": "Created is the Unix epoch timestamp (seconds) when the key was created (optional).\n If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
+                              "constraints": [
+                                "must be \u003e= 1735689600",
+                                "must be \u003c= 8045740800"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "profile",
+                        "type": "string",
+                        "description": "profile is the identity profile this key maps to.\n Must match an id in identity_profiles or a builtin profile.",
+                        "required": true,
+                        "constraints": [
+                          "minimum length: 1"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "api_key_token_lifetime_seconds",
+                  "type": "int64",
+                  "description": "api_key_token_lifetime_seconds is the lifetime for tokens issued to API keys.\n Default: 300 (5 minutes). Kept short since machines can re-authenticate instantly.",
+                  "default": 300,
+                  "constraints": [
+                    "duration constraint: DURATION_TYPE_POSITIVE"
+                  ]
                 }
               ]
             }
@@ -43659,7 +46018,7 @@ func ConfigLlmTypeDescriptor() string {
       "message": {
         "name": "Delegate",
         "package": "kernel",
-        "description": "Delegate holds credentials for a service that can request tokens.\n Each delegate is identified by name (becomes \"sub\" in issued tokens)\n and authenticates via CredPair or cloud identity.",
+        "description": "Delegate holds credentials for a service that can request tokens.\n Each delegate is identified by name (becomes \"sub\" in issued tokens)\n and authenticates via a signed JWT (verified against cred_pairs) or cloud identity.",
         "fields": [
           {
             "name": "name",
@@ -43669,137 +46028,9 @@ func ConfigLlmTypeDescriptor() string {
           },
           {
             "name": "cred_pairs",
-            "type": "message",
-            "description": "Credentials for proving identity. At least one must be set.\n Repeated to allow rotation (old + new credential during transition).",
-            "repeated": true,
-            "message": {
-              "name": "CredPair",
-              "package": "jwk",
-              "description": "CredPair holds a public key for the CredPair token exchange flow.\n A service holding the matching private key mints a throwaway JWT\n (kid + signature only), exchanges it via TokenExchanger for a refresh\n token, then exchanges the refresh token for access tokens.\n\n Identity mapping (kid → service name) is handled separately by\n ServiceEntitlementMapping. The private key lives only in the client's\n config (backendclient.proto), never on the server.",
-              "fields": [
-                {
-                  "name": "public_key",
-                  "type": "message",
-                  "description": "The public key for signature verification.\n kid (public_key.kid) is used as the collection key and as the\n credential_id in ServiceEntitlementMapping.",
-                  "required": true,
-                  "message": {
-                    "name": "Jwk",
-                    "package": "jwk",
-                    "description": "Jwk represents a JSON Web Key as defined in RFC 7517.\n It contains the public key parameters for RSA (e, n), EC (crv, x, y), or OKP (crv, x) keys.\n JWK is used for key distribution and verification in JSON-based protocols like JWT.",
-                    "fields": [
-                      {
-                        "name": "kty",
-                        "type": "enum",
-                        "description": "Kty is the key type parameter (RSA, EC, or OKP)",
-                        "enum_values": [
-                          {
-                            "name": "KEY_TYPE_RSA",
-                            "number": 1,
-                            "description": "KeyTypeRsa represents an RSA key type"
-                          },
-                          {
-                            "name": "KEY_TYPE_EC",
-                            "number": 2,
-                            "description": "KeyTypeEc represents an Elliptic Curve key type"
-                          },
-                          {
-                            "name": "KEY_TYPE_OKP",
-                            "number": 3,
-                            "description": "KeyTypeOkp represents an Octet Key Pair (EdDSA) key type"
-                          }
-                        ]
-                      },
-                      {
-                        "name": "alg",
-                        "type": "string",
-                        "description": "Alg is the algorithm intended for use with the key (e.g., \"RS384\", \"ES256\", \"EdDSA\")",
-                        "required": true,
-                        "constraints": [
-                          "minimum length: 1"
-                        ]
-                      },
-                      {
-                        "name": "kid",
-                        "type": "string",
-                        "description": "Kid is the key ID used to match keys with signatures",
-                        "required": true,
-                        "constraints": [
-                          "minimum length: 1"
-                        ]
-                      },
-                      {
-                        "name": "use",
-                        "type": "enum",
-                        "description": "Use indicates the intended use of the key (sig for signatures, enc for encryption)",
-                        "enum_values": [
-                          {
-                            "name": "JWK_USE_TYPE_SIG",
-                            "number": 1,
-                            "description": "JwkUseTypeSig indicates the key is used for digital signatures"
-                          },
-                          {
-                            "name": "JWK_USE_TYPE_ENC",
-                            "number": 2,
-                            "description": "JwkUseTypeEnc indicates the key is used for encryption"
-                          }
-                        ]
-                      },
-                      {
-                        "name": "e",
-                        "type": "string",
-                        "description": "E is the RSA public exponent (base64url encoded without padding)",
-                        "constraints": [
-                          "must be base64 encoded"
-                        ]
-                      },
-                      {
-                        "name": "n",
-                        "type": "string",
-                        "description": "N is the RSA modulus (base64url encoded without padding)",
-                        "constraints": [
-                          "must be base64 encoded"
-                        ]
-                      },
-                      {
-                        "name": "crv",
-                        "type": "string",
-                        "description": "Crv is the elliptic curve name (e.g., P-256, P-384, P-521, Ed25519)"
-                      },
-                      {
-                        "name": "x",
-                        "type": "string",
-                        "description": "X is the x coordinate for EC keys or the public key for OKP (base64url encoded without padding)",
-                        "constraints": [
-                          "must be base64 encoded"
-                        ]
-                      },
-                      {
-                        "name": "y",
-                        "type": "string",
-                        "description": "Y is the y coordinate for EC keys (base64url encoded without padding, not used for OKP)",
-                        "constraints": [
-                          "must be base64 encoded"
-                        ]
-                      },
-                      {
-                        "name": "exp",
-                        "type": "int64",
-                        "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
-                      },
-                      {
-                        "name": "created",
-                        "type": "int64",
-                        "description": "Created is the Unix epoch timestamp (seconds) when the key was created (optional).\n If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
-                        "constraints": [
-                          "must be \u003e= 1735689600",
-                          "must be \u003c= 8045740800"
-                        ]
-                      }
-                    ]
-                  }
-                }
-              ]
-            }
+            "type": "message (recursive reference: jwk.Jwk)",
+            "description": "Public keys for verifying the delegate's signed JWT.\n Repeated to allow rotation (old + new key during transition).",
+            "repeated": true
           },
           {
             "name": "cloud_identities",
@@ -43864,6 +46095,15 @@ func ConfigLlmTypeDescriptor() string {
           }
         ]
       }
+    },
+    {
+      "name": "ca_cert_lifetime_seconds",
+      "type": "int64",
+      "description": "ca_cert_lifetime_seconds is the lifetime for node CA certificates.\n Default: 31536000 (1 year). Node CA certs are regenerated on restart.",
+      "default": 31536000,
+      "constraints": [
+        "duration constraint: DURATION_TYPE_POSITIVE"
+      ]
     }
   ]
 }`

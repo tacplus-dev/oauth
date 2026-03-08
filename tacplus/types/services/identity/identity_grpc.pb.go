@@ -15,6 +15,7 @@ package identity
 
 import (
 	context "context"
+	tokenrequest "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/tokenrequest"
 	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -28,12 +29,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_ListProviders_FullMethodName = "/identity.IdentityService/ListProviders"
-	IdentityService_Authorize_FullMethodName     = "/identity.IdentityService/Authorize"
-	IdentityService_Callback_FullMethodName      = "/identity.IdentityService/Callback"
-	IdentityService_RefreshToken_FullMethodName  = "/identity.IdentityService/RefreshToken"
-	IdentityService_ExchangeToken_FullMethodName = "/identity.IdentityService/ExchangeToken"
-	IdentityService_Logout_FullMethodName        = "/identity.IdentityService/Logout"
+	IdentityService_ListProviders_FullMethodName      = "/identity.IdentityService/ListProviders"
+	IdentityService_Authorize_FullMethodName          = "/identity.IdentityService/Authorize"
+	IdentityService_Callback_FullMethodName           = "/identity.IdentityService/Callback"
+	IdentityService_RefreshToken_FullMethodName       = "/identity.IdentityService/RefreshToken"
+	IdentityService_ExchangeToken_FullMethodName      = "/identity.IdentityService/ExchangeToken"
+	IdentityService_Logout_FullMethodName             = "/identity.IdentityService/Logout"
+	IdentityService_AuthenticateApiKey_FullMethodName = "/identity.IdentityService/AuthenticateApiKey"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -59,9 +61,13 @@ type IdentityServiceClient interface {
 	// access token with entitlements. The entitlements are determined by evaluating
 	// the entitlements_policy (OPA) to get profile names, then resolving those
 	// profiles to concrete entitlements via identity_profiles config.
-	ExchangeToken(ctx context.Context, in *ExchangeTokenRequest, opts ...grpc.CallOption) (*ExchangeTokenResponse, error)
+	ExchangeToken(ctx context.Context, in *tokenrequest.TokenRequest, opts ...grpc.CallOption) (*ExchangeTokenResponse, error)
 	// Logout invalidates the session and optionally redirects to the IDP logout.
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
+	// AuthenticateApiKey exchanges a signed JWT from a machine client for a
+	// short-lived service-specific access token with entitlements.
+	// No OAuth, no refresh token — the machine re-authenticates as needed.
+	AuthenticateApiKey(ctx context.Context, in *AuthenticateApiKeyRequest, opts ...grpc.CallOption) (*AuthenticateApiKeyResponse, error)
 }
 
 type identityServiceClient struct {
@@ -112,7 +118,7 @@ func (c *identityServiceClient) RefreshToken(ctx context.Context, in *RefreshTok
 	return out, nil
 }
 
-func (c *identityServiceClient) ExchangeToken(ctx context.Context, in *ExchangeTokenRequest, opts ...grpc.CallOption) (*ExchangeTokenResponse, error) {
+func (c *identityServiceClient) ExchangeToken(ctx context.Context, in *tokenrequest.TokenRequest, opts ...grpc.CallOption) (*ExchangeTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ExchangeTokenResponse)
 	err := c.cc.Invoke(ctx, IdentityService_ExchangeToken_FullMethodName, in, out, cOpts...)
@@ -126,6 +132,16 @@ func (c *identityServiceClient) Logout(ctx context.Context, in *LogoutRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LogoutResponse)
 	err := c.cc.Invoke(ctx, IdentityService_Logout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) AuthenticateApiKey(ctx context.Context, in *AuthenticateApiKeyRequest, opts ...grpc.CallOption) (*AuthenticateApiKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthenticateApiKeyResponse)
+	err := c.cc.Invoke(ctx, IdentityService_AuthenticateApiKey_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -155,9 +171,13 @@ type IdentityServiceServer interface {
 	// access token with entitlements. The entitlements are determined by evaluating
 	// the entitlements_policy (OPA) to get profile names, then resolving those
 	// profiles to concrete entitlements via identity_profiles config.
-	ExchangeToken(context.Context, *ExchangeTokenRequest) (*ExchangeTokenResponse, error)
+	ExchangeToken(context.Context, *tokenrequest.TokenRequest) (*ExchangeTokenResponse, error)
 	// Logout invalidates the session and optionally redirects to the IDP logout.
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
+	// AuthenticateApiKey exchanges a signed JWT from a machine client for a
+	// short-lived service-specific access token with entitlements.
+	// No OAuth, no refresh token — the machine re-authenticates as needed.
+	AuthenticateApiKey(context.Context, *AuthenticateApiKeyRequest) (*AuthenticateApiKeyResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -180,11 +200,14 @@ func (UnimplementedIdentityServiceServer) Callback(context.Context, *CallbackReq
 func (UnimplementedIdentityServiceServer) RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
 }
-func (UnimplementedIdentityServiceServer) ExchangeToken(context.Context, *ExchangeTokenRequest) (*ExchangeTokenResponse, error) {
+func (UnimplementedIdentityServiceServer) ExchangeToken(context.Context, *tokenrequest.TokenRequest) (*ExchangeTokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ExchangeToken not implemented")
 }
 func (UnimplementedIdentityServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
+}
+func (UnimplementedIdentityServiceServer) AuthenticateApiKey(context.Context, *AuthenticateApiKeyRequest) (*AuthenticateApiKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AuthenticateApiKey not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -280,7 +303,7 @@ func _IdentityService_RefreshToken_Handler(srv interface{}, ctx context.Context,
 }
 
 func _IdentityService_ExchangeToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExchangeTokenRequest)
+	in := new(tokenrequest.TokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -292,7 +315,7 @@ func _IdentityService_ExchangeToken_Handler(srv interface{}, ctx context.Context
 		FullMethod: IdentityService_ExchangeToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).ExchangeToken(ctx, req.(*ExchangeTokenRequest))
+		return srv.(IdentityServiceServer).ExchangeToken(ctx, req.(*tokenrequest.TokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -311,6 +334,24 @@ func _IdentityService_Logout_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(IdentityServiceServer).Logout(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_AuthenticateApiKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthenticateApiKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).AuthenticateApiKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_AuthenticateApiKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).AuthenticateApiKey(ctx, req.(*AuthenticateApiKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -345,6 +386,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Logout",
 			Handler:    _IdentityService_Logout_Handler,
+		},
+		{
+			MethodName: "AuthenticateApiKey",
+			Handler:    _IdentityService_AuthenticateApiKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

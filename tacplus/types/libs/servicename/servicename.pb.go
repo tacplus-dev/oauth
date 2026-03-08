@@ -182,14 +182,15 @@ func (SentinelServiceRPCs) EnumDescriptor() ([]byte, []int) {
 type IdentityServiceRPCs int32
 
 const (
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_UNSPECIFIED    IdentityServiceRPCs = 0
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LIST_PROVIDERS IdentityServiceRPCs = 1
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHORIZE      IdentityServiceRPCs = 2
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_CALLBACK       IdentityServiceRPCs = 3
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_REFRESH_TOKEN  IdentityServiceRPCs = 4
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN IdentityServiceRPCs = 5
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT         IdentityServiceRPCs = 6
-	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY            IdentityServiceRPCs = 99 // wildcard: allow any RPC
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_UNSPECIFIED          IdentityServiceRPCs = 0
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LIST_PROVIDERS       IdentityServiceRPCs = 1
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHORIZE            IdentityServiceRPCs = 2
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_CALLBACK             IdentityServiceRPCs = 3
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_REFRESH_TOKEN        IdentityServiceRPCs = 4
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN       IdentityServiceRPCs = 5
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_LOGOUT               IdentityServiceRPCs = 6
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY IdentityServiceRPCs = 7
+	IdentityServiceRPCs_IDENTITY_SERVICE_RPCS_ANY                  IdentityServiceRPCs = 99 // wildcard: allow any RPC
 )
 
 // Enum value maps for IdentityServiceRPCs.
@@ -202,17 +203,19 @@ var (
 		4:  "IDENTITY_SERVICE_RPCS_REFRESH_TOKEN",
 		5:  "IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN",
 		6:  "IDENTITY_SERVICE_RPCS_LOGOUT",
+		7:  "IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY",
 		99: "IDENTITY_SERVICE_RPCS_ANY",
 	}
 	IdentityServiceRPCs_value = map[string]int32{
-		"IDENTITY_SERVICE_RPCS_UNSPECIFIED":    0,
-		"IDENTITY_SERVICE_RPCS_LIST_PROVIDERS": 1,
-		"IDENTITY_SERVICE_RPCS_AUTHORIZE":      2,
-		"IDENTITY_SERVICE_RPCS_CALLBACK":       3,
-		"IDENTITY_SERVICE_RPCS_REFRESH_TOKEN":  4,
-		"IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN": 5,
-		"IDENTITY_SERVICE_RPCS_LOGOUT":         6,
-		"IDENTITY_SERVICE_RPCS_ANY":            99,
+		"IDENTITY_SERVICE_RPCS_UNSPECIFIED":          0,
+		"IDENTITY_SERVICE_RPCS_LIST_PROVIDERS":       1,
+		"IDENTITY_SERVICE_RPCS_AUTHORIZE":            2,
+		"IDENTITY_SERVICE_RPCS_CALLBACK":             3,
+		"IDENTITY_SERVICE_RPCS_REFRESH_TOKEN":        4,
+		"IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN":       5,
+		"IDENTITY_SERVICE_RPCS_LOGOUT":               6,
+		"IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY": 7,
+		"IDENTITY_SERVICE_RPCS_ANY":                  99,
 	}
 )
 
@@ -526,7 +529,7 @@ const file_libs_servicename_proto_rawDesc = "" +
 	"#SENTINEL_SERVICE_RPCS_GET_DASHBOARD\x10\n" +
 	"\x12)\n" +
 	"%SENTINEL_SERVICE_RPCS_WATCH_DASHBOARD\x10\v\x12\x1d\n" +
-	"\x19SENTINEL_SERVICE_RPCS_ANY\x10c*\xc3\x02\n" +
+	"\x19SENTINEL_SERVICE_RPCS_ANY\x10c*\xf3\x02\n" +
 	"\x13IdentityServiceRPCs\x12%\n" +
 	"!IDENTITY_SERVICE_RPCS_UNSPECIFIED\x10\x00\x12(\n" +
 	"$IDENTITY_SERVICE_RPCS_LIST_PROVIDERS\x10\x01\x12#\n" +
@@ -534,7 +537,8 @@ const file_libs_servicename_proto_rawDesc = "" +
 	"\x1eIDENTITY_SERVICE_RPCS_CALLBACK\x10\x03\x12'\n" +
 	"#IDENTITY_SERVICE_RPCS_REFRESH_TOKEN\x10\x04\x12(\n" +
 	"$IDENTITY_SERVICE_RPCS_EXCHANGE_TOKEN\x10\x05\x12 \n" +
-	"\x1cIDENTITY_SERVICE_RPCS_LOGOUT\x10\x06\x12\x1d\n" +
+	"\x1cIDENTITY_SERVICE_RPCS_LOGOUT\x10\x06\x12.\n" +
+	"*IDENTITY_SERVICE_RPCS_AUTHENTICATE_API_KEY\x10\a\x12\x1d\n" +
 	"\x19IDENTITY_SERVICE_RPCS_ANY\x10c*\xce\x01\n" +
 	"\x11PolicyServiceRPCs\x12#\n" +
 	"\x1fPOLICY_SERVICE_RPCS_UNSPECIFIED\x10\x00\x12'\n" +

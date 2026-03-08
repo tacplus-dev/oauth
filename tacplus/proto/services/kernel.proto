@@ -29,6 +29,7 @@ import "libs/x509.proto";
 import "libs/token.proto";
 import "libs/cloudidentity.proto";
 import "libs/cloudvendor.proto";
+import "common/tokenrequest.proto";
 import "libs/healthreport.proto";
 
 import "services/sentinel.proto";
@@ -244,28 +245,6 @@ message FullDumpHeader {
 // Token Exchanger
 // ============================================================================
 
-// TokenRequest is the input to the ExchangeToken RPC.
-message TokenRequest {
-  // input_token is the bootstrap JWT or refresh token to exchange.
-  string input_token = 3;
-
-  // aud is the desired audience for the issued access token (refresh→access only).
-  string aud = 4;
-
-  // exp is the desired expiry epoch (optional; defaults to default_token_expiry_seconds).
-  int64 exp = 5;
-
-  // Non-expired refresh token proving instance continuity.
-  // When present alongside a fresh bootstrap JWT in input_token,
-  // the exchanger verifies both share the same sub and re-issues
-  // tokens with the original instance_id from the continuity_token.
-  string continuity_token = 6;
-
-  // Cloud-native identity proof (AWS presigned STS, GCP/Azure identity token).
-  // Used instead of input_token when proving identity via cloud metadata.
-  cloudidentity.CloudIdentityProof cloud_proof = 7;
-}
-
 // TokenExchangerState holds the public verifying keys for the built-in token
 // exchange service. TokenExchanger is built into kernel to solve the
 // chicken-egg problem: services like Identity need a ServiceToken from
@@ -307,7 +286,7 @@ service TokenExchangerService {
 
   // ExchangeToken validates the input token, evaluates OPA policy,
   // and returns a signed access token.
-  rpc ExchangeToken(TokenRequest) returns (token.Token);
+  rpc ExchangeToken(tokenrequest.TokenRequest) returns (token.Token);
 }
 
 // ============================================================================
@@ -328,14 +307,14 @@ message CloudIdentityMatcher {
 
 // Delegate holds credentials for a service that can request tokens.
 // Each delegate is identified by name (becomes "sub" in issued tokens)
-// and authenticates via CredPair or cloud identity.
+// and authenticates via a signed JWT (verified against cred_pairs) or cloud identity.
 message Delegate {
   // name is the delegate's identity (becomes sub in issued tokens).
   string name = 1;
 
-  // Credentials for proving identity. At least one must be set.
-  // Repeated to allow rotation (old + new credential during transition).
-  repeated jwk.CredPair cred_pairs = 2;
+  // Public keys for verifying the delegate's signed JWT.
+  // Repeated to allow rotation (old + new key during transition).
+  repeated jwk.Jwk cred_pairs = 2;
   repeated CloudIdentityMatcher cloud_identities = 3;
 
   // authorized_services lists services this delegate can request tokens for.
@@ -374,6 +353,10 @@ message Config {
   // delegates hold credentials for services that can request tokens.
   // Each delegate identifies a service and its authorized target services.
   repeated Delegate delegates = 16;
+
+  // ca_cert_lifetime_seconds is the lifetime for node CA certificates.
+  // Default: 31536000 (1 year). Node CA certs are regenerated on restart.
+  int64 ca_cert_lifetime_seconds = 17;
 }
 
 // ============================================================================
@@ -573,6 +556,30 @@ message ServiceHealthState {
   // Entries TTL-expire in 30s if not refreshed, ensuring stale instances
   // are removed when a process dies.
   repeated healthreport.ServiceInstanceHealth instances = 1;
+}
+
+// ============================================================================
+// CA State (cluster-internal PKI)
+// ============================================================================
+
+// CaState holds CA certificates for the cluster's internal PKI.
+// Each kernel node generates its own CA keypair (private key in memory)
+// and publishes its CA cert here. Services read ca_certs (RO) for trust.
+message CaState {
+
+  // ca_certs is the collection of all node CA certificates.
+  // Each node publishes its own CA cert on boot. Services read these
+  // to build a trust store for verifying certificates signed by any node.
+  repeated x509.X509Cert ca_certs = 1;
+}
+
+// X509CertExchangerService signs X.509 certificate requests using the node's CA key.
+service X509CertExchangerService {
+
+  // SignCert signs an X509CertRequest with this node's CA keypair.
+  // The caller's identity (sub from S2S token) is encoded into the
+  // certificate's Subject CN.
+  rpc SignCert(x509.X509CertRequest) returns (x509.X509Cert);
 }
 // Collection query types (auto-injected)
 enum ComparisonOp {
@@ -1089,5 +1096,40 @@ message InstancesKeysResponse { repeated string keys = 1; }
 message InstancesSizeResponse { int32 size = 1; }
 message InstancesQueryRequest { CollectionQuery query = 1; }
 message InstancesQueryResponse { repeated healthreport.ServiceInstanceHealth results = 1; int32 total_count = 2; }
+
+// ============================================================================
+// Auto-generated Backend Service (tacplus)
+// ============================================================================
+
+service CaStateBackendService {
+	// Collection: CaCerts
+	rpc GetCaCerts(CaCertsGetRequest) returns (CaCertsValueResponse);
+	rpc PutCaCerts(CaCertsPutRequest) returns (CaCertsValueResponse);
+	rpc SetCaCerts(CaCertsPutRequest) returns (MapEmpty);
+	rpc RemoveCaCerts(CaCertsGetRequest) returns (CaCertsValueResponse);
+	rpc DeleteCaCerts(CaCertsGetRequest) returns (MapEmpty);
+	rpc ContainsKeyCaCerts(CaCertsGetRequest) returns (CaCertsValueResponse);
+	rpc GetAllCaCerts(CaCertsGetAllRequest) returns (CaCertsEntriesResponse);
+	rpc KeySetCaCerts(CaCertsKeysRequest) returns (CaCertsKeysResponse);
+	rpc SizeCaCerts(CaCertsSizeRequest) returns (CaCertsSizeResponse);
+	rpc ClearCaCerts(CaCertsClearRequest) returns (MapEmpty);
+	rpc PutIfAbsentCaCerts(CaCertsPutRequest) returns (CaCertsValueResponse);
+	rpc WatchCaCerts(google.protobuf.Empty) returns (stream CaCertsEntriesResponse);
+	rpc QueryCaCerts(CaCertsQueryRequest) returns (CaCertsQueryResponse);
+	rpc WatchQueryCaCerts(CaCertsQueryRequest) returns (stream CaCertsQueryResponse);
+}
+
+message CaCertsGetRequest { string key = 1; }
+message CaCertsPutRequest { string key = 1; x509.X509Cert value = 2; int64 lock_counter = 3; }
+message CaCertsGetAllRequest {}
+message CaCertsKeysRequest {}
+message CaCertsSizeRequest {}
+message CaCertsClearRequest {}
+message CaCertsValueResponse { x509.X509Cert value = 1; bool found = 2; }
+message CaCertsEntriesResponse { map<string, x509.X509Cert> entries = 1; }
+message CaCertsKeysResponse { repeated string keys = 1; }
+message CaCertsSizeResponse { int32 size = 1; }
+message CaCertsQueryRequest { CollectionQuery query = 1; }
+message CaCertsQueryResponse { repeated x509.X509Cert results = 1; int32 total_count = 2; }
 
 message MapEmpty {}

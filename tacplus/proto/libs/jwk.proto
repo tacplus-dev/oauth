@@ -151,22 +151,3 @@ message OpenIdConfiguration {
 // PATH_WELL_KNOWN_OPENID is the path for OpenID Connect discovery endpoint.
 // This endpoint provides metadata about the Hermes service's OpenID Connect configuration.
 // Full path example: "/api/v1/.well-known/openid-configuration"
-
-// ============================================================================
-// Credential Pairs
-// ============================================================================
-
-// CredPair holds a public key for the CredPair token exchange flow.
-// A service holding the matching private key mints a throwaway JWT
-// (kid + signature only), exchanges it via TokenExchanger for a refresh
-// token, then exchanges the refresh token for access tokens.
-//
-// Identity mapping (kid → service name) is handled separately by
-// ServiceEntitlementMapping. The private key lives only in the client's
-// config (backendclient.proto), never on the server.
-message CredPair {
-  // The public key for signature verification.
-  // kid (public_key.kid) is used as the collection key and as the
-  // credential_id in ServiceEntitlementMapping.
-  Jwk public_key = 1;
-}

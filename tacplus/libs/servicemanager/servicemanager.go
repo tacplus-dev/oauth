@@ -32,6 +32,7 @@ import (
 	wrapperKey "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/key"
 	wrapperToken "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/token"
 	wrapperX509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/libs/x509"
+	common_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/tokenrequest"
 	cloudidentity_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudidentity"
 	cloudvendor_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudvendor"
 	jwk_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
@@ -900,7 +901,7 @@ func (tm *tokenMinter) doExchange() (string, error) {
 	// 2. Phase 1: Exchange throwaway JWT for a refresh token.
 	exchCtx1, cancel1 := context.WithTimeout(context.Background(), exchangeTimeout)
 	defer cancel1()
-	refreshResp, err := tm.exchClient.ExchangeToken(exchCtx1, &backend_svc_pb.TokenRequest{
+	refreshResp, err := tm.exchClient.ExchangeToken(exchCtx1, &common_pb.TokenRequest{
 		InputToken: throwaway,
 	})
 	if err != nil {
@@ -910,7 +911,7 @@ func (tm *tokenMinter) doExchange() (string, error) {
 	// 3. Phase 2: Exchange refresh token for a service token with the correct audience.
 	exchCtx2, cancel2 := context.WithTimeout(context.Background(), exchangeTimeout)
 	defer cancel2()
-	serviceResp, err := tm.exchClient.ExchangeToken(exchCtx2, &backend_svc_pb.TokenRequest{
+	serviceResp, err := tm.exchClient.ExchangeToken(exchCtx2, &common_pb.TokenRequest{
 		InputToken: refreshResp.GetBase64(),
 		Aud:        serviceAudience,
 	})
@@ -1502,7 +1503,7 @@ func (cm *cloudTokenMinter) doCloudExchange() error {
 		return fmt.Errorf("token exchange client not initialized")
 	}
 
-	req := &backend_svc_pb.TokenRequest{
+	req := &common_pb.TokenRequest{
 		CloudProof: proof,
 	}
 	// If we have an unexpired refresh token, include it as continuity_token
@@ -1548,7 +1549,7 @@ func (cm *cloudTokenMinter) doAccessExchange() (string, error) {
 
 	exchCtx, cancel := context.WithTimeout(context.Background(), exchangeTimeout)
 	defer cancel()
-	resp, err := cm.exchClient.ExchangeToken(exchCtx, &backend_svc_pb.TokenRequest{
+	resp, err := cm.exchClient.ExchangeToken(exchCtx, &common_pb.TokenRequest{
 		InputToken: cm.refreshTok,
 		Aud:        serviceAudience,
 	})

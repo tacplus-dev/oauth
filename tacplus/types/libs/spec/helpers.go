@@ -884,12 +884,13 @@ func ConsistencyModelValues() []ConsistencyModel {
 		ConsistencyModel_CONSISTENCY_ATOMIC,
 		ConsistencyModel_CONSISTENCY_CONVERGENT,
 		ConsistencyModel_CONSISTENCY_INHERITED,
+		ConsistencyModel_CONSISTENCY_REPLICATED,
 	}
 }
 
 // ConsistencyModelStringValues returns all valid ConsistencyModel names as strings
 func ConsistencyModelStringValues() []string {
-	return []string{"consistency-atomic", "consistency-convergent", "consistency-inherited"}
+	return []string{"consistency-atomic", "consistency-convergent", "consistency-inherited", "consistency-replicated"}
 }
 
 // ParseConsistencyModel converts a string to a ConsistencyModel enum value
@@ -906,6 +907,8 @@ func ParseConsistencyModel(s string) (ConsistencyModel, error) {
 		return ConsistencyModel_CONSISTENCY_CONVERGENT, nil
 	case "consistency-inherited":
 		return ConsistencyModel_CONSISTENCY_INHERITED, nil
+	case "consistency-replicated":
+		return ConsistencyModel_CONSISTENCY_REPLICATED, nil
 	default:
 		return ConsistencyModel_CONSISTENCY_UNSPECIFIED, protoerrors.NewErrMissingInvalidData(nil, "invalid consistencymodel %s, expecting one of: %v", s, ConsistencyModelStringValues())
 	}
@@ -942,6 +945,8 @@ func ConsistencyModelToString(v ConsistencyModel) string {
 		return "consistency-convergent"
 	case ConsistencyModel_CONSISTENCY_INHERITED:
 		return "consistency-inherited"
+	case ConsistencyModel_CONSISTENCY_REPLICATED:
+		return "consistency-replicated"
 	default:
 		return ""
 	}
@@ -970,6 +975,8 @@ func ParseConsistencyModelLiberal(s string) ConsistencyModel {
 		return ConsistencyModel_CONSISTENCY_CONVERGENT
 	case "consistency-inherited":
 		return ConsistencyModel_CONSISTENCY_INHERITED
+	case "consistency-replicated":
+		return ConsistencyModel_CONSISTENCY_REPLICATED
 	default:
 		return ConsistencyModel_CONSISTENCY_UNSPECIFIED
 	}
@@ -986,6 +993,8 @@ func ConsistencyModelToSpecName(v ConsistencyModel) string {
 		return "CONSISTENCY_CONVERGENT"
 	case ConsistencyModel_CONSISTENCY_INHERITED:
 		return "CONSISTENCY_INHERITED"
+	case ConsistencyModel_CONSISTENCY_REPLICATED:
+		return "CONSISTENCY_REPLICATED"
 	default:
 		return ""
 	}

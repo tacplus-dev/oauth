@@ -4,7 +4,7 @@
 // prove workload identity via cloud-native mechanisms. A workload running
 // in a cloud environment (AWS, GCP, Azure) obtains a proof from its
 // cloud's metadata service and presents it to TokenExchanger in place
-// of a CredPair-signed JWT. The server validates the proof against the
+// of a key-signed JWT. The server validates the proof against the
 // cloud provider's public infrastructure and maps the resulting identity
 // to a ServiceEntitlementMapping principal.
 

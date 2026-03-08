@@ -461,6 +461,7 @@ const (
 	ConsistencyModel_CONSISTENCY_ATOMIC      ConsistencyModel = 1 // Own IMap, sync backups, optimistic locking (requires Lock)
 	ConsistencyModel_CONSISTENCY_CONVERGENT  ConsistencyModel = 2 // Own IMap, async replication, lockless (LWW/append-only)
 	ConsistencyModel_CONSISTENCY_INHERITED   ConsistencyModel = 3 // Inherits parent boundary's consistency model
+	ConsistencyModel_CONSISTENCY_REPLICATED  ConsistencyModel = 4 // Full copy on every member, local reads, async writes
 )
 
 // Enum value maps for ConsistencyModel.
@@ -470,12 +471,14 @@ var (
 		1: "CONSISTENCY_ATOMIC",
 		2: "CONSISTENCY_CONVERGENT",
 		3: "CONSISTENCY_INHERITED",
+		4: "CONSISTENCY_REPLICATED",
 	}
 	ConsistencyModel_value = map[string]int32{
 		"CONSISTENCY_UNSPECIFIED": 0,
 		"CONSISTENCY_ATOMIC":      1,
 		"CONSISTENCY_CONVERGENT":  2,
 		"CONSISTENCY_INHERITED":   3,
+		"CONSISTENCY_REPLICATED":  4,
 	}
 )
 
@@ -3384,12 +3387,13 @@ const file_libs_spec_proto_rawDesc = "" +
 	"\x10PATH_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rPATH_ABSOLUTE\x10\x01\x12\x11\n" +
 	"\rPATH_RELATIVE\x10\x02\x12\f\n" +
-	"\bPATH_ANY\x10\x03*~\n" +
+	"\bPATH_ANY\x10\x03*\x9a\x01\n" +
 	"\x10ConsistencyModel\x12\x1b\n" +
 	"\x17CONSISTENCY_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12CONSISTENCY_ATOMIC\x10\x01\x12\x1a\n" +
 	"\x16CONSISTENCY_CONVERGENT\x10\x02\x12\x19\n" +
-	"\x15CONSISTENCY_INHERITED\x10\x03*x\n" +
+	"\x15CONSISTENCY_INHERITED\x10\x03\x12\x1a\n" +
+	"\x16CONSISTENCY_REPLICATED\x10\x04*x\n" +
 	"\x0eEvictionPolicy\x12\x18\n" +
 	"\x14EVICTION_POLICY_NONE\x10\x00\x12\x17\n" +
 	"\x13EVICTION_POLICY_LRU\x10\x01\x12\x17\n" +
