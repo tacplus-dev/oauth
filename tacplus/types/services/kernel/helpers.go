@@ -15,12 +15,12 @@ package kernel
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"strconv"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+	hazelcast "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	cloudvendor "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudvendor"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
 	generated "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/generated"
@@ -30,7 +30,6 @@ import (
 	logger "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/logger"
 	outputformat "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/outputformat"
 	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
-	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -39,300 +38,6 @@ import (
 // ============================================================
 // Enum Helpers
 // ============================================================
-// NodeModeValues returns all valid NodeMode values (excluding UNDEFINED)
-func NodeModeValues() []NodeMode {
-	return []NodeMode{
-		NodeMode_NODE_MODE_CORE,
-		NodeMode_NODE_MODE_EDGE,
-	}
-}
-
-// NodeModeStringValues returns all valid NodeMode names as strings
-func NodeModeStringValues() []string {
-	return []string{"core", "edge"}
-}
-
-// ParseNodeMode converts a string to a NodeMode enum value
-// Accepts both hyphen and underscore formats for compatibility (case-insensitive)
-func ParseNodeMode(s string) (NodeMode, error) {
-	// Normalize: convert to lowercase and replace underscores with hyphens for case-insensitive comparison
-	normalized := strings.ReplaceAll(strings.ToLower(s), "_", "-")
-	switch normalized {
-	case "":
-		return NodeMode_NODE_MODE_CORE_EDGE, nil
-	case "core", "node-mode-core":
-		return NodeMode_NODE_MODE_CORE, nil
-	case "edge", "node-mode-edge":
-		return NodeMode_NODE_MODE_EDGE, nil
-	default:
-		return NodeMode_NODE_MODE_CORE_EDGE, protoerrors.NewErrMissingInvalidData(nil, "invalid nodemode %s, expecting one of: %v", s, NodeModeStringValues())
-	}
-}
-
-// ParseNodeModes converts a comma-separated string to a slice of NodeMode enum values
-// Returns an error if any value is invalid
-func ParseNodeModes(s string) ([]NodeMode, error) {
-	if s == "" {
-		return nil, nil
-	}
-	parts := strings.Split(s, ",")
-	result := make([]NodeMode, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		val, err := ParseNodeMode(trimmed)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, val)
-	}
-	return result, nil
-}
-
-// NodeModeToString converts a NodeMode to its lowercase string representation
-func NodeModeToString(v NodeMode) string {
-	switch v {
-	case NodeMode_NODE_MODE_CORE:
-		return "core"
-	case NodeMode_NODE_MODE_EDGE:
-		return "edge"
-	default:
-		return ""
-	}
-}
-
-// ParseNodeModeLiberal parses a NodeMode liberally, accepting:
-// - Integer values (as string or int)
-// - Enum names in any case
-// - RFC-compliant JSON names
-func ParseNodeModeLiberal(s string) NodeMode {
-	if s == "" {
-		return NodeMode_NODE_MODE_CORE_EDGE
-	}
-	// Try parsing as integer
-	if num, err := strconv.Atoi(s); err == nil {
-		return NodeMode(num)
-	}
-	// Normalize and try parsing
-	normalized := strings.ToLower(strings.TrimSpace(s))
-	normalized = strings.ReplaceAll(normalized, "_", "-")
-	normalized = strings.ReplaceAll(normalized, " ", "-")
-	switch normalized {
-	case "core", "node-mode-core":
-		return NodeMode_NODE_MODE_CORE
-	case "edge", "node-mode-edge":
-		return NodeMode_NODE_MODE_EDGE
-	default:
-		return NodeMode_NODE_MODE_CORE_EDGE
-	}
-}
-
-// NodeModeToSpecName converts a NodeMode to its canonical protobuf spec name
-func NodeModeToSpecName(v NodeMode) string {
-	switch v {
-	case NodeMode_NODE_MODE_CORE_EDGE:
-		return "NODE_MODE_CORE_EDGE"
-	case NodeMode_NODE_MODE_CORE:
-		return "NODE_MODE_CORE"
-	case NodeMode_NODE_MODE_EDGE:
-		return "NODE_MODE_EDGE"
-	default:
-		return ""
-	}
-}
-
-// OpTypeValues returns all valid OpType values (excluding UNDEFINED)
-func OpTypeValues() []OpType {
-	return []OpType{
-		OpType_OP_TYPE_DELETE,
-	}
-}
-
-// OpTypeStringValues returns all valid OpType names as strings
-func OpTypeStringValues() []string {
-	return []string{"delete"}
-}
-
-// ParseOpType converts a string to a OpType enum value
-// Accepts both hyphen and underscore formats for compatibility (case-insensitive)
-func ParseOpType(s string) (OpType, error) {
-	// Normalize: convert to lowercase and replace underscores with hyphens for case-insensitive comparison
-	normalized := strings.ReplaceAll(strings.ToLower(s), "_", "-")
-	switch normalized {
-	case "":
-		return OpType_OP_TYPE_PUT, nil
-	case "delete", "op-type-delete":
-		return OpType_OP_TYPE_DELETE, nil
-	default:
-		return OpType_OP_TYPE_PUT, protoerrors.NewErrMissingInvalidData(nil, "invalid optype %s, expecting one of: %v", s, OpTypeStringValues())
-	}
-}
-
-// ParseOpTypes converts a comma-separated string to a slice of OpType enum values
-// Returns an error if any value is invalid
-func ParseOpTypes(s string) ([]OpType, error) {
-	if s == "" {
-		return nil, nil
-	}
-	parts := strings.Split(s, ",")
-	result := make([]OpType, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		val, err := ParseOpType(trimmed)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, val)
-	}
-	return result, nil
-}
-
-// OpTypeToString converts a OpType to its lowercase string representation
-func OpTypeToString(v OpType) string {
-	switch v {
-	case OpType_OP_TYPE_DELETE:
-		return "delete"
-	default:
-		return ""
-	}
-}
-
-// ParseOpTypeLiberal parses a OpType liberally, accepting:
-// - Integer values (as string or int)
-// - Enum names in any case
-// - RFC-compliant JSON names
-func ParseOpTypeLiberal(s string) OpType {
-	if s == "" {
-		return OpType_OP_TYPE_PUT
-	}
-	// Try parsing as integer
-	if num, err := strconv.Atoi(s); err == nil {
-		return OpType(num)
-	}
-	// Normalize and try parsing
-	normalized := strings.ToLower(strings.TrimSpace(s))
-	normalized = strings.ReplaceAll(normalized, "_", "-")
-	normalized = strings.ReplaceAll(normalized, " ", "-")
-	switch normalized {
-	case "delete", "op-type-delete":
-		return OpType_OP_TYPE_DELETE
-	default:
-		return OpType_OP_TYPE_PUT
-	}
-}
-
-// OpTypeToSpecName converts a OpType to its canonical protobuf spec name
-func OpTypeToSpecName(v OpType) string {
-	switch v {
-	case OpType_OP_TYPE_PUT:
-		return "OP_TYPE_PUT"
-	case OpType_OP_TYPE_DELETE:
-		return "OP_TYPE_DELETE"
-	default:
-		return ""
-	}
-}
-
-// ConsistencyTypeValues returns all valid ConsistencyType values (excluding UNDEFINED)
-func ConsistencyTypeValues() []ConsistencyType {
-	return []ConsistencyType{
-		ConsistencyType_CONSISTENCY_ATOMIC,
-	}
-}
-
-// ConsistencyTypeStringValues returns all valid ConsistencyType names as strings
-func ConsistencyTypeStringValues() []string {
-	return []string{"consistency-atomic"}
-}
-
-// ParseConsistencyType converts a string to a ConsistencyType enum value
-// Accepts both hyphen and underscore formats for compatibility (case-insensitive)
-func ParseConsistencyType(s string) (ConsistencyType, error) {
-	// Normalize: convert to lowercase and replace underscores with hyphens for case-insensitive comparison
-	normalized := strings.ReplaceAll(strings.ToLower(s), "_", "-")
-	switch normalized {
-	case "":
-		return ConsistencyType_CONSISTENCY_CONVERGENT, nil
-	case "consistency-atomic":
-		return ConsistencyType_CONSISTENCY_ATOMIC, nil
-	default:
-		return ConsistencyType_CONSISTENCY_CONVERGENT, protoerrors.NewErrMissingInvalidData(nil, "invalid consistencytype %s, expecting one of: %v", s, ConsistencyTypeStringValues())
-	}
-}
-
-// ParseConsistencyTypes converts a comma-separated string to a slice of ConsistencyType enum values
-// Returns an error if any value is invalid
-func ParseConsistencyTypes(s string) ([]ConsistencyType, error) {
-	if s == "" {
-		return nil, nil
-	}
-	parts := strings.Split(s, ",")
-	result := make([]ConsistencyType, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		val, err := ParseConsistencyType(trimmed)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, val)
-	}
-	return result, nil
-}
-
-// ConsistencyTypeToString converts a ConsistencyType to its lowercase string representation
-func ConsistencyTypeToString(v ConsistencyType) string {
-	switch v {
-	case ConsistencyType_CONSISTENCY_ATOMIC:
-		return "consistency-atomic"
-	default:
-		return ""
-	}
-}
-
-// ParseConsistencyTypeLiberal parses a ConsistencyType liberally, accepting:
-// - Integer values (as string or int)
-// - Enum names in any case
-// - RFC-compliant JSON names
-func ParseConsistencyTypeLiberal(s string) ConsistencyType {
-	if s == "" {
-		return ConsistencyType_CONSISTENCY_CONVERGENT
-	}
-	// Try parsing as integer
-	if num, err := strconv.Atoi(s); err == nil {
-		return ConsistencyType(num)
-	}
-	// Normalize and try parsing
-	normalized := strings.ToLower(strings.TrimSpace(s))
-	normalized = strings.ReplaceAll(normalized, "_", "-")
-	normalized = strings.ReplaceAll(normalized, " ", "-")
-	switch normalized {
-	case "consistency-atomic":
-		return ConsistencyType_CONSISTENCY_ATOMIC
-	default:
-		return ConsistencyType_CONSISTENCY_CONVERGENT
-	}
-}
-
-// ConsistencyTypeToSpecName converts a ConsistencyType to its canonical protobuf spec name
-func ConsistencyTypeToSpecName(v ConsistencyType) string {
-	switch v {
-	case ConsistencyType_CONSISTENCY_CONVERGENT:
-		return "CONSISTENCY_CONVERGENT"
-	case ConsistencyType_CONSISTENCY_ATOMIC:
-		return "CONSISTENCY_ATOMIC"
-	default:
-		return ""
-	}
-}
-
 // ComparisonOpValues returns all valid ComparisonOp values (excluding UNDEFINED)
 func ComparisonOpValues() []ComparisonOp {
 	return []ComparisonOp{
@@ -785,7 +490,7 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			if v.Network == nil {
 				return nil
 			}
-			data, _ := NetworkConfigToJSON(v.Network)
+			data, _ := hazelcast.NetworkConfigToJSON(v.Network)
 			return data
 		}(),
 		Logger: func() json.RawMessage {
@@ -799,7 +504,7 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			if v.CpSubsystem == nil {
 				return nil
 			}
-			data, _ := CPSubsystemConfigToJSON(v.CpSubsystem)
+			data, _ := hazelcast.CPSubsystemConfigToJSON(v.CpSubsystem)
 			return data
 		}(),
 		PersistenceDir:    v.PersistenceDir,
@@ -826,7 +531,7 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			return data
 		}(),
 		RaftPort: v.RaftPort,
-		Mode:     NodeModeToString(v.Mode),
+		Mode:     hazelcast.NodeModeToString(v.Mode),
 	}
 	return json.Marshal(helper)
 }
@@ -915,7 +620,7 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 	result.PartitionCount = raw.PartitionCount
 	// Parse message field: Network
 	if len(raw.Network) > 0 {
-		parsed, err := NetworkConfigFromJSON(raw.Network)
+		parsed, err := hazelcast.NetworkConfigFromJSON(raw.Network)
 		if err == nil {
 			result.Network = parsed
 		}
@@ -929,7 +634,7 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 	}
 	// Parse message field: CpSubsystem
 	if len(raw.CpSubsystem) > 0 {
-		parsed, err := CPSubsystemConfigFromJSON(raw.CpSubsystem)
+		parsed, err := hazelcast.CPSubsystemConfigFromJSON(raw.CpSubsystem)
 		if err == nil {
 			result.CpSubsystem = parsed
 		}
@@ -963,7 +668,7 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 	result.RaftPort = raw.RaftPort
 	// Parse enum field: Mode
 	if raw.Mode != "" {
-		if parsed, err := ParseNodeMode(raw.Mode); err == nil {
+		if parsed, err := hazelcast.ParseNodeMode(raw.Mode); err == nil {
 			result.Mode = parsed
 		}
 	}
@@ -997,663 +702,6 @@ func BootstrapConfigToTOML(v *BootstrapConfig) ([]byte, error) {
 	}
 	// Convert to JSON first
 	jsonData, err := BootstrapConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// NetworkConfigJSON represents NetworkConfig in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type networkconfigJSON struct {
-	ConnectTimeoutSeconds    int64 `json:"connect_timeout_seconds,omitempty"`
-	HeartbeatIntervalSeconds int64 `json:"heartbeat_interval_seconds,omitempty"`
-	HeartbeatTimeoutSeconds  int64 `json:"heartbeat_timeout_seconds,omitempty"`
-}
-
-// NetworkConfigToJSON converts NetworkConfig to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func NetworkConfigToJSON(v *NetworkConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "networkconfig is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := networkconfigJSON{
-		ConnectTimeoutSeconds:    v.ConnectTimeoutSeconds,
-		HeartbeatIntervalSeconds: v.HeartbeatIntervalSeconds,
-		HeartbeatTimeoutSeconds:  v.HeartbeatTimeoutSeconds,
-	}
-	return json.Marshal(helper)
-}
-
-// NetworkConfigFromBytes creates NetworkConfig from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func NetworkConfigFromBytes(data []byte) (*NetworkConfig, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := NetworkConfigFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := NetworkConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := NetworkConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &NetworkConfig{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse NetworkConfig: unsupported format or invalid data")
-}
-
-// NetworkConfigFromJSON creates NetworkConfig from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func NetworkConfigFromJSON(data []byte) (*NetworkConfig, error) {
-	// Unmarshal into helper struct with string enums
-	var raw networkconfigJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &NetworkConfig{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &NetworkConfig{}
-	result.ConnectTimeoutSeconds = raw.ConnectTimeoutSeconds
-	result.HeartbeatIntervalSeconds = raw.HeartbeatIntervalSeconds
-	result.HeartbeatTimeoutSeconds = raw.HeartbeatTimeoutSeconds
-	return result, nil
-}
-
-// NetworkConfigToYAML converts NetworkConfig to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func NetworkConfigToYAML(v *NetworkConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "networkconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := NetworkConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// NetworkConfigToTOML converts NetworkConfig to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func NetworkConfigToTOML(v *NetworkConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "networkconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := NetworkConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// CPSubsystemConfigJSON represents CPSubsystemConfig in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type cpsubsystemconfigJSON struct {
-	Enabled                           bool  `json:"enabled,omitempty"`
-	CpMemberCount                     int32 `json:"cp_member_count,omitempty"`
-	SessionTimeoutSeconds             int64 `json:"session_timeout_seconds,omitempty"`
-	SessionHeartbeatIntervalSeconds   int64 `json:"session_heartbeat_interval_seconds,omitempty"`
-	MissingCpMemberAutoRemovalSeconds int64 `json:"missing_cp_member_auto_removal_seconds,omitempty"`
-}
-
-// CPSubsystemConfigToJSON converts CPSubsystemConfig to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func CPSubsystemConfigToJSON(v *CPSubsystemConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "cpsubsystemconfig is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := cpsubsystemconfigJSON{
-		Enabled:                           v.Enabled,
-		CpMemberCount:                     v.CpMemberCount,
-		SessionTimeoutSeconds:             v.SessionTimeoutSeconds,
-		SessionHeartbeatIntervalSeconds:   v.SessionHeartbeatIntervalSeconds,
-		MissingCpMemberAutoRemovalSeconds: v.MissingCpMemberAutoRemovalSeconds,
-	}
-	return json.Marshal(helper)
-}
-
-// CPSubsystemConfigFromBytes creates CPSubsystemConfig from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func CPSubsystemConfigFromBytes(data []byte) (*CPSubsystemConfig, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := CPSubsystemConfigFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := CPSubsystemConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := CPSubsystemConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &CPSubsystemConfig{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse CPSubsystemConfig: unsupported format or invalid data")
-}
-
-// CPSubsystemConfigFromJSON creates CPSubsystemConfig from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func CPSubsystemConfigFromJSON(data []byte) (*CPSubsystemConfig, error) {
-	// Unmarshal into helper struct with string enums
-	var raw cpsubsystemconfigJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &CPSubsystemConfig{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &CPSubsystemConfig{}
-	result.Enabled = raw.Enabled
-	result.CpMemberCount = raw.CpMemberCount
-	result.SessionTimeoutSeconds = raw.SessionTimeoutSeconds
-	result.SessionHeartbeatIntervalSeconds = raw.SessionHeartbeatIntervalSeconds
-	result.MissingCpMemberAutoRemovalSeconds = raw.MissingCpMemberAutoRemovalSeconds
-	return result, nil
-}
-
-// CPSubsystemConfigToYAML converts CPSubsystemConfig to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func CPSubsystemConfigToYAML(v *CPSubsystemConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "cpsubsystemconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := CPSubsystemConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// CPSubsystemConfigToTOML converts CPSubsystemConfig to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func CPSubsystemConfigToTOML(v *CPSubsystemConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "cpsubsystemconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := CPSubsystemConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// RateLimitConfigJSON represents RateLimitConfig in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type ratelimitconfigJSON struct {
-	PollingRate float64 `json:"polling_rate,omitempty"`
-	UnaryRate   float64 `json:"unary_rate,omitempty"`
-}
-
-// RateLimitConfigToJSON converts RateLimitConfig to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func RateLimitConfigToJSON(v *RateLimitConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "ratelimitconfig is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := ratelimitconfigJSON{
-		PollingRate: v.PollingRate,
-		UnaryRate:   v.UnaryRate,
-	}
-	return json.Marshal(helper)
-}
-
-// RateLimitConfigFromBytes creates RateLimitConfig from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func RateLimitConfigFromBytes(data []byte) (*RateLimitConfig, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := RateLimitConfigFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := RateLimitConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := RateLimitConfigFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &RateLimitConfig{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse RateLimitConfig: unsupported format or invalid data")
-}
-
-// RateLimitConfigFromJSON creates RateLimitConfig from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func RateLimitConfigFromJSON(data []byte) (*RateLimitConfig, error) {
-	// Unmarshal into helper struct with string enums
-	var raw ratelimitconfigJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &RateLimitConfig{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &RateLimitConfig{}
-	result.PollingRate = raw.PollingRate
-	result.UnaryRate = raw.UnaryRate
-	return result, nil
-}
-
-// RateLimitConfigToYAML converts RateLimitConfig to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func RateLimitConfigToYAML(v *RateLimitConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "ratelimitconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := RateLimitConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// RateLimitConfigToTOML converts RateLimitConfig to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func RateLimitConfigToTOML(v *RateLimitConfig) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "ratelimitconfig is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := RateLimitConfigToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// RedoLogEntryJSON represents RedoLogEntry in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type redologentryJSON struct {
-	MapName     string `json:"map_name,omitempty"`
-	Key         string `json:"key,omitempty"`
-	Value       []byte `json:"value,omitempty"`
-	Op          string `json:"op,omitempty"`
-	TimestampMs int64  `json:"timestamp_ms,omitempty"`
-	Consistency string `json:"consistency,omitempty"`
-}
-
-// RedoLogEntryToJSON converts RedoLogEntry to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func RedoLogEntryToJSON(v *RedoLogEntry) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "redologentry is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := redologentryJSON{
-		MapName:     v.MapName,
-		Key:         v.Key,
-		Value:       v.Value,
-		Op:          OpTypeToString(v.Op),
-		TimestampMs: v.TimestampMs,
-		Consistency: ConsistencyTypeToString(v.Consistency),
-	}
-	return json.Marshal(helper)
-}
-
-// RedoLogEntryFromBytes creates RedoLogEntry from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func RedoLogEntryFromBytes(data []byte) (*RedoLogEntry, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := RedoLogEntryFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := RedoLogEntryFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := RedoLogEntryFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &RedoLogEntry{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse RedoLogEntry: unsupported format or invalid data")
-}
-
-// RedoLogEntryFromJSON creates RedoLogEntry from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func RedoLogEntryFromJSON(data []byte) (*RedoLogEntry, error) {
-	// Unmarshal into helper struct with string enums
-	var raw redologentryJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &RedoLogEntry{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &RedoLogEntry{}
-	result.MapName = raw.MapName
-	result.Key = raw.Key
-	result.Value = raw.Value
-	// Parse enum field: Op
-	if raw.Op != "" {
-		if parsed, err := ParseOpType(raw.Op); err == nil {
-			result.Op = parsed
-		}
-	}
-	result.TimestampMs = raw.TimestampMs
-	// Parse enum field: Consistency
-	if raw.Consistency != "" {
-		if parsed, err := ParseConsistencyType(raw.Consistency); err == nil {
-			result.Consistency = parsed
-		}
-	}
-	return result, nil
-}
-
-// RedoLogEntryToYAML converts RedoLogEntry to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func RedoLogEntryToYAML(v *RedoLogEntry) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "redologentry is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := RedoLogEntryToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// RedoLogEntryToTOML converts RedoLogEntry to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func RedoLogEntryToTOML(v *RedoLogEntry) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "redologentry is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := RedoLogEntryToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// FullDumpHeaderJSON represents FullDumpHeader in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type fulldumpheaderJSON struct {
-	TimestampMs int64  `json:"timestamp_ms,omitempty"`
-	EntryCount  int32  `json:"entry_count,omitempty"`
-	NodeId      string `json:"node_id,omitempty"`
-}
-
-// FullDumpHeaderToJSON converts FullDumpHeader to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func FullDumpHeaderToJSON(v *FullDumpHeader) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "fulldumpheader is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := fulldumpheaderJSON{
-		TimestampMs: v.TimestampMs,
-		EntryCount:  v.EntryCount,
-		NodeId:      v.NodeId,
-	}
-	return json.Marshal(helper)
-}
-
-// FullDumpHeaderFromBytes creates FullDumpHeader from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func FullDumpHeaderFromBytes(data []byte) (*FullDumpHeader, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := FullDumpHeaderFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := FullDumpHeaderFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := FullDumpHeaderFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &FullDumpHeader{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse FullDumpHeader: unsupported format or invalid data")
-}
-
-// FullDumpHeaderFromJSON creates FullDumpHeader from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func FullDumpHeaderFromJSON(data []byte) (*FullDumpHeader, error) {
-	// Unmarshal into helper struct with string enums
-	var raw fulldumpheaderJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &FullDumpHeader{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &FullDumpHeader{}
-	result.TimestampMs = raw.TimestampMs
-	result.EntryCount = raw.EntryCount
-	result.NodeId = raw.NodeId
-	return result, nil
-}
-
-// FullDumpHeaderToYAML converts FullDumpHeader to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func FullDumpHeaderToYAML(v *FullDumpHeader) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "fulldumpheader is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := FullDumpHeaderToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// FullDumpHeaderToTOML converts FullDumpHeader to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func FullDumpHeaderToTOML(v *FullDumpHeader) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "fulldumpheader is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := FullDumpHeaderToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -2300,7 +1348,7 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 			if v.RateLimit == nil {
 				return nil
 			}
-			data, _ := RateLimitConfigToJSON(v.RateLimit)
+			data, _ := hazelcast.RateLimitConfigToJSON(v.RateLimit)
 			return data
 		}(),
 		Configs: func() json.RawMessage {
@@ -2405,7 +1453,7 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 	}
 	// Parse message field: RateLimit
 	if len(raw.RateLimit) > 0 {
-		parsed, err := RateLimitConfigFromJSON(raw.RateLimit)
+		parsed, err := hazelcast.RateLimitConfigFromJSON(raw.RateLimit)
 		if err == nil {
 			result.RateLimit = parsed
 		}
@@ -2755,14 +1803,14 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			if v.ClusterInfo == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminClusterInfoToJSON(v.ClusterInfo)
+			data, _ := hazelcast.AdminClusterInfoToJSON(v.ClusterInfo)
 			return data
 		}(),
 		ClusterHealth: func() json.RawMessage {
 			if v.ClusterHealth == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminClusterHealthToJSON(v.ClusterHealth)
+			data, _ := hazelcast.AdminClusterHealthToJSON(v.ClusterHealth)
 			return data
 		}(),
 		NodeMetrics: func() []json.RawMessage {
@@ -2772,7 +1820,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.NodeMetrics))
 			for _, item := range v.NodeMetrics {
 				if item != nil {
-					if data, err := sentinel.AdminNodeMetricsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminNodeMetricsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2786,7 +1834,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.GrpcStats))
 			for _, item := range v.GrpcStats {
 				if item != nil {
-					if data, err := sentinel.AdminGrpcStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminGrpcStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2800,7 +1848,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.PersistenceStatus))
 			for _, item := range v.PersistenceStatus {
 				if item != nil {
-					if data, err := sentinel.AdminPersistenceStatusToJSON(item); err == nil {
+					if data, err := hazelcast.AdminPersistenceStatusToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2814,7 +1862,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.NetworkStats))
 			for _, item := range v.NetworkStats {
 				if item != nil {
-					if data, err := sentinel.AdminNetworkStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminNetworkStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2828,7 +1876,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.ThreadInfo))
 			for _, item := range v.ThreadInfo {
 				if item != nil {
-					if data, err := sentinel.AdminThreadInfoToJSON(item); err == nil {
+					if data, err := hazelcast.AdminThreadInfoToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2842,7 +1890,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.TokenCacheStats))
 			for _, item := range v.TokenCacheStats {
 				if item != nil {
-					if data, err := sentinel.AdminTokenCacheStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminTokenCacheStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2856,7 +1904,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.MapStats))
 			for _, item := range v.MapStats {
 				if item != nil {
-					if data, err := sentinel.AdminMapStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminMapStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2884,7 +1932,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.GraphRegistry))
 			for _, item := range v.GraphRegistry {
 				if item != nil {
-					if data, err := sentinel.AdminGraphInfoToJSON(item); err == nil {
+					if data, err := hazelcast.AdminGraphInfoToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2898,7 +1946,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.ServiceConnections))
 			for _, item := range v.ServiceConnections {
 				if item != nil {
-					if data, err := sentinel.AdminServiceConnectionToJSON(item); err == nil {
+					if data, err := hazelcast.AdminServiceConnectionToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2912,7 +1960,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.QueueStats))
 			for _, item := range v.QueueStats {
 				if item != nil {
-					if data, err := sentinel.AdminQueueStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminQueueStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2926,7 +1974,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.TopicStats))
 			for _, item := range v.TopicStats {
 				if item != nil {
-					if data, err := sentinel.AdminTopicStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminTopicStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2940,7 +1988,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.WatchHealth))
 			for _, item := range v.WatchHealth {
 				if item != nil {
-					if data, err := sentinel.AdminWatchHealthToJSON(item); err == nil {
+					if data, err := hazelcast.AdminWatchHealthToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -2954,7 +2002,7 @@ func ClusterStateToJSON(v *ClusterState) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.MutationRates))
 			for _, item := range v.MutationRates {
 				if item != nil {
-					if data, err := sentinel.AdminMutationRateToJSON(item); err == nil {
+					if data, err := hazelcast.AdminMutationRateToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -3048,24 +2096,24 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	result := &ClusterState{}
 	// Parse message field: ClusterInfo
 	if len(raw.ClusterInfo) > 0 {
-		parsed, err := sentinel.AdminClusterInfoFromJSON(raw.ClusterInfo)
+		parsed, err := hazelcast.AdminClusterInfoFromJSON(raw.ClusterInfo)
 		if err == nil {
 			result.ClusterInfo = parsed
 		}
 	}
 	// Parse message field: ClusterHealth
 	if len(raw.ClusterHealth) > 0 {
-		parsed, err := sentinel.AdminClusterHealthFromJSON(raw.ClusterHealth)
+		parsed, err := hazelcast.AdminClusterHealthFromJSON(raw.ClusterHealth)
 		if err == nil {
 			result.ClusterHealth = parsed
 		}
 	}
 	// Parse repeated message field: NodeMetrics
 	if len(raw.NodeMetrics) > 0 {
-		result.NodeMetrics = make([]*sentinel.AdminNodeMetrics, 0, len(raw.NodeMetrics))
+		result.NodeMetrics = make([]*hazelcast.AdminNodeMetrics, 0, len(raw.NodeMetrics))
 		for _, itemJSON := range raw.NodeMetrics {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminNodeMetricsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminNodeMetricsFromJSON(itemJSON)
 				if err == nil {
 					result.NodeMetrics = append(result.NodeMetrics, parsed)
 				}
@@ -3074,10 +2122,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: GrpcStats
 	if len(raw.GrpcStats) > 0 {
-		result.GrpcStats = make([]*sentinel.AdminGrpcStats, 0, len(raw.GrpcStats))
+		result.GrpcStats = make([]*hazelcast.AdminGrpcStats, 0, len(raw.GrpcStats))
 		for _, itemJSON := range raw.GrpcStats {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminGrpcStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminGrpcStatsFromJSON(itemJSON)
 				if err == nil {
 					result.GrpcStats = append(result.GrpcStats, parsed)
 				}
@@ -3086,10 +2134,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: PersistenceStatus
 	if len(raw.PersistenceStatus) > 0 {
-		result.PersistenceStatus = make([]*sentinel.AdminPersistenceStatus, 0, len(raw.PersistenceStatus))
+		result.PersistenceStatus = make([]*hazelcast.AdminPersistenceStatus, 0, len(raw.PersistenceStatus))
 		for _, itemJSON := range raw.PersistenceStatus {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminPersistenceStatusFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminPersistenceStatusFromJSON(itemJSON)
 				if err == nil {
 					result.PersistenceStatus = append(result.PersistenceStatus, parsed)
 				}
@@ -3098,10 +2146,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: NetworkStats
 	if len(raw.NetworkStats) > 0 {
-		result.NetworkStats = make([]*sentinel.AdminNetworkStats, 0, len(raw.NetworkStats))
+		result.NetworkStats = make([]*hazelcast.AdminNetworkStats, 0, len(raw.NetworkStats))
 		for _, itemJSON := range raw.NetworkStats {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminNetworkStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminNetworkStatsFromJSON(itemJSON)
 				if err == nil {
 					result.NetworkStats = append(result.NetworkStats, parsed)
 				}
@@ -3110,10 +2158,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: ThreadInfo
 	if len(raw.ThreadInfo) > 0 {
-		result.ThreadInfo = make([]*sentinel.AdminThreadInfo, 0, len(raw.ThreadInfo))
+		result.ThreadInfo = make([]*hazelcast.AdminThreadInfo, 0, len(raw.ThreadInfo))
 		for _, itemJSON := range raw.ThreadInfo {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminThreadInfoFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminThreadInfoFromJSON(itemJSON)
 				if err == nil {
 					result.ThreadInfo = append(result.ThreadInfo, parsed)
 				}
@@ -3122,10 +2170,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: TokenCacheStats
 	if len(raw.TokenCacheStats) > 0 {
-		result.TokenCacheStats = make([]*sentinel.AdminTokenCacheStats, 0, len(raw.TokenCacheStats))
+		result.TokenCacheStats = make([]*hazelcast.AdminTokenCacheStats, 0, len(raw.TokenCacheStats))
 		for _, itemJSON := range raw.TokenCacheStats {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminTokenCacheStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminTokenCacheStatsFromJSON(itemJSON)
 				if err == nil {
 					result.TokenCacheStats = append(result.TokenCacheStats, parsed)
 				}
@@ -3134,10 +2182,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: MapStats
 	if len(raw.MapStats) > 0 {
-		result.MapStats = make([]*sentinel.AdminMapStats, 0, len(raw.MapStats))
+		result.MapStats = make([]*hazelcast.AdminMapStats, 0, len(raw.MapStats))
 		for _, itemJSON := range raw.MapStats {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminMapStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminMapStatsFromJSON(itemJSON)
 				if err == nil {
 					result.MapStats = append(result.MapStats, parsed)
 				}
@@ -3160,10 +2208,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: GraphRegistry
 	if len(raw.GraphRegistry) > 0 {
-		result.GraphRegistry = make([]*sentinel.AdminGraphInfo, 0, len(raw.GraphRegistry))
+		result.GraphRegistry = make([]*hazelcast.AdminGraphInfo, 0, len(raw.GraphRegistry))
 		for _, itemJSON := range raw.GraphRegistry {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminGraphInfoFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminGraphInfoFromJSON(itemJSON)
 				if err == nil {
 					result.GraphRegistry = append(result.GraphRegistry, parsed)
 				}
@@ -3172,10 +2220,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: ServiceConnections
 	if len(raw.ServiceConnections) > 0 {
-		result.ServiceConnections = make([]*sentinel.AdminServiceConnection, 0, len(raw.ServiceConnections))
+		result.ServiceConnections = make([]*hazelcast.AdminServiceConnection, 0, len(raw.ServiceConnections))
 		for _, itemJSON := range raw.ServiceConnections {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminServiceConnectionFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminServiceConnectionFromJSON(itemJSON)
 				if err == nil {
 					result.ServiceConnections = append(result.ServiceConnections, parsed)
 				}
@@ -3184,10 +2232,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: QueueStats
 	if len(raw.QueueStats) > 0 {
-		result.QueueStats = make([]*sentinel.AdminQueueStats, 0, len(raw.QueueStats))
+		result.QueueStats = make([]*hazelcast.AdminQueueStats, 0, len(raw.QueueStats))
 		for _, itemJSON := range raw.QueueStats {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminQueueStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminQueueStatsFromJSON(itemJSON)
 				if err == nil {
 					result.QueueStats = append(result.QueueStats, parsed)
 				}
@@ -3196,10 +2244,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: TopicStats
 	if len(raw.TopicStats) > 0 {
-		result.TopicStats = make([]*sentinel.AdminTopicStats, 0, len(raw.TopicStats))
+		result.TopicStats = make([]*hazelcast.AdminTopicStats, 0, len(raw.TopicStats))
 		for _, itemJSON := range raw.TopicStats {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminTopicStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminTopicStatsFromJSON(itemJSON)
 				if err == nil {
 					result.TopicStats = append(result.TopicStats, parsed)
 				}
@@ -3208,10 +2256,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: WatchHealth
 	if len(raw.WatchHealth) > 0 {
-		result.WatchHealth = make([]*sentinel.AdminWatchHealth, 0, len(raw.WatchHealth))
+		result.WatchHealth = make([]*hazelcast.AdminWatchHealth, 0, len(raw.WatchHealth))
 		for _, itemJSON := range raw.WatchHealth {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminWatchHealthFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminWatchHealthFromJSON(itemJSON)
 				if err == nil {
 					result.WatchHealth = append(result.WatchHealth, parsed)
 				}
@@ -3220,10 +2268,10 @@ func ClusterStateFromJSON(data []byte) (*ClusterState, error) {
 	}
 	// Parse repeated message field: MutationRates
 	if len(raw.MutationRates) > 0 {
-		result.MutationRates = make([]*sentinel.AdminMutationRate, 0, len(raw.MutationRates))
+		result.MutationRates = make([]*hazelcast.AdminMutationRate, 0, len(raw.MutationRates))
 		for _, itemJSON := range raw.MutationRates {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminMutationRateFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminMutationRateFromJSON(itemJSON)
 				if err == nil {
 					result.MutationRates = append(result.MutationRates, parsed)
 				}
@@ -7861,7 +6909,7 @@ func NodeMetricsPutRequestToJSON(v *NodeMetricsPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminNodeMetricsToJSON(v.Value)
+			data, _ := hazelcast.AdminNodeMetricsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -7932,7 +6980,7 @@ func NodeMetricsPutRequestFromJSON(data []byte) (*NodeMetricsPutRequest, error) 
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminNodeMetricsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminNodeMetricsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -8466,7 +7514,7 @@ func NodeMetricsValueResponseToJSON(v *NodeMetricsValueResponse) ([]byte, error)
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminNodeMetricsToJSON(v.Value)
+			data, _ := hazelcast.AdminNodeMetricsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -8536,7 +7584,7 @@ func NodeMetricsValueResponseFromJSON(data []byte) (*NodeMetricsValueResponse, e
 	result := &NodeMetricsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminNodeMetricsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminNodeMetricsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -9097,7 +8145,7 @@ func NodeMetricsQueryResponseToJSON(v *NodeMetricsQueryResponse) ([]byte, error)
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminNodeMetricsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminNodeMetricsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -9171,10 +8219,10 @@ func NodeMetricsQueryResponseFromJSON(data []byte) (*NodeMetricsQueryResponse, e
 	result := &NodeMetricsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminNodeMetrics, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminNodeMetrics, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminNodeMetricsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminNodeMetricsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -9365,7 +8413,7 @@ func GrpcStatsPutRequestToJSON(v *GrpcStatsPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminGrpcStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminGrpcStatsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -9436,7 +8484,7 @@ func GrpcStatsPutRequestFromJSON(data []byte) (*GrpcStatsPutRequest, error) {
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminGrpcStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminGrpcStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -9970,7 +9018,7 @@ func GrpcStatsValueResponseToJSON(v *GrpcStatsValueResponse) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminGrpcStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminGrpcStatsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -10040,7 +9088,7 @@ func GrpcStatsValueResponseFromJSON(data []byte) (*GrpcStatsValueResponse, error
 	result := &GrpcStatsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminGrpcStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminGrpcStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -10601,7 +9649,7 @@ func GrpcStatsQueryResponseToJSON(v *GrpcStatsQueryResponse) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminGrpcStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminGrpcStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -10675,10 +9723,10 @@ func GrpcStatsQueryResponseFromJSON(data []byte) (*GrpcStatsQueryResponse, error
 	result := &GrpcStatsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminGrpcStats, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminGrpcStats, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminGrpcStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminGrpcStatsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -10869,7 +9917,7 @@ func PersistenceStatusPutRequestToJSON(v *PersistenceStatusPutRequest) ([]byte, 
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminPersistenceStatusToJSON(v.Value)
+			data, _ := hazelcast.AdminPersistenceStatusToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -10940,7 +9988,7 @@ func PersistenceStatusPutRequestFromJSON(data []byte) (*PersistenceStatusPutRequ
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminPersistenceStatusFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminPersistenceStatusFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -11474,7 +10522,7 @@ func PersistenceStatusValueResponseToJSON(v *PersistenceStatusValueResponse) ([]
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminPersistenceStatusToJSON(v.Value)
+			data, _ := hazelcast.AdminPersistenceStatusToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -11544,7 +10592,7 @@ func PersistenceStatusValueResponseFromJSON(data []byte) (*PersistenceStatusValu
 	result := &PersistenceStatusValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminPersistenceStatusFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminPersistenceStatusFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -12105,7 +11153,7 @@ func PersistenceStatusQueryResponseToJSON(v *PersistenceStatusQueryResponse) ([]
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminPersistenceStatusToJSON(item); err == nil {
+					if data, err := hazelcast.AdminPersistenceStatusToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -12179,10 +11227,10 @@ func PersistenceStatusQueryResponseFromJSON(data []byte) (*PersistenceStatusQuer
 	result := &PersistenceStatusQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminPersistenceStatus, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminPersistenceStatus, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminPersistenceStatusFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminPersistenceStatusFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -12373,7 +11421,7 @@ func NetworkStatsPutRequestToJSON(v *NetworkStatsPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminNetworkStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminNetworkStatsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -12444,7 +11492,7 @@ func NetworkStatsPutRequestFromJSON(data []byte) (*NetworkStatsPutRequest, error
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminNetworkStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminNetworkStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -12978,7 +12026,7 @@ func NetworkStatsValueResponseToJSON(v *NetworkStatsValueResponse) ([]byte, erro
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminNetworkStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminNetworkStatsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -13048,7 +12096,7 @@ func NetworkStatsValueResponseFromJSON(data []byte) (*NetworkStatsValueResponse,
 	result := &NetworkStatsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminNetworkStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminNetworkStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -13609,7 +12657,7 @@ func NetworkStatsQueryResponseToJSON(v *NetworkStatsQueryResponse) ([]byte, erro
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminNetworkStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminNetworkStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -13683,10 +12731,10 @@ func NetworkStatsQueryResponseFromJSON(data []byte) (*NetworkStatsQueryResponse,
 	result := &NetworkStatsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminNetworkStats, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminNetworkStats, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminNetworkStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminNetworkStatsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -13877,7 +12925,7 @@ func ThreadInfoPutRequestToJSON(v *ThreadInfoPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminThreadInfoToJSON(v.Value)
+			data, _ := hazelcast.AdminThreadInfoToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -13948,7 +12996,7 @@ func ThreadInfoPutRequestFromJSON(data []byte) (*ThreadInfoPutRequest, error) {
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminThreadInfoFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminThreadInfoFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -14482,7 +13530,7 @@ func ThreadInfoValueResponseToJSON(v *ThreadInfoValueResponse) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminThreadInfoToJSON(v.Value)
+			data, _ := hazelcast.AdminThreadInfoToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -14552,7 +13600,7 @@ func ThreadInfoValueResponseFromJSON(data []byte) (*ThreadInfoValueResponse, err
 	result := &ThreadInfoValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminThreadInfoFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminThreadInfoFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -15113,7 +14161,7 @@ func ThreadInfoQueryResponseToJSON(v *ThreadInfoQueryResponse) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminThreadInfoToJSON(item); err == nil {
+					if data, err := hazelcast.AdminThreadInfoToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -15187,10 +14235,10 @@ func ThreadInfoQueryResponseFromJSON(data []byte) (*ThreadInfoQueryResponse, err
 	result := &ThreadInfoQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminThreadInfo, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminThreadInfo, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminThreadInfoFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminThreadInfoFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -15381,7 +14429,7 @@ func TokenCacheStatsPutRequestToJSON(v *TokenCacheStatsPutRequest) ([]byte, erro
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminTokenCacheStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminTokenCacheStatsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -15452,7 +14500,7 @@ func TokenCacheStatsPutRequestFromJSON(data []byte) (*TokenCacheStatsPutRequest,
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminTokenCacheStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminTokenCacheStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -15986,7 +15034,7 @@ func TokenCacheStatsValueResponseToJSON(v *TokenCacheStatsValueResponse) ([]byte
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminTokenCacheStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminTokenCacheStatsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -16056,7 +15104,7 @@ func TokenCacheStatsValueResponseFromJSON(data []byte) (*TokenCacheStatsValueRes
 	result := &TokenCacheStatsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminTokenCacheStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminTokenCacheStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -16617,7 +15665,7 @@ func TokenCacheStatsQueryResponseToJSON(v *TokenCacheStatsQueryResponse) ([]byte
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminTokenCacheStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminTokenCacheStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -16691,10 +15739,10 @@ func TokenCacheStatsQueryResponseFromJSON(data []byte) (*TokenCacheStatsQueryRes
 	result := &TokenCacheStatsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminTokenCacheStats, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminTokenCacheStats, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminTokenCacheStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminTokenCacheStatsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -16885,7 +15933,7 @@ func MapStatsPutRequestToJSON(v *MapStatsPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminMapStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminMapStatsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -16956,7 +16004,7 @@ func MapStatsPutRequestFromJSON(data []byte) (*MapStatsPutRequest, error) {
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminMapStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminMapStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -17490,7 +16538,7 @@ func MapStatsValueResponseToJSON(v *MapStatsValueResponse) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminMapStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminMapStatsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -17560,7 +16608,7 @@ func MapStatsValueResponseFromJSON(data []byte) (*MapStatsValueResponse, error) 
 	result := &MapStatsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminMapStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminMapStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -18121,7 +17169,7 @@ func MapStatsQueryResponseToJSON(v *MapStatsQueryResponse) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminMapStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminMapStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -18195,10 +17243,10 @@ func MapStatsQueryResponseFromJSON(data []byte) (*MapStatsQueryResponse, error) 
 	result := &MapStatsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminMapStats, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminMapStats, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminMapStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminMapStatsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -18389,7 +17437,7 @@ func GraphRegistryPutRequestToJSON(v *GraphRegistryPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminGraphInfoToJSON(v.Value)
+			data, _ := hazelcast.AdminGraphInfoToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -18460,7 +17508,7 @@ func GraphRegistryPutRequestFromJSON(data []byte) (*GraphRegistryPutRequest, err
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminGraphInfoFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminGraphInfoFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -18994,7 +18042,7 @@ func GraphRegistryValueResponseToJSON(v *GraphRegistryValueResponse) ([]byte, er
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminGraphInfoToJSON(v.Value)
+			data, _ := hazelcast.AdminGraphInfoToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -19064,7 +18112,7 @@ func GraphRegistryValueResponseFromJSON(data []byte) (*GraphRegistryValueRespons
 	result := &GraphRegistryValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminGraphInfoFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminGraphInfoFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -19625,7 +18673,7 @@ func GraphRegistryQueryResponseToJSON(v *GraphRegistryQueryResponse) ([]byte, er
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminGraphInfoToJSON(item); err == nil {
+					if data, err := hazelcast.AdminGraphInfoToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -19699,10 +18747,10 @@ func GraphRegistryQueryResponseFromJSON(data []byte) (*GraphRegistryQueryRespons
 	result := &GraphRegistryQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminGraphInfo, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminGraphInfo, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminGraphInfoFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminGraphInfoFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -19893,7 +18941,7 @@ func ServiceConnectionsPutRequestToJSON(v *ServiceConnectionsPutRequest) ([]byte
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminServiceConnectionToJSON(v.Value)
+			data, _ := hazelcast.AdminServiceConnectionToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -19964,7 +19012,7 @@ func ServiceConnectionsPutRequestFromJSON(data []byte) (*ServiceConnectionsPutRe
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminServiceConnectionFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminServiceConnectionFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -20498,7 +19546,7 @@ func ServiceConnectionsValueResponseToJSON(v *ServiceConnectionsValueResponse) (
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminServiceConnectionToJSON(v.Value)
+			data, _ := hazelcast.AdminServiceConnectionToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -20568,7 +19616,7 @@ func ServiceConnectionsValueResponseFromJSON(data []byte) (*ServiceConnectionsVa
 	result := &ServiceConnectionsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminServiceConnectionFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminServiceConnectionFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -21129,7 +20177,7 @@ func ServiceConnectionsQueryResponseToJSON(v *ServiceConnectionsQueryResponse) (
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminServiceConnectionToJSON(item); err == nil {
+					if data, err := hazelcast.AdminServiceConnectionToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -21203,10 +20251,10 @@ func ServiceConnectionsQueryResponseFromJSON(data []byte) (*ServiceConnectionsQu
 	result := &ServiceConnectionsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminServiceConnection, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminServiceConnection, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminServiceConnectionFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminServiceConnectionFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -21397,7 +20445,7 @@ func QueueStatsPutRequestToJSON(v *QueueStatsPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminQueueStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminQueueStatsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -21468,7 +20516,7 @@ func QueueStatsPutRequestFromJSON(data []byte) (*QueueStatsPutRequest, error) {
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminQueueStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminQueueStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -22002,7 +21050,7 @@ func QueueStatsValueResponseToJSON(v *QueueStatsValueResponse) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminQueueStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminQueueStatsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -22072,7 +21120,7 @@ func QueueStatsValueResponseFromJSON(data []byte) (*QueueStatsValueResponse, err
 	result := &QueueStatsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminQueueStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminQueueStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -22633,7 +21681,7 @@ func QueueStatsQueryResponseToJSON(v *QueueStatsQueryResponse) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminQueueStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminQueueStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -22707,10 +21755,10 @@ func QueueStatsQueryResponseFromJSON(data []byte) (*QueueStatsQueryResponse, err
 	result := &QueueStatsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminQueueStats, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminQueueStats, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminQueueStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminQueueStatsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -22901,7 +21949,7 @@ func TopicStatsPutRequestToJSON(v *TopicStatsPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminTopicStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminTopicStatsToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -22972,7 +22020,7 @@ func TopicStatsPutRequestFromJSON(data []byte) (*TopicStatsPutRequest, error) {
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminTopicStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminTopicStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -23506,7 +22554,7 @@ func TopicStatsValueResponseToJSON(v *TopicStatsValueResponse) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminTopicStatsToJSON(v.Value)
+			data, _ := hazelcast.AdminTopicStatsToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -23576,7 +22624,7 @@ func TopicStatsValueResponseFromJSON(data []byte) (*TopicStatsValueResponse, err
 	result := &TopicStatsValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminTopicStatsFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminTopicStatsFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -24137,7 +23185,7 @@ func TopicStatsQueryResponseToJSON(v *TopicStatsQueryResponse) ([]byte, error) {
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminTopicStatsToJSON(item); err == nil {
+					if data, err := hazelcast.AdminTopicStatsToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -24211,10 +23259,10 @@ func TopicStatsQueryResponseFromJSON(data []byte) (*TopicStatsQueryResponse, err
 	result := &TopicStatsQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminTopicStats, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminTopicStats, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminTopicStatsFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminTopicStatsFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -24405,7 +23453,7 @@ func WatchHealthPutRequestToJSON(v *WatchHealthPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminWatchHealthToJSON(v.Value)
+			data, _ := hazelcast.AdminWatchHealthToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -24476,7 +23524,7 @@ func WatchHealthPutRequestFromJSON(data []byte) (*WatchHealthPutRequest, error) 
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminWatchHealthFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminWatchHealthFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -25010,7 +24058,7 @@ func WatchHealthValueResponseToJSON(v *WatchHealthValueResponse) ([]byte, error)
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminWatchHealthToJSON(v.Value)
+			data, _ := hazelcast.AdminWatchHealthToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -25080,7 +24128,7 @@ func WatchHealthValueResponseFromJSON(data []byte) (*WatchHealthValueResponse, e
 	result := &WatchHealthValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminWatchHealthFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminWatchHealthFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -25641,7 +24689,7 @@ func WatchHealthQueryResponseToJSON(v *WatchHealthQueryResponse) ([]byte, error)
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminWatchHealthToJSON(item); err == nil {
+					if data, err := hazelcast.AdminWatchHealthToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -25715,10 +24763,10 @@ func WatchHealthQueryResponseFromJSON(data []byte) (*WatchHealthQueryResponse, e
 	result := &WatchHealthQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminWatchHealth, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminWatchHealth, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminWatchHealthFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminWatchHealthFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -25909,7 +24957,7 @@ func MutationRatesPutRequestToJSON(v *MutationRatesPutRequest) ([]byte, error) {
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminMutationRateToJSON(v.Value)
+			data, _ := hazelcast.AdminMutationRateToJSON(v.Value)
 			return data
 		}(),
 		LockCounter: v.LockCounter,
@@ -25980,7 +25028,7 @@ func MutationRatesPutRequestFromJSON(data []byte) (*MutationRatesPutRequest, err
 	result.Key = raw.Key
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminMutationRateFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminMutationRateFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -26514,7 +25562,7 @@ func MutationRatesValueResponseToJSON(v *MutationRatesValueResponse) ([]byte, er
 			if v.Value == nil {
 				return nil
 			}
-			data, _ := sentinel.AdminMutationRateToJSON(v.Value)
+			data, _ := hazelcast.AdminMutationRateToJSON(v.Value)
 			return data
 		}(),
 		Found: v.Found,
@@ -26584,7 +25632,7 @@ func MutationRatesValueResponseFromJSON(data []byte) (*MutationRatesValueRespons
 	result := &MutationRatesValueResponse{}
 	// Parse message field: Value
 	if len(raw.Value) > 0 {
-		parsed, err := sentinel.AdminMutationRateFromJSON(raw.Value)
+		parsed, err := hazelcast.AdminMutationRateFromJSON(raw.Value)
 		if err == nil {
 			result.Value = parsed
 		}
@@ -27145,7 +26193,7 @@ func MutationRatesQueryResponseToJSON(v *MutationRatesQueryResponse) ([]byte, er
 			result := make([]json.RawMessage, 0, len(v.Results))
 			for _, item := range v.Results {
 				if item != nil {
-					if data, err := sentinel.AdminMutationRateToJSON(item); err == nil {
+					if data, err := hazelcast.AdminMutationRateToJSON(item); err == nil {
 						result = append(result, data)
 					}
 				}
@@ -27219,10 +26267,10 @@ func MutationRatesQueryResponseFromJSON(data []byte) (*MutationRatesQueryRespons
 	result := &MutationRatesQueryResponse{}
 	// Parse repeated message field: Results
 	if len(raw.Results) > 0 {
-		result.Results = make([]*sentinel.AdminMutationRate, 0, len(raw.Results))
+		result.Results = make([]*hazelcast.AdminMutationRate, 0, len(raw.Results))
 		for _, itemJSON := range raw.Results {
 			if len(itemJSON) > 0 {
-				parsed, err := sentinel.AdminMutationRateFromJSON(itemJSON)
+				parsed, err := hazelcast.AdminMutationRateFromJSON(itemJSON)
 				if err == nil {
 					result.Results = append(result.Results, parsed)
 				}
@@ -30159,7 +29207,7 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_NODE_COUNT"] = strconv.FormatInt(int64(v.NodeCount), 10)
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_PARTITION_COUNT"] = strconv.FormatInt(int64(v.PartitionCount), 10)
 	if v.Network != nil {
-		for k, val := range NetworkConfigToEnvVar(v.Network) {
+		for k, val := range hazelcast.NetworkConfigToEnvVar(v.Network) {
 			result[k] = val
 		}
 	}
@@ -30169,7 +29217,7 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 		}
 	}
 	if v.CpSubsystem != nil {
-		for k, val := range CPSubsystemConfigToEnvVar(v.CpSubsystem) {
+		for k, val := range hazelcast.CPSubsystemConfigToEnvVar(v.CpSubsystem) {
 			result[k] = val
 		}
 	}
@@ -30181,7 +29229,7 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 		}
 	}
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_RAFT_PORT"] = strconv.FormatInt(int64(v.RaftPort), 10)
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"] = NodeModeToString(v.Mode)
+	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"] = hazelcast.NodeModeToString(v.Mode)
 	return result
 }
 
@@ -30210,7 +29258,7 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 		}
 		result.PartitionCount = int32(parsed)
 	}
-	if sub, err := NetworkConfigFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.NetworkConfigFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Network = sub
@@ -30220,7 +29268,7 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 	} else if sub != nil {
 		result.Logger = sub
 	}
-	if sub, err := CPSubsystemConfigFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.CPSubsystemConfigFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.CpSubsystem = sub
@@ -30248,226 +29296,11 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 		result.RaftPort = int32(parsed)
 	}
 	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"]; ok && val != "" {
-		parsed, err := ParseNodeMode(val)
+		parsed, err := hazelcast.ParseNodeMode(val)
 		if err != nil {
 			return nil, err
 		}
 		result.Mode = parsed
-	}
-	return result, nil
-}
-
-// NetworkConfigToEnvVar converts NetworkConfig to environment variable key-value pairs.
-func NetworkConfigToEnvVar(v *NetworkConfig) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_NETWORK_CONFIG_CONNECT_TIMEOUT_SECONDS"] = strconv.FormatInt(v.ConnectTimeoutSeconds, 10)
-	result["PROTO_SERVICES_KERNEL_NETWORK_CONFIG_HEARTBEAT_INTERVAL_SECONDS"] = strconv.FormatInt(v.HeartbeatIntervalSeconds, 10)
-	result["PROTO_SERVICES_KERNEL_NETWORK_CONFIG_HEARTBEAT_TIMEOUT_SECONDS"] = strconv.FormatInt(v.HeartbeatTimeoutSeconds, 10)
-	return result
-}
-
-// NetworkConfigFromEnvVar creates NetworkConfig from environment variable key-value pairs.
-func NetworkConfigFromEnvVar(env map[string]string) (*NetworkConfig, error) {
-	result := &NetworkConfig{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_NETWORK_CONFIG_CONNECT_TIMEOUT_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.ConnectTimeoutSeconds = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_NETWORK_CONFIG_HEARTBEAT_INTERVAL_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.HeartbeatIntervalSeconds = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_NETWORK_CONFIG_HEARTBEAT_TIMEOUT_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.HeartbeatTimeoutSeconds = parsed
-	}
-	return result, nil
-}
-
-// CPSubsystemConfigToEnvVar converts CPSubsystemConfig to environment variable key-value pairs.
-func CPSubsystemConfigToEnvVar(v *CPSubsystemConfig) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_ENABLED"] = strconv.FormatBool(v.Enabled)
-	result["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_CP_MEMBER_COUNT"] = strconv.FormatInt(int64(v.CpMemberCount), 10)
-	result["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_SESSION_TIMEOUT_SECONDS"] = strconv.FormatInt(v.SessionTimeoutSeconds, 10)
-	result["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_SESSION_HEARTBEAT_INTERVAL_SECONDS"] = strconv.FormatInt(v.SessionHeartbeatIntervalSeconds, 10)
-	result["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_MISSING_CP_MEMBER_AUTO_REMOVAL_SECONDS"] = strconv.FormatInt(v.MissingCpMemberAutoRemovalSeconds, 10)
-	return result
-}
-
-// CPSubsystemConfigFromEnvVar creates CPSubsystemConfig from environment variable key-value pairs.
-func CPSubsystemConfigFromEnvVar(env map[string]string) (*CPSubsystemConfig, error) {
-	result := &CPSubsystemConfig{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_ENABLED"]; ok && val != "" {
-		parsed, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, err
-		}
-		result.Enabled = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_CP_MEMBER_COUNT"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		result.CpMemberCount = int32(parsed)
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_SESSION_TIMEOUT_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.SessionTimeoutSeconds = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_SESSION_HEARTBEAT_INTERVAL_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.SessionHeartbeatIntervalSeconds = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_C_P_SUBSYSTEM_CONFIG_MISSING_CP_MEMBER_AUTO_REMOVAL_SECONDS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.MissingCpMemberAutoRemovalSeconds = parsed
-	}
-	return result, nil
-}
-
-// RateLimitConfigToEnvVar converts RateLimitConfig to environment variable key-value pairs.
-func RateLimitConfigToEnvVar(v *RateLimitConfig) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_RATE_LIMIT_CONFIG_POLLING_RATE"] = strconv.FormatFloat(v.PollingRate, 'f', -1, 64)
-	result["PROTO_SERVICES_KERNEL_RATE_LIMIT_CONFIG_UNARY_RATE"] = strconv.FormatFloat(v.UnaryRate, 'f', -1, 64)
-	return result
-}
-
-// RateLimitConfigFromEnvVar creates RateLimitConfig from environment variable key-value pairs.
-func RateLimitConfigFromEnvVar(env map[string]string) (*RateLimitConfig, error) {
-	result := &RateLimitConfig{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_RATE_LIMIT_CONFIG_POLLING_RATE"]; ok && val != "" {
-		parsed, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.PollingRate = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_RATE_LIMIT_CONFIG_UNARY_RATE"]; ok && val != "" {
-		parsed, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.UnaryRate = parsed
-	}
-	return result, nil
-}
-
-// RedoLogEntryToEnvVar converts RedoLogEntry to environment variable key-value pairs.
-func RedoLogEntryToEnvVar(v *RedoLogEntry) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_MAP_NAME"] = v.MapName
-	result["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_KEY"] = v.Key
-	result["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_VALUE"] = base64.StdEncoding.EncodeToString(v.Value)
-	result["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_OP"] = OpTypeToString(v.Op)
-	result["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_TIMESTAMP_MS"] = strconv.FormatInt(v.TimestampMs, 10)
-	result["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_CONSISTENCY"] = ConsistencyTypeToString(v.Consistency)
-	return result
-}
-
-// RedoLogEntryFromEnvVar creates RedoLogEntry from environment variable key-value pairs.
-func RedoLogEntryFromEnvVar(env map[string]string) (*RedoLogEntry, error) {
-	result := &RedoLogEntry{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_MAP_NAME"]; ok && val != "" {
-		result.MapName = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_KEY"]; ok && val != "" {
-		result.Key = val
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_VALUE"]; ok && val != "" {
-		parsed, err := base64.StdEncoding.DecodeString(val)
-		if err != nil {
-			return nil, err
-		}
-		result.Value = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_OP"]; ok && val != "" {
-		parsed, err := ParseOpType(val)
-		if err != nil {
-			return nil, err
-		}
-		result.Op = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_TIMESTAMP_MS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.TimestampMs = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_REDO_LOG_ENTRY_CONSISTENCY"]; ok && val != "" {
-		parsed, err := ParseConsistencyType(val)
-		if err != nil {
-			return nil, err
-		}
-		result.Consistency = parsed
-	}
-	return result, nil
-}
-
-// FullDumpHeaderToEnvVar converts FullDumpHeader to environment variable key-value pairs.
-func FullDumpHeaderToEnvVar(v *FullDumpHeader) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_KERNEL_FULL_DUMP_HEADER_TIMESTAMP_MS"] = strconv.FormatInt(v.TimestampMs, 10)
-	result["PROTO_SERVICES_KERNEL_FULL_DUMP_HEADER_ENTRY_COUNT"] = strconv.FormatInt(int64(v.EntryCount), 10)
-	result["PROTO_SERVICES_KERNEL_FULL_DUMP_HEADER_NODE_ID"] = v.NodeId
-	return result
-}
-
-// FullDumpHeaderFromEnvVar creates FullDumpHeader from environment variable key-value pairs.
-func FullDumpHeaderFromEnvVar(env map[string]string) (*FullDumpHeader, error) {
-	result := &FullDumpHeader{}
-	if val, ok := env["PROTO_SERVICES_KERNEL_FULL_DUMP_HEADER_TIMESTAMP_MS"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.TimestampMs = parsed
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_FULL_DUMP_HEADER_ENTRY_COUNT"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		result.EntryCount = int32(parsed)
-	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_FULL_DUMP_HEADER_NODE_ID"]; ok && val != "" {
-		result.NodeId = val
 	}
 	return result, nil
 }
@@ -30561,7 +29394,7 @@ func ConfigToEnvVar(v *Config) map[string]string {
 	}
 	result := make(map[string]string)
 	if v.RateLimit != nil {
-		for k, val := range RateLimitConfigToEnvVar(v.RateLimit) {
+		for k, val := range hazelcast.RateLimitConfigToEnvVar(v.RateLimit) {
 			result[k] = val
 		}
 	}
@@ -30579,7 +29412,7 @@ func ConfigToEnvVar(v *Config) map[string]string {
 // ConfigFromEnvVar creates Config from environment variable key-value pairs.
 func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 	result := &Config{}
-	if sub, err := RateLimitConfigFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.RateLimitConfigFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.RateLimit = sub
@@ -30662,12 +29495,12 @@ func ClusterStateToEnvVar(v *ClusterState) map[string]string {
 	}
 	result := make(map[string]string)
 	if v.ClusterInfo != nil {
-		for k, val := range sentinel.AdminClusterInfoToEnvVar(v.ClusterInfo) {
+		for k, val := range hazelcast.AdminClusterInfoToEnvVar(v.ClusterInfo) {
 			result[k] = val
 		}
 	}
 	if v.ClusterHealth != nil {
-		for k, val := range sentinel.AdminClusterHealthToEnvVar(v.ClusterHealth) {
+		for k, val := range hazelcast.AdminClusterHealthToEnvVar(v.ClusterHealth) {
 			result[k] = val
 		}
 	}
@@ -30702,12 +29535,12 @@ func ClusterStateToEnvVar(v *ClusterState) map[string]string {
 // ClusterStateFromEnvVar creates ClusterState from environment variable key-value pairs.
 func ClusterStateFromEnvVar(env map[string]string) (*ClusterState, error) {
 	result := &ClusterState{}
-	if sub, err := sentinel.AdminClusterInfoFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminClusterInfoFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.ClusterInfo = sub
 	}
-	if sub, err := sentinel.AdminClusterHealthFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminClusterHealthFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.ClusterHealth = sub
@@ -31517,7 +30350,7 @@ func NodeMetricsPutRequestToEnvVar(v *NodeMetricsPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_NODE_METRICS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminNodeMetricsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminNodeMetricsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -31531,7 +30364,7 @@ func NodeMetricsPutRequestFromEnvVar(env map[string]string) (*NodeMetricsPutRequ
 	if val, ok := env["PROTO_SERVICES_KERNEL_NODE_METRICS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminNodeMetricsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminNodeMetricsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -31613,7 +30446,7 @@ func NodeMetricsValueResponseToEnvVar(v *NodeMetricsValueResponse) map[string]st
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminNodeMetricsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminNodeMetricsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -31624,7 +30457,7 @@ func NodeMetricsValueResponseToEnvVar(v *NodeMetricsValueResponse) map[string]st
 // NodeMetricsValueResponseFromEnvVar creates NodeMetricsValueResponse from environment variable key-value pairs.
 func NodeMetricsValueResponseFromEnvVar(env map[string]string) (*NodeMetricsValueResponse, error) {
 	result := &NodeMetricsValueResponse{}
-	if sub, err := sentinel.AdminNodeMetricsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminNodeMetricsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -31773,7 +30606,7 @@ func GrpcStatsPutRequestToEnvVar(v *GrpcStatsPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_GRPC_STATS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminGrpcStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminGrpcStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -31787,7 +30620,7 @@ func GrpcStatsPutRequestFromEnvVar(env map[string]string) (*GrpcStatsPutRequest,
 	if val, ok := env["PROTO_SERVICES_KERNEL_GRPC_STATS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminGrpcStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminGrpcStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -31869,7 +30702,7 @@ func GrpcStatsValueResponseToEnvVar(v *GrpcStatsValueResponse) map[string]string
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminGrpcStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminGrpcStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -31880,7 +30713,7 @@ func GrpcStatsValueResponseToEnvVar(v *GrpcStatsValueResponse) map[string]string
 // GrpcStatsValueResponseFromEnvVar creates GrpcStatsValueResponse from environment variable key-value pairs.
 func GrpcStatsValueResponseFromEnvVar(env map[string]string) (*GrpcStatsValueResponse, error) {
 	result := &GrpcStatsValueResponse{}
-	if sub, err := sentinel.AdminGrpcStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminGrpcStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32029,7 +30862,7 @@ func PersistenceStatusPutRequestToEnvVar(v *PersistenceStatusPutRequest) map[str
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_PERSISTENCE_STATUS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminPersistenceStatusToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminPersistenceStatusToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32043,7 +30876,7 @@ func PersistenceStatusPutRequestFromEnvVar(env map[string]string) (*PersistenceS
 	if val, ok := env["PROTO_SERVICES_KERNEL_PERSISTENCE_STATUS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminPersistenceStatusFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminPersistenceStatusFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32125,7 +30958,7 @@ func PersistenceStatusValueResponseToEnvVar(v *PersistenceStatusValueResponse) m
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminPersistenceStatusToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminPersistenceStatusToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32136,7 +30969,7 @@ func PersistenceStatusValueResponseToEnvVar(v *PersistenceStatusValueResponse) m
 // PersistenceStatusValueResponseFromEnvVar creates PersistenceStatusValueResponse from environment variable key-value pairs.
 func PersistenceStatusValueResponseFromEnvVar(env map[string]string) (*PersistenceStatusValueResponse, error) {
 	result := &PersistenceStatusValueResponse{}
-	if sub, err := sentinel.AdminPersistenceStatusFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminPersistenceStatusFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32285,7 +31118,7 @@ func NetworkStatsPutRequestToEnvVar(v *NetworkStatsPutRequest) map[string]string
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_NETWORK_STATS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminNetworkStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminNetworkStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32299,7 +31132,7 @@ func NetworkStatsPutRequestFromEnvVar(env map[string]string) (*NetworkStatsPutRe
 	if val, ok := env["PROTO_SERVICES_KERNEL_NETWORK_STATS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminNetworkStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminNetworkStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32381,7 +31214,7 @@ func NetworkStatsValueResponseToEnvVar(v *NetworkStatsValueResponse) map[string]
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminNetworkStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminNetworkStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32392,7 +31225,7 @@ func NetworkStatsValueResponseToEnvVar(v *NetworkStatsValueResponse) map[string]
 // NetworkStatsValueResponseFromEnvVar creates NetworkStatsValueResponse from environment variable key-value pairs.
 func NetworkStatsValueResponseFromEnvVar(env map[string]string) (*NetworkStatsValueResponse, error) {
 	result := &NetworkStatsValueResponse{}
-	if sub, err := sentinel.AdminNetworkStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminNetworkStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32541,7 +31374,7 @@ func ThreadInfoPutRequestToEnvVar(v *ThreadInfoPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_THREAD_INFO_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminThreadInfoToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminThreadInfoToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32555,7 +31388,7 @@ func ThreadInfoPutRequestFromEnvVar(env map[string]string) (*ThreadInfoPutReques
 	if val, ok := env["PROTO_SERVICES_KERNEL_THREAD_INFO_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminThreadInfoFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminThreadInfoFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32637,7 +31470,7 @@ func ThreadInfoValueResponseToEnvVar(v *ThreadInfoValueResponse) map[string]stri
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminThreadInfoToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminThreadInfoToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32648,7 +31481,7 @@ func ThreadInfoValueResponseToEnvVar(v *ThreadInfoValueResponse) map[string]stri
 // ThreadInfoValueResponseFromEnvVar creates ThreadInfoValueResponse from environment variable key-value pairs.
 func ThreadInfoValueResponseFromEnvVar(env map[string]string) (*ThreadInfoValueResponse, error) {
 	result := &ThreadInfoValueResponse{}
-	if sub, err := sentinel.AdminThreadInfoFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminThreadInfoFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32797,7 +31630,7 @@ func TokenCacheStatsPutRequestToEnvVar(v *TokenCacheStatsPutRequest) map[string]
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_TOKEN_CACHE_STATS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminTokenCacheStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminTokenCacheStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32811,7 +31644,7 @@ func TokenCacheStatsPutRequestFromEnvVar(env map[string]string) (*TokenCacheStat
 	if val, ok := env["PROTO_SERVICES_KERNEL_TOKEN_CACHE_STATS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminTokenCacheStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminTokenCacheStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -32893,7 +31726,7 @@ func TokenCacheStatsValueResponseToEnvVar(v *TokenCacheStatsValueResponse) map[s
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminTokenCacheStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminTokenCacheStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -32904,7 +31737,7 @@ func TokenCacheStatsValueResponseToEnvVar(v *TokenCacheStatsValueResponse) map[s
 // TokenCacheStatsValueResponseFromEnvVar creates TokenCacheStatsValueResponse from environment variable key-value pairs.
 func TokenCacheStatsValueResponseFromEnvVar(env map[string]string) (*TokenCacheStatsValueResponse, error) {
 	result := &TokenCacheStatsValueResponse{}
-	if sub, err := sentinel.AdminTokenCacheStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminTokenCacheStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33053,7 +31886,7 @@ func MapStatsPutRequestToEnvVar(v *MapStatsPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_MAP_STATS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminMapStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminMapStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33067,7 +31900,7 @@ func MapStatsPutRequestFromEnvVar(env map[string]string) (*MapStatsPutRequest, e
 	if val, ok := env["PROTO_SERVICES_KERNEL_MAP_STATS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminMapStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminMapStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33149,7 +31982,7 @@ func MapStatsValueResponseToEnvVar(v *MapStatsValueResponse) map[string]string {
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminMapStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminMapStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33160,7 +31993,7 @@ func MapStatsValueResponseToEnvVar(v *MapStatsValueResponse) map[string]string {
 // MapStatsValueResponseFromEnvVar creates MapStatsValueResponse from environment variable key-value pairs.
 func MapStatsValueResponseFromEnvVar(env map[string]string) (*MapStatsValueResponse, error) {
 	result := &MapStatsValueResponse{}
-	if sub, err := sentinel.AdminMapStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminMapStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33309,7 +32142,7 @@ func GraphRegistryPutRequestToEnvVar(v *GraphRegistryPutRequest) map[string]stri
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_GRAPH_REGISTRY_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminGraphInfoToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminGraphInfoToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33323,7 +32156,7 @@ func GraphRegistryPutRequestFromEnvVar(env map[string]string) (*GraphRegistryPut
 	if val, ok := env["PROTO_SERVICES_KERNEL_GRAPH_REGISTRY_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminGraphInfoFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminGraphInfoFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33405,7 +32238,7 @@ func GraphRegistryValueResponseToEnvVar(v *GraphRegistryValueResponse) map[strin
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminGraphInfoToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminGraphInfoToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33416,7 +32249,7 @@ func GraphRegistryValueResponseToEnvVar(v *GraphRegistryValueResponse) map[strin
 // GraphRegistryValueResponseFromEnvVar creates GraphRegistryValueResponse from environment variable key-value pairs.
 func GraphRegistryValueResponseFromEnvVar(env map[string]string) (*GraphRegistryValueResponse, error) {
 	result := &GraphRegistryValueResponse{}
-	if sub, err := sentinel.AdminGraphInfoFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminGraphInfoFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33565,7 +32398,7 @@ func ServiceConnectionsPutRequestToEnvVar(v *ServiceConnectionsPutRequest) map[s
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_SERVICE_CONNECTIONS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminServiceConnectionToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminServiceConnectionToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33579,7 +32412,7 @@ func ServiceConnectionsPutRequestFromEnvVar(env map[string]string) (*ServiceConn
 	if val, ok := env["PROTO_SERVICES_KERNEL_SERVICE_CONNECTIONS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminServiceConnectionFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminServiceConnectionFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33661,7 +32494,7 @@ func ServiceConnectionsValueResponseToEnvVar(v *ServiceConnectionsValueResponse)
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminServiceConnectionToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminServiceConnectionToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33672,7 +32505,7 @@ func ServiceConnectionsValueResponseToEnvVar(v *ServiceConnectionsValueResponse)
 // ServiceConnectionsValueResponseFromEnvVar creates ServiceConnectionsValueResponse from environment variable key-value pairs.
 func ServiceConnectionsValueResponseFromEnvVar(env map[string]string) (*ServiceConnectionsValueResponse, error) {
 	result := &ServiceConnectionsValueResponse{}
-	if sub, err := sentinel.AdminServiceConnectionFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminServiceConnectionFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33821,7 +32654,7 @@ func QueueStatsPutRequestToEnvVar(v *QueueStatsPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_QUEUE_STATS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminQueueStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminQueueStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33835,7 +32668,7 @@ func QueueStatsPutRequestFromEnvVar(env map[string]string) (*QueueStatsPutReques
 	if val, ok := env["PROTO_SERVICES_KERNEL_QUEUE_STATS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminQueueStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminQueueStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -33917,7 +32750,7 @@ func QueueStatsValueResponseToEnvVar(v *QueueStatsValueResponse) map[string]stri
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminQueueStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminQueueStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -33928,7 +32761,7 @@ func QueueStatsValueResponseToEnvVar(v *QueueStatsValueResponse) map[string]stri
 // QueueStatsValueResponseFromEnvVar creates QueueStatsValueResponse from environment variable key-value pairs.
 func QueueStatsValueResponseFromEnvVar(env map[string]string) (*QueueStatsValueResponse, error) {
 	result := &QueueStatsValueResponse{}
-	if sub, err := sentinel.AdminQueueStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminQueueStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -34077,7 +32910,7 @@ func TopicStatsPutRequestToEnvVar(v *TopicStatsPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_TOPIC_STATS_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminTopicStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminTopicStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -34091,7 +32924,7 @@ func TopicStatsPutRequestFromEnvVar(env map[string]string) (*TopicStatsPutReques
 	if val, ok := env["PROTO_SERVICES_KERNEL_TOPIC_STATS_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminTopicStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminTopicStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -34173,7 +33006,7 @@ func TopicStatsValueResponseToEnvVar(v *TopicStatsValueResponse) map[string]stri
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminTopicStatsToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminTopicStatsToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -34184,7 +33017,7 @@ func TopicStatsValueResponseToEnvVar(v *TopicStatsValueResponse) map[string]stri
 // TopicStatsValueResponseFromEnvVar creates TopicStatsValueResponse from environment variable key-value pairs.
 func TopicStatsValueResponseFromEnvVar(env map[string]string) (*TopicStatsValueResponse, error) {
 	result := &TopicStatsValueResponse{}
-	if sub, err := sentinel.AdminTopicStatsFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminTopicStatsFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -34333,7 +33166,7 @@ func WatchHealthPutRequestToEnvVar(v *WatchHealthPutRequest) map[string]string {
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_WATCH_HEALTH_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminWatchHealthToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminWatchHealthToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -34347,7 +33180,7 @@ func WatchHealthPutRequestFromEnvVar(env map[string]string) (*WatchHealthPutRequ
 	if val, ok := env["PROTO_SERVICES_KERNEL_WATCH_HEALTH_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminWatchHealthFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminWatchHealthFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -34429,7 +33262,7 @@ func WatchHealthValueResponseToEnvVar(v *WatchHealthValueResponse) map[string]st
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminWatchHealthToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminWatchHealthToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -34440,7 +33273,7 @@ func WatchHealthValueResponseToEnvVar(v *WatchHealthValueResponse) map[string]st
 // WatchHealthValueResponseFromEnvVar creates WatchHealthValueResponse from environment variable key-value pairs.
 func WatchHealthValueResponseFromEnvVar(env map[string]string) (*WatchHealthValueResponse, error) {
 	result := &WatchHealthValueResponse{}
-	if sub, err := sentinel.AdminWatchHealthFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminWatchHealthFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -34589,7 +33422,7 @@ func MutationRatesPutRequestToEnvVar(v *MutationRatesPutRequest) map[string]stri
 	result := make(map[string]string)
 	result["PROTO_SERVICES_KERNEL_MUTATION_RATES_PUT_REQUEST_KEY"] = v.Key
 	if v.Value != nil {
-		for k, val := range sentinel.AdminMutationRateToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminMutationRateToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -34603,7 +33436,7 @@ func MutationRatesPutRequestFromEnvVar(env map[string]string) (*MutationRatesPut
 	if val, ok := env["PROTO_SERVICES_KERNEL_MUTATION_RATES_PUT_REQUEST_KEY"]; ok && val != "" {
 		result.Key = val
 	}
-	if sub, err := sentinel.AdminMutationRateFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminMutationRateFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -34685,7 +33518,7 @@ func MutationRatesValueResponseToEnvVar(v *MutationRatesValueResponse) map[strin
 	}
 	result := make(map[string]string)
 	if v.Value != nil {
-		for k, val := range sentinel.AdminMutationRateToEnvVar(v.Value) {
+		for k, val := range hazelcast.AdminMutationRateToEnvVar(v.Value) {
 			result[k] = val
 		}
 	}
@@ -34696,7 +33529,7 @@ func MutationRatesValueResponseToEnvVar(v *MutationRatesValueResponse) map[strin
 // MutationRatesValueResponseFromEnvVar creates MutationRatesValueResponse from environment variable key-value pairs.
 func MutationRatesValueResponseFromEnvVar(env map[string]string) (*MutationRatesValueResponse, error) {
 	result := &MutationRatesValueResponse{}
-	if sub, err := sentinel.AdminMutationRateFromEnvVar(env); err != nil {
+	if sub, err := hazelcast.AdminMutationRateFromEnvVar(env); err != nil {
 		return nil, err
 	} else if sub != nil {
 		result.Value = sub
@@ -35313,14 +34146,14 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Listener is required")
 	}
 
-	// Validate Members (assert_max_items: 32)
-	if len(m.Members) > 32 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Members exceeds max items of 32, got: %d", len(m.Members))
-	}
-
 	// Validate Members (assert_required)
 	if len(m.Members) == 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Members is required")
+	}
+
+	// Validate Members (assert_max_items: 32)
+	if len(m.Members) > 32 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Members exceeds max items of 32, got: %d", len(m.Members))
 	}
 
 	// Validate NodeCount (assert_gt: 0)
@@ -35364,110 +34197,6 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 	// Validate PersistenceDir (default max size: 32768 bytes)
 	if len(m.PersistenceDir) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field PersistenceDir exceeds max size of 32768 bytes, got: %d", len(m.PersistenceDir))
-	}
-
-	return nil
-}
-
-// ValidateNetworkConfig validates all fields in NetworkConfig according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateNetworkConfig(m *NetworkConfig) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate ConnectTimeoutSeconds (assert_duration: POSITIVE)
-	if m.ConnectTimeoutSeconds <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ConnectTimeoutSeconds must be positive (> 0), got: %d", m.ConnectTimeoutSeconds)
-	}
-
-	// Validate HeartbeatIntervalSeconds (assert_duration: POSITIVE)
-	if m.HeartbeatIntervalSeconds <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field HeartbeatIntervalSeconds must be positive (> 0), got: %d", m.HeartbeatIntervalSeconds)
-	}
-
-	// Validate HeartbeatTimeoutSeconds (assert_duration: POSITIVE)
-	if m.HeartbeatTimeoutSeconds <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field HeartbeatTimeoutSeconds must be positive (> 0), got: %d", m.HeartbeatTimeoutSeconds)
-	}
-
-	return nil
-}
-
-// ValidateCPSubsystemConfig validates all fields in CPSubsystemConfig according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateCPSubsystemConfig(m *CPSubsystemConfig) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate CpMemberCount (assert_ge: 3)
-	if m.CpMemberCount < 3 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field CpMemberCount must be >= 3, got: %v", m.CpMemberCount)
-	}
-	// Validate SessionTimeoutSeconds (assert_duration: POSITIVE)
-	if m.SessionTimeoutSeconds <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field SessionTimeoutSeconds must be positive (> 0), got: %d", m.SessionTimeoutSeconds)
-	}
-
-	// Validate SessionHeartbeatIntervalSeconds (assert_duration: POSITIVE)
-	if m.SessionHeartbeatIntervalSeconds <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field SessionHeartbeatIntervalSeconds must be positive (> 0), got: %d", m.SessionHeartbeatIntervalSeconds)
-	}
-
-	// Validate MissingCpMemberAutoRemovalSeconds (assert_duration: NON_NEGATIVE)
-	if m.MissingCpMemberAutoRemovalSeconds < 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field MissingCpMemberAutoRemovalSeconds must be non-negative (>= 0), got: %d", m.MissingCpMemberAutoRemovalSeconds)
-	}
-
-	return nil
-}
-
-// ValidateRateLimitConfig validates all fields in RateLimitConfig according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateRateLimitConfig(m *RateLimitConfig) error {
-	if m == nil {
-		return nil
-	}
-
-	return nil
-}
-
-// ValidateRedoLogEntry validates all fields in RedoLogEntry according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateRedoLogEntry(m *RedoLogEntry) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate MapName (default max size: 32768 bytes)
-	if len(m.MapName) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field MapName exceeds max size of 32768 bytes, got: %d", len(m.MapName))
-	}
-
-	// Validate Key (default max size: 32768 bytes)
-	if len(m.Key) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Key exceeds max size of 32768 bytes, got: %d", len(m.Key))
-	}
-
-	// Validate Value (default max size: 32768 bytes)
-	if len(m.Value) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Value exceeds max size of 32768 bytes, got: %d", len(m.Value))
-	}
-
-	return nil
-}
-
-// ValidateFullDumpHeader validates all fields in FullDumpHeader according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateFullDumpHeader(m *FullDumpHeader) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate NodeId (default max size: 32768 bytes)
-	if len(m.NodeId) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field NodeId exceeds max size of 32768 bytes, got: %d", len(m.NodeId))
 	}
 
 	return nil
@@ -38141,22 +36870,13 @@ func ValidateMapEmpty(m *MapEmpty) error {
 // Constants
 // ============================================================
 const (
-	MinDataCopies                            int64   = 3
-	DefaultPartitionCount                    int64   = 271
-	DefaultPersistenceDir                    string  = "data/kernel"
-	DefaultRaftPort                          int64   = 5002
-	DefaultConnectTimeoutSeconds             int64   = 5
-	DefaultHeartbeatIntervalSeconds          int64   = 5
-	DefaultHeartbeatTimeoutSeconds           int64   = 60
-	DefaultCpMemberCount                     int64   = 3
-	DefaultSessionTimeoutSeconds             int64   = 300
-	DefaultSessionHeartbeatIntervalSeconds   int64   = 5
-	DefaultMissingCpMemberAutoRemovalSeconds int64   = 14400
-	DefaultPollingRate                       float64 = 2.0
-	DefaultUnaryRate                         float64 = 10.0
-	DefaultKeyRotationIntervalSeconds        int64   = 86400
-	DefaultDefaultTokenExpirySeconds         int64   = 3600
-	DefaultCaCertLifetimeSeconds             int64   = 31536000
+	MinDataCopies                     int64  = 3
+	DefaultPartitionCount             int64  = 271
+	DefaultPersistenceDir             string = "data/kernel"
+	DefaultRaftPort                   int64  = 5002
+	DefaultKeyRotationIntervalSeconds int64  = 86400
+	DefaultDefaultTokenExpirySeconds  int64  = 3600
+	DefaultCaCertLifetimeSeconds      int64  = 31536000
 )
 
 // ============================================================
@@ -38167,10 +36887,6 @@ const (
 	MaxItemsBootstrapconfigMembers              int = 32
 	MaxSizeBootstrapconfigPersistenceDir        int = 32768
 	MaxItemsBootstrapconfigLoaderCa             int = 16
-	MaxSizeRedologentryMapName                  int = 32768
-	MaxSizeRedologentryKey                      int = 32768
-	MaxSizeRedologentryValue                    int = 32768
-	MaxSizeFulldumpheaderNodeId                 int = 32768
 	MaxSizeCloudidentitymatcherExpectedIdentity int = 32768
 	MaxSizeDelegateName                         int = 32768
 	MaxItemsDelegateCredPairs                   int = 8
@@ -38239,91 +36955,6 @@ func BootstrapConfigDefaults(v *BootstrapConfig) {
 	if v.RaftPort == 0 {
 		v.RaftPort = int32(DefaultRaftPort)
 	}
-	if v.Network == nil {
-		v.Network = &NetworkConfig{}
-	}
-	NetworkConfigDefaults(v.Network)
-	if v.CpSubsystem == nil {
-		v.CpSubsystem = &CPSubsystemConfig{}
-	}
-	CPSubsystemConfigDefaults(v.CpSubsystem)
-}
-
-// ============================================================
-// TypeDefaults: NetworkConfig
-// ============================================================
-// NetworkConfigDefaults applies field-level default values to zero-valued fields.
-func NetworkConfigDefaults(v *NetworkConfig) {
-	if v == nil {
-		return
-	}
-	if v.ConnectTimeoutSeconds == 0 {
-		v.ConnectTimeoutSeconds = DefaultConnectTimeoutSeconds
-	}
-	if v.HeartbeatIntervalSeconds == 0 {
-		v.HeartbeatIntervalSeconds = DefaultHeartbeatIntervalSeconds
-	}
-	if v.HeartbeatTimeoutSeconds == 0 {
-		v.HeartbeatTimeoutSeconds = DefaultHeartbeatTimeoutSeconds
-	}
-}
-
-// ============================================================
-// TypeDefaults: CPSubsystemConfig
-// ============================================================
-// CPSubsystemConfigDefaults applies field-level default values to zero-valued fields.
-func CPSubsystemConfigDefaults(v *CPSubsystemConfig) {
-	if v == nil {
-		return
-	}
-	if v.CpMemberCount == 0 {
-		v.CpMemberCount = int32(DefaultCpMemberCount)
-	}
-	if v.SessionTimeoutSeconds == 0 {
-		v.SessionTimeoutSeconds = DefaultSessionTimeoutSeconds
-	}
-	if v.SessionHeartbeatIntervalSeconds == 0 {
-		v.SessionHeartbeatIntervalSeconds = DefaultSessionHeartbeatIntervalSeconds
-	}
-	if v.MissingCpMemberAutoRemovalSeconds == 0 {
-		v.MissingCpMemberAutoRemovalSeconds = DefaultMissingCpMemberAutoRemovalSeconds
-	}
-}
-
-// ============================================================
-// TypeDefaults: RateLimitConfig
-// ============================================================
-// RateLimitConfigDefaults applies field-level default values to zero-valued fields.
-func RateLimitConfigDefaults(v *RateLimitConfig) {
-	if v == nil {
-		return
-	}
-	if v.PollingRate == 0.0 {
-		v.PollingRate = DefaultPollingRate
-	}
-	if v.UnaryRate == 0.0 {
-		v.UnaryRate = DefaultUnaryRate
-	}
-}
-
-// ============================================================
-// TypeDefaults: RedoLogEntry
-// ============================================================
-// RedoLogEntryDefaults applies field-level default values to zero-valued fields.
-func RedoLogEntryDefaults(v *RedoLogEntry) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
-// TypeDefaults: FullDumpHeader
-// ============================================================
-// FullDumpHeaderDefaults applies field-level default values to zero-valued fields.
-func FullDumpHeaderDefaults(v *FullDumpHeader) {
-	if v == nil {
-		return
-	}
 }
 
 // ============================================================
@@ -38383,10 +37014,6 @@ func ConfigDefaults(v *Config) {
 	if v.CaCertLifetimeSeconds == 0 {
 		v.CaCertLifetimeSeconds = DefaultCaCertLifetimeSeconds
 	}
-	if v.RateLimit == nil {
-		v.RateLimit = &RateLimitConfig{}
-	}
-	RateLimitConfigDefaults(v.RateLimit)
 }
 
 // ============================================================
@@ -40573,94 +39200,6 @@ func BootstrapConfigUndefaults(v *BootstrapConfig) {
 	if v.RaftPort == int32(DefaultRaftPort) {
 		v.RaftPort = 0
 	}
-	if v.Network != nil {
-		NetworkConfigUndefaults(v.Network)
-	}
-	if v.CpSubsystem != nil {
-		CPSubsystemConfigUndefaults(v.CpSubsystem)
-	}
-}
-
-// ============================================================
-// TypeUndefaults: NetworkConfig
-// ============================================================
-// NetworkConfigUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func NetworkConfigUndefaults(v *NetworkConfig) {
-	if v == nil {
-		return
-	}
-	if v.ConnectTimeoutSeconds == DefaultConnectTimeoutSeconds {
-		v.ConnectTimeoutSeconds = 0
-	}
-	if v.HeartbeatIntervalSeconds == DefaultHeartbeatIntervalSeconds {
-		v.HeartbeatIntervalSeconds = 0
-	}
-	if v.HeartbeatTimeoutSeconds == DefaultHeartbeatTimeoutSeconds {
-		v.HeartbeatTimeoutSeconds = 0
-	}
-}
-
-// ============================================================
-// TypeUndefaults: CPSubsystemConfig
-// ============================================================
-// CPSubsystemConfigUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func CPSubsystemConfigUndefaults(v *CPSubsystemConfig) {
-	if v == nil {
-		return
-	}
-	if v.CpMemberCount == int32(DefaultCpMemberCount) {
-		v.CpMemberCount = 0
-	}
-	if v.SessionTimeoutSeconds == DefaultSessionTimeoutSeconds {
-		v.SessionTimeoutSeconds = 0
-	}
-	if v.SessionHeartbeatIntervalSeconds == DefaultSessionHeartbeatIntervalSeconds {
-		v.SessionHeartbeatIntervalSeconds = 0
-	}
-	if v.MissingCpMemberAutoRemovalSeconds == DefaultMissingCpMemberAutoRemovalSeconds {
-		v.MissingCpMemberAutoRemovalSeconds = 0
-	}
-}
-
-// ============================================================
-// TypeUndefaults: RateLimitConfig
-// ============================================================
-// RateLimitConfigUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func RateLimitConfigUndefaults(v *RateLimitConfig) {
-	if v == nil {
-		return
-	}
-	if v.PollingRate == DefaultPollingRate {
-		v.PollingRate = 0.0
-	}
-	if v.UnaryRate == DefaultUnaryRate {
-		v.UnaryRate = 0.0
-	}
-}
-
-// ============================================================
-// TypeUndefaults: RedoLogEntry
-// ============================================================
-// RedoLogEntryUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func RedoLogEntryUndefaults(v *RedoLogEntry) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
-// TypeUndefaults: FullDumpHeader
-// ============================================================
-// FullDumpHeaderUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func FullDumpHeaderUndefaults(v *FullDumpHeader) {
-	if v == nil {
-		return
-	}
 }
 
 // ============================================================
@@ -40724,9 +39263,6 @@ func ConfigUndefaults(v *Config) {
 	}
 	if v.CaCertLifetimeSeconds == DefaultCaCertLifetimeSeconds {
 		v.CaCertLifetimeSeconds = 0
-	}
-	if v.RateLimit != nil {
-		RateLimitConfigUndefaults(v.RateLimit)
 	}
 }
 
@@ -43134,16 +41670,12 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	}
 	if dst.Network == nil {
 		dst.Network = src.Network
-	} else if src.Network != nil {
-		MergeNetworkConfig(dst.Network, src.Network)
 	}
 	if dst.Logger == nil {
 		dst.Logger = src.Logger
 	}
 	if dst.CpSubsystem == nil {
 		dst.CpSubsystem = src.CpSubsystem
-	} else if src.CpSubsystem != nil {
-		MergeCPSubsystemConfig(dst.CpSubsystem, src.CpSubsystem)
 	}
 	if dst.PersistenceDir == "" {
 		dst.PersistenceDir = src.PersistenceDir
@@ -43165,98 +41697,6 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	}
 	if dst.Config == nil {
 		dst.Config = src.Config
-	}
-}
-
-// ============================================================
-// Merge: NetworkConfig
-// ============================================================
-// MergeNetworkConfig fills zero-valued fields in dst from src.
-func MergeNetworkConfig(dst, src *NetworkConfig) {
-	if dst.ConnectTimeoutSeconds == 0 {
-		dst.ConnectTimeoutSeconds = src.ConnectTimeoutSeconds
-	}
-	if dst.HeartbeatIntervalSeconds == 0 {
-		dst.HeartbeatIntervalSeconds = src.HeartbeatIntervalSeconds
-	}
-	if dst.HeartbeatTimeoutSeconds == 0 {
-		dst.HeartbeatTimeoutSeconds = src.HeartbeatTimeoutSeconds
-	}
-}
-
-// ============================================================
-// Merge: CPSubsystemConfig
-// ============================================================
-// MergeCPSubsystemConfig fills zero-valued fields in dst from src.
-func MergeCPSubsystemConfig(dst, src *CPSubsystemConfig) {
-	if !dst.Enabled {
-		dst.Enabled = src.Enabled
-	}
-	if dst.CpMemberCount == 0 {
-		dst.CpMemberCount = src.CpMemberCount
-	}
-	if dst.SessionTimeoutSeconds == 0 {
-		dst.SessionTimeoutSeconds = src.SessionTimeoutSeconds
-	}
-	if dst.SessionHeartbeatIntervalSeconds == 0 {
-		dst.SessionHeartbeatIntervalSeconds = src.SessionHeartbeatIntervalSeconds
-	}
-	if dst.MissingCpMemberAutoRemovalSeconds == 0 {
-		dst.MissingCpMemberAutoRemovalSeconds = src.MissingCpMemberAutoRemovalSeconds
-	}
-}
-
-// ============================================================
-// Merge: RateLimitConfig
-// ============================================================
-// MergeRateLimitConfig fills zero-valued fields in dst from src.
-func MergeRateLimitConfig(dst, src *RateLimitConfig) {
-	if dst.PollingRate == 0 {
-		dst.PollingRate = src.PollingRate
-	}
-	if dst.UnaryRate == 0 {
-		dst.UnaryRate = src.UnaryRate
-	}
-}
-
-// ============================================================
-// Merge: RedoLogEntry
-// ============================================================
-// MergeRedoLogEntry fills zero-valued fields in dst from src.
-func MergeRedoLogEntry(dst, src *RedoLogEntry) {
-	if dst.MapName == "" {
-		dst.MapName = src.MapName
-	}
-	if dst.Key == "" {
-		dst.Key = src.Key
-	}
-	if len(dst.Value) == 0 {
-		dst.Value = src.Value
-	}
-	if dst.Op == 0 {
-		dst.Op = src.Op
-	}
-	if dst.TimestampMs == 0 {
-		dst.TimestampMs = src.TimestampMs
-	}
-	if dst.Consistency == 0 {
-		dst.Consistency = src.Consistency
-	}
-}
-
-// ============================================================
-// Merge: FullDumpHeader
-// ============================================================
-// MergeFullDumpHeader fills zero-valued fields in dst from src.
-func MergeFullDumpHeader(dst, src *FullDumpHeader) {
-	if dst.TimestampMs == 0 {
-		dst.TimestampMs = src.TimestampMs
-	}
-	if dst.EntryCount == 0 {
-		dst.EntryCount = src.EntryCount
-	}
-	if dst.NodeId == "" {
-		dst.NodeId = src.NodeId
 	}
 }
 
@@ -43322,8 +41762,6 @@ func MergeConfig(dst, src *Config) {
 	}
 	if dst.RateLimit == nil {
 		dst.RateLimit = src.RateLimit
-	} else if src.RateLimit != nil {
-		MergeRateLimitConfig(dst.RateLimit, src.RateLimit)
 	}
 	if dst.Configs == nil {
 		dst.Configs = src.Configs
@@ -45032,19 +43470,19 @@ func ConfigLlmTypeDescriptor() string {
       "required": true,
       "message": {
         "name": "RateLimitConfig",
-        "package": "kernel",
+        "package": "hazelcast",
         "description": "RateLimitConfig configures rate limiting for unary read RPCs to detect polling.\n Two categories are tracked independently:\n - polling_rate: unary RPCs that have streaming alternatives (Watch/Subscribe)\n - unary_rate: unary read RPCs without streaming alternatives",
         "fields": [
           {
             "name": "polling_rate",
             "type": "double",
-            "description": "Max req/s per peer per method for unary RPCs that have streaming alternatives.\n These RPCs should use Watch/Subscribe instead of polling. A low limit\n nudges clients toward streaming while still allowing occasional one-off reads.",
+            "description": "Max req/s per peer per method for unary RPCs that have streaming alternatives.",
             "default": 2
           },
           {
             "name": "unary_rate",
             "type": "double",
-            "description": "Max req/s per peer per method for unary read RPCs without streaming alternatives.\n Higher than polling_rate since these RPCs have no streaming alternative.",
+            "description": "Max req/s per peer per method for unary read RPCs without streaming alternatives.",
             "default": 10
           }
         ]
@@ -45391,8 +43829,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "string",
                         "description": "version is an optional version string for this policy (e.g., \"1.0.0\").",
                         "constraints": [
-                          "must be a valid semantic version",
-                          "maximum length: 64"
+                          "maximum length: 64",
+                          "must be a valid semantic version"
                         ]
                       }
                     ]

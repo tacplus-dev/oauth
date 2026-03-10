@@ -7,6 +7,7 @@ import (
 	"time"
 
 	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager"
+	hz "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	kernel_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends"
@@ -81,11 +82,11 @@ func (s *Service) WatchDashboard(req *pb.WatchDashboardRequest, stream pb.Sentin
 	}
 }
 
-func (s *Service) GetClusterInfo(ctx context.Context, _ *emptypb.Empty) (*pb.AdminClusterInfo, error) {
+func (s *Service) GetClusterInfo(ctx context.Context, _ *emptypb.Empty) (*hz.AdminClusterInfo, error) {
 	return s.admin.GetClusterInfo(ctx, &emptypb.Empty{})
 }
 
-func (s *Service) GetClusterHealth(ctx context.Context, _ *emptypb.Empty) (*pb.AdminClusterHealth, error) {
+func (s *Service) GetClusterHealth(ctx context.Context, _ *emptypb.Empty) (*hz.AdminClusterHealth, error) {
 	return s.admin.GetClusterHealth(ctx, &emptypb.Empty{})
 }
 
@@ -94,7 +95,7 @@ func (s *Service) GetNodeMetrics(ctx context.Context, _ *emptypb.Empty) (*pb.Nod
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminNodeMetrics, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminNodeMetrics, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -106,7 +107,7 @@ func (s *Service) GetGrpcStats(ctx context.Context, _ *emptypb.Empty) (*pb.GrpcS
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminGrpcStats, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminGrpcStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -118,7 +119,7 @@ func (s *Service) GetPersistenceStatus(ctx context.Context, _ *emptypb.Empty) (*
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminPersistenceStatus, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminPersistenceStatus, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -130,7 +131,7 @@ func (s *Service) GetNetworkStats(ctx context.Context, _ *emptypb.Empty) (*pb.Ne
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminNetworkStats, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminNetworkStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -142,7 +143,7 @@ func (s *Service) GetThreadInfo(ctx context.Context, _ *emptypb.Empty) (*pb.Thre
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminThreadInfo, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminThreadInfo, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -154,7 +155,7 @@ func (s *Service) GetTokenCacheStats(ctx context.Context, _ *emptypb.Empty) (*pb
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminTokenCacheStats, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminTokenCacheStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -166,7 +167,7 @@ func (s *Service) GetMapStats(ctx context.Context, _ *emptypb.Empty) (*pb.MapSta
 	if err != nil {
 		return nil, err
 	}
-	items := make([]*pb.AdminMapStats, 0, len(resp.GetEntries()))
+	items := make([]*hz.AdminMapStats, 0, len(resp.GetEntries()))
 	for _, v := range resp.GetEntries() {
 		items = append(items, v)
 	}
@@ -220,7 +221,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminNodeMetrics, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminNodeMetrics, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -236,7 +237,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminGrpcStats, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminGrpcStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -252,7 +253,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminPersistenceStatus, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminPersistenceStatus, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -268,7 +269,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminNetworkStats, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminNetworkStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -284,7 +285,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminThreadInfo, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminThreadInfo, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -300,7 +301,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminTokenCacheStats, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminTokenCacheStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -316,7 +317,7 @@ func (s *Service) GetDashboard(ctx context.Context, _ *emptypb.Empty) (*pb.Dashb
 			setErr(err)
 			return
 		}
-		items := make([]*pb.AdminMapStats, 0, len(resp.GetEntries()))
+		items := make([]*hz.AdminMapStats, 0, len(resp.GetEntries()))
 		for _, v := range resp.GetEntries() {
 			items = append(items, v)
 		}
@@ -379,17 +380,17 @@ func filterAndResolve[T nodeIDAccessor](items []T, active map[string]bool, addrM
 // setNodeID replaces the node_id field on any of the admin stats types.
 func setNodeID(item any, id string) {
 	switch v := item.(type) {
-	case *pb.AdminNodeMetrics:
+	case *hz.AdminNodeMetrics:
 		v.NodeId = id
-	case *pb.AdminGrpcStats:
+	case *hz.AdminGrpcStats:
 		v.NodeId = id
-	case *pb.AdminPersistenceStatus:
+	case *hz.AdminPersistenceStatus:
 		v.NodeId = id
-	case *pb.AdminNetworkStats:
+	case *hz.AdminNetworkStats:
 		v.NodeId = id
-	case *pb.AdminThreadInfo:
+	case *hz.AdminThreadInfo:
 		v.NodeId = id
-	case *pb.AdminTokenCacheStats:
+	case *hz.AdminTokenCacheStats:
 		v.NodeId = id
 	}
 }

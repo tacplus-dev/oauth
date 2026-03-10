@@ -32,4 +32,7 @@ enum OutputFormat {
 
   // Protobuf wire format (binary)
   OUTPUT_FORMAT_PROTO_WIRE = 6;
+
+  // TOML format
+  OUTPUT_FORMAT_TOML = 7;
 }

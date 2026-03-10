@@ -46,6 +46,8 @@ const (
 	OutputFormat_OUTPUT_FORMAT_ENV_VAR OutputFormat = 5
 	// Protobuf wire format (binary)
 	OutputFormat_OUTPUT_FORMAT_PROTO_WIRE OutputFormat = 6
+	// TOML format
+	OutputFormat_OUTPUT_FORMAT_TOML OutputFormat = 7
 )
 
 // Enum value maps for OutputFormat.
@@ -58,6 +60,7 @@ var (
 		4: "OUTPUT_FORMAT_TEXT",
 		5: "OUTPUT_FORMAT_ENV_VAR",
 		6: "OUTPUT_FORMAT_PROTO_WIRE",
+		7: "OUTPUT_FORMAT_TOML",
 	}
 	OutputFormat_value = map[string]int32{
 		"OUTPUT_FORMAT_UNDEFINED":  0,
@@ -67,6 +70,7 @@ var (
 		"OUTPUT_FORMAT_TEXT":       4,
 		"OUTPUT_FORMAT_ENV_VAR":    5,
 		"OUTPUT_FORMAT_PROTO_WIRE": 6,
+		"OUTPUT_FORMAT_TOML":       7,
 	}
 )
 
@@ -101,7 +105,7 @@ var File_libs_outputformat_proto protoreflect.FileDescriptor
 
 const file_libs_outputformat_proto_rawDesc = "" +
 	"\n" +
-	"\x17libs/outputformat.proto\x12\foutputformat*\xca\x01\n" +
+	"\x17libs/outputformat.proto\x12\foutputformat*\xe2\x01\n" +
 	"\fOutputFormat\x12\x1b\n" +
 	"\x17OUTPUT_FORMAT_UNDEFINED\x10\x00\x12\x16\n" +
 	"\x12OUTPUT_FORMAT_JSON\x10\x01\x12\x16\n" +
@@ -109,7 +113,8 @@ const file_libs_outputformat_proto_rawDesc = "" +
 	"\x18OUTPUT_FORMAT_MULTI_YAML\x10\x03\x12\x16\n" +
 	"\x12OUTPUT_FORMAT_TEXT\x10\x04\x12\x19\n" +
 	"\x15OUTPUT_FORMAT_ENV_VAR\x10\x05\x12\x1c\n" +
-	"\x18OUTPUT_FORMAT_PROTO_WIRE\x10\x06BZZXgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/outputformatb\x06proto3"
+	"\x18OUTPUT_FORMAT_PROTO_WIRE\x10\x06\x12\x16\n" +
+	"\x12OUTPUT_FORMAT_TOML\x10\aBZZXgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/outputformatb\x06proto3"
 
 var (
 	file_libs_outputformat_proto_rawDescOnce sync.Once

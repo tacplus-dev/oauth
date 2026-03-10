@@ -8974,16 +8974,16 @@ func ValidateExternalJwk(m *ExternalJwk) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Key is required")
 	}
 
+	// Validate Issuer (assert_required)
+	if m.Issuer == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
+	}
+
 	// Validate Issuer (assert_url: URL_SCHEME_HTTPS)
 	if m.Issuer != "" {
 		if err := utils.ValidateAssertURL_URL_SCHEME_HTTPS(m.Issuer); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Issuer URL validation failed")
 		}
-	}
-
-	// Validate Issuer (assert_required)
-	if m.Issuer == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Issuer is required")
 	}
 
 	// Validate FetchedAt (assert_gt: 0)
@@ -11772,8 +11772,8 @@ func ConfigLlmTypeDescriptor() string {
       "description": "nonce_expire_seconds is how long OAuth2 nonces/state remain valid.\n Nonces prevent replay attacks in the authorization code flow.\n Minimum: 1 second. Default: 300 (5 minutes).",
       "default": 300,
       "constraints": [
-        "duration constraint: DURATION_TYPE_POSITIVE",
-        "minimum value: 1"
+        "minimum value: 1",
+        "duration constraint: DURATION_TYPE_POSITIVE"
       ]
     },
     {
@@ -11853,8 +11853,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "uint32",
                         "description": "group permission bits (0-7)",
                         "constraints": [
-                          "must be \u003c= 7",
-                          "must be \u003e= 0"
+                          "must be \u003e= 0",
+                          "must be \u003c= 7"
                         ]
                       },
                       {
@@ -11862,8 +11862,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "uint32",
                         "description": "other permission bits (0-7)",
                         "constraints": [
-                          "must be \u003c= 7",
-                          "must be \u003e= 0"
+                          "must be \u003e= 0",
+                          "must be \u003c= 7"
                         ]
                       }
                     ]

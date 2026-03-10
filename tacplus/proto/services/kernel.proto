@@ -14,7 +14,7 @@
 // Copyright (c) 2024 Second Star Cavalier, LLC.
 //
 // Kernel configuration, cluster state, and token exchange definitions.
-// Admin types used by ClusterState are defined in sentinel.proto.
+// Admin and Hazelcast types are defined in common/hazelcast.proto.
 
 syntax = "proto3";
 
@@ -30,33 +30,14 @@ import "libs/token.proto";
 import "libs/cloudidentity.proto";
 import "libs/cloudvendor.proto";
 import "common/tokenrequest.proto";
+import "common/hazelcast.proto";
 import "libs/healthreport.proto";
 
-import "services/sentinel.proto";
 import "libs/generated.proto";
 import "google/protobuf/empty.proto";
 
 // Data must exist on at least 3 nodes (1 primary + 2 backups).
 // Hazelcast backupCount = min(MIN_DATA_COPIES - 1, clusterSize - 1).
-
-// ============================================================================
-// Node Mode
-// ============================================================================
-
-// NodeMode determines which capabilities are active on a kernel node.
-enum NodeMode {
-  // Core+Edge (default): full member with data partitions, persistence, Raft,
-  // AND serves gRPC for microservices.
-  NODE_MODE_CORE_EDGE = 0;
-
-  // Core only: owns data partitions, writes persistence, participates in Raft,
-  // counts toward quorum. Does NOT accept gRPC from microservices.
-  NODE_MODE_CORE = 1;
-
-  // Edge only: Hazelcast lite member (no data partitions), no persistence,
-  // no Raft. Accepts all gRPC from microservices. Scalable 0-N.
-  NODE_MODE_EDGE = 2;
-}
 
 // ============================================================================
 // Kernel Configuration
@@ -95,14 +76,14 @@ message BootstrapConfig {
   int32 partition_count = 5;
 
   // network configures cluster networking (timeouts, heartbeats, etc.).
-  NetworkConfig network = 6;
+  hazelcast.NetworkConfig network = 6;
 
   // logger configures logging for the Kernel server.
   logger.LoggerConfig logger = 7;
 
   // cp_subsystem configures the CP (consensus protocol) subsystem for strong consistency.
   // Required for distributed locks (FencedLock) used by ATOMIC boundaries.
-  CPSubsystemConfig cp_subsystem = 8;
+  hazelcast.CPSubsystemConfig cp_subsystem = 8;
 
   // persistence_dir is the directory where DB dumps and redo logs are stored.
   // Default: "data/kernel".
@@ -136,109 +117,7 @@ message BootstrapConfig {
 
   // mode determines whether this node runs as core (quorum/persistence)
   // or edge (gRPC serving).
-  NodeMode mode = 16;
-}
-
-// ============================================================================
-// Network Configuration
-// ============================================================================
-
-// NetworkConfig configures cluster networking behavior.
-message NetworkConfig {
-  // connect_timeout_seconds is the maximum time to wait when connecting to a cluster member.
-  // Default: 5 seconds.
-  int64 connect_timeout_seconds = 1;
-
-  // heartbeat_interval_seconds is the interval between heartbeat messages sent to cluster members.
-  // Used to detect failed nodes.
-  int64 heartbeat_interval_seconds = 2;
-
-  // heartbeat_timeout_seconds is the time after which a member is considered unreachable
-  // if no heartbeat is received. Must be greater than heartbeat_interval_seconds.
-  int64 heartbeat_timeout_seconds = 3;
-}
-
-// ============================================================================
-// CP Subsystem Configuration (Strong Consistency)
-// ============================================================================
-
-// CPSubsystemConfig configures the consensus-based strong consistency subsystem.
-// Used for distributed locks, atomic counters, and leader election.
-// Requires an odd number of members (minimum 3) for Raft quorum.
-message CPSubsystemConfig {
-  // enabled controls whether the CP subsystem is active.
-  // Must be enabled for distributed locks (Lock service) to work.
-  bool enabled = 1;
-
-  // cp_member_count is the number of cluster members that participate in
-  // the CP (consensus protocol) group. Must be odd and >= 3.
-  // Only these members vote in Raft elections; others are observers.
-  int32 cp_member_count = 2;
-
-  // session_timeout_seconds is the maximum time a CP session can be inactive
-  // before it is closed and its resources (locks, etc.) are released.
-  int64 session_timeout_seconds = 3;
-
-  // session_heartbeat_interval_seconds is the interval for CP session heartbeats.
-  // Must be less than session_timeout_seconds.
-  int64 session_heartbeat_interval_seconds = 4;
-
-  // missing_cp_member_auto_removal_seconds is how long to wait before automatically
-  // removing a missing CP member from the group. Set to 0 to disable auto-removal.
-  int64 missing_cp_member_auto_removal_seconds = 5;
-}
-
-// ============================================================================
-// Rate Limit Configuration
-// ============================================================================
-
-// RateLimitConfig configures rate limiting for unary read RPCs to detect polling.
-// Two categories are tracked independently:
-// - polling_rate: unary RPCs that have streaming alternatives (Watch/Subscribe)
-// - unary_rate: unary read RPCs without streaming alternatives
-message RateLimitConfig {
-  // Max req/s per peer per method for unary RPCs that have streaming alternatives.
-  // These RPCs should use Watch/Subscribe instead of polling. A low limit
-  // nudges clients toward streaming while still allowing occasional one-off reads.
-  double polling_rate = 1;
-
-  // Max req/s per peer per method for unary read RPCs without streaming alternatives.
-  // Higher than polling_rate since these RPCs have no streaming alternative.
-  double unary_rate = 2;
-}
-
-// ============================================================================
-// Persistence — Redo Log & Full Dump
-// ============================================================================
-
-// OpType identifies the type of mutation in a redo log entry.
-enum OpType {
-  OP_TYPE_PUT = 0;
-  OP_TYPE_DELETE = 1;
-}
-
-// ConsistencyType identifies the consistency model for a redo log entry.
-// Needed during convergent LWW merge on restore.
-enum ConsistencyType {
-  CONSISTENCY_CONVERGENT = 0;
-  CONSISTENCY_ATOMIC = 1;
-}
-
-// RedoLogEntry is a single mutation recorded in the redo log.
-message RedoLogEntry {
-  string map_name = 1;          // Hazelcast map name
-  string key = 2;               // map key (singleton key for singletons)
-  bytes value = 3;              // proto bytes (empty for DELETE)
-  OpType op = 4;
-  int64 timestamp_ms = 5;       // epoch millis of mutation
-  ConsistencyType consistency = 6;
-}
-
-// FullDumpHeader is the header written at the start of a full dump file.
-message FullDumpHeader {
-  int64 timestamp_ms = 1;
-  int32 entry_count = 2;
-  string node_id = 3;
+  hazelcast.NodeMode mode = 16;
 }
 
 // ============================================================================
@@ -334,7 +213,7 @@ message Config {
   repeated x509.X509Cert trusted_cas = 2;
 
   // rate_limit configures rate limiting for unary read RPCs to detect polling.
-  RateLimitConfig rate_limit = 5;
+  hazelcast.RateLimitConfig rate_limit = 5;
 
   // configs holds per-frontend-service configurations. On each config load,
   // each entry is written to the corresponding service config state boundary.
@@ -425,35 +304,35 @@ message ClusterState {
 
   // cluster_info captures cluster membership, state, and version.
   // Updated on membership change events and periodically.
-  sentinel.AdminClusterInfo cluster_info = 1;
+  hazelcast.AdminClusterInfo cluster_info = 1;
 
   // cluster_health captures partition safety, quorum, and migration state.
   // Updated on membership change events and periodically.
-  sentinel.AdminClusterHealth cluster_health = 2;
+  hazelcast.AdminClusterHealth cluster_health = 2;
 
   // --- Per-node collections (each node writes its own entry, keyed by node_id) ---
 
   // node_metrics captures memory, CPU, and disk usage per node.
-  repeated sentinel.AdminNodeMetrics node_metrics = 3;
+  repeated hazelcast.AdminNodeMetrics node_metrics = 3;
 
   // grpc_stats captures gRPC connection and RPC statistics per node.
-  repeated sentinel.AdminGrpcStats grpc_stats = 4;
+  repeated hazelcast.AdminGrpcStats grpc_stats = 4;
 
   // persistence_status captures redo log and dump state per node.
-  repeated sentinel.AdminPersistenceStatus persistence_status = 5;
+  repeated hazelcast.AdminPersistenceStatus persistence_status = 5;
 
   // network_stats captures network connections and traffic per node.
-  repeated sentinel.AdminNetworkStats network_stats = 6;
+  repeated hazelcast.AdminNetworkStats network_stats = 6;
 
   // thread_info captures JVM thread counts per node.
-  repeated sentinel.AdminThreadInfo thread_info = 7;
+  repeated hazelcast.AdminThreadInfo thread_info = 7;
 
   // token_cache_stats captures security token cache statistics per node.
-  repeated sentinel.AdminTokenCacheStats token_cache_stats = 8;
+  repeated hazelcast.AdminTokenCacheStats token_cache_stats = 8;
 
   // map_stats captures per-map statistics. Keyed by map name.
   // Each node publishes stats for maps it owns partitions of.
-  repeated sentinel.AdminMapStats map_stats = 9;
+  repeated hazelcast.AdminMapStats map_stats = 9;
 
   // --- Configuration (published on boot / config reload for admin visibility) ---
 
@@ -469,28 +348,28 @@ message ClusterState {
   // graph_registry contains metadata for all boundaries across all state roots.
   // Published once at boot from the generated Registry. Keyed by qualified_name.
   // Consumers use WatchGraphRegistry to discover all graphs in the system.
-  repeated sentinel.AdminGraphInfo graph_registry = 17;
+  repeated hazelcast.AdminGraphInfo graph_registry = 17;
 
   // service_connections tracks which microservices are connected and what
   // graphs they are accessing. Published periodically by the security
   // interceptor based on authenticated peer identity. Keyed by "service_id@node_id".
-  repeated sentinel.AdminServiceConnection service_connections = 18;
+  repeated hazelcast.AdminServiceConnection service_connections = 18;
 
   // queue_stats captures per-queue statistics (depth, offer/consume rates).
   // Published per-queue per-node. Keyed by qualified_name.
-  repeated sentinel.AdminQueueStats queue_stats = 19;
+  repeated hazelcast.AdminQueueStats queue_stats = 19;
 
   // topic_stats captures per-topic statistics (publish rate, subscriber count).
   // Published per-topic per-node. Keyed by qualified_name.
-  repeated sentinel.AdminTopicStats topic_stats = 20;
+  repeated hazelcast.AdminTopicStats topic_stats = 20;
 
   // watch_health tracks active Watch streams and their consumer health.
   // Published per-active-watch per-node. Keyed by watch_id.
-  repeated sentinel.AdminWatchHealth watch_health = 21;
+  repeated hazelcast.AdminWatchHealth watch_health = 21;
 
   // mutation_rates captures per-boundary write throughput.
   // Published per-boundary per-node. Keyed by qualified_name.
-  repeated sentinel.AdminMutationRate mutation_rates = 22;
+  repeated hazelcast.AdminMutationRate mutation_rates = 22;
 
   // --- Commands ---
 
@@ -581,6 +460,7 @@ service X509CertExchangerService {
   // certificate's Subject CN.
   rpc SignCert(x509.X509CertRequest) returns (x509.X509Cert);
 }
+
 // Collection query types (auto-injected)
 enum ComparisonOp {
   COMPARISON_OP_UNSPECIFIED = 0;
@@ -688,13 +568,13 @@ message TrustedCasQueryResponse { repeated x509.X509Cert results = 1; int32 tota
 
 service ClusterStateBackendService {
 	// Singleton: ClusterInfo
-	rpc GetClusterInfo(google.protobuf.Empty) returns (sentinel.AdminClusterInfo);
-	rpc SetClusterInfo(sentinel.AdminClusterInfo) returns (sentinel.AdminClusterInfo);
-	rpc WatchClusterInfo(google.protobuf.Empty) returns (stream sentinel.AdminClusterInfo);
+	rpc GetClusterInfo(google.protobuf.Empty) returns (hazelcast.AdminClusterInfo);
+	rpc SetClusterInfo(hazelcast.AdminClusterInfo) returns (hazelcast.AdminClusterInfo);
+	rpc WatchClusterInfo(google.protobuf.Empty) returns (stream hazelcast.AdminClusterInfo);
 	// Singleton: ClusterHealth
-	rpc GetClusterHealth(google.protobuf.Empty) returns (sentinel.AdminClusterHealth);
-	rpc SetClusterHealth(sentinel.AdminClusterHealth) returns (sentinel.AdminClusterHealth);
-	rpc WatchClusterHealth(google.protobuf.Empty) returns (stream sentinel.AdminClusterHealth);
+	rpc GetClusterHealth(google.protobuf.Empty) returns (hazelcast.AdminClusterHealth);
+	rpc SetClusterHealth(hazelcast.AdminClusterHealth) returns (hazelcast.AdminClusterHealth);
+	rpc WatchClusterHealth(google.protobuf.Empty) returns (stream hazelcast.AdminClusterHealth);
 	// Singleton: FrontendConfig
 	rpc GetFrontendConfig(google.protobuf.Empty) returns (Config);
 	rpc SetFrontendConfig(Config) returns (Config);
@@ -901,173 +781,173 @@ service ClusterStateBackendService {
 }
 
 message NodeMetricsGetRequest { string key = 1; }
-message NodeMetricsPutRequest { string key = 1; sentinel.AdminNodeMetrics value = 2; int64 lock_counter = 3; }
+message NodeMetricsPutRequest { string key = 1; hazelcast.AdminNodeMetrics value = 2; int64 lock_counter = 3; }
 message NodeMetricsGetAllRequest {}
 message NodeMetricsKeysRequest {}
 message NodeMetricsSizeRequest {}
 message NodeMetricsClearRequest {}
-message NodeMetricsValueResponse { sentinel.AdminNodeMetrics value = 1; bool found = 2; }
-message NodeMetricsEntriesResponse { map<string, sentinel.AdminNodeMetrics> entries = 1; }
+message NodeMetricsValueResponse { hazelcast.AdminNodeMetrics value = 1; bool found = 2; }
+message NodeMetricsEntriesResponse { map<string, hazelcast.AdminNodeMetrics> entries = 1; }
 message NodeMetricsKeysResponse { repeated string keys = 1; }
 message NodeMetricsSizeResponse { int32 size = 1; }
 message NodeMetricsQueryRequest { CollectionQuery query = 1; }
-message NodeMetricsQueryResponse { repeated sentinel.AdminNodeMetrics results = 1; int32 total_count = 2; }
+message NodeMetricsQueryResponse { repeated hazelcast.AdminNodeMetrics results = 1; int32 total_count = 2; }
 
 message GrpcStatsGetRequest { string key = 1; }
-message GrpcStatsPutRequest { string key = 1; sentinel.AdminGrpcStats value = 2; int64 lock_counter = 3; }
+message GrpcStatsPutRequest { string key = 1; hazelcast.AdminGrpcStats value = 2; int64 lock_counter = 3; }
 message GrpcStatsGetAllRequest {}
 message GrpcStatsKeysRequest {}
 message GrpcStatsSizeRequest {}
 message GrpcStatsClearRequest {}
-message GrpcStatsValueResponse { sentinel.AdminGrpcStats value = 1; bool found = 2; }
-message GrpcStatsEntriesResponse { map<string, sentinel.AdminGrpcStats> entries = 1; }
+message GrpcStatsValueResponse { hazelcast.AdminGrpcStats value = 1; bool found = 2; }
+message GrpcStatsEntriesResponse { map<string, hazelcast.AdminGrpcStats> entries = 1; }
 message GrpcStatsKeysResponse { repeated string keys = 1; }
 message GrpcStatsSizeResponse { int32 size = 1; }
 message GrpcStatsQueryRequest { CollectionQuery query = 1; }
-message GrpcStatsQueryResponse { repeated sentinel.AdminGrpcStats results = 1; int32 total_count = 2; }
+message GrpcStatsQueryResponse { repeated hazelcast.AdminGrpcStats results = 1; int32 total_count = 2; }
 
 message PersistenceStatusGetRequest { string key = 1; }
-message PersistenceStatusPutRequest { string key = 1; sentinel.AdminPersistenceStatus value = 2; int64 lock_counter = 3; }
+message PersistenceStatusPutRequest { string key = 1; hazelcast.AdminPersistenceStatus value = 2; int64 lock_counter = 3; }
 message PersistenceStatusGetAllRequest {}
 message PersistenceStatusKeysRequest {}
 message PersistenceStatusSizeRequest {}
 message PersistenceStatusClearRequest {}
-message PersistenceStatusValueResponse { sentinel.AdminPersistenceStatus value = 1; bool found = 2; }
-message PersistenceStatusEntriesResponse { map<string, sentinel.AdminPersistenceStatus> entries = 1; }
+message PersistenceStatusValueResponse { hazelcast.AdminPersistenceStatus value = 1; bool found = 2; }
+message PersistenceStatusEntriesResponse { map<string, hazelcast.AdminPersistenceStatus> entries = 1; }
 message PersistenceStatusKeysResponse { repeated string keys = 1; }
 message PersistenceStatusSizeResponse { int32 size = 1; }
 message PersistenceStatusQueryRequest { CollectionQuery query = 1; }
-message PersistenceStatusQueryResponse { repeated sentinel.AdminPersistenceStatus results = 1; int32 total_count = 2; }
+message PersistenceStatusQueryResponse { repeated hazelcast.AdminPersistenceStatus results = 1; int32 total_count = 2; }
 
 message NetworkStatsGetRequest { string key = 1; }
-message NetworkStatsPutRequest { string key = 1; sentinel.AdminNetworkStats value = 2; int64 lock_counter = 3; }
+message NetworkStatsPutRequest { string key = 1; hazelcast.AdminNetworkStats value = 2; int64 lock_counter = 3; }
 message NetworkStatsGetAllRequest {}
 message NetworkStatsKeysRequest {}
 message NetworkStatsSizeRequest {}
 message NetworkStatsClearRequest {}
-message NetworkStatsValueResponse { sentinel.AdminNetworkStats value = 1; bool found = 2; }
-message NetworkStatsEntriesResponse { map<string, sentinel.AdminNetworkStats> entries = 1; }
+message NetworkStatsValueResponse { hazelcast.AdminNetworkStats value = 1; bool found = 2; }
+message NetworkStatsEntriesResponse { map<string, hazelcast.AdminNetworkStats> entries = 1; }
 message NetworkStatsKeysResponse { repeated string keys = 1; }
 message NetworkStatsSizeResponse { int32 size = 1; }
 message NetworkStatsQueryRequest { CollectionQuery query = 1; }
-message NetworkStatsQueryResponse { repeated sentinel.AdminNetworkStats results = 1; int32 total_count = 2; }
+message NetworkStatsQueryResponse { repeated hazelcast.AdminNetworkStats results = 1; int32 total_count = 2; }
 
 message ThreadInfoGetRequest { string key = 1; }
-message ThreadInfoPutRequest { string key = 1; sentinel.AdminThreadInfo value = 2; int64 lock_counter = 3; }
+message ThreadInfoPutRequest { string key = 1; hazelcast.AdminThreadInfo value = 2; int64 lock_counter = 3; }
 message ThreadInfoGetAllRequest {}
 message ThreadInfoKeysRequest {}
 message ThreadInfoSizeRequest {}
 message ThreadInfoClearRequest {}
-message ThreadInfoValueResponse { sentinel.AdminThreadInfo value = 1; bool found = 2; }
-message ThreadInfoEntriesResponse { map<string, sentinel.AdminThreadInfo> entries = 1; }
+message ThreadInfoValueResponse { hazelcast.AdminThreadInfo value = 1; bool found = 2; }
+message ThreadInfoEntriesResponse { map<string, hazelcast.AdminThreadInfo> entries = 1; }
 message ThreadInfoKeysResponse { repeated string keys = 1; }
 message ThreadInfoSizeResponse { int32 size = 1; }
 message ThreadInfoQueryRequest { CollectionQuery query = 1; }
-message ThreadInfoQueryResponse { repeated sentinel.AdminThreadInfo results = 1; int32 total_count = 2; }
+message ThreadInfoQueryResponse { repeated hazelcast.AdminThreadInfo results = 1; int32 total_count = 2; }
 
 message TokenCacheStatsGetRequest { string key = 1; }
-message TokenCacheStatsPutRequest { string key = 1; sentinel.AdminTokenCacheStats value = 2; int64 lock_counter = 3; }
+message TokenCacheStatsPutRequest { string key = 1; hazelcast.AdminTokenCacheStats value = 2; int64 lock_counter = 3; }
 message TokenCacheStatsGetAllRequest {}
 message TokenCacheStatsKeysRequest {}
 message TokenCacheStatsSizeRequest {}
 message TokenCacheStatsClearRequest {}
-message TokenCacheStatsValueResponse { sentinel.AdminTokenCacheStats value = 1; bool found = 2; }
-message TokenCacheStatsEntriesResponse { map<string, sentinel.AdminTokenCacheStats> entries = 1; }
+message TokenCacheStatsValueResponse { hazelcast.AdminTokenCacheStats value = 1; bool found = 2; }
+message TokenCacheStatsEntriesResponse { map<string, hazelcast.AdminTokenCacheStats> entries = 1; }
 message TokenCacheStatsKeysResponse { repeated string keys = 1; }
 message TokenCacheStatsSizeResponse { int32 size = 1; }
 message TokenCacheStatsQueryRequest { CollectionQuery query = 1; }
-message TokenCacheStatsQueryResponse { repeated sentinel.AdminTokenCacheStats results = 1; int32 total_count = 2; }
+message TokenCacheStatsQueryResponse { repeated hazelcast.AdminTokenCacheStats results = 1; int32 total_count = 2; }
 
 message MapStatsGetRequest { string key = 1; }
-message MapStatsPutRequest { string key = 1; sentinel.AdminMapStats value = 2; int64 lock_counter = 3; }
+message MapStatsPutRequest { string key = 1; hazelcast.AdminMapStats value = 2; int64 lock_counter = 3; }
 message MapStatsGetAllRequest {}
 message MapStatsKeysRequest {}
 message MapStatsSizeRequest {}
 message MapStatsClearRequest {}
-message MapStatsValueResponse { sentinel.AdminMapStats value = 1; bool found = 2; }
-message MapStatsEntriesResponse { map<string, sentinel.AdminMapStats> entries = 1; }
+message MapStatsValueResponse { hazelcast.AdminMapStats value = 1; bool found = 2; }
+message MapStatsEntriesResponse { map<string, hazelcast.AdminMapStats> entries = 1; }
 message MapStatsKeysResponse { repeated string keys = 1; }
 message MapStatsSizeResponse { int32 size = 1; }
 message MapStatsQueryRequest { CollectionQuery query = 1; }
-message MapStatsQueryResponse { repeated sentinel.AdminMapStats results = 1; int32 total_count = 2; }
+message MapStatsQueryResponse { repeated hazelcast.AdminMapStats results = 1; int32 total_count = 2; }
 
 message GraphRegistryGetRequest { string key = 1; }
-message GraphRegistryPutRequest { string key = 1; sentinel.AdminGraphInfo value = 2; int64 lock_counter = 3; }
+message GraphRegistryPutRequest { string key = 1; hazelcast.AdminGraphInfo value = 2; int64 lock_counter = 3; }
 message GraphRegistryGetAllRequest {}
 message GraphRegistryKeysRequest {}
 message GraphRegistrySizeRequest {}
 message GraphRegistryClearRequest {}
-message GraphRegistryValueResponse { sentinel.AdminGraphInfo value = 1; bool found = 2; }
-message GraphRegistryEntriesResponse { map<string, sentinel.AdminGraphInfo> entries = 1; }
+message GraphRegistryValueResponse { hazelcast.AdminGraphInfo value = 1; bool found = 2; }
+message GraphRegistryEntriesResponse { map<string, hazelcast.AdminGraphInfo> entries = 1; }
 message GraphRegistryKeysResponse { repeated string keys = 1; }
 message GraphRegistrySizeResponse { int32 size = 1; }
 message GraphRegistryQueryRequest { CollectionQuery query = 1; }
-message GraphRegistryQueryResponse { repeated sentinel.AdminGraphInfo results = 1; int32 total_count = 2; }
+message GraphRegistryQueryResponse { repeated hazelcast.AdminGraphInfo results = 1; int32 total_count = 2; }
 
 message ServiceConnectionsGetRequest { string key = 1; }
-message ServiceConnectionsPutRequest { string key = 1; sentinel.AdminServiceConnection value = 2; int64 lock_counter = 3; }
+message ServiceConnectionsPutRequest { string key = 1; hazelcast.AdminServiceConnection value = 2; int64 lock_counter = 3; }
 message ServiceConnectionsGetAllRequest {}
 message ServiceConnectionsKeysRequest {}
 message ServiceConnectionsSizeRequest {}
 message ServiceConnectionsClearRequest {}
-message ServiceConnectionsValueResponse { sentinel.AdminServiceConnection value = 1; bool found = 2; }
-message ServiceConnectionsEntriesResponse { map<string, sentinel.AdminServiceConnection> entries = 1; }
+message ServiceConnectionsValueResponse { hazelcast.AdminServiceConnection value = 1; bool found = 2; }
+message ServiceConnectionsEntriesResponse { map<string, hazelcast.AdminServiceConnection> entries = 1; }
 message ServiceConnectionsKeysResponse { repeated string keys = 1; }
 message ServiceConnectionsSizeResponse { int32 size = 1; }
 message ServiceConnectionsQueryRequest { CollectionQuery query = 1; }
-message ServiceConnectionsQueryResponse { repeated sentinel.AdminServiceConnection results = 1; int32 total_count = 2; }
+message ServiceConnectionsQueryResponse { repeated hazelcast.AdminServiceConnection results = 1; int32 total_count = 2; }
 
 message QueueStatsGetRequest { string key = 1; }
-message QueueStatsPutRequest { string key = 1; sentinel.AdminQueueStats value = 2; int64 lock_counter = 3; }
+message QueueStatsPutRequest { string key = 1; hazelcast.AdminQueueStats value = 2; int64 lock_counter = 3; }
 message QueueStatsGetAllRequest {}
 message QueueStatsKeysRequest {}
 message QueueStatsSizeRequest {}
 message QueueStatsClearRequest {}
-message QueueStatsValueResponse { sentinel.AdminQueueStats value = 1; bool found = 2; }
-message QueueStatsEntriesResponse { map<string, sentinel.AdminQueueStats> entries = 1; }
+message QueueStatsValueResponse { hazelcast.AdminQueueStats value = 1; bool found = 2; }
+message QueueStatsEntriesResponse { map<string, hazelcast.AdminQueueStats> entries = 1; }
 message QueueStatsKeysResponse { repeated string keys = 1; }
 message QueueStatsSizeResponse { int32 size = 1; }
 message QueueStatsQueryRequest { CollectionQuery query = 1; }
-message QueueStatsQueryResponse { repeated sentinel.AdminQueueStats results = 1; int32 total_count = 2; }
+message QueueStatsQueryResponse { repeated hazelcast.AdminQueueStats results = 1; int32 total_count = 2; }
 
 message TopicStatsGetRequest { string key = 1; }
-message TopicStatsPutRequest { string key = 1; sentinel.AdminTopicStats value = 2; int64 lock_counter = 3; }
+message TopicStatsPutRequest { string key = 1; hazelcast.AdminTopicStats value = 2; int64 lock_counter = 3; }
 message TopicStatsGetAllRequest {}
 message TopicStatsKeysRequest {}
 message TopicStatsSizeRequest {}
 message TopicStatsClearRequest {}
-message TopicStatsValueResponse { sentinel.AdminTopicStats value = 1; bool found = 2; }
-message TopicStatsEntriesResponse { map<string, sentinel.AdminTopicStats> entries = 1; }
+message TopicStatsValueResponse { hazelcast.AdminTopicStats value = 1; bool found = 2; }
+message TopicStatsEntriesResponse { map<string, hazelcast.AdminTopicStats> entries = 1; }
 message TopicStatsKeysResponse { repeated string keys = 1; }
 message TopicStatsSizeResponse { int32 size = 1; }
 message TopicStatsQueryRequest { CollectionQuery query = 1; }
-message TopicStatsQueryResponse { repeated sentinel.AdminTopicStats results = 1; int32 total_count = 2; }
+message TopicStatsQueryResponse { repeated hazelcast.AdminTopicStats results = 1; int32 total_count = 2; }
 
 message WatchHealthGetRequest { string key = 1; }
-message WatchHealthPutRequest { string key = 1; sentinel.AdminWatchHealth value = 2; int64 lock_counter = 3; }
+message WatchHealthPutRequest { string key = 1; hazelcast.AdminWatchHealth value = 2; int64 lock_counter = 3; }
 message WatchHealthGetAllRequest {}
 message WatchHealthKeysRequest {}
 message WatchHealthSizeRequest {}
 message WatchHealthClearRequest {}
-message WatchHealthValueResponse { sentinel.AdminWatchHealth value = 1; bool found = 2; }
-message WatchHealthEntriesResponse { map<string, sentinel.AdminWatchHealth> entries = 1; }
+message WatchHealthValueResponse { hazelcast.AdminWatchHealth value = 1; bool found = 2; }
+message WatchHealthEntriesResponse { map<string, hazelcast.AdminWatchHealth> entries = 1; }
 message WatchHealthKeysResponse { repeated string keys = 1; }
 message WatchHealthSizeResponse { int32 size = 1; }
 message WatchHealthQueryRequest { CollectionQuery query = 1; }
-message WatchHealthQueryResponse { repeated sentinel.AdminWatchHealth results = 1; int32 total_count = 2; }
+message WatchHealthQueryResponse { repeated hazelcast.AdminWatchHealth results = 1; int32 total_count = 2; }
 
 message MutationRatesGetRequest { string key = 1; }
-message MutationRatesPutRequest { string key = 1; sentinel.AdminMutationRate value = 2; int64 lock_counter = 3; }
+message MutationRatesPutRequest { string key = 1; hazelcast.AdminMutationRate value = 2; int64 lock_counter = 3; }
 message MutationRatesGetAllRequest {}
 message MutationRatesKeysRequest {}
 message MutationRatesSizeRequest {}
 message MutationRatesClearRequest {}
-message MutationRatesValueResponse { sentinel.AdminMutationRate value = 1; bool found = 2; }
-message MutationRatesEntriesResponse { map<string, sentinel.AdminMutationRate> entries = 1; }
+message MutationRatesValueResponse { hazelcast.AdminMutationRate value = 1; bool found = 2; }
+message MutationRatesEntriesResponse { map<string, hazelcast.AdminMutationRate> entries = 1; }
 message MutationRatesKeysResponse { repeated string keys = 1; }
 message MutationRatesSizeResponse { int32 size = 1; }
 message MutationRatesQueryRequest { CollectionQuery query = 1; }
-message MutationRatesQueryResponse { repeated sentinel.AdminMutationRate results = 1; int32 total_count = 2; }
+message MutationRatesQueryResponse { repeated hazelcast.AdminMutationRate results = 1; int32 total_count = 2; }
 
 // ============================================================================
 // Auto-generated Backend Service (tacplus)

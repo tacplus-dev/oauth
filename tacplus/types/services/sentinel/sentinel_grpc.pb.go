@@ -15,6 +15,7 @@ package sentinel
 
 import (
 	context "context"
+	hazelcast "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -45,8 +46,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SentinelServiceClient interface {
 	// Cluster-wide singletons
-	GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AdminClusterInfo, error)
-	GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AdminClusterHealth, error)
+	GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterInfo, error)
+	GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterHealth, error)
 	// Per-node collections
 	GetNodeMetrics(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*NodeMetricsResponse, error)
 	GetGrpcStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GrpcStatsResponse, error)
@@ -70,9 +71,9 @@ func NewSentinelServiceClient(cc grpc.ClientConnInterface) SentinelServiceClient
 	return &sentinelServiceClient{cc}
 }
 
-func (c *sentinelServiceClient) GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AdminClusterInfo, error) {
+func (c *sentinelServiceClient) GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AdminClusterInfo)
+	out := new(hazelcast.AdminClusterInfo)
 	err := c.cc.Invoke(ctx, SentinelService_GetClusterInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -80,9 +81,9 @@ func (c *sentinelServiceClient) GetClusterInfo(ctx context.Context, in *emptypb.
 	return out, nil
 }
 
-func (c *sentinelServiceClient) GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AdminClusterHealth, error) {
+func (c *sentinelServiceClient) GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterHealth, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AdminClusterHealth)
+	out := new(hazelcast.AdminClusterHealth)
 	err := c.cc.Invoke(ctx, SentinelService_GetClusterHealth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -194,8 +195,8 @@ type SentinelService_WatchDashboardClient = grpc.ServerStreamingClient[Dashboard
 // for forward compatibility.
 type SentinelServiceServer interface {
 	// Cluster-wide singletons
-	GetClusterInfo(context.Context, *emptypb.Empty) (*AdminClusterInfo, error)
-	GetClusterHealth(context.Context, *emptypb.Empty) (*AdminClusterHealth, error)
+	GetClusterInfo(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterInfo, error)
+	GetClusterHealth(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterHealth, error)
 	// Per-node collections
 	GetNodeMetrics(context.Context, *emptypb.Empty) (*NodeMetricsResponse, error)
 	GetGrpcStats(context.Context, *emptypb.Empty) (*GrpcStatsResponse, error)
@@ -219,10 +220,10 @@ type SentinelServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSentinelServiceServer struct{}
 
-func (UnimplementedSentinelServiceServer) GetClusterInfo(context.Context, *emptypb.Empty) (*AdminClusterInfo, error) {
+func (UnimplementedSentinelServiceServer) GetClusterInfo(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterInfo, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClusterInfo not implemented")
 }
-func (UnimplementedSentinelServiceServer) GetClusterHealth(context.Context, *emptypb.Empty) (*AdminClusterHealth, error) {
+func (UnimplementedSentinelServiceServer) GetClusterHealth(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterHealth, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClusterHealth not implemented")
 }
 func (UnimplementedSentinelServiceServer) GetNodeMetrics(context.Context, *emptypb.Empty) (*NodeMetricsResponse, error) {

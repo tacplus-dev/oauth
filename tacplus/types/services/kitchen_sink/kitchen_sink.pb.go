@@ -14,6 +14,7 @@
 package kitchen_sink
 
 import (
+	hazelcast "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	healthreport "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
 	jwk "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/jwk"
 	opa "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/opa"
@@ -147,6 +148,21 @@ type KitchenSink struct {
 	//	*KitchenSink_DgraphConfig
 	//	*KitchenSink_DgraphDgraphNode
 	//	*KitchenSink_GatewayConfig
+	//	*KitchenSink_HazelcastAdminClusterHealth
+	//	*KitchenSink_HazelcastAdminClusterInfo
+	//	*KitchenSink_HazelcastAdminGraphInfo
+	//	*KitchenSink_HazelcastAdminGrpcStats
+	//	*KitchenSink_HazelcastAdminMapStats
+	//	*KitchenSink_HazelcastAdminMutationRate
+	//	*KitchenSink_HazelcastAdminNetworkStats
+	//	*KitchenSink_HazelcastAdminNodeMetrics
+	//	*KitchenSink_HazelcastAdminPersistenceStatus
+	//	*KitchenSink_HazelcastAdminQueueStats
+	//	*KitchenSink_HazelcastAdminServiceConnection
+	//	*KitchenSink_HazelcastAdminThreadInfo
+	//	*KitchenSink_HazelcastAdminTokenCacheStats
+	//	*KitchenSink_HazelcastAdminTopicStats
+	//	*KitchenSink_HazelcastAdminWatchHealth
 	//	*KitchenSink_HealthreportServiceInstanceHealth
 	//	*KitchenSink_IdentityConfig
 	//	*KitchenSink_IdentityEntitlementConfig
@@ -159,21 +175,6 @@ type KitchenSink struct {
 	//	*KitchenSink_OpaOpaPolicy
 	//	*KitchenSink_PolicyConfig
 	//	*KitchenSink_PolicysimConfig
-	//	*KitchenSink_SentinelAdminClusterHealth
-	//	*KitchenSink_SentinelAdminClusterInfo
-	//	*KitchenSink_SentinelAdminGraphInfo
-	//	*KitchenSink_SentinelAdminGrpcStats
-	//	*KitchenSink_SentinelAdminMapStats
-	//	*KitchenSink_SentinelAdminMutationRate
-	//	*KitchenSink_SentinelAdminNetworkStats
-	//	*KitchenSink_SentinelAdminNodeMetrics
-	//	*KitchenSink_SentinelAdminPersistenceStatus
-	//	*KitchenSink_SentinelAdminQueueStats
-	//	*KitchenSink_SentinelAdminServiceConnection
-	//	*KitchenSink_SentinelAdminThreadInfo
-	//	*KitchenSink_SentinelAdminTokenCacheStats
-	//	*KitchenSink_SentinelAdminTopicStats
-	//	*KitchenSink_SentinelAdminWatchHealth
 	//	*KitchenSink_SentinelConfig
 	//	*KitchenSink_SnoopyEventData
 	//	*KitchenSink_SnoopyServiceStatus
@@ -281,6 +282,141 @@ func (x *KitchenSink) GetGatewayConfig() *gateway.Config {
 	if x != nil {
 		if x, ok := x.Payload.(*KitchenSink_GatewayConfig); ok {
 			return x.GatewayConfig
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminClusterHealth() *hazelcast.AdminClusterHealth {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminClusterHealth); ok {
+			return x.HazelcastAdminClusterHealth
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminClusterInfo() *hazelcast.AdminClusterInfo {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminClusterInfo); ok {
+			return x.HazelcastAdminClusterInfo
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminGraphInfo() *hazelcast.AdminGraphInfo {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminGraphInfo); ok {
+			return x.HazelcastAdminGraphInfo
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminGrpcStats() *hazelcast.AdminGrpcStats {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminGrpcStats); ok {
+			return x.HazelcastAdminGrpcStats
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminMapStats() *hazelcast.AdminMapStats {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminMapStats); ok {
+			return x.HazelcastAdminMapStats
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminMutationRate() *hazelcast.AdminMutationRate {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminMutationRate); ok {
+			return x.HazelcastAdminMutationRate
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminNetworkStats() *hazelcast.AdminNetworkStats {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminNetworkStats); ok {
+			return x.HazelcastAdminNetworkStats
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminNodeMetrics() *hazelcast.AdminNodeMetrics {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminNodeMetrics); ok {
+			return x.HazelcastAdminNodeMetrics
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminPersistenceStatus() *hazelcast.AdminPersistenceStatus {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminPersistenceStatus); ok {
+			return x.HazelcastAdminPersistenceStatus
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminQueueStats() *hazelcast.AdminQueueStats {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminQueueStats); ok {
+			return x.HazelcastAdminQueueStats
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminServiceConnection() *hazelcast.AdminServiceConnection {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminServiceConnection); ok {
+			return x.HazelcastAdminServiceConnection
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminThreadInfo() *hazelcast.AdminThreadInfo {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminThreadInfo); ok {
+			return x.HazelcastAdminThreadInfo
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminTokenCacheStats() *hazelcast.AdminTokenCacheStats {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminTokenCacheStats); ok {
+			return x.HazelcastAdminTokenCacheStats
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminTopicStats() *hazelcast.AdminTopicStats {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminTopicStats); ok {
+			return x.HazelcastAdminTopicStats
+		}
+	}
+	return nil
+}
+
+func (x *KitchenSink) GetHazelcastAdminWatchHealth() *hazelcast.AdminWatchHealth {
+	if x != nil {
+		if x, ok := x.Payload.(*KitchenSink_HazelcastAdminWatchHealth); ok {
+			return x.HazelcastAdminWatchHealth
 		}
 	}
 	return nil
@@ -394,141 +530,6 @@ func (x *KitchenSink) GetPolicysimConfig() *policysim.Config {
 	return nil
 }
 
-func (x *KitchenSink) GetSentinelAdminClusterHealth() *sentinel.AdminClusterHealth {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminClusterHealth); ok {
-			return x.SentinelAdminClusterHealth
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminClusterInfo() *sentinel.AdminClusterInfo {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminClusterInfo); ok {
-			return x.SentinelAdminClusterInfo
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminGraphInfo() *sentinel.AdminGraphInfo {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminGraphInfo); ok {
-			return x.SentinelAdminGraphInfo
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminGrpcStats() *sentinel.AdminGrpcStats {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminGrpcStats); ok {
-			return x.SentinelAdminGrpcStats
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminMapStats() *sentinel.AdminMapStats {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminMapStats); ok {
-			return x.SentinelAdminMapStats
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminMutationRate() *sentinel.AdminMutationRate {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminMutationRate); ok {
-			return x.SentinelAdminMutationRate
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminNetworkStats() *sentinel.AdminNetworkStats {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminNetworkStats); ok {
-			return x.SentinelAdminNetworkStats
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminNodeMetrics() *sentinel.AdminNodeMetrics {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminNodeMetrics); ok {
-			return x.SentinelAdminNodeMetrics
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminPersistenceStatus() *sentinel.AdminPersistenceStatus {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminPersistenceStatus); ok {
-			return x.SentinelAdminPersistenceStatus
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminQueueStats() *sentinel.AdminQueueStats {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminQueueStats); ok {
-			return x.SentinelAdminQueueStats
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminServiceConnection() *sentinel.AdminServiceConnection {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminServiceConnection); ok {
-			return x.SentinelAdminServiceConnection
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminThreadInfo() *sentinel.AdminThreadInfo {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminThreadInfo); ok {
-			return x.SentinelAdminThreadInfo
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminTokenCacheStats() *sentinel.AdminTokenCacheStats {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminTokenCacheStats); ok {
-			return x.SentinelAdminTokenCacheStats
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminTopicStats() *sentinel.AdminTopicStats {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminTopicStats); ok {
-			return x.SentinelAdminTopicStats
-		}
-	}
-	return nil
-}
-
-func (x *KitchenSink) GetSentinelAdminWatchHealth() *sentinel.AdminWatchHealth {
-	if x != nil {
-		if x, ok := x.Payload.(*KitchenSink_SentinelAdminWatchHealth); ok {
-			return x.SentinelAdminWatchHealth
-		}
-	}
-	return nil
-}
-
 func (x *KitchenSink) GetSentinelConfig() *sentinel.Config {
 	if x != nil {
 		if x, ok := x.Payload.(*KitchenSink_SentinelConfig); ok {
@@ -617,112 +618,112 @@ type KitchenSink_GatewayConfig struct {
 	GatewayConfig *gateway.Config `protobuf:"bytes,102,opt,name=gateway_config,json=gatewayConfig,proto3,oneof"`
 }
 
+type KitchenSink_HazelcastAdminClusterHealth struct {
+	HazelcastAdminClusterHealth *hazelcast.AdminClusterHealth `protobuf:"bytes,103,opt,name=hazelcast_admin_cluster_health,json=hazelcastAdminClusterHealth,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminClusterInfo struct {
+	HazelcastAdminClusterInfo *hazelcast.AdminClusterInfo `protobuf:"bytes,104,opt,name=hazelcast_admin_cluster_info,json=hazelcastAdminClusterInfo,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminGraphInfo struct {
+	HazelcastAdminGraphInfo *hazelcast.AdminGraphInfo `protobuf:"bytes,105,opt,name=hazelcast_admin_graph_info,json=hazelcastAdminGraphInfo,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminGrpcStats struct {
+	HazelcastAdminGrpcStats *hazelcast.AdminGrpcStats `protobuf:"bytes,106,opt,name=hazelcast_admin_grpc_stats,json=hazelcastAdminGrpcStats,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminMapStats struct {
+	HazelcastAdminMapStats *hazelcast.AdminMapStats `protobuf:"bytes,107,opt,name=hazelcast_admin_map_stats,json=hazelcastAdminMapStats,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminMutationRate struct {
+	HazelcastAdminMutationRate *hazelcast.AdminMutationRate `protobuf:"bytes,108,opt,name=hazelcast_admin_mutation_rate,json=hazelcastAdminMutationRate,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminNetworkStats struct {
+	HazelcastAdminNetworkStats *hazelcast.AdminNetworkStats `protobuf:"bytes,109,opt,name=hazelcast_admin_network_stats,json=hazelcastAdminNetworkStats,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminNodeMetrics struct {
+	HazelcastAdminNodeMetrics *hazelcast.AdminNodeMetrics `protobuf:"bytes,110,opt,name=hazelcast_admin_node_metrics,json=hazelcastAdminNodeMetrics,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminPersistenceStatus struct {
+	HazelcastAdminPersistenceStatus *hazelcast.AdminPersistenceStatus `protobuf:"bytes,111,opt,name=hazelcast_admin_persistence_status,json=hazelcastAdminPersistenceStatus,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminQueueStats struct {
+	HazelcastAdminQueueStats *hazelcast.AdminQueueStats `protobuf:"bytes,112,opt,name=hazelcast_admin_queue_stats,json=hazelcastAdminQueueStats,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminServiceConnection struct {
+	HazelcastAdminServiceConnection *hazelcast.AdminServiceConnection `protobuf:"bytes,113,opt,name=hazelcast_admin_service_connection,json=hazelcastAdminServiceConnection,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminThreadInfo struct {
+	HazelcastAdminThreadInfo *hazelcast.AdminThreadInfo `protobuf:"bytes,114,opt,name=hazelcast_admin_thread_info,json=hazelcastAdminThreadInfo,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminTokenCacheStats struct {
+	HazelcastAdminTokenCacheStats *hazelcast.AdminTokenCacheStats `protobuf:"bytes,115,opt,name=hazelcast_admin_token_cache_stats,json=hazelcastAdminTokenCacheStats,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminTopicStats struct {
+	HazelcastAdminTopicStats *hazelcast.AdminTopicStats `protobuf:"bytes,116,opt,name=hazelcast_admin_topic_stats,json=hazelcastAdminTopicStats,proto3,oneof"`
+}
+
+type KitchenSink_HazelcastAdminWatchHealth struct {
+	HazelcastAdminWatchHealth *hazelcast.AdminWatchHealth `protobuf:"bytes,117,opt,name=hazelcast_admin_watch_health,json=hazelcastAdminWatchHealth,proto3,oneof"`
+}
+
 type KitchenSink_HealthreportServiceInstanceHealth struct {
-	HealthreportServiceInstanceHealth *healthreport.ServiceInstanceHealth `protobuf:"bytes,103,opt,name=healthreport_service_instance_health,json=healthreportServiceInstanceHealth,proto3,oneof"`
+	HealthreportServiceInstanceHealth *healthreport.ServiceInstanceHealth `protobuf:"bytes,118,opt,name=healthreport_service_instance_health,json=healthreportServiceInstanceHealth,proto3,oneof"`
 }
 
 type KitchenSink_IdentityConfig struct {
-	IdentityConfig *identity.Config `protobuf:"bytes,104,opt,name=identity_config,json=identityConfig,proto3,oneof"`
+	IdentityConfig *identity.Config `protobuf:"bytes,119,opt,name=identity_config,json=identityConfig,proto3,oneof"`
 }
 
 type KitchenSink_IdentityEntitlementConfig struct {
-	IdentityEntitlementConfig *identity.EntitlementConfig `protobuf:"bytes,105,opt,name=identity_entitlement_config,json=identityEntitlementConfig,proto3,oneof"`
+	IdentityEntitlementConfig *identity.EntitlementConfig `protobuf:"bytes,120,opt,name=identity_entitlement_config,json=identityEntitlementConfig,proto3,oneof"`
 }
 
 type KitchenSink_IdentityExternalJwk struct {
-	IdentityExternalJwk *identity.ExternalJwk `protobuf:"bytes,106,opt,name=identity_external_jwk,json=identityExternalJwk,proto3,oneof"`
+	IdentityExternalJwk *identity.ExternalJwk `protobuf:"bytes,121,opt,name=identity_external_jwk,json=identityExternalJwk,proto3,oneof"`
 }
 
 type KitchenSink_JwkJwk struct {
-	JwkJwk *jwk.Jwk `protobuf:"bytes,107,opt,name=jwk_jwk,json=jwkJwk,proto3,oneof"`
+	JwkJwk *jwk.Jwk `protobuf:"bytes,122,opt,name=jwk_jwk,json=jwkJwk,proto3,oneof"`
 }
 
 type KitchenSink_KernelConfig struct {
-	KernelConfig *kernel.Config `protobuf:"bytes,108,opt,name=kernel_config,json=kernelConfig,proto3,oneof"`
+	KernelConfig *kernel.Config `protobuf:"bytes,123,opt,name=kernel_config,json=kernelConfig,proto3,oneof"`
 }
 
 type KitchenSink_LetsencryptConfig struct {
-	LetsencryptConfig *letsencrypt.Config `protobuf:"bytes,109,opt,name=letsencrypt_config,json=letsencryptConfig,proto3,oneof"`
+	LetsencryptConfig *letsencrypt.Config `protobuf:"bytes,124,opt,name=letsencrypt_config,json=letsencryptConfig,proto3,oneof"`
 }
 
 type KitchenSink_LetsencryptLetsEncryptCertData struct {
-	LetsencryptLetsEncryptCertData *letsencrypt.LetsEncryptCertData `protobuf:"bytes,110,opt,name=letsencrypt_lets_encrypt_cert_data,json=letsencryptLetsEncryptCertData,proto3,oneof"`
+	LetsencryptLetsEncryptCertData *letsencrypt.LetsEncryptCertData `protobuf:"bytes,125,opt,name=letsencrypt_lets_encrypt_cert_data,json=letsencryptLetsEncryptCertData,proto3,oneof"`
 }
 
 type KitchenSink_McpConfig struct {
-	McpConfig *mcp.Config `protobuf:"bytes,111,opt,name=mcp_config,json=mcpConfig,proto3,oneof"`
+	McpConfig *mcp.Config `protobuf:"bytes,126,opt,name=mcp_config,json=mcpConfig,proto3,oneof"`
 }
 
 type KitchenSink_OpaOpaPolicy struct {
-	OpaOpaPolicy *opa.OpaPolicy `protobuf:"bytes,112,opt,name=opa_opa_policy,json=opaOpaPolicy,proto3,oneof"`
+	OpaOpaPolicy *opa.OpaPolicy `protobuf:"bytes,127,opt,name=opa_opa_policy,json=opaOpaPolicy,proto3,oneof"`
 }
 
 type KitchenSink_PolicyConfig struct {
-	PolicyConfig *policy.Config `protobuf:"bytes,113,opt,name=policy_config,json=policyConfig,proto3,oneof"`
+	PolicyConfig *policy.Config `protobuf:"bytes,128,opt,name=policy_config,json=policyConfig,proto3,oneof"`
 }
 
 type KitchenSink_PolicysimConfig struct {
-	PolicysimConfig *policysim.Config `protobuf:"bytes,114,opt,name=policysim_config,json=policysimConfig,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminClusterHealth struct {
-	SentinelAdminClusterHealth *sentinel.AdminClusterHealth `protobuf:"bytes,115,opt,name=sentinel_admin_cluster_health,json=sentinelAdminClusterHealth,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminClusterInfo struct {
-	SentinelAdminClusterInfo *sentinel.AdminClusterInfo `protobuf:"bytes,116,opt,name=sentinel_admin_cluster_info,json=sentinelAdminClusterInfo,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminGraphInfo struct {
-	SentinelAdminGraphInfo *sentinel.AdminGraphInfo `protobuf:"bytes,117,opt,name=sentinel_admin_graph_info,json=sentinelAdminGraphInfo,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminGrpcStats struct {
-	SentinelAdminGrpcStats *sentinel.AdminGrpcStats `protobuf:"bytes,118,opt,name=sentinel_admin_grpc_stats,json=sentinelAdminGrpcStats,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminMapStats struct {
-	SentinelAdminMapStats *sentinel.AdminMapStats `protobuf:"bytes,119,opt,name=sentinel_admin_map_stats,json=sentinelAdminMapStats,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminMutationRate struct {
-	SentinelAdminMutationRate *sentinel.AdminMutationRate `protobuf:"bytes,120,opt,name=sentinel_admin_mutation_rate,json=sentinelAdminMutationRate,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminNetworkStats struct {
-	SentinelAdminNetworkStats *sentinel.AdminNetworkStats `protobuf:"bytes,121,opt,name=sentinel_admin_network_stats,json=sentinelAdminNetworkStats,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminNodeMetrics struct {
-	SentinelAdminNodeMetrics *sentinel.AdminNodeMetrics `protobuf:"bytes,122,opt,name=sentinel_admin_node_metrics,json=sentinelAdminNodeMetrics,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminPersistenceStatus struct {
-	SentinelAdminPersistenceStatus *sentinel.AdminPersistenceStatus `protobuf:"bytes,123,opt,name=sentinel_admin_persistence_status,json=sentinelAdminPersistenceStatus,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminQueueStats struct {
-	SentinelAdminQueueStats *sentinel.AdminQueueStats `protobuf:"bytes,124,opt,name=sentinel_admin_queue_stats,json=sentinelAdminQueueStats,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminServiceConnection struct {
-	SentinelAdminServiceConnection *sentinel.AdminServiceConnection `protobuf:"bytes,125,opt,name=sentinel_admin_service_connection,json=sentinelAdminServiceConnection,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminThreadInfo struct {
-	SentinelAdminThreadInfo *sentinel.AdminThreadInfo `protobuf:"bytes,126,opt,name=sentinel_admin_thread_info,json=sentinelAdminThreadInfo,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminTokenCacheStats struct {
-	SentinelAdminTokenCacheStats *sentinel.AdminTokenCacheStats `protobuf:"bytes,127,opt,name=sentinel_admin_token_cache_stats,json=sentinelAdminTokenCacheStats,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminTopicStats struct {
-	SentinelAdminTopicStats *sentinel.AdminTopicStats `protobuf:"bytes,128,opt,name=sentinel_admin_topic_stats,json=sentinelAdminTopicStats,proto3,oneof"`
-}
-
-type KitchenSink_SentinelAdminWatchHealth struct {
-	SentinelAdminWatchHealth *sentinel.AdminWatchHealth `protobuf:"bytes,129,opt,name=sentinel_admin_watch_health,json=sentinelAdminWatchHealth,proto3,oneof"`
+	PolicysimConfig *policysim.Config `protobuf:"bytes,129,opt,name=policysim_config,json=policysimConfig,proto3,oneof"`
 }
 
 type KitchenSink_SentinelConfig struct {
@@ -763,6 +764,36 @@ func (*KitchenSink_DgraphDgraphNode) isKitchenSink_Payload() {}
 
 func (*KitchenSink_GatewayConfig) isKitchenSink_Payload() {}
 
+func (*KitchenSink_HazelcastAdminClusterHealth) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminClusterInfo) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminGraphInfo) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminGrpcStats) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminMapStats) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminMutationRate) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminNetworkStats) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminNodeMetrics) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminPersistenceStatus) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminQueueStats) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminServiceConnection) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminThreadInfo) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminTokenCacheStats) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminTopicStats) isKitchenSink_Payload() {}
+
+func (*KitchenSink_HazelcastAdminWatchHealth) isKitchenSink_Payload() {}
+
 func (*KitchenSink_HealthreportServiceInstanceHealth) isKitchenSink_Payload() {}
 
 func (*KitchenSink_IdentityConfig) isKitchenSink_Payload() {}
@@ -786,36 +817,6 @@ func (*KitchenSink_OpaOpaPolicy) isKitchenSink_Payload() {}
 func (*KitchenSink_PolicyConfig) isKitchenSink_Payload() {}
 
 func (*KitchenSink_PolicysimConfig) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminClusterHealth) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminClusterInfo) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminGraphInfo) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminGrpcStats) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminMapStats) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminMutationRate) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminNetworkStats) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminNodeMetrics) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminPersistenceStatus) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminQueueStats) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminServiceConnection) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminThreadInfo) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminTokenCacheStats) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminTopicStats) isKitchenSink_Payload() {}
-
-func (*KitchenSink_SentinelAdminWatchHealth) isKitchenSink_Payload() {}
 
 func (*KitchenSink_SentinelConfig) isKitchenSink_Payload() {}
 
@@ -905,7 +906,7 @@ var File_services_kitchen_sink_proto protoreflect.FileDescriptor
 
 const file_services_kitchen_sink_proto_rawDesc = "" +
 	"\n" +
-	"\x1bservices/kitchen_sink.proto\x12\fkitchen_sink\x1a\x17libs/healthreport.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/opa.proto\x1a\x0flibs/x509.proto\x1a\x15services/dgraph.proto\x1a\x16services/gateway.proto\x1a\x17services/identity.proto\x1a\x15services/kernel.proto\x1a\x1aservices/letsencrypt.proto\x1a\x12services/mcp.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x17services/sentinel.proto\x1a\x15services/snoopy.proto\x1a\x18services/woodstock.proto\"\x98\x19\n" +
+	"\x1bservices/kitchen_sink.proto\x12\fkitchen_sink\x1a\x16common/hazelcast.proto\x1a\x17libs/healthreport.proto\x1a\x0elibs/jwk.proto\x1a\x0elibs/opa.proto\x1a\x0flibs/x509.proto\x1a\x15services/dgraph.proto\x1a\x16services/gateway.proto\x1a\x17services/identity.proto\x1a\x15services/kernel.proto\x1a\x1aservices/letsencrypt.proto\x1a\x12services/mcp.proto\x1a\x15services/policy.proto\x1a\x18services/policysim.proto\x1a\x17services/sentinel.proto\x1a\x15services/snoopy.proto\x1a\x18services/woodstock.proto\"\xc5\x19\n" +
 	"\vKitchenSink\x12\x19\n" +
 	"\bmap_name\x18\x01 \x01(\tR\amapName\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12$\n" +
@@ -914,35 +915,35 @@ const file_services_kitchen_sink_proto_rawDesc = "" +
 	"\ftimestamp_ms\x18\x05 \x01(\x03R\vtimestampMs\x125\n" +
 	"\rdgraph_config\x18d \x01(\v2\x0e.dgraph.ConfigH\x00R\fdgraphConfig\x12B\n" +
 	"\x12dgraph_dgraph_node\x18e \x01(\v2\x12.dgraph.DgraphNodeH\x00R\x10dgraphDgraphNode\x128\n" +
-	"\x0egateway_config\x18f \x01(\v2\x0f.gateway.ConfigH\x00R\rgatewayConfig\x12v\n" +
-	"$healthreport_service_instance_health\x18g \x01(\v2#.healthreport.ServiceInstanceHealthH\x00R!healthreportServiceInstanceHealth\x12;\n" +
-	"\x0fidentity_config\x18h \x01(\v2\x10.identity.ConfigH\x00R\x0eidentityConfig\x12]\n" +
-	"\x1bidentity_entitlement_config\x18i \x01(\v2\x1b.identity.EntitlementConfigH\x00R\x19identityEntitlementConfig\x12K\n" +
-	"\x15identity_external_jwk\x18j \x01(\v2\x15.identity.ExternalJwkH\x00R\x13identityExternalJwk\x12#\n" +
-	"\ajwk_jwk\x18k \x01(\v2\b.jwk.JwkH\x00R\x06jwkJwk\x125\n" +
-	"\rkernel_config\x18l \x01(\v2\x0e.kernel.ConfigH\x00R\fkernelConfig\x12D\n" +
-	"\x12letsencrypt_config\x18m \x01(\v2\x13.letsencrypt.ConfigH\x00R\x11letsencryptConfig\x12n\n" +
-	"\"letsencrypt_lets_encrypt_cert_data\x18n \x01(\v2 .letsencrypt.LetsEncryptCertDataH\x00R\x1eletsencryptLetsEncryptCertData\x12,\n" +
+	"\x0egateway_config\x18f \x01(\v2\x0f.gateway.ConfigH\x00R\rgatewayConfig\x12d\n" +
+	"\x1ehazelcast_admin_cluster_health\x18g \x01(\v2\x1d.hazelcast.AdminClusterHealthH\x00R\x1bhazelcastAdminClusterHealth\x12^\n" +
+	"\x1chazelcast_admin_cluster_info\x18h \x01(\v2\x1b.hazelcast.AdminClusterInfoH\x00R\x19hazelcastAdminClusterInfo\x12X\n" +
+	"\x1ahazelcast_admin_graph_info\x18i \x01(\v2\x19.hazelcast.AdminGraphInfoH\x00R\x17hazelcastAdminGraphInfo\x12X\n" +
+	"\x1ahazelcast_admin_grpc_stats\x18j \x01(\v2\x19.hazelcast.AdminGrpcStatsH\x00R\x17hazelcastAdminGrpcStats\x12U\n" +
+	"\x19hazelcast_admin_map_stats\x18k \x01(\v2\x18.hazelcast.AdminMapStatsH\x00R\x16hazelcastAdminMapStats\x12a\n" +
+	"\x1dhazelcast_admin_mutation_rate\x18l \x01(\v2\x1c.hazelcast.AdminMutationRateH\x00R\x1ahazelcastAdminMutationRate\x12a\n" +
+	"\x1dhazelcast_admin_network_stats\x18m \x01(\v2\x1c.hazelcast.AdminNetworkStatsH\x00R\x1ahazelcastAdminNetworkStats\x12^\n" +
+	"\x1chazelcast_admin_node_metrics\x18n \x01(\v2\x1b.hazelcast.AdminNodeMetricsH\x00R\x19hazelcastAdminNodeMetrics\x12p\n" +
+	"\"hazelcast_admin_persistence_status\x18o \x01(\v2!.hazelcast.AdminPersistenceStatusH\x00R\x1fhazelcastAdminPersistenceStatus\x12[\n" +
+	"\x1bhazelcast_admin_queue_stats\x18p \x01(\v2\x1a.hazelcast.AdminQueueStatsH\x00R\x18hazelcastAdminQueueStats\x12p\n" +
+	"\"hazelcast_admin_service_connection\x18q \x01(\v2!.hazelcast.AdminServiceConnectionH\x00R\x1fhazelcastAdminServiceConnection\x12[\n" +
+	"\x1bhazelcast_admin_thread_info\x18r \x01(\v2\x1a.hazelcast.AdminThreadInfoH\x00R\x18hazelcastAdminThreadInfo\x12k\n" +
+	"!hazelcast_admin_token_cache_stats\x18s \x01(\v2\x1f.hazelcast.AdminTokenCacheStatsH\x00R\x1dhazelcastAdminTokenCacheStats\x12[\n" +
+	"\x1bhazelcast_admin_topic_stats\x18t \x01(\v2\x1a.hazelcast.AdminTopicStatsH\x00R\x18hazelcastAdminTopicStats\x12^\n" +
+	"\x1chazelcast_admin_watch_health\x18u \x01(\v2\x1b.hazelcast.AdminWatchHealthH\x00R\x19hazelcastAdminWatchHealth\x12v\n" +
+	"$healthreport_service_instance_health\x18v \x01(\v2#.healthreport.ServiceInstanceHealthH\x00R!healthreportServiceInstanceHealth\x12;\n" +
+	"\x0fidentity_config\x18w \x01(\v2\x10.identity.ConfigH\x00R\x0eidentityConfig\x12]\n" +
+	"\x1bidentity_entitlement_config\x18x \x01(\v2\x1b.identity.EntitlementConfigH\x00R\x19identityEntitlementConfig\x12K\n" +
+	"\x15identity_external_jwk\x18y \x01(\v2\x15.identity.ExternalJwkH\x00R\x13identityExternalJwk\x12#\n" +
+	"\ajwk_jwk\x18z \x01(\v2\b.jwk.JwkH\x00R\x06jwkJwk\x125\n" +
+	"\rkernel_config\x18{ \x01(\v2\x0e.kernel.ConfigH\x00R\fkernelConfig\x12D\n" +
+	"\x12letsencrypt_config\x18| \x01(\v2\x13.letsencrypt.ConfigH\x00R\x11letsencryptConfig\x12n\n" +
+	"\"letsencrypt_lets_encrypt_cert_data\x18} \x01(\v2 .letsencrypt.LetsEncryptCertDataH\x00R\x1eletsencryptLetsEncryptCertData\x12,\n" +
 	"\n" +
-	"mcp_config\x18o \x01(\v2\v.mcp.ConfigH\x00R\tmcpConfig\x126\n" +
-	"\x0eopa_opa_policy\x18p \x01(\v2\x0e.opa.OpaPolicyH\x00R\fopaOpaPolicy\x125\n" +
-	"\rpolicy_config\x18q \x01(\v2\x0e.policy.ConfigH\x00R\fpolicyConfig\x12>\n" +
-	"\x10policysim_config\x18r \x01(\v2\x11.policysim.ConfigH\x00R\x0fpolicysimConfig\x12a\n" +
-	"\x1dsentinel_admin_cluster_health\x18s \x01(\v2\x1c.sentinel.AdminClusterHealthH\x00R\x1asentinelAdminClusterHealth\x12[\n" +
-	"\x1bsentinel_admin_cluster_info\x18t \x01(\v2\x1a.sentinel.AdminClusterInfoH\x00R\x18sentinelAdminClusterInfo\x12U\n" +
-	"\x19sentinel_admin_graph_info\x18u \x01(\v2\x18.sentinel.AdminGraphInfoH\x00R\x16sentinelAdminGraphInfo\x12U\n" +
-	"\x19sentinel_admin_grpc_stats\x18v \x01(\v2\x18.sentinel.AdminGrpcStatsH\x00R\x16sentinelAdminGrpcStats\x12R\n" +
-	"\x18sentinel_admin_map_stats\x18w \x01(\v2\x17.sentinel.AdminMapStatsH\x00R\x15sentinelAdminMapStats\x12^\n" +
-	"\x1csentinel_admin_mutation_rate\x18x \x01(\v2\x1b.sentinel.AdminMutationRateH\x00R\x19sentinelAdminMutationRate\x12^\n" +
-	"\x1csentinel_admin_network_stats\x18y \x01(\v2\x1b.sentinel.AdminNetworkStatsH\x00R\x19sentinelAdminNetworkStats\x12[\n" +
-	"\x1bsentinel_admin_node_metrics\x18z \x01(\v2\x1a.sentinel.AdminNodeMetricsH\x00R\x18sentinelAdminNodeMetrics\x12m\n" +
-	"!sentinel_admin_persistence_status\x18{ \x01(\v2 .sentinel.AdminPersistenceStatusH\x00R\x1esentinelAdminPersistenceStatus\x12X\n" +
-	"\x1asentinel_admin_queue_stats\x18| \x01(\v2\x19.sentinel.AdminQueueStatsH\x00R\x17sentinelAdminQueueStats\x12m\n" +
-	"!sentinel_admin_service_connection\x18} \x01(\v2 .sentinel.AdminServiceConnectionH\x00R\x1esentinelAdminServiceConnection\x12X\n" +
-	"\x1asentinel_admin_thread_info\x18~ \x01(\v2\x19.sentinel.AdminThreadInfoH\x00R\x17sentinelAdminThreadInfo\x12h\n" +
-	" sentinel_admin_token_cache_stats\x18\x7f \x01(\v2\x1e.sentinel.AdminTokenCacheStatsH\x00R\x1csentinelAdminTokenCacheStats\x12Y\n" +
-	"\x1asentinel_admin_topic_stats\x18\x80\x01 \x01(\v2\x19.sentinel.AdminTopicStatsH\x00R\x17sentinelAdminTopicStats\x12\\\n" +
-	"\x1bsentinel_admin_watch_health\x18\x81\x01 \x01(\v2\x1a.sentinel.AdminWatchHealthH\x00R\x18sentinelAdminWatchHealth\x12<\n" +
+	"mcp_config\x18~ \x01(\v2\v.mcp.ConfigH\x00R\tmcpConfig\x126\n" +
+	"\x0eopa_opa_policy\x18\x7f \x01(\v2\x0e.opa.OpaPolicyH\x00R\fopaOpaPolicy\x126\n" +
+	"\rpolicy_config\x18\x80\x01 \x01(\v2\x0e.policy.ConfigH\x00R\fpolicyConfig\x12?\n" +
+	"\x10policysim_config\x18\x81\x01 \x01(\v2\x11.policysim.ConfigH\x00R\x0fpolicysimConfig\x12<\n" +
 	"\x0fsentinel_config\x18\x82\x01 \x01(\v2\x10.sentinel.ConfigH\x00R\x0esentinelConfig\x12@\n" +
 	"\x11snoopy_event_data\x18\x83\x01 \x01(\v2\x11.snoopy.EventDataH\x00R\x0fsnoopyEventData\x12L\n" +
 	"\x15snoopy_service_status\x18\x84\x01 \x01(\v2\x15.snoopy.ServiceStatusH\x00R\x13snoopyServiceStatus\x12=\n" +
@@ -987,33 +988,33 @@ var file_services_kitchen_sink_proto_goTypes = []any{
 	(*dgraph.Config)(nil),                      // 4: dgraph.Config
 	(*dgraph.DgraphNode)(nil),                  // 5: dgraph.DgraphNode
 	(*gateway.Config)(nil),                     // 6: gateway.Config
-	(*healthreport.ServiceInstanceHealth)(nil), // 7: healthreport.ServiceInstanceHealth
-	(*identity.Config)(nil),                    // 8: identity.Config
-	(*identity.EntitlementConfig)(nil),         // 9: identity.EntitlementConfig
-	(*identity.ExternalJwk)(nil),               // 10: identity.ExternalJwk
-	(*jwk.Jwk)(nil),                            // 11: jwk.Jwk
-	(*kernel.Config)(nil),                      // 12: kernel.Config
-	(*letsencrypt.Config)(nil),                 // 13: letsencrypt.Config
-	(*letsencrypt.LetsEncryptCertData)(nil),    // 14: letsencrypt.LetsEncryptCertData
-	(*mcp.Config)(nil),                         // 15: mcp.Config
-	(*opa.OpaPolicy)(nil),                      // 16: opa.OpaPolicy
-	(*policy.Config)(nil),                      // 17: policy.Config
-	(*policysim.Config)(nil),                   // 18: policysim.Config
-	(*sentinel.AdminClusterHealth)(nil),        // 19: sentinel.AdminClusterHealth
-	(*sentinel.AdminClusterInfo)(nil),          // 20: sentinel.AdminClusterInfo
-	(*sentinel.AdminGraphInfo)(nil),            // 21: sentinel.AdminGraphInfo
-	(*sentinel.AdminGrpcStats)(nil),            // 22: sentinel.AdminGrpcStats
-	(*sentinel.AdminMapStats)(nil),             // 23: sentinel.AdminMapStats
-	(*sentinel.AdminMutationRate)(nil),         // 24: sentinel.AdminMutationRate
-	(*sentinel.AdminNetworkStats)(nil),         // 25: sentinel.AdminNetworkStats
-	(*sentinel.AdminNodeMetrics)(nil),          // 26: sentinel.AdminNodeMetrics
-	(*sentinel.AdminPersistenceStatus)(nil),    // 27: sentinel.AdminPersistenceStatus
-	(*sentinel.AdminQueueStats)(nil),           // 28: sentinel.AdminQueueStats
-	(*sentinel.AdminServiceConnection)(nil),    // 29: sentinel.AdminServiceConnection
-	(*sentinel.AdminThreadInfo)(nil),           // 30: sentinel.AdminThreadInfo
-	(*sentinel.AdminTokenCacheStats)(nil),      // 31: sentinel.AdminTokenCacheStats
-	(*sentinel.AdminTopicStats)(nil),           // 32: sentinel.AdminTopicStats
-	(*sentinel.AdminWatchHealth)(nil),          // 33: sentinel.AdminWatchHealth
+	(*hazelcast.AdminClusterHealth)(nil),       // 7: hazelcast.AdminClusterHealth
+	(*hazelcast.AdminClusterInfo)(nil),         // 8: hazelcast.AdminClusterInfo
+	(*hazelcast.AdminGraphInfo)(nil),           // 9: hazelcast.AdminGraphInfo
+	(*hazelcast.AdminGrpcStats)(nil),           // 10: hazelcast.AdminGrpcStats
+	(*hazelcast.AdminMapStats)(nil),            // 11: hazelcast.AdminMapStats
+	(*hazelcast.AdminMutationRate)(nil),        // 12: hazelcast.AdminMutationRate
+	(*hazelcast.AdminNetworkStats)(nil),        // 13: hazelcast.AdminNetworkStats
+	(*hazelcast.AdminNodeMetrics)(nil),         // 14: hazelcast.AdminNodeMetrics
+	(*hazelcast.AdminPersistenceStatus)(nil),   // 15: hazelcast.AdminPersistenceStatus
+	(*hazelcast.AdminQueueStats)(nil),          // 16: hazelcast.AdminQueueStats
+	(*hazelcast.AdminServiceConnection)(nil),   // 17: hazelcast.AdminServiceConnection
+	(*hazelcast.AdminThreadInfo)(nil),          // 18: hazelcast.AdminThreadInfo
+	(*hazelcast.AdminTokenCacheStats)(nil),     // 19: hazelcast.AdminTokenCacheStats
+	(*hazelcast.AdminTopicStats)(nil),          // 20: hazelcast.AdminTopicStats
+	(*hazelcast.AdminWatchHealth)(nil),         // 21: hazelcast.AdminWatchHealth
+	(*healthreport.ServiceInstanceHealth)(nil), // 22: healthreport.ServiceInstanceHealth
+	(*identity.Config)(nil),                    // 23: identity.Config
+	(*identity.EntitlementConfig)(nil),         // 24: identity.EntitlementConfig
+	(*identity.ExternalJwk)(nil),               // 25: identity.ExternalJwk
+	(*jwk.Jwk)(nil),                            // 26: jwk.Jwk
+	(*kernel.Config)(nil),                      // 27: kernel.Config
+	(*letsencrypt.Config)(nil),                 // 28: letsencrypt.Config
+	(*letsencrypt.LetsEncryptCertData)(nil),    // 29: letsencrypt.LetsEncryptCertData
+	(*mcp.Config)(nil),                         // 30: mcp.Config
+	(*opa.OpaPolicy)(nil),                      // 31: opa.OpaPolicy
+	(*policy.Config)(nil),                      // 32: policy.Config
+	(*policysim.Config)(nil),                   // 33: policysim.Config
 	(*sentinel.Config)(nil),                    // 34: sentinel.Config
 	(*snoopy.EventData)(nil),                   // 35: snoopy.EventData
 	(*snoopy.ServiceStatus)(nil),               // 36: snoopy.ServiceStatus
@@ -1029,33 +1030,33 @@ var file_services_kitchen_sink_proto_depIdxs = []int32{
 	4,  // 2: kitchen_sink.KitchenSink.dgraph_config:type_name -> dgraph.Config
 	5,  // 3: kitchen_sink.KitchenSink.dgraph_dgraph_node:type_name -> dgraph.DgraphNode
 	6,  // 4: kitchen_sink.KitchenSink.gateway_config:type_name -> gateway.Config
-	7,  // 5: kitchen_sink.KitchenSink.healthreport_service_instance_health:type_name -> healthreport.ServiceInstanceHealth
-	8,  // 6: kitchen_sink.KitchenSink.identity_config:type_name -> identity.Config
-	9,  // 7: kitchen_sink.KitchenSink.identity_entitlement_config:type_name -> identity.EntitlementConfig
-	10, // 8: kitchen_sink.KitchenSink.identity_external_jwk:type_name -> identity.ExternalJwk
-	11, // 9: kitchen_sink.KitchenSink.jwk_jwk:type_name -> jwk.Jwk
-	12, // 10: kitchen_sink.KitchenSink.kernel_config:type_name -> kernel.Config
-	13, // 11: kitchen_sink.KitchenSink.letsencrypt_config:type_name -> letsencrypt.Config
-	14, // 12: kitchen_sink.KitchenSink.letsencrypt_lets_encrypt_cert_data:type_name -> letsencrypt.LetsEncryptCertData
-	15, // 13: kitchen_sink.KitchenSink.mcp_config:type_name -> mcp.Config
-	16, // 14: kitchen_sink.KitchenSink.opa_opa_policy:type_name -> opa.OpaPolicy
-	17, // 15: kitchen_sink.KitchenSink.policy_config:type_name -> policy.Config
-	18, // 16: kitchen_sink.KitchenSink.policysim_config:type_name -> policysim.Config
-	19, // 17: kitchen_sink.KitchenSink.sentinel_admin_cluster_health:type_name -> sentinel.AdminClusterHealth
-	20, // 18: kitchen_sink.KitchenSink.sentinel_admin_cluster_info:type_name -> sentinel.AdminClusterInfo
-	21, // 19: kitchen_sink.KitchenSink.sentinel_admin_graph_info:type_name -> sentinel.AdminGraphInfo
-	22, // 20: kitchen_sink.KitchenSink.sentinel_admin_grpc_stats:type_name -> sentinel.AdminGrpcStats
-	23, // 21: kitchen_sink.KitchenSink.sentinel_admin_map_stats:type_name -> sentinel.AdminMapStats
-	24, // 22: kitchen_sink.KitchenSink.sentinel_admin_mutation_rate:type_name -> sentinel.AdminMutationRate
-	25, // 23: kitchen_sink.KitchenSink.sentinel_admin_network_stats:type_name -> sentinel.AdminNetworkStats
-	26, // 24: kitchen_sink.KitchenSink.sentinel_admin_node_metrics:type_name -> sentinel.AdminNodeMetrics
-	27, // 25: kitchen_sink.KitchenSink.sentinel_admin_persistence_status:type_name -> sentinel.AdminPersistenceStatus
-	28, // 26: kitchen_sink.KitchenSink.sentinel_admin_queue_stats:type_name -> sentinel.AdminQueueStats
-	29, // 27: kitchen_sink.KitchenSink.sentinel_admin_service_connection:type_name -> sentinel.AdminServiceConnection
-	30, // 28: kitchen_sink.KitchenSink.sentinel_admin_thread_info:type_name -> sentinel.AdminThreadInfo
-	31, // 29: kitchen_sink.KitchenSink.sentinel_admin_token_cache_stats:type_name -> sentinel.AdminTokenCacheStats
-	32, // 30: kitchen_sink.KitchenSink.sentinel_admin_topic_stats:type_name -> sentinel.AdminTopicStats
-	33, // 31: kitchen_sink.KitchenSink.sentinel_admin_watch_health:type_name -> sentinel.AdminWatchHealth
+	7,  // 5: kitchen_sink.KitchenSink.hazelcast_admin_cluster_health:type_name -> hazelcast.AdminClusterHealth
+	8,  // 6: kitchen_sink.KitchenSink.hazelcast_admin_cluster_info:type_name -> hazelcast.AdminClusterInfo
+	9,  // 7: kitchen_sink.KitchenSink.hazelcast_admin_graph_info:type_name -> hazelcast.AdminGraphInfo
+	10, // 8: kitchen_sink.KitchenSink.hazelcast_admin_grpc_stats:type_name -> hazelcast.AdminGrpcStats
+	11, // 9: kitchen_sink.KitchenSink.hazelcast_admin_map_stats:type_name -> hazelcast.AdminMapStats
+	12, // 10: kitchen_sink.KitchenSink.hazelcast_admin_mutation_rate:type_name -> hazelcast.AdminMutationRate
+	13, // 11: kitchen_sink.KitchenSink.hazelcast_admin_network_stats:type_name -> hazelcast.AdminNetworkStats
+	14, // 12: kitchen_sink.KitchenSink.hazelcast_admin_node_metrics:type_name -> hazelcast.AdminNodeMetrics
+	15, // 13: kitchen_sink.KitchenSink.hazelcast_admin_persistence_status:type_name -> hazelcast.AdminPersistenceStatus
+	16, // 14: kitchen_sink.KitchenSink.hazelcast_admin_queue_stats:type_name -> hazelcast.AdminQueueStats
+	17, // 15: kitchen_sink.KitchenSink.hazelcast_admin_service_connection:type_name -> hazelcast.AdminServiceConnection
+	18, // 16: kitchen_sink.KitchenSink.hazelcast_admin_thread_info:type_name -> hazelcast.AdminThreadInfo
+	19, // 17: kitchen_sink.KitchenSink.hazelcast_admin_token_cache_stats:type_name -> hazelcast.AdminTokenCacheStats
+	20, // 18: kitchen_sink.KitchenSink.hazelcast_admin_topic_stats:type_name -> hazelcast.AdminTopicStats
+	21, // 19: kitchen_sink.KitchenSink.hazelcast_admin_watch_health:type_name -> hazelcast.AdminWatchHealth
+	22, // 20: kitchen_sink.KitchenSink.healthreport_service_instance_health:type_name -> healthreport.ServiceInstanceHealth
+	23, // 21: kitchen_sink.KitchenSink.identity_config:type_name -> identity.Config
+	24, // 22: kitchen_sink.KitchenSink.identity_entitlement_config:type_name -> identity.EntitlementConfig
+	25, // 23: kitchen_sink.KitchenSink.identity_external_jwk:type_name -> identity.ExternalJwk
+	26, // 24: kitchen_sink.KitchenSink.jwk_jwk:type_name -> jwk.Jwk
+	27, // 25: kitchen_sink.KitchenSink.kernel_config:type_name -> kernel.Config
+	28, // 26: kitchen_sink.KitchenSink.letsencrypt_config:type_name -> letsencrypt.Config
+	29, // 27: kitchen_sink.KitchenSink.letsencrypt_lets_encrypt_cert_data:type_name -> letsencrypt.LetsEncryptCertData
+	30, // 28: kitchen_sink.KitchenSink.mcp_config:type_name -> mcp.Config
+	31, // 29: kitchen_sink.KitchenSink.opa_opa_policy:type_name -> opa.OpaPolicy
+	32, // 30: kitchen_sink.KitchenSink.policy_config:type_name -> policy.Config
+	33, // 31: kitchen_sink.KitchenSink.policysim_config:type_name -> policysim.Config
 	34, // 32: kitchen_sink.KitchenSink.sentinel_config:type_name -> sentinel.Config
 	35, // 33: kitchen_sink.KitchenSink.snoopy_event_data:type_name -> snoopy.EventData
 	36, // 34: kitchen_sink.KitchenSink.snoopy_service_status:type_name -> snoopy.ServiceStatus
@@ -1081,6 +1082,21 @@ func file_services_kitchen_sink_proto_init() {
 		(*KitchenSink_DgraphConfig)(nil),
 		(*KitchenSink_DgraphDgraphNode)(nil),
 		(*KitchenSink_GatewayConfig)(nil),
+		(*KitchenSink_HazelcastAdminClusterHealth)(nil),
+		(*KitchenSink_HazelcastAdminClusterInfo)(nil),
+		(*KitchenSink_HazelcastAdminGraphInfo)(nil),
+		(*KitchenSink_HazelcastAdminGrpcStats)(nil),
+		(*KitchenSink_HazelcastAdminMapStats)(nil),
+		(*KitchenSink_HazelcastAdminMutationRate)(nil),
+		(*KitchenSink_HazelcastAdminNetworkStats)(nil),
+		(*KitchenSink_HazelcastAdminNodeMetrics)(nil),
+		(*KitchenSink_HazelcastAdminPersistenceStatus)(nil),
+		(*KitchenSink_HazelcastAdminQueueStats)(nil),
+		(*KitchenSink_HazelcastAdminServiceConnection)(nil),
+		(*KitchenSink_HazelcastAdminThreadInfo)(nil),
+		(*KitchenSink_HazelcastAdminTokenCacheStats)(nil),
+		(*KitchenSink_HazelcastAdminTopicStats)(nil),
+		(*KitchenSink_HazelcastAdminWatchHealth)(nil),
 		(*KitchenSink_HealthreportServiceInstanceHealth)(nil),
 		(*KitchenSink_IdentityConfig)(nil),
 		(*KitchenSink_IdentityEntitlementConfig)(nil),
@@ -1093,21 +1109,6 @@ func file_services_kitchen_sink_proto_init() {
 		(*KitchenSink_OpaOpaPolicy)(nil),
 		(*KitchenSink_PolicyConfig)(nil),
 		(*KitchenSink_PolicysimConfig)(nil),
-		(*KitchenSink_SentinelAdminClusterHealth)(nil),
-		(*KitchenSink_SentinelAdminClusterInfo)(nil),
-		(*KitchenSink_SentinelAdminGraphInfo)(nil),
-		(*KitchenSink_SentinelAdminGrpcStats)(nil),
-		(*KitchenSink_SentinelAdminMapStats)(nil),
-		(*KitchenSink_SentinelAdminMutationRate)(nil),
-		(*KitchenSink_SentinelAdminNetworkStats)(nil),
-		(*KitchenSink_SentinelAdminNodeMetrics)(nil),
-		(*KitchenSink_SentinelAdminPersistenceStatus)(nil),
-		(*KitchenSink_SentinelAdminQueueStats)(nil),
-		(*KitchenSink_SentinelAdminServiceConnection)(nil),
-		(*KitchenSink_SentinelAdminThreadInfo)(nil),
-		(*KitchenSink_SentinelAdminTokenCacheStats)(nil),
-		(*KitchenSink_SentinelAdminTopicStats)(nil),
-		(*KitchenSink_SentinelAdminWatchHealth)(nil),
 		(*KitchenSink_SentinelConfig)(nil),
 		(*KitchenSink_SnoopyEventData)(nil),
 		(*KitchenSink_SnoopyServiceStatus)(nil),

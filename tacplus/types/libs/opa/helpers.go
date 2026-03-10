@@ -228,14 +228,14 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 		return nil
 	}
 
-	// Validate EntryPoint (assert_min_length: 1)
-	if len(m.EntryPoint) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at least 1 characters, got: %d", len(m.EntryPoint))
-	}
-
 	// Validate EntryPoint (assert_max_length: 256)
 	if len(m.EntryPoint) > 256 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at most 256 characters, got: %d", len(m.EntryPoint))
+	}
+
+	// Validate EntryPoint (assert_min_length: 1)
+	if len(m.EntryPoint) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at least 1 characters, got: %d", len(m.EntryPoint))
 	}
 
 	// Validate Created (assert_ge: 1735689600)
@@ -441,8 +441,8 @@ func OpaPolicyLlmTypeDescriptor() string {
       "type": "int64",
       "description": "created is the Unix epoch timestamp (seconds) when the policy was created.",
       "constraints": [
-        "must be \u003e= 1735689600",
-        "must be \u003c= 8045740800"
+        "must be \u003c= 8045740800",
+        "must be \u003e= 1735689600"
       ]
     },
     {

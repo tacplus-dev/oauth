@@ -15,11 +15,11 @@ package kernel
 
 import (
 	context "context"
+	hazelcast "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	tokenrequest "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/tokenrequest"
 	healthreport "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/healthreport"
 	token "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/token"
 	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
-	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -1673,13 +1673,13 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClusterStateBackendServiceClient interface {
 	// Singleton: ClusterInfo
-	GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*sentinel.AdminClusterInfo, error)
-	SetClusterInfo(ctx context.Context, in *sentinel.AdminClusterInfo, opts ...grpc.CallOption) (*sentinel.AdminClusterInfo, error)
-	WatchClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[sentinel.AdminClusterInfo], error)
+	GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterInfo, error)
+	SetClusterInfo(ctx context.Context, in *hazelcast.AdminClusterInfo, opts ...grpc.CallOption) (*hazelcast.AdminClusterInfo, error)
+	WatchClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[hazelcast.AdminClusterInfo], error)
 	// Singleton: ClusterHealth
-	GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*sentinel.AdminClusterHealth, error)
-	SetClusterHealth(ctx context.Context, in *sentinel.AdminClusterHealth, opts ...grpc.CallOption) (*sentinel.AdminClusterHealth, error)
-	WatchClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[sentinel.AdminClusterHealth], error)
+	GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterHealth, error)
+	SetClusterHealth(ctx context.Context, in *hazelcast.AdminClusterHealth, opts ...grpc.CallOption) (*hazelcast.AdminClusterHealth, error)
+	WatchClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[hazelcast.AdminClusterHealth], error)
 	// Singleton: FrontendConfig
 	GetFrontendConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error)
 	SetFrontendConfig(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Config, error)
@@ -1893,9 +1893,9 @@ func NewClusterStateBackendServiceClient(cc grpc.ClientConnInterface) ClusterSta
 	return &clusterStateBackendServiceClient{cc}
 }
 
-func (c *clusterStateBackendServiceClient) GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*sentinel.AdminClusterInfo, error) {
+func (c *clusterStateBackendServiceClient) GetClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(sentinel.AdminClusterInfo)
+	out := new(hazelcast.AdminClusterInfo)
 	err := c.cc.Invoke(ctx, ClusterStateBackendService_GetClusterInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1903,9 +1903,9 @@ func (c *clusterStateBackendServiceClient) GetClusterInfo(ctx context.Context, i
 	return out, nil
 }
 
-func (c *clusterStateBackendServiceClient) SetClusterInfo(ctx context.Context, in *sentinel.AdminClusterInfo, opts ...grpc.CallOption) (*sentinel.AdminClusterInfo, error) {
+func (c *clusterStateBackendServiceClient) SetClusterInfo(ctx context.Context, in *hazelcast.AdminClusterInfo, opts ...grpc.CallOption) (*hazelcast.AdminClusterInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(sentinel.AdminClusterInfo)
+	out := new(hazelcast.AdminClusterInfo)
 	err := c.cc.Invoke(ctx, ClusterStateBackendService_SetClusterInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1913,13 +1913,13 @@ func (c *clusterStateBackendServiceClient) SetClusterInfo(ctx context.Context, i
 	return out, nil
 }
 
-func (c *clusterStateBackendServiceClient) WatchClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[sentinel.AdminClusterInfo], error) {
+func (c *clusterStateBackendServiceClient) WatchClusterInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[hazelcast.AdminClusterInfo], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ClusterStateBackendService_ServiceDesc.Streams[0], ClusterStateBackendService_WatchClusterInfo_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[emptypb.Empty, sentinel.AdminClusterInfo]{ClientStream: stream}
+	x := &grpc.GenericClientStream[emptypb.Empty, hazelcast.AdminClusterInfo]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -1930,11 +1930,11 @@ func (c *clusterStateBackendServiceClient) WatchClusterInfo(ctx context.Context,
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ClusterStateBackendService_WatchClusterInfoClient = grpc.ServerStreamingClient[sentinel.AdminClusterInfo]
+type ClusterStateBackendService_WatchClusterInfoClient = grpc.ServerStreamingClient[hazelcast.AdminClusterInfo]
 
-func (c *clusterStateBackendServiceClient) GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*sentinel.AdminClusterHealth, error) {
+func (c *clusterStateBackendServiceClient) GetClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*hazelcast.AdminClusterHealth, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(sentinel.AdminClusterHealth)
+	out := new(hazelcast.AdminClusterHealth)
 	err := c.cc.Invoke(ctx, ClusterStateBackendService_GetClusterHealth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1942,9 +1942,9 @@ func (c *clusterStateBackendServiceClient) GetClusterHealth(ctx context.Context,
 	return out, nil
 }
 
-func (c *clusterStateBackendServiceClient) SetClusterHealth(ctx context.Context, in *sentinel.AdminClusterHealth, opts ...grpc.CallOption) (*sentinel.AdminClusterHealth, error) {
+func (c *clusterStateBackendServiceClient) SetClusterHealth(ctx context.Context, in *hazelcast.AdminClusterHealth, opts ...grpc.CallOption) (*hazelcast.AdminClusterHealth, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(sentinel.AdminClusterHealth)
+	out := new(hazelcast.AdminClusterHealth)
 	err := c.cc.Invoke(ctx, ClusterStateBackendService_SetClusterHealth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1952,13 +1952,13 @@ func (c *clusterStateBackendServiceClient) SetClusterHealth(ctx context.Context,
 	return out, nil
 }
 
-func (c *clusterStateBackendServiceClient) WatchClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[sentinel.AdminClusterHealth], error) {
+func (c *clusterStateBackendServiceClient) WatchClusterHealth(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[hazelcast.AdminClusterHealth], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ClusterStateBackendService_ServiceDesc.Streams[1], ClusterStateBackendService_WatchClusterHealth_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[emptypb.Empty, sentinel.AdminClusterHealth]{ClientStream: stream}
+	x := &grpc.GenericClientStream[emptypb.Empty, hazelcast.AdminClusterHealth]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -1969,7 +1969,7 @@ func (c *clusterStateBackendServiceClient) WatchClusterHealth(ctx context.Contex
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ClusterStateBackendService_WatchClusterHealthClient = grpc.ServerStreamingClient[sentinel.AdminClusterHealth]
+type ClusterStateBackendService_WatchClusterHealthClient = grpc.ServerStreamingClient[hazelcast.AdminClusterHealth]
 
 func (c *clusterStateBackendServiceClient) GetFrontendConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Config, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -4089,13 +4089,13 @@ func (c *clusterStateBackendServiceClient) ReloadConfig(ctx context.Context, in 
 // for forward compatibility.
 type ClusterStateBackendServiceServer interface {
 	// Singleton: ClusterInfo
-	GetClusterInfo(context.Context, *emptypb.Empty) (*sentinel.AdminClusterInfo, error)
-	SetClusterInfo(context.Context, *sentinel.AdminClusterInfo) (*sentinel.AdminClusterInfo, error)
-	WatchClusterInfo(*emptypb.Empty, grpc.ServerStreamingServer[sentinel.AdminClusterInfo]) error
+	GetClusterInfo(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterInfo, error)
+	SetClusterInfo(context.Context, *hazelcast.AdminClusterInfo) (*hazelcast.AdminClusterInfo, error)
+	WatchClusterInfo(*emptypb.Empty, grpc.ServerStreamingServer[hazelcast.AdminClusterInfo]) error
 	// Singleton: ClusterHealth
-	GetClusterHealth(context.Context, *emptypb.Empty) (*sentinel.AdminClusterHealth, error)
-	SetClusterHealth(context.Context, *sentinel.AdminClusterHealth) (*sentinel.AdminClusterHealth, error)
-	WatchClusterHealth(*emptypb.Empty, grpc.ServerStreamingServer[sentinel.AdminClusterHealth]) error
+	GetClusterHealth(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterHealth, error)
+	SetClusterHealth(context.Context, *hazelcast.AdminClusterHealth) (*hazelcast.AdminClusterHealth, error)
+	WatchClusterHealth(*emptypb.Empty, grpc.ServerStreamingServer[hazelcast.AdminClusterHealth]) error
 	// Singleton: FrontendConfig
 	GetFrontendConfig(context.Context, *emptypb.Empty) (*Config, error)
 	SetFrontendConfig(context.Context, *Config) (*Config, error)
@@ -4309,22 +4309,22 @@ type ClusterStateBackendServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedClusterStateBackendServiceServer struct{}
 
-func (UnimplementedClusterStateBackendServiceServer) GetClusterInfo(context.Context, *emptypb.Empty) (*sentinel.AdminClusterInfo, error) {
+func (UnimplementedClusterStateBackendServiceServer) GetClusterInfo(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterInfo, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClusterInfo not implemented")
 }
-func (UnimplementedClusterStateBackendServiceServer) SetClusterInfo(context.Context, *sentinel.AdminClusterInfo) (*sentinel.AdminClusterInfo, error) {
+func (UnimplementedClusterStateBackendServiceServer) SetClusterInfo(context.Context, *hazelcast.AdminClusterInfo) (*hazelcast.AdminClusterInfo, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetClusterInfo not implemented")
 }
-func (UnimplementedClusterStateBackendServiceServer) WatchClusterInfo(*emptypb.Empty, grpc.ServerStreamingServer[sentinel.AdminClusterInfo]) error {
+func (UnimplementedClusterStateBackendServiceServer) WatchClusterInfo(*emptypb.Empty, grpc.ServerStreamingServer[hazelcast.AdminClusterInfo]) error {
 	return status.Error(codes.Unimplemented, "method WatchClusterInfo not implemented")
 }
-func (UnimplementedClusterStateBackendServiceServer) GetClusterHealth(context.Context, *emptypb.Empty) (*sentinel.AdminClusterHealth, error) {
+func (UnimplementedClusterStateBackendServiceServer) GetClusterHealth(context.Context, *emptypb.Empty) (*hazelcast.AdminClusterHealth, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClusterHealth not implemented")
 }
-func (UnimplementedClusterStateBackendServiceServer) SetClusterHealth(context.Context, *sentinel.AdminClusterHealth) (*sentinel.AdminClusterHealth, error) {
+func (UnimplementedClusterStateBackendServiceServer) SetClusterHealth(context.Context, *hazelcast.AdminClusterHealth) (*hazelcast.AdminClusterHealth, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetClusterHealth not implemented")
 }
-func (UnimplementedClusterStateBackendServiceServer) WatchClusterHealth(*emptypb.Empty, grpc.ServerStreamingServer[sentinel.AdminClusterHealth]) error {
+func (UnimplementedClusterStateBackendServiceServer) WatchClusterHealth(*emptypb.Empty, grpc.ServerStreamingServer[hazelcast.AdminClusterHealth]) error {
 	return status.Error(codes.Unimplemented, "method WatchClusterHealth not implemented")
 }
 func (UnimplementedClusterStateBackendServiceServer) GetFrontendConfig(context.Context, *emptypb.Empty) (*Config, error) {
@@ -4929,7 +4929,7 @@ func _ClusterStateBackendService_GetClusterInfo_Handler(srv interface{}, ctx con
 }
 
 func _ClusterStateBackendService_SetClusterInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(sentinel.AdminClusterInfo)
+	in := new(hazelcast.AdminClusterInfo)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -4941,7 +4941,7 @@ func _ClusterStateBackendService_SetClusterInfo_Handler(srv interface{}, ctx con
 		FullMethod: ClusterStateBackendService_SetClusterInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClusterStateBackendServiceServer).SetClusterInfo(ctx, req.(*sentinel.AdminClusterInfo))
+		return srv.(ClusterStateBackendServiceServer).SetClusterInfo(ctx, req.(*hazelcast.AdminClusterInfo))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4951,11 +4951,11 @@ func _ClusterStateBackendService_WatchClusterInfo_Handler(srv interface{}, strea
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ClusterStateBackendServiceServer).WatchClusterInfo(m, &grpc.GenericServerStream[emptypb.Empty, sentinel.AdminClusterInfo]{ServerStream: stream})
+	return srv.(ClusterStateBackendServiceServer).WatchClusterInfo(m, &grpc.GenericServerStream[emptypb.Empty, hazelcast.AdminClusterInfo]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ClusterStateBackendService_WatchClusterInfoServer = grpc.ServerStreamingServer[sentinel.AdminClusterInfo]
+type ClusterStateBackendService_WatchClusterInfoServer = grpc.ServerStreamingServer[hazelcast.AdminClusterInfo]
 
 func _ClusterStateBackendService_GetClusterHealth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
@@ -4976,7 +4976,7 @@ func _ClusterStateBackendService_GetClusterHealth_Handler(srv interface{}, ctx c
 }
 
 func _ClusterStateBackendService_SetClusterHealth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(sentinel.AdminClusterHealth)
+	in := new(hazelcast.AdminClusterHealth)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -4988,7 +4988,7 @@ func _ClusterStateBackendService_SetClusterHealth_Handler(srv interface{}, ctx c
 		FullMethod: ClusterStateBackendService_SetClusterHealth_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClusterStateBackendServiceServer).SetClusterHealth(ctx, req.(*sentinel.AdminClusterHealth))
+		return srv.(ClusterStateBackendServiceServer).SetClusterHealth(ctx, req.(*hazelcast.AdminClusterHealth))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4998,11 +4998,11 @@ func _ClusterStateBackendService_WatchClusterHealth_Handler(srv interface{}, str
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ClusterStateBackendServiceServer).WatchClusterHealth(m, &grpc.GenericServerStream[emptypb.Empty, sentinel.AdminClusterHealth]{ServerStream: stream})
+	return srv.(ClusterStateBackendServiceServer).WatchClusterHealth(m, &grpc.GenericServerStream[emptypb.Empty, hazelcast.AdminClusterHealth]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ClusterStateBackendService_WatchClusterHealthServer = grpc.ServerStreamingServer[sentinel.AdminClusterHealth]
+type ClusterStateBackendService_WatchClusterHealthServer = grpc.ServerStreamingServer[hazelcast.AdminClusterHealth]
 
 func _ClusterStateBackendService_GetFrontendConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)

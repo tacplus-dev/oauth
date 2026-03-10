@@ -5,7 +5,7 @@ package httpclient
 import (
 	"context"
 
-	httpinterface "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/interfaces/httpclient"
+	httpinterface "gitlab.com/secondstarcavalier/controlplane/services/interfaces/go/httpclient"
 )
 
 // Adapter implements the httpinterface.HTTPClient interface by wrapping a TypedClient.

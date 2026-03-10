@@ -586,21 +586,14 @@ func ValidatePublicKey(m *PublicKey) error {
 		return nil
 	}
 
-	// Validate Id (assert_min_length: 1)
-	if len(m.Id) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Id must be at least 1 characters, got: %d", len(m.Id))
-	}
-
 	// Validate Id (assert_required)
 	if m.Id == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id is required")
 	}
 
-	// Validate Base64 (assert_base64)
-	if m.Base64 != "" {
-		if err := utils.ValidateAssertBase64(m.Base64); err != nil {
-			return protoerrors.NewErrMissingInvalidData(err, "field Base64 base64 validation failed")
-		}
+	// Validate Id (assert_min_length: 1)
+	if len(m.Id) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Id must be at least 1 characters, got: %d", len(m.Id))
 	}
 
 	// Validate Base64 (assert_required)
@@ -608,9 +601,11 @@ func ValidatePublicKey(m *PublicKey) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Base64 is required")
 	}
 
-	// Validate Created (assert_required: must be > 0)
-	if m.Created <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Created is required and must be greater than zero")
+	// Validate Base64 (assert_base64)
+	if m.Base64 != "" {
+		if err := utils.ValidateAssertBase64(m.Base64); err != nil {
+			return protoerrors.NewErrMissingInvalidData(err, "field Base64 base64 validation failed")
+		}
 	}
 
 	// Validate Created (assert_ge: 1735689600)
@@ -621,6 +616,11 @@ func ValidatePublicKey(m *PublicKey) error {
 	if m.Created > 8045740800 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be <= 8045740800, got: %v", m.Created)
 	}
+	// Validate Created (assert_required: must be > 0)
+	if m.Created <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Created is required and must be greater than zero")
+	}
+
 	// Validate Id (default max size: 32768 bytes)
 	if len(m.Id) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id exceeds max size of 32768 bytes, got: %d", len(m.Id))
@@ -641,14 +641,14 @@ func ValidateKey(m *Key) error {
 		return nil
 	}
 
-	// Validate Id (assert_required)
-	if m.Id == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Id is required")
-	}
-
 	// Validate Id (assert_min_length: 1)
 	if len(m.Id) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id must be at least 1 characters, got: %d", len(m.Id))
+	}
+
+	// Validate Id (assert_required)
+	if m.Id == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Id is required")
 	}
 
 	// Validate Base64 (assert_required)

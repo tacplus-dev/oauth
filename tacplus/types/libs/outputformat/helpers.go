@@ -32,12 +32,13 @@ func OutputFormatValues() []OutputFormat {
 		OutputFormat_OUTPUT_FORMAT_TEXT,
 		OutputFormat_OUTPUT_FORMAT_ENV_VAR,
 		OutputFormat_OUTPUT_FORMAT_PROTO_WIRE,
+		OutputFormat_OUTPUT_FORMAT_TOML,
 	}
 }
 
 // OutputFormatStringValues returns all valid OutputFormat names as strings
 func OutputFormatStringValues() []string {
-	return []string{"json", "yaml", "multi-yaml", "text", "env-var", "proto-wire"}
+	return []string{"json", "yaml", "multi-yaml", "text", "env-var", "proto-wire", "toml"}
 }
 
 // ParseOutputFormat converts a string to a OutputFormat enum value
@@ -60,6 +61,8 @@ func ParseOutputFormat(s string) (OutputFormat, error) {
 		return OutputFormat_OUTPUT_FORMAT_ENV_VAR, nil
 	case "proto-wire", "output-format-proto-wire":
 		return OutputFormat_OUTPUT_FORMAT_PROTO_WIRE, nil
+	case "toml", "output-format-toml":
+		return OutputFormat_OUTPUT_FORMAT_TOML, nil
 	default:
 		return OutputFormat_OUTPUT_FORMAT_UNDEFINED, protoerrors.NewErrMissingInvalidData(nil, "invalid outputformat %s, expecting one of: %v", s, OutputFormatStringValues())
 	}
@@ -102,6 +105,8 @@ func OutputFormatToString(v OutputFormat) string {
 		return "env-var"
 	case OutputFormat_OUTPUT_FORMAT_PROTO_WIRE:
 		return "proto-wire"
+	case OutputFormat_OUTPUT_FORMAT_TOML:
+		return "toml"
 	default:
 		return ""
 	}
@@ -136,6 +141,8 @@ func ParseOutputFormatLiberal(s string) OutputFormat {
 		return OutputFormat_OUTPUT_FORMAT_ENV_VAR
 	case "proto-wire", "output-format-proto-wire":
 		return OutputFormat_OUTPUT_FORMAT_PROTO_WIRE
+	case "toml", "output-format-toml":
+		return OutputFormat_OUTPUT_FORMAT_TOML
 	default:
 		return OutputFormat_OUTPUT_FORMAT_UNDEFINED
 	}
@@ -158,6 +165,8 @@ func OutputFormatToSpecName(v OutputFormat) string {
 		return "OUTPUT_FORMAT_ENV_VAR"
 	case OutputFormat_OUTPUT_FORMAT_PROTO_WIRE:
 		return "OUTPUT_FORMAT_PROTO_WIRE"
+	case OutputFormat_OUTPUT_FORMAT_TOML:
+		return "OUTPUT_FORMAT_TOML"
 	default:
 		return ""
 	}

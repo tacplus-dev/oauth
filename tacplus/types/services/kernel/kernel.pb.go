@@ -14,6 +14,7 @@
 package kernel
 
 import (
+	hazelcast "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	tokenrequest "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/tokenrequest"
 	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudidentity"
 	cloudvendor "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/cloudvendor"
@@ -26,7 +27,6 @@ import (
 	_ "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/spec"
 	token "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/token"
 	x509 "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/x509"
-	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -41,157 +41,6 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
-
-// NodeMode determines which capabilities are active on a kernel node.
-type NodeMode int32
-
-const (
-	// Core+Edge (default): full member with data partitions, persistence, Raft,
-	// AND serves gRPC for microservices.
-	NodeMode_NODE_MODE_CORE_EDGE NodeMode = 0
-	// Core only: owns data partitions, writes persistence, participates in Raft,
-	// counts toward quorum. Does NOT accept gRPC from microservices.
-	NodeMode_NODE_MODE_CORE NodeMode = 1
-	// Edge only: Hazelcast lite member (no data partitions), no persistence,
-	// no Raft. Accepts all gRPC from microservices. Scalable 0-N.
-	NodeMode_NODE_MODE_EDGE NodeMode = 2
-)
-
-// Enum value maps for NodeMode.
-var (
-	NodeMode_name = map[int32]string{
-		0: "NODE_MODE_CORE_EDGE",
-		1: "NODE_MODE_CORE",
-		2: "NODE_MODE_EDGE",
-	}
-	NodeMode_value = map[string]int32{
-		"NODE_MODE_CORE_EDGE": 0,
-		"NODE_MODE_CORE":      1,
-		"NODE_MODE_EDGE":      2,
-	}
-)
-
-func (x NodeMode) Enum() *NodeMode {
-	p := new(NodeMode)
-	*p = x
-	return p
-}
-
-func (x NodeMode) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (NodeMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_kernel_proto_enumTypes[0].Descriptor()
-}
-
-func (NodeMode) Type() protoreflect.EnumType {
-	return &file_services_kernel_proto_enumTypes[0]
-}
-
-func (x NodeMode) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use NodeMode.Descriptor instead.
-func (NodeMode) EnumDescriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{0}
-}
-
-// OpType identifies the type of mutation in a redo log entry.
-type OpType int32
-
-const (
-	OpType_OP_TYPE_PUT    OpType = 0
-	OpType_OP_TYPE_DELETE OpType = 1
-)
-
-// Enum value maps for OpType.
-var (
-	OpType_name = map[int32]string{
-		0: "OP_TYPE_PUT",
-		1: "OP_TYPE_DELETE",
-	}
-	OpType_value = map[string]int32{
-		"OP_TYPE_PUT":    0,
-		"OP_TYPE_DELETE": 1,
-	}
-)
-
-func (x OpType) Enum() *OpType {
-	p := new(OpType)
-	*p = x
-	return p
-}
-
-func (x OpType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (OpType) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_kernel_proto_enumTypes[1].Descriptor()
-}
-
-func (OpType) Type() protoreflect.EnumType {
-	return &file_services_kernel_proto_enumTypes[1]
-}
-
-func (x OpType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use OpType.Descriptor instead.
-func (OpType) EnumDescriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{1}
-}
-
-// ConsistencyType identifies the consistency model for a redo log entry.
-// Needed during convergent LWW merge on restore.
-type ConsistencyType int32
-
-const (
-	ConsistencyType_CONSISTENCY_CONVERGENT ConsistencyType = 0
-	ConsistencyType_CONSISTENCY_ATOMIC     ConsistencyType = 1
-)
-
-// Enum value maps for ConsistencyType.
-var (
-	ConsistencyType_name = map[int32]string{
-		0: "CONSISTENCY_CONVERGENT",
-		1: "CONSISTENCY_ATOMIC",
-	}
-	ConsistencyType_value = map[string]int32{
-		"CONSISTENCY_CONVERGENT": 0,
-		"CONSISTENCY_ATOMIC":     1,
-	}
-)
-
-func (x ConsistencyType) Enum() *ConsistencyType {
-	p := new(ConsistencyType)
-	*p = x
-	return p
-}
-
-func (x ConsistencyType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ConsistencyType) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_kernel_proto_enumTypes[2].Descriptor()
-}
-
-func (ConsistencyType) Type() protoreflect.EnumType {
-	return &file_services_kernel_proto_enumTypes[2]
-}
-
-func (x ConsistencyType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ConsistencyType.Descriptor instead.
-func (ConsistencyType) EnumDescriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{2}
-}
 
 // Collection query types (auto-injected)
 type ComparisonOp int32
@@ -254,11 +103,11 @@ func (x ComparisonOp) String() string {
 }
 
 func (ComparisonOp) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_kernel_proto_enumTypes[3].Descriptor()
+	return file_services_kernel_proto_enumTypes[0].Descriptor()
 }
 
 func (ComparisonOp) Type() protoreflect.EnumType {
-	return &file_services_kernel_proto_enumTypes[3]
+	return &file_services_kernel_proto_enumTypes[0]
 }
 
 func (x ComparisonOp) Number() protoreflect.EnumNumber {
@@ -267,7 +116,7 @@ func (x ComparisonOp) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ComparisonOp.Descriptor instead.
 func (ComparisonOp) EnumDescriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{3}
+	return file_services_kernel_proto_rawDescGZIP(), []int{0}
 }
 
 type SortDirection int32
@@ -303,11 +152,11 @@ func (x SortDirection) String() string {
 }
 
 func (SortDirection) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_kernel_proto_enumTypes[4].Descriptor()
+	return file_services_kernel_proto_enumTypes[1].Descriptor()
 }
 
 func (SortDirection) Type() protoreflect.EnumType {
-	return &file_services_kernel_proto_enumTypes[4]
+	return &file_services_kernel_proto_enumTypes[1]
 }
 
 func (x SortDirection) Number() protoreflect.EnumNumber {
@@ -316,7 +165,7 @@ func (x SortDirection) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SortDirection.Descriptor instead.
 func (SortDirection) EnumDescriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{4}
+	return file_services_kernel_proto_rawDescGZIP(), []int{1}
 }
 
 type LogicalOp int32
@@ -352,11 +201,11 @@ func (x LogicalOp) String() string {
 }
 
 func (LogicalOp) Descriptor() protoreflect.EnumDescriptor {
-	return file_services_kernel_proto_enumTypes[5].Descriptor()
+	return file_services_kernel_proto_enumTypes[2].Descriptor()
 }
 
 func (LogicalOp) Type() protoreflect.EnumType {
-	return &file_services_kernel_proto_enumTypes[5]
+	return &file_services_kernel_proto_enumTypes[2]
 }
 
 func (x LogicalOp) Number() protoreflect.EnumNumber {
@@ -365,7 +214,7 @@ func (x LogicalOp) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogicalOp.Descriptor instead.
 func (LogicalOp) EnumDescriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{5}
+	return file_services_kernel_proto_rawDescGZIP(), []int{2}
 }
 
 // BootstrapConfig is the top-level configuration for a Kernel node.
@@ -396,12 +245,12 @@ type BootstrapConfig struct {
 	// Must be greater than 0.
 	PartitionCount int32 `protobuf:"varint,5,opt,name=partition_count,json=partitionCount,proto3" json:"partition_count,omitempty"`
 	// network configures cluster networking (timeouts, heartbeats, etc.).
-	Network *NetworkConfig `protobuf:"bytes,6,opt,name=network,proto3" json:"network,omitempty"`
+	Network *hazelcast.NetworkConfig `protobuf:"bytes,6,opt,name=network,proto3" json:"network,omitempty"`
 	// logger configures logging for the Kernel server.
 	Logger *logger.LoggerConfig `protobuf:"bytes,7,opt,name=logger,proto3" json:"logger,omitempty"`
 	// cp_subsystem configures the CP (consensus protocol) subsystem for strong consistency.
 	// Required for distributed locks (FencedLock) used by ATOMIC boundaries.
-	CpSubsystem *CPSubsystemConfig `protobuf:"bytes,8,opt,name=cp_subsystem,json=cpSubsystem,proto3" json:"cp_subsystem,omitempty"`
+	CpSubsystem *hazelcast.CPSubsystemConfig `protobuf:"bytes,8,opt,name=cp_subsystem,json=cpSubsystem,proto3" json:"cp_subsystem,omitempty"`
 	// persistence_dir is the directory where DB dumps and redo logs are stored.
 	// Default: "data/kernel".
 	PersistenceDir string `protobuf:"bytes,9,opt,name=persistence_dir,json=persistenceDir,proto3" json:"persistence_dir,omitempty"`
@@ -427,7 +276,7 @@ type BootstrapConfig struct {
 	RaftPort int32 `protobuf:"varint,15,opt,name=raft_port,json=raftPort,proto3" json:"raft_port,omitempty"`
 	// mode determines whether this node runs as core (quorum/persistence)
 	// or edge (gRPC serving).
-	Mode          NodeMode `protobuf:"varint,16,opt,name=mode,proto3,enum=kernel.NodeMode" json:"mode,omitempty"`
+	Mode          hazelcast.NodeMode `protobuf:"varint,16,opt,name=mode,proto3,enum=hazelcast.NodeMode" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -497,7 +346,7 @@ func (x *BootstrapConfig) GetPartitionCount() int32 {
 	return 0
 }
 
-func (x *BootstrapConfig) GetNetwork() *NetworkConfig {
+func (x *BootstrapConfig) GetNetwork() *hazelcast.NetworkConfig {
 	if x != nil {
 		return x.Network
 	}
@@ -511,7 +360,7 @@ func (x *BootstrapConfig) GetLogger() *logger.LoggerConfig {
 	return nil
 }
 
-func (x *BootstrapConfig) GetCpSubsystem() *CPSubsystemConfig {
+func (x *BootstrapConfig) GetCpSubsystem() *hazelcast.CPSubsystemConfig {
 	if x != nil {
 		return x.CpSubsystem
 	}
@@ -578,11 +427,11 @@ func (x *BootstrapConfig) GetRaftPort() int32 {
 	return 0
 }
 
-func (x *BootstrapConfig) GetMode() NodeMode {
+func (x *BootstrapConfig) GetMode() hazelcast.NodeMode {
 	if x != nil {
 		return x.Mode
 	}
-	return NodeMode_NODE_MODE_CORE_EDGE
+	return hazelcast.NodeMode(0)
 }
 
 type isBootstrapConfig_Config interface {
@@ -602,370 +451,6 @@ type BootstrapConfig_FileLoader struct {
 func (*BootstrapConfig_UrlLoader) isBootstrapConfig_Config() {}
 
 func (*BootstrapConfig_FileLoader) isBootstrapConfig_Config() {}
-
-// NetworkConfig configures cluster networking behavior.
-type NetworkConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// connect_timeout_seconds is the maximum time to wait when connecting to a cluster member.
-	// Default: 5 seconds.
-	ConnectTimeoutSeconds int64 `protobuf:"varint,1,opt,name=connect_timeout_seconds,json=connectTimeoutSeconds,proto3" json:"connect_timeout_seconds,omitempty"`
-	// heartbeat_interval_seconds is the interval between heartbeat messages sent to cluster members.
-	// Used to detect failed nodes.
-	HeartbeatIntervalSeconds int64 `protobuf:"varint,2,opt,name=heartbeat_interval_seconds,json=heartbeatIntervalSeconds,proto3" json:"heartbeat_interval_seconds,omitempty"`
-	// heartbeat_timeout_seconds is the time after which a member is considered unreachable
-	// if no heartbeat is received. Must be greater than heartbeat_interval_seconds.
-	HeartbeatTimeoutSeconds int64 `protobuf:"varint,3,opt,name=heartbeat_timeout_seconds,json=heartbeatTimeoutSeconds,proto3" json:"heartbeat_timeout_seconds,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
-}
-
-func (x *NetworkConfig) Reset() {
-	*x = NetworkConfig{}
-	mi := &file_services_kernel_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NetworkConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NetworkConfig) ProtoMessage() {}
-
-func (x *NetworkConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NetworkConfig.ProtoReflect.Descriptor instead.
-func (*NetworkConfig) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *NetworkConfig) GetConnectTimeoutSeconds() int64 {
-	if x != nil {
-		return x.ConnectTimeoutSeconds
-	}
-	return 0
-}
-
-func (x *NetworkConfig) GetHeartbeatIntervalSeconds() int64 {
-	if x != nil {
-		return x.HeartbeatIntervalSeconds
-	}
-	return 0
-}
-
-func (x *NetworkConfig) GetHeartbeatTimeoutSeconds() int64 {
-	if x != nil {
-		return x.HeartbeatTimeoutSeconds
-	}
-	return 0
-}
-
-// CPSubsystemConfig configures the consensus-based strong consistency subsystem.
-// Used for distributed locks, atomic counters, and leader election.
-// Requires an odd number of members (minimum 3) for Raft quorum.
-type CPSubsystemConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// enabled controls whether the CP subsystem is active.
-	// Must be enabled for distributed locks (Lock service) to work.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// cp_member_count is the number of cluster members that participate in
-	// the CP (consensus protocol) group. Must be odd and >= 3.
-	// Only these members vote in Raft elections; others are observers.
-	CpMemberCount int32 `protobuf:"varint,2,opt,name=cp_member_count,json=cpMemberCount,proto3" json:"cp_member_count,omitempty"`
-	// session_timeout_seconds is the maximum time a CP session can be inactive
-	// before it is closed and its resources (locks, etc.) are released.
-	SessionTimeoutSeconds int64 `protobuf:"varint,3,opt,name=session_timeout_seconds,json=sessionTimeoutSeconds,proto3" json:"session_timeout_seconds,omitempty"`
-	// session_heartbeat_interval_seconds is the interval for CP session heartbeats.
-	// Must be less than session_timeout_seconds.
-	SessionHeartbeatIntervalSeconds int64 `protobuf:"varint,4,opt,name=session_heartbeat_interval_seconds,json=sessionHeartbeatIntervalSeconds,proto3" json:"session_heartbeat_interval_seconds,omitempty"`
-	// missing_cp_member_auto_removal_seconds is how long to wait before automatically
-	// removing a missing CP member from the group. Set to 0 to disable auto-removal.
-	MissingCpMemberAutoRemovalSeconds int64 `protobuf:"varint,5,opt,name=missing_cp_member_auto_removal_seconds,json=missingCpMemberAutoRemovalSeconds,proto3" json:"missing_cp_member_auto_removal_seconds,omitempty"`
-	unknownFields                     protoimpl.UnknownFields
-	sizeCache                         protoimpl.SizeCache
-}
-
-func (x *CPSubsystemConfig) Reset() {
-	*x = CPSubsystemConfig{}
-	mi := &file_services_kernel_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CPSubsystemConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CPSubsystemConfig) ProtoMessage() {}
-
-func (x *CPSubsystemConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CPSubsystemConfig.ProtoReflect.Descriptor instead.
-func (*CPSubsystemConfig) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *CPSubsystemConfig) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *CPSubsystemConfig) GetCpMemberCount() int32 {
-	if x != nil {
-		return x.CpMemberCount
-	}
-	return 0
-}
-
-func (x *CPSubsystemConfig) GetSessionTimeoutSeconds() int64 {
-	if x != nil {
-		return x.SessionTimeoutSeconds
-	}
-	return 0
-}
-
-func (x *CPSubsystemConfig) GetSessionHeartbeatIntervalSeconds() int64 {
-	if x != nil {
-		return x.SessionHeartbeatIntervalSeconds
-	}
-	return 0
-}
-
-func (x *CPSubsystemConfig) GetMissingCpMemberAutoRemovalSeconds() int64 {
-	if x != nil {
-		return x.MissingCpMemberAutoRemovalSeconds
-	}
-	return 0
-}
-
-// RateLimitConfig configures rate limiting for unary read RPCs to detect polling.
-// Two categories are tracked independently:
-// - polling_rate: unary RPCs that have streaming alternatives (Watch/Subscribe)
-// - unary_rate: unary read RPCs without streaming alternatives
-type RateLimitConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Max req/s per peer per method for unary RPCs that have streaming alternatives.
-	// These RPCs should use Watch/Subscribe instead of polling. A low limit
-	// nudges clients toward streaming while still allowing occasional one-off reads.
-	PollingRate float64 `protobuf:"fixed64,1,opt,name=polling_rate,json=pollingRate,proto3" json:"polling_rate,omitempty"`
-	// Max req/s per peer per method for unary read RPCs without streaming alternatives.
-	// Higher than polling_rate since these RPCs have no streaming alternative.
-	UnaryRate     float64 `protobuf:"fixed64,2,opt,name=unary_rate,json=unaryRate,proto3" json:"unary_rate,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RateLimitConfig) Reset() {
-	*x = RateLimitConfig{}
-	mi := &file_services_kernel_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RateLimitConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RateLimitConfig) ProtoMessage() {}
-
-func (x *RateLimitConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RateLimitConfig.ProtoReflect.Descriptor instead.
-func (*RateLimitConfig) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *RateLimitConfig) GetPollingRate() float64 {
-	if x != nil {
-		return x.PollingRate
-	}
-	return 0
-}
-
-func (x *RateLimitConfig) GetUnaryRate() float64 {
-	if x != nil {
-		return x.UnaryRate
-	}
-	return 0
-}
-
-// RedoLogEntry is a single mutation recorded in the redo log.
-type RedoLogEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MapName       string                 `protobuf:"bytes,1,opt,name=map_name,json=mapName,proto3" json:"map_name,omitempty"` // Hazelcast map name
-	Key           string                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`                        // map key (singleton key for singletons)
-	Value         []byte                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`                    // proto bytes (empty for DELETE)
-	Op            OpType                 `protobuf:"varint,4,opt,name=op,proto3,enum=kernel.OpType" json:"op,omitempty"`
-	TimestampMs   int64                  `protobuf:"varint,5,opt,name=timestamp_ms,json=timestampMs,proto3" json:"timestamp_ms,omitempty"` // epoch millis of mutation
-	Consistency   ConsistencyType        `protobuf:"varint,6,opt,name=consistency,proto3,enum=kernel.ConsistencyType" json:"consistency,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RedoLogEntry) Reset() {
-	*x = RedoLogEntry{}
-	mi := &file_services_kernel_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RedoLogEntry) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RedoLogEntry) ProtoMessage() {}
-
-func (x *RedoLogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RedoLogEntry.ProtoReflect.Descriptor instead.
-func (*RedoLogEntry) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *RedoLogEntry) GetMapName() string {
-	if x != nil {
-		return x.MapName
-	}
-	return ""
-}
-
-func (x *RedoLogEntry) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *RedoLogEntry) GetValue() []byte {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-func (x *RedoLogEntry) GetOp() OpType {
-	if x != nil {
-		return x.Op
-	}
-	return OpType_OP_TYPE_PUT
-}
-
-func (x *RedoLogEntry) GetTimestampMs() int64 {
-	if x != nil {
-		return x.TimestampMs
-	}
-	return 0
-}
-
-func (x *RedoLogEntry) GetConsistency() ConsistencyType {
-	if x != nil {
-		return x.Consistency
-	}
-	return ConsistencyType_CONSISTENCY_CONVERGENT
-}
-
-// FullDumpHeader is the header written at the start of a full dump file.
-type FullDumpHeader struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TimestampMs   int64                  `protobuf:"varint,1,opt,name=timestamp_ms,json=timestampMs,proto3" json:"timestamp_ms,omitempty"`
-	EntryCount    int32                  `protobuf:"varint,2,opt,name=entry_count,json=entryCount,proto3" json:"entry_count,omitempty"`
-	NodeId        string                 `protobuf:"bytes,3,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *FullDumpHeader) Reset() {
-	*x = FullDumpHeader{}
-	mi := &file_services_kernel_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FullDumpHeader) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FullDumpHeader) ProtoMessage() {}
-
-func (x *FullDumpHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use FullDumpHeader.ProtoReflect.Descriptor instead.
-func (*FullDumpHeader) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *FullDumpHeader) GetTimestampMs() int64 {
-	if x != nil {
-		return x.TimestampMs
-	}
-	return 0
-}
-
-func (x *FullDumpHeader) GetEntryCount() int32 {
-	if x != nil {
-		return x.EntryCount
-	}
-	return 0
-}
-
-func (x *FullDumpHeader) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
 
 // TokenExchangerState holds the public verifying keys for the built-in token
 // exchange service. TokenExchanger is built into kernel to solve the
@@ -996,7 +481,7 @@ type TokenExchangerState struct {
 
 func (x *TokenExchangerState) Reset() {
 	*x = TokenExchangerState{}
-	mi := &file_services_kernel_proto_msgTypes[6]
+	mi := &file_services_kernel_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1008,7 +493,7 @@ func (x *TokenExchangerState) String() string {
 func (*TokenExchangerState) ProtoMessage() {}
 
 func (x *TokenExchangerState) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[6]
+	mi := &file_services_kernel_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1021,7 +506,7 @@ func (x *TokenExchangerState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenExchangerState.ProtoReflect.Descriptor instead.
 func (*TokenExchangerState) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{6}
+	return file_services_kernel_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *TokenExchangerState) GetVerifyingKeys() []*jwk.Jwk {
@@ -1043,7 +528,7 @@ type TrustedCaState struct {
 
 func (x *TrustedCaState) Reset() {
 	*x = TrustedCaState{}
-	mi := &file_services_kernel_proto_msgTypes[7]
+	mi := &file_services_kernel_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1055,7 +540,7 @@ func (x *TrustedCaState) String() string {
 func (*TrustedCaState) ProtoMessage() {}
 
 func (x *TrustedCaState) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[7]
+	mi := &file_services_kernel_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1068,7 +553,7 @@ func (x *TrustedCaState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCaState.ProtoReflect.Descriptor instead.
 func (*TrustedCaState) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{7}
+	return file_services_kernel_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TrustedCaState) GetTrustedCas() []*x509.X509Cert {
@@ -1094,7 +579,7 @@ type CloudIdentityMatcher struct {
 
 func (x *CloudIdentityMatcher) Reset() {
 	*x = CloudIdentityMatcher{}
-	mi := &file_services_kernel_proto_msgTypes[8]
+	mi := &file_services_kernel_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1106,7 +591,7 @@ func (x *CloudIdentityMatcher) String() string {
 func (*CloudIdentityMatcher) ProtoMessage() {}
 
 func (x *CloudIdentityMatcher) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[8]
+	mi := &file_services_kernel_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1119,7 +604,7 @@ func (x *CloudIdentityMatcher) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudIdentityMatcher.ProtoReflect.Descriptor instead.
 func (*CloudIdentityMatcher) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{8}
+	return file_services_kernel_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CloudIdentityMatcher) GetVendor() cloudvendor.CloudVendor {
@@ -1157,7 +642,7 @@ type Delegate struct {
 
 func (x *Delegate) Reset() {
 	*x = Delegate{}
-	mi := &file_services_kernel_proto_msgTypes[9]
+	mi := &file_services_kernel_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1169,7 +654,7 @@ func (x *Delegate) String() string {
 func (*Delegate) ProtoMessage() {}
 
 func (x *Delegate) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[9]
+	mi := &file_services_kernel_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1182,7 +667,7 @@ func (x *Delegate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Delegate.ProtoReflect.Descriptor instead.
 func (*Delegate) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{9}
+	return file_services_kernel_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Delegate) GetName() string {
@@ -1220,7 +705,7 @@ type Config struct {
 	// trusted_cas lists the trusted CA certificates for TLS verification.
 	TrustedCas []*x509.X509Cert `protobuf:"bytes,2,rep,name=trusted_cas,json=trustedCas,proto3" json:"trusted_cas,omitempty"`
 	// rate_limit configures rate limiting for unary read RPCs to detect polling.
-	RateLimit *RateLimitConfig `protobuf:"bytes,5,opt,name=rate_limit,json=rateLimit,proto3" json:"rate_limit,omitempty"`
+	RateLimit *hazelcast.RateLimitConfig `protobuf:"bytes,5,opt,name=rate_limit,json=rateLimit,proto3" json:"rate_limit,omitempty"`
 	// configs holds per-frontend-service configurations. On each config load,
 	// each entry is written to the corresponding service config state boundary.
 	Configs *generated.Services `protobuf:"bytes,7,opt,name=configs,proto3" json:"configs,omitempty"`
@@ -1242,7 +727,7 @@ type Config struct {
 
 func (x *Config) Reset() {
 	*x = Config{}
-	mi := &file_services_kernel_proto_msgTypes[10]
+	mi := &file_services_kernel_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1254,7 +739,7 @@ func (x *Config) String() string {
 func (*Config) ProtoMessage() {}
 
 func (x *Config) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[10]
+	mi := &file_services_kernel_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1267,7 +752,7 @@ func (x *Config) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Config.ProtoReflect.Descriptor instead.
 func (*Config) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{10}
+	return file_services_kernel_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Config) GetTrustedCas() []*x509.X509Cert {
@@ -1277,7 +762,7 @@ func (x *Config) GetTrustedCas() []*x509.X509Cert {
 	return nil
 }
 
-func (x *Config) GetRateLimit() *RateLimitConfig {
+func (x *Config) GetRateLimit() *hazelcast.RateLimitConfig {
 	if x != nil {
 		return x.RateLimit
 	}
@@ -1335,7 +820,7 @@ type UrlLoader struct {
 
 func (x *UrlLoader) Reset() {
 	*x = UrlLoader{}
-	mi := &file_services_kernel_proto_msgTypes[11]
+	mi := &file_services_kernel_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1347,7 +832,7 @@ func (x *UrlLoader) String() string {
 func (*UrlLoader) ProtoMessage() {}
 
 func (x *UrlLoader) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[11]
+	mi := &file_services_kernel_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1360,7 +845,7 @@ func (x *UrlLoader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UrlLoader.ProtoReflect.Descriptor instead.
 func (*UrlLoader) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{11}
+	return file_services_kernel_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UrlLoader) GetUrl() string {
@@ -1388,7 +873,7 @@ type FileLoader struct {
 
 func (x *FileLoader) Reset() {
 	*x = FileLoader{}
-	mi := &file_services_kernel_proto_msgTypes[12]
+	mi := &file_services_kernel_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1400,7 +885,7 @@ func (x *FileLoader) String() string {
 func (*FileLoader) ProtoMessage() {}
 
 func (x *FileLoader) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[12]
+	mi := &file_services_kernel_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1413,7 +898,7 @@ func (x *FileLoader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileLoader.ProtoReflect.Descriptor instead.
 func (*FileLoader) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{12}
+	return file_services_kernel_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *FileLoader) GetPath() string {
@@ -1464,25 +949,25 @@ type ClusterState struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// cluster_info captures cluster membership, state, and version.
 	// Updated on membership change events and periodically.
-	ClusterInfo *sentinel.AdminClusterInfo `protobuf:"bytes,1,opt,name=cluster_info,json=clusterInfo,proto3" json:"cluster_info,omitempty"`
+	ClusterInfo *hazelcast.AdminClusterInfo `protobuf:"bytes,1,opt,name=cluster_info,json=clusterInfo,proto3" json:"cluster_info,omitempty"`
 	// cluster_health captures partition safety, quorum, and migration state.
 	// Updated on membership change events and periodically.
-	ClusterHealth *sentinel.AdminClusterHealth `protobuf:"bytes,2,opt,name=cluster_health,json=clusterHealth,proto3" json:"cluster_health,omitempty"`
+	ClusterHealth *hazelcast.AdminClusterHealth `protobuf:"bytes,2,opt,name=cluster_health,json=clusterHealth,proto3" json:"cluster_health,omitempty"`
 	// node_metrics captures memory, CPU, and disk usage per node.
-	NodeMetrics []*sentinel.AdminNodeMetrics `protobuf:"bytes,3,rep,name=node_metrics,json=nodeMetrics,proto3" json:"node_metrics,omitempty"`
+	NodeMetrics []*hazelcast.AdminNodeMetrics `protobuf:"bytes,3,rep,name=node_metrics,json=nodeMetrics,proto3" json:"node_metrics,omitempty"`
 	// grpc_stats captures gRPC connection and RPC statistics per node.
-	GrpcStats []*sentinel.AdminGrpcStats `protobuf:"bytes,4,rep,name=grpc_stats,json=grpcStats,proto3" json:"grpc_stats,omitempty"`
+	GrpcStats []*hazelcast.AdminGrpcStats `protobuf:"bytes,4,rep,name=grpc_stats,json=grpcStats,proto3" json:"grpc_stats,omitempty"`
 	// persistence_status captures redo log and dump state per node.
-	PersistenceStatus []*sentinel.AdminPersistenceStatus `protobuf:"bytes,5,rep,name=persistence_status,json=persistenceStatus,proto3" json:"persistence_status,omitempty"`
+	PersistenceStatus []*hazelcast.AdminPersistenceStatus `protobuf:"bytes,5,rep,name=persistence_status,json=persistenceStatus,proto3" json:"persistence_status,omitempty"`
 	// network_stats captures network connections and traffic per node.
-	NetworkStats []*sentinel.AdminNetworkStats `protobuf:"bytes,6,rep,name=network_stats,json=networkStats,proto3" json:"network_stats,omitempty"`
+	NetworkStats []*hazelcast.AdminNetworkStats `protobuf:"bytes,6,rep,name=network_stats,json=networkStats,proto3" json:"network_stats,omitempty"`
 	// thread_info captures JVM thread counts per node.
-	ThreadInfo []*sentinel.AdminThreadInfo `protobuf:"bytes,7,rep,name=thread_info,json=threadInfo,proto3" json:"thread_info,omitempty"`
+	ThreadInfo []*hazelcast.AdminThreadInfo `protobuf:"bytes,7,rep,name=thread_info,json=threadInfo,proto3" json:"thread_info,omitempty"`
 	// token_cache_stats captures security token cache statistics per node.
-	TokenCacheStats []*sentinel.AdminTokenCacheStats `protobuf:"bytes,8,rep,name=token_cache_stats,json=tokenCacheStats,proto3" json:"token_cache_stats,omitempty"`
+	TokenCacheStats []*hazelcast.AdminTokenCacheStats `protobuf:"bytes,8,rep,name=token_cache_stats,json=tokenCacheStats,proto3" json:"token_cache_stats,omitempty"`
 	// map_stats captures per-map statistics. Keyed by map name.
 	// Each node publishes stats for maps it owns partitions of.
-	MapStats []*sentinel.AdminMapStats `protobuf:"bytes,9,rep,name=map_stats,json=mapStats,proto3" json:"map_stats,omitempty"`
+	MapStats []*hazelcast.AdminMapStats `protobuf:"bytes,9,rep,name=map_stats,json=mapStats,proto3" json:"map_stats,omitempty"`
 	// bootstrap_config is the node's BootstrapConfig, published once at boot.
 	// Private because BootstrapConfig contains the node's TLS private key.
 	BootstrapConfig *BootstrapConfig `protobuf:"bytes,13,opt,name=bootstrap_config,json=bootstrapConfig,proto3" json:"bootstrap_config,omitempty"`
@@ -1491,23 +976,23 @@ type ClusterState struct {
 	// graph_registry contains metadata for all boundaries across all state roots.
 	// Published once at boot from the generated Registry. Keyed by qualified_name.
 	// Consumers use WatchGraphRegistry to discover all graphs in the system.
-	GraphRegistry []*sentinel.AdminGraphInfo `protobuf:"bytes,17,rep,name=graph_registry,json=graphRegistry,proto3" json:"graph_registry,omitempty"`
+	GraphRegistry []*hazelcast.AdminGraphInfo `protobuf:"bytes,17,rep,name=graph_registry,json=graphRegistry,proto3" json:"graph_registry,omitempty"`
 	// service_connections tracks which microservices are connected and what
 	// graphs they are accessing. Published periodically by the security
 	// interceptor based on authenticated peer identity. Keyed by "service_id@node_id".
-	ServiceConnections []*sentinel.AdminServiceConnection `protobuf:"bytes,18,rep,name=service_connections,json=serviceConnections,proto3" json:"service_connections,omitempty"`
+	ServiceConnections []*hazelcast.AdminServiceConnection `protobuf:"bytes,18,rep,name=service_connections,json=serviceConnections,proto3" json:"service_connections,omitempty"`
 	// queue_stats captures per-queue statistics (depth, offer/consume rates).
 	// Published per-queue per-node. Keyed by qualified_name.
-	QueueStats []*sentinel.AdminQueueStats `protobuf:"bytes,19,rep,name=queue_stats,json=queueStats,proto3" json:"queue_stats,omitempty"`
+	QueueStats []*hazelcast.AdminQueueStats `protobuf:"bytes,19,rep,name=queue_stats,json=queueStats,proto3" json:"queue_stats,omitempty"`
 	// topic_stats captures per-topic statistics (publish rate, subscriber count).
 	// Published per-topic per-node. Keyed by qualified_name.
-	TopicStats []*sentinel.AdminTopicStats `protobuf:"bytes,20,rep,name=topic_stats,json=topicStats,proto3" json:"topic_stats,omitempty"`
+	TopicStats []*hazelcast.AdminTopicStats `protobuf:"bytes,20,rep,name=topic_stats,json=topicStats,proto3" json:"topic_stats,omitempty"`
 	// watch_health tracks active Watch streams and their consumer health.
 	// Published per-active-watch per-node. Keyed by watch_id.
-	WatchHealth []*sentinel.AdminWatchHealth `protobuf:"bytes,21,rep,name=watch_health,json=watchHealth,proto3" json:"watch_health,omitempty"`
+	WatchHealth []*hazelcast.AdminWatchHealth `protobuf:"bytes,21,rep,name=watch_health,json=watchHealth,proto3" json:"watch_health,omitempty"`
 	// mutation_rates captures per-boundary write throughput.
 	// Published per-boundary per-node. Keyed by qualified_name.
-	MutationRates []*sentinel.AdminMutationRate `protobuf:"bytes,22,rep,name=mutation_rates,json=mutationRates,proto3" json:"mutation_rates,omitempty"`
+	MutationRates []*hazelcast.AdminMutationRate `protobuf:"bytes,22,rep,name=mutation_rates,json=mutationRates,proto3" json:"mutation_rates,omitempty"`
 	// set_log_level dynamically changes a logger's level without restart.
 	SetLogLevel *AdminSetLogLevelRequest `protobuf:"bytes,10,opt,name=set_log_level,json=setLogLevel,proto3" json:"set_log_level,omitempty"`
 	// reload_config triggers a reload of the frontend Config from the
@@ -1523,7 +1008,7 @@ type ClusterState struct {
 
 func (x *ClusterState) Reset() {
 	*x = ClusterState{}
-	mi := &file_services_kernel_proto_msgTypes[13]
+	mi := &file_services_kernel_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1535,7 +1020,7 @@ func (x *ClusterState) String() string {
 func (*ClusterState) ProtoMessage() {}
 
 func (x *ClusterState) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[13]
+	mi := &file_services_kernel_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1548,66 +1033,66 @@ func (x *ClusterState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClusterState.ProtoReflect.Descriptor instead.
 func (*ClusterState) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{13}
+	return file_services_kernel_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ClusterState) GetClusterInfo() *sentinel.AdminClusterInfo {
+func (x *ClusterState) GetClusterInfo() *hazelcast.AdminClusterInfo {
 	if x != nil {
 		return x.ClusterInfo
 	}
 	return nil
 }
 
-func (x *ClusterState) GetClusterHealth() *sentinel.AdminClusterHealth {
+func (x *ClusterState) GetClusterHealth() *hazelcast.AdminClusterHealth {
 	if x != nil {
 		return x.ClusterHealth
 	}
 	return nil
 }
 
-func (x *ClusterState) GetNodeMetrics() []*sentinel.AdminNodeMetrics {
+func (x *ClusterState) GetNodeMetrics() []*hazelcast.AdminNodeMetrics {
 	if x != nil {
 		return x.NodeMetrics
 	}
 	return nil
 }
 
-func (x *ClusterState) GetGrpcStats() []*sentinel.AdminGrpcStats {
+func (x *ClusterState) GetGrpcStats() []*hazelcast.AdminGrpcStats {
 	if x != nil {
 		return x.GrpcStats
 	}
 	return nil
 }
 
-func (x *ClusterState) GetPersistenceStatus() []*sentinel.AdminPersistenceStatus {
+func (x *ClusterState) GetPersistenceStatus() []*hazelcast.AdminPersistenceStatus {
 	if x != nil {
 		return x.PersistenceStatus
 	}
 	return nil
 }
 
-func (x *ClusterState) GetNetworkStats() []*sentinel.AdminNetworkStats {
+func (x *ClusterState) GetNetworkStats() []*hazelcast.AdminNetworkStats {
 	if x != nil {
 		return x.NetworkStats
 	}
 	return nil
 }
 
-func (x *ClusterState) GetThreadInfo() []*sentinel.AdminThreadInfo {
+func (x *ClusterState) GetThreadInfo() []*hazelcast.AdminThreadInfo {
 	if x != nil {
 		return x.ThreadInfo
 	}
 	return nil
 }
 
-func (x *ClusterState) GetTokenCacheStats() []*sentinel.AdminTokenCacheStats {
+func (x *ClusterState) GetTokenCacheStats() []*hazelcast.AdminTokenCacheStats {
 	if x != nil {
 		return x.TokenCacheStats
 	}
 	return nil
 }
 
-func (x *ClusterState) GetMapStats() []*sentinel.AdminMapStats {
+func (x *ClusterState) GetMapStats() []*hazelcast.AdminMapStats {
 	if x != nil {
 		return x.MapStats
 	}
@@ -1628,42 +1113,42 @@ func (x *ClusterState) GetFrontendConfig() *Config {
 	return nil
 }
 
-func (x *ClusterState) GetGraphRegistry() []*sentinel.AdminGraphInfo {
+func (x *ClusterState) GetGraphRegistry() []*hazelcast.AdminGraphInfo {
 	if x != nil {
 		return x.GraphRegistry
 	}
 	return nil
 }
 
-func (x *ClusterState) GetServiceConnections() []*sentinel.AdminServiceConnection {
+func (x *ClusterState) GetServiceConnections() []*hazelcast.AdminServiceConnection {
 	if x != nil {
 		return x.ServiceConnections
 	}
 	return nil
 }
 
-func (x *ClusterState) GetQueueStats() []*sentinel.AdminQueueStats {
+func (x *ClusterState) GetQueueStats() []*hazelcast.AdminQueueStats {
 	if x != nil {
 		return x.QueueStats
 	}
 	return nil
 }
 
-func (x *ClusterState) GetTopicStats() []*sentinel.AdminTopicStats {
+func (x *ClusterState) GetTopicStats() []*hazelcast.AdminTopicStats {
 	if x != nil {
 		return x.TopicStats
 	}
 	return nil
 }
 
-func (x *ClusterState) GetWatchHealth() []*sentinel.AdminWatchHealth {
+func (x *ClusterState) GetWatchHealth() []*hazelcast.AdminWatchHealth {
 	if x != nil {
 		return x.WatchHealth
 	}
 	return nil
 }
 
-func (x *ClusterState) GetMutationRates() []*sentinel.AdminMutationRate {
+func (x *ClusterState) GetMutationRates() []*hazelcast.AdminMutationRate {
 	if x != nil {
 		return x.MutationRates
 	}
@@ -1706,7 +1191,7 @@ type AdminSetLogLevelRequest struct {
 
 func (x *AdminSetLogLevelRequest) Reset() {
 	*x = AdminSetLogLevelRequest{}
-	mi := &file_services_kernel_proto_msgTypes[14]
+	mi := &file_services_kernel_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1718,7 +1203,7 @@ func (x *AdminSetLogLevelRequest) String() string {
 func (*AdminSetLogLevelRequest) ProtoMessage() {}
 
 func (x *AdminSetLogLevelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[14]
+	mi := &file_services_kernel_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1731,7 +1216,7 @@ func (x *AdminSetLogLevelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminSetLogLevelRequest.ProtoReflect.Descriptor instead.
 func (*AdminSetLogLevelRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{14}
+	return file_services_kernel_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AdminSetLogLevelRequest) GetLoggerName() string {
@@ -1759,7 +1244,7 @@ type AdminReloadConfigRequest struct {
 
 func (x *AdminReloadConfigRequest) Reset() {
 	*x = AdminReloadConfigRequest{}
-	mi := &file_services_kernel_proto_msgTypes[15]
+	mi := &file_services_kernel_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1771,7 +1256,7 @@ func (x *AdminReloadConfigRequest) String() string {
 func (*AdminReloadConfigRequest) ProtoMessage() {}
 
 func (x *AdminReloadConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[15]
+	mi := &file_services_kernel_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1784,7 +1269,7 @@ func (x *AdminReloadConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminReloadConfigRequest.ProtoReflect.Descriptor instead.
 func (*AdminReloadConfigRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{15}
+	return file_services_kernel_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AdminReloadConfigRequest) GetForceReload() bool {
@@ -1807,7 +1292,7 @@ type AdminConfigDump struct {
 
 func (x *AdminConfigDump) Reset() {
 	*x = AdminConfigDump{}
-	mi := &file_services_kernel_proto_msgTypes[16]
+	mi := &file_services_kernel_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1819,7 +1304,7 @@ func (x *AdminConfigDump) String() string {
 func (*AdminConfigDump) ProtoMessage() {}
 
 func (x *AdminConfigDump) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[16]
+	mi := &file_services_kernel_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1832,7 +1317,7 @@ func (x *AdminConfigDump) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdminConfigDump.ProtoReflect.Descriptor instead.
 func (*AdminConfigDump) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{16}
+	return file_services_kernel_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AdminConfigDump) GetHazelcastConfigXml() string {
@@ -1858,7 +1343,7 @@ type ServiceHealthState struct {
 
 func (x *ServiceHealthState) Reset() {
 	*x = ServiceHealthState{}
-	mi := &file_services_kernel_proto_msgTypes[17]
+	mi := &file_services_kernel_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1870,7 +1355,7 @@ func (x *ServiceHealthState) String() string {
 func (*ServiceHealthState) ProtoMessage() {}
 
 func (x *ServiceHealthState) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[17]
+	mi := &file_services_kernel_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1883,7 +1368,7 @@ func (x *ServiceHealthState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceHealthState.ProtoReflect.Descriptor instead.
 func (*ServiceHealthState) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{17}
+	return file_services_kernel_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ServiceHealthState) GetInstances() []*healthreport.ServiceInstanceHealth {
@@ -1908,7 +1393,7 @@ type CaState struct {
 
 func (x *CaState) Reset() {
 	*x = CaState{}
-	mi := &file_services_kernel_proto_msgTypes[18]
+	mi := &file_services_kernel_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1920,7 +1405,7 @@ func (x *CaState) String() string {
 func (*CaState) ProtoMessage() {}
 
 func (x *CaState) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[18]
+	mi := &file_services_kernel_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1933,7 +1418,7 @@ func (x *CaState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaState.ProtoReflect.Descriptor instead.
 func (*CaState) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{18}
+	return file_services_kernel_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CaState) GetCaCerts() []*x509.X509Cert {
@@ -1958,7 +1443,7 @@ type QueryValue struct {
 
 func (x *QueryValue) Reset() {
 	*x = QueryValue{}
-	mi := &file_services_kernel_proto_msgTypes[19]
+	mi := &file_services_kernel_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1970,7 +1455,7 @@ func (x *QueryValue) String() string {
 func (*QueryValue) ProtoMessage() {}
 
 func (x *QueryValue) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[19]
+	mi := &file_services_kernel_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1983,7 +1468,7 @@ func (x *QueryValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryValue.ProtoReflect.Descriptor instead.
 func (*QueryValue) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{19}
+	return file_services_kernel_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *QueryValue) GetValue() isQueryValue_Value {
@@ -2069,7 +1554,7 @@ type Predicate struct {
 
 func (x *Predicate) Reset() {
 	*x = Predicate{}
-	mi := &file_services_kernel_proto_msgTypes[20]
+	mi := &file_services_kernel_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2081,7 +1566,7 @@ func (x *Predicate) String() string {
 func (*Predicate) ProtoMessage() {}
 
 func (x *Predicate) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[20]
+	mi := &file_services_kernel_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2094,7 +1579,7 @@ func (x *Predicate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Predicate.ProtoReflect.Descriptor instead.
 func (*Predicate) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{20}
+	return file_services_kernel_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Predicate) GetFieldName() string {
@@ -2136,7 +1621,7 @@ type PredicateGroup struct {
 
 func (x *PredicateGroup) Reset() {
 	*x = PredicateGroup{}
-	mi := &file_services_kernel_proto_msgTypes[21]
+	mi := &file_services_kernel_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2148,7 +1633,7 @@ func (x *PredicateGroup) String() string {
 func (*PredicateGroup) ProtoMessage() {}
 
 func (x *PredicateGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[21]
+	mi := &file_services_kernel_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2161,7 +1646,7 @@ func (x *PredicateGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PredicateGroup.ProtoReflect.Descriptor instead.
 func (*PredicateGroup) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{21}
+	return file_services_kernel_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PredicateGroup) GetOp() LogicalOp {
@@ -2195,7 +1680,7 @@ type SortField struct {
 
 func (x *SortField) Reset() {
 	*x = SortField{}
-	mi := &file_services_kernel_proto_msgTypes[22]
+	mi := &file_services_kernel_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2207,7 +1692,7 @@ func (x *SortField) String() string {
 func (*SortField) ProtoMessage() {}
 
 func (x *SortField) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[22]
+	mi := &file_services_kernel_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2220,7 +1705,7 @@ func (x *SortField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SortField.ProtoReflect.Descriptor instead.
 func (*SortField) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{22}
+	return file_services_kernel_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SortField) GetFieldName() string {
@@ -2249,7 +1734,7 @@ type CollectionQuery struct {
 
 func (x *CollectionQuery) Reset() {
 	*x = CollectionQuery{}
-	mi := &file_services_kernel_proto_msgTypes[23]
+	mi := &file_services_kernel_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2261,7 +1746,7 @@ func (x *CollectionQuery) String() string {
 func (*CollectionQuery) ProtoMessage() {}
 
 func (x *CollectionQuery) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[23]
+	mi := &file_services_kernel_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2274,7 +1759,7 @@ func (x *CollectionQuery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CollectionQuery.ProtoReflect.Descriptor instead.
 func (*CollectionQuery) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{23}
+	return file_services_kernel_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CollectionQuery) GetWhere() *PredicateGroup {
@@ -2314,7 +1799,7 @@ type VerifyingKeysGetRequest struct {
 
 func (x *VerifyingKeysGetRequest) Reset() {
 	*x = VerifyingKeysGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[24]
+	mi := &file_services_kernel_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2326,7 +1811,7 @@ func (x *VerifyingKeysGetRequest) String() string {
 func (*VerifyingKeysGetRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[24]
+	mi := &file_services_kernel_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2339,7 +1824,7 @@ func (x *VerifyingKeysGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysGetRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{24}
+	return file_services_kernel_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *VerifyingKeysGetRequest) GetKey() string {
@@ -2360,7 +1845,7 @@ type VerifyingKeysPutRequest struct {
 
 func (x *VerifyingKeysPutRequest) Reset() {
 	*x = VerifyingKeysPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[25]
+	mi := &file_services_kernel_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2372,7 +1857,7 @@ func (x *VerifyingKeysPutRequest) String() string {
 func (*VerifyingKeysPutRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[25]
+	mi := &file_services_kernel_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2385,7 +1870,7 @@ func (x *VerifyingKeysPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysPutRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{25}
+	return file_services_kernel_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *VerifyingKeysPutRequest) GetKey() string {
@@ -2417,7 +1902,7 @@ type VerifyingKeysGetAllRequest struct {
 
 func (x *VerifyingKeysGetAllRequest) Reset() {
 	*x = VerifyingKeysGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[26]
+	mi := &file_services_kernel_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2429,7 +1914,7 @@ func (x *VerifyingKeysGetAllRequest) String() string {
 func (*VerifyingKeysGetAllRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[26]
+	mi := &file_services_kernel_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2442,7 +1927,7 @@ func (x *VerifyingKeysGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysGetAllRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{26}
+	return file_services_kernel_proto_rawDescGZIP(), []int{21}
 }
 
 type VerifyingKeysKeysRequest struct {
@@ -2453,7 +1938,7 @@ type VerifyingKeysKeysRequest struct {
 
 func (x *VerifyingKeysKeysRequest) Reset() {
 	*x = VerifyingKeysKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[27]
+	mi := &file_services_kernel_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2465,7 +1950,7 @@ func (x *VerifyingKeysKeysRequest) String() string {
 func (*VerifyingKeysKeysRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[27]
+	mi := &file_services_kernel_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2478,7 +1963,7 @@ func (x *VerifyingKeysKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysKeysRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{27}
+	return file_services_kernel_proto_rawDescGZIP(), []int{22}
 }
 
 type VerifyingKeysSizeRequest struct {
@@ -2489,7 +1974,7 @@ type VerifyingKeysSizeRequest struct {
 
 func (x *VerifyingKeysSizeRequest) Reset() {
 	*x = VerifyingKeysSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[28]
+	mi := &file_services_kernel_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2501,7 +1986,7 @@ func (x *VerifyingKeysSizeRequest) String() string {
 func (*VerifyingKeysSizeRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[28]
+	mi := &file_services_kernel_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2514,7 +1999,7 @@ func (x *VerifyingKeysSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysSizeRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{28}
+	return file_services_kernel_proto_rawDescGZIP(), []int{23}
 }
 
 type VerifyingKeysClearRequest struct {
@@ -2525,7 +2010,7 @@ type VerifyingKeysClearRequest struct {
 
 func (x *VerifyingKeysClearRequest) Reset() {
 	*x = VerifyingKeysClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[29]
+	mi := &file_services_kernel_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2537,7 +2022,7 @@ func (x *VerifyingKeysClearRequest) String() string {
 func (*VerifyingKeysClearRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[29]
+	mi := &file_services_kernel_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2550,7 +2035,7 @@ func (x *VerifyingKeysClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysClearRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{29}
+	return file_services_kernel_proto_rawDescGZIP(), []int{24}
 }
 
 type VerifyingKeysValueResponse struct {
@@ -2563,7 +2048,7 @@ type VerifyingKeysValueResponse struct {
 
 func (x *VerifyingKeysValueResponse) Reset() {
 	*x = VerifyingKeysValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[30]
+	mi := &file_services_kernel_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2575,7 +2060,7 @@ func (x *VerifyingKeysValueResponse) String() string {
 func (*VerifyingKeysValueResponse) ProtoMessage() {}
 
 func (x *VerifyingKeysValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[30]
+	mi := &file_services_kernel_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2588,7 +2073,7 @@ func (x *VerifyingKeysValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysValueResponse.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{30}
+	return file_services_kernel_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *VerifyingKeysValueResponse) GetValue() *jwk.Jwk {
@@ -2614,7 +2099,7 @@ type VerifyingKeysEntriesResponse struct {
 
 func (x *VerifyingKeysEntriesResponse) Reset() {
 	*x = VerifyingKeysEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[31]
+	mi := &file_services_kernel_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2626,7 +2111,7 @@ func (x *VerifyingKeysEntriesResponse) String() string {
 func (*VerifyingKeysEntriesResponse) ProtoMessage() {}
 
 func (x *VerifyingKeysEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[31]
+	mi := &file_services_kernel_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2639,7 +2124,7 @@ func (x *VerifyingKeysEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysEntriesResponse.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{31}
+	return file_services_kernel_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *VerifyingKeysEntriesResponse) GetEntries() map[string]*jwk.Jwk {
@@ -2658,7 +2143,7 @@ type VerifyingKeysKeysResponse struct {
 
 func (x *VerifyingKeysKeysResponse) Reset() {
 	*x = VerifyingKeysKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[32]
+	mi := &file_services_kernel_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2670,7 +2155,7 @@ func (x *VerifyingKeysKeysResponse) String() string {
 func (*VerifyingKeysKeysResponse) ProtoMessage() {}
 
 func (x *VerifyingKeysKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[32]
+	mi := &file_services_kernel_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2683,7 +2168,7 @@ func (x *VerifyingKeysKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysKeysResponse.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{32}
+	return file_services_kernel_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *VerifyingKeysKeysResponse) GetKeys() []string {
@@ -2702,7 +2187,7 @@ type VerifyingKeysSizeResponse struct {
 
 func (x *VerifyingKeysSizeResponse) Reset() {
 	*x = VerifyingKeysSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[33]
+	mi := &file_services_kernel_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2714,7 +2199,7 @@ func (x *VerifyingKeysSizeResponse) String() string {
 func (*VerifyingKeysSizeResponse) ProtoMessage() {}
 
 func (x *VerifyingKeysSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[33]
+	mi := &file_services_kernel_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2727,7 +2212,7 @@ func (x *VerifyingKeysSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysSizeResponse.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{33}
+	return file_services_kernel_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *VerifyingKeysSizeResponse) GetSize() int32 {
@@ -2746,7 +2231,7 @@ type VerifyingKeysQueryRequest struct {
 
 func (x *VerifyingKeysQueryRequest) Reset() {
 	*x = VerifyingKeysQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[34]
+	mi := &file_services_kernel_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2758,7 +2243,7 @@ func (x *VerifyingKeysQueryRequest) String() string {
 func (*VerifyingKeysQueryRequest) ProtoMessage() {}
 
 func (x *VerifyingKeysQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[34]
+	mi := &file_services_kernel_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2771,7 +2256,7 @@ func (x *VerifyingKeysQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysQueryRequest.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{34}
+	return file_services_kernel_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *VerifyingKeysQueryRequest) GetQuery() *CollectionQuery {
@@ -2791,7 +2276,7 @@ type VerifyingKeysQueryResponse struct {
 
 func (x *VerifyingKeysQueryResponse) Reset() {
 	*x = VerifyingKeysQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[35]
+	mi := &file_services_kernel_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2803,7 +2288,7 @@ func (x *VerifyingKeysQueryResponse) String() string {
 func (*VerifyingKeysQueryResponse) ProtoMessage() {}
 
 func (x *VerifyingKeysQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[35]
+	mi := &file_services_kernel_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2816,7 +2301,7 @@ func (x *VerifyingKeysQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyingKeysQueryResponse.ProtoReflect.Descriptor instead.
 func (*VerifyingKeysQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{35}
+	return file_services_kernel_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *VerifyingKeysQueryResponse) GetResults() []*jwk.Jwk {
@@ -2842,7 +2327,7 @@ type TrustedCasGetRequest struct {
 
 func (x *TrustedCasGetRequest) Reset() {
 	*x = TrustedCasGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[36]
+	mi := &file_services_kernel_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2854,7 +2339,7 @@ func (x *TrustedCasGetRequest) String() string {
 func (*TrustedCasGetRequest) ProtoMessage() {}
 
 func (x *TrustedCasGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[36]
+	mi := &file_services_kernel_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2867,7 +2352,7 @@ func (x *TrustedCasGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasGetRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{36}
+	return file_services_kernel_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TrustedCasGetRequest) GetKey() string {
@@ -2888,7 +2373,7 @@ type TrustedCasPutRequest struct {
 
 func (x *TrustedCasPutRequest) Reset() {
 	*x = TrustedCasPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[37]
+	mi := &file_services_kernel_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2900,7 +2385,7 @@ func (x *TrustedCasPutRequest) String() string {
 func (*TrustedCasPutRequest) ProtoMessage() {}
 
 func (x *TrustedCasPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[37]
+	mi := &file_services_kernel_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2913,7 +2398,7 @@ func (x *TrustedCasPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasPutRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{37}
+	return file_services_kernel_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *TrustedCasPutRequest) GetKey() string {
@@ -2945,7 +2430,7 @@ type TrustedCasGetAllRequest struct {
 
 func (x *TrustedCasGetAllRequest) Reset() {
 	*x = TrustedCasGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[38]
+	mi := &file_services_kernel_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2957,7 +2442,7 @@ func (x *TrustedCasGetAllRequest) String() string {
 func (*TrustedCasGetAllRequest) ProtoMessage() {}
 
 func (x *TrustedCasGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[38]
+	mi := &file_services_kernel_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2970,7 +2455,7 @@ func (x *TrustedCasGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasGetAllRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{38}
+	return file_services_kernel_proto_rawDescGZIP(), []int{33}
 }
 
 type TrustedCasKeysRequest struct {
@@ -2981,7 +2466,7 @@ type TrustedCasKeysRequest struct {
 
 func (x *TrustedCasKeysRequest) Reset() {
 	*x = TrustedCasKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[39]
+	mi := &file_services_kernel_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2993,7 +2478,7 @@ func (x *TrustedCasKeysRequest) String() string {
 func (*TrustedCasKeysRequest) ProtoMessage() {}
 
 func (x *TrustedCasKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[39]
+	mi := &file_services_kernel_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3006,7 +2491,7 @@ func (x *TrustedCasKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasKeysRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{39}
+	return file_services_kernel_proto_rawDescGZIP(), []int{34}
 }
 
 type TrustedCasSizeRequest struct {
@@ -3017,7 +2502,7 @@ type TrustedCasSizeRequest struct {
 
 func (x *TrustedCasSizeRequest) Reset() {
 	*x = TrustedCasSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[40]
+	mi := &file_services_kernel_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3029,7 +2514,7 @@ func (x *TrustedCasSizeRequest) String() string {
 func (*TrustedCasSizeRequest) ProtoMessage() {}
 
 func (x *TrustedCasSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[40]
+	mi := &file_services_kernel_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3042,7 +2527,7 @@ func (x *TrustedCasSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasSizeRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{40}
+	return file_services_kernel_proto_rawDescGZIP(), []int{35}
 }
 
 type TrustedCasClearRequest struct {
@@ -3053,7 +2538,7 @@ type TrustedCasClearRequest struct {
 
 func (x *TrustedCasClearRequest) Reset() {
 	*x = TrustedCasClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[41]
+	mi := &file_services_kernel_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3065,7 +2550,7 @@ func (x *TrustedCasClearRequest) String() string {
 func (*TrustedCasClearRequest) ProtoMessage() {}
 
 func (x *TrustedCasClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[41]
+	mi := &file_services_kernel_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3078,7 +2563,7 @@ func (x *TrustedCasClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasClearRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{41}
+	return file_services_kernel_proto_rawDescGZIP(), []int{36}
 }
 
 type TrustedCasValueResponse struct {
@@ -3091,7 +2576,7 @@ type TrustedCasValueResponse struct {
 
 func (x *TrustedCasValueResponse) Reset() {
 	*x = TrustedCasValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[42]
+	mi := &file_services_kernel_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3103,7 +2588,7 @@ func (x *TrustedCasValueResponse) String() string {
 func (*TrustedCasValueResponse) ProtoMessage() {}
 
 func (x *TrustedCasValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[42]
+	mi := &file_services_kernel_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3116,7 +2601,7 @@ func (x *TrustedCasValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasValueResponse.ProtoReflect.Descriptor instead.
 func (*TrustedCasValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{42}
+	return file_services_kernel_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *TrustedCasValueResponse) GetValue() *x509.X509Cert {
@@ -3142,7 +2627,7 @@ type TrustedCasEntriesResponse struct {
 
 func (x *TrustedCasEntriesResponse) Reset() {
 	*x = TrustedCasEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[43]
+	mi := &file_services_kernel_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3154,7 +2639,7 @@ func (x *TrustedCasEntriesResponse) String() string {
 func (*TrustedCasEntriesResponse) ProtoMessage() {}
 
 func (x *TrustedCasEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[43]
+	mi := &file_services_kernel_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3167,7 +2652,7 @@ func (x *TrustedCasEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasEntriesResponse.ProtoReflect.Descriptor instead.
 func (*TrustedCasEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{43}
+	return file_services_kernel_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *TrustedCasEntriesResponse) GetEntries() map[string]*x509.X509Cert {
@@ -3186,7 +2671,7 @@ type TrustedCasKeysResponse struct {
 
 func (x *TrustedCasKeysResponse) Reset() {
 	*x = TrustedCasKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[44]
+	mi := &file_services_kernel_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3198,7 +2683,7 @@ func (x *TrustedCasKeysResponse) String() string {
 func (*TrustedCasKeysResponse) ProtoMessage() {}
 
 func (x *TrustedCasKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[44]
+	mi := &file_services_kernel_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3211,7 +2696,7 @@ func (x *TrustedCasKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasKeysResponse.ProtoReflect.Descriptor instead.
 func (*TrustedCasKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{44}
+	return file_services_kernel_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *TrustedCasKeysResponse) GetKeys() []string {
@@ -3230,7 +2715,7 @@ type TrustedCasSizeResponse struct {
 
 func (x *TrustedCasSizeResponse) Reset() {
 	*x = TrustedCasSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[45]
+	mi := &file_services_kernel_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3242,7 +2727,7 @@ func (x *TrustedCasSizeResponse) String() string {
 func (*TrustedCasSizeResponse) ProtoMessage() {}
 
 func (x *TrustedCasSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[45]
+	mi := &file_services_kernel_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3255,7 +2740,7 @@ func (x *TrustedCasSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasSizeResponse.ProtoReflect.Descriptor instead.
 func (*TrustedCasSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{45}
+	return file_services_kernel_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *TrustedCasSizeResponse) GetSize() int32 {
@@ -3274,7 +2759,7 @@ type TrustedCasQueryRequest struct {
 
 func (x *TrustedCasQueryRequest) Reset() {
 	*x = TrustedCasQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[46]
+	mi := &file_services_kernel_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3286,7 +2771,7 @@ func (x *TrustedCasQueryRequest) String() string {
 func (*TrustedCasQueryRequest) ProtoMessage() {}
 
 func (x *TrustedCasQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[46]
+	mi := &file_services_kernel_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3299,7 +2784,7 @@ func (x *TrustedCasQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasQueryRequest.ProtoReflect.Descriptor instead.
 func (*TrustedCasQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{46}
+	return file_services_kernel_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *TrustedCasQueryRequest) GetQuery() *CollectionQuery {
@@ -3319,7 +2804,7 @@ type TrustedCasQueryResponse struct {
 
 func (x *TrustedCasQueryResponse) Reset() {
 	*x = TrustedCasQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[47]
+	mi := &file_services_kernel_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3331,7 +2816,7 @@ func (x *TrustedCasQueryResponse) String() string {
 func (*TrustedCasQueryResponse) ProtoMessage() {}
 
 func (x *TrustedCasQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[47]
+	mi := &file_services_kernel_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3344,7 +2829,7 @@ func (x *TrustedCasQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrustedCasQueryResponse.ProtoReflect.Descriptor instead.
 func (*TrustedCasQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{47}
+	return file_services_kernel_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *TrustedCasQueryResponse) GetResults() []*x509.X509Cert {
@@ -3370,7 +2855,7 @@ type NodeMetricsGetRequest struct {
 
 func (x *NodeMetricsGetRequest) Reset() {
 	*x = NodeMetricsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[48]
+	mi := &file_services_kernel_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3382,7 +2867,7 @@ func (x *NodeMetricsGetRequest) String() string {
 func (*NodeMetricsGetRequest) ProtoMessage() {}
 
 func (x *NodeMetricsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[48]
+	mi := &file_services_kernel_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3395,7 +2880,7 @@ func (x *NodeMetricsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsGetRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{48}
+	return file_services_kernel_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *NodeMetricsGetRequest) GetKey() string {
@@ -3406,17 +2891,17 @@ func (x *NodeMetricsGetRequest) GetKey() string {
 }
 
 type NodeMetricsPutRequest struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Key           string                     `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminNodeMetrics `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                      `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Key           string                      `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminNodeMetrics `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                       `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeMetricsPutRequest) Reset() {
 	*x = NodeMetricsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[49]
+	mi := &file_services_kernel_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3428,7 +2913,7 @@ func (x *NodeMetricsPutRequest) String() string {
 func (*NodeMetricsPutRequest) ProtoMessage() {}
 
 func (x *NodeMetricsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[49]
+	mi := &file_services_kernel_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3441,7 +2926,7 @@ func (x *NodeMetricsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsPutRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{49}
+	return file_services_kernel_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *NodeMetricsPutRequest) GetKey() string {
@@ -3451,7 +2936,7 @@ func (x *NodeMetricsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *NodeMetricsPutRequest) GetValue() *sentinel.AdminNodeMetrics {
+func (x *NodeMetricsPutRequest) GetValue() *hazelcast.AdminNodeMetrics {
 	if x != nil {
 		return x.Value
 	}
@@ -3473,7 +2958,7 @@ type NodeMetricsGetAllRequest struct {
 
 func (x *NodeMetricsGetAllRequest) Reset() {
 	*x = NodeMetricsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[50]
+	mi := &file_services_kernel_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3485,7 +2970,7 @@ func (x *NodeMetricsGetAllRequest) String() string {
 func (*NodeMetricsGetAllRequest) ProtoMessage() {}
 
 func (x *NodeMetricsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[50]
+	mi := &file_services_kernel_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3498,7 +2983,7 @@ func (x *NodeMetricsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{50}
+	return file_services_kernel_proto_rawDescGZIP(), []int{45}
 }
 
 type NodeMetricsKeysRequest struct {
@@ -3509,7 +2994,7 @@ type NodeMetricsKeysRequest struct {
 
 func (x *NodeMetricsKeysRequest) Reset() {
 	*x = NodeMetricsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[51]
+	mi := &file_services_kernel_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3521,7 +3006,7 @@ func (x *NodeMetricsKeysRequest) String() string {
 func (*NodeMetricsKeysRequest) ProtoMessage() {}
 
 func (x *NodeMetricsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[51]
+	mi := &file_services_kernel_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3534,7 +3019,7 @@ func (x *NodeMetricsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsKeysRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{51}
+	return file_services_kernel_proto_rawDescGZIP(), []int{46}
 }
 
 type NodeMetricsSizeRequest struct {
@@ -3545,7 +3030,7 @@ type NodeMetricsSizeRequest struct {
 
 func (x *NodeMetricsSizeRequest) Reset() {
 	*x = NodeMetricsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[52]
+	mi := &file_services_kernel_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3557,7 +3042,7 @@ func (x *NodeMetricsSizeRequest) String() string {
 func (*NodeMetricsSizeRequest) ProtoMessage() {}
 
 func (x *NodeMetricsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[52]
+	mi := &file_services_kernel_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3570,7 +3055,7 @@ func (x *NodeMetricsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsSizeRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{52}
+	return file_services_kernel_proto_rawDescGZIP(), []int{47}
 }
 
 type NodeMetricsClearRequest struct {
@@ -3581,7 +3066,7 @@ type NodeMetricsClearRequest struct {
 
 func (x *NodeMetricsClearRequest) Reset() {
 	*x = NodeMetricsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[53]
+	mi := &file_services_kernel_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3593,7 +3078,7 @@ func (x *NodeMetricsClearRequest) String() string {
 func (*NodeMetricsClearRequest) ProtoMessage() {}
 
 func (x *NodeMetricsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[53]
+	mi := &file_services_kernel_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3606,20 +3091,20 @@ func (x *NodeMetricsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsClearRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{53}
+	return file_services_kernel_proto_rawDescGZIP(), []int{48}
 }
 
 type NodeMetricsValueResponse struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Value         *sentinel.AdminNodeMetrics `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                       `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Value         *hazelcast.AdminNodeMetrics `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                        `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeMetricsValueResponse) Reset() {
 	*x = NodeMetricsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[54]
+	mi := &file_services_kernel_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3631,7 +3116,7 @@ func (x *NodeMetricsValueResponse) String() string {
 func (*NodeMetricsValueResponse) ProtoMessage() {}
 
 func (x *NodeMetricsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[54]
+	mi := &file_services_kernel_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3644,10 +3129,10 @@ func (x *NodeMetricsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsValueResponse.ProtoReflect.Descriptor instead.
 func (*NodeMetricsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{54}
+	return file_services_kernel_proto_rawDescGZIP(), []int{49}
 }
 
-func (x *NodeMetricsValueResponse) GetValue() *sentinel.AdminNodeMetrics {
+func (x *NodeMetricsValueResponse) GetValue() *hazelcast.AdminNodeMetrics {
 	if x != nil {
 		return x.Value
 	}
@@ -3662,15 +3147,15 @@ func (x *NodeMetricsValueResponse) GetFound() bool {
 }
 
 type NodeMetricsEntriesResponse struct {
-	state         protoimpl.MessageState                `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminNodeMetrics `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                 `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminNodeMetrics `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeMetricsEntriesResponse) Reset() {
 	*x = NodeMetricsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[55]
+	mi := &file_services_kernel_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3682,7 +3167,7 @@ func (x *NodeMetricsEntriesResponse) String() string {
 func (*NodeMetricsEntriesResponse) ProtoMessage() {}
 
 func (x *NodeMetricsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[55]
+	mi := &file_services_kernel_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3695,10 +3180,10 @@ func (x *NodeMetricsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*NodeMetricsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{55}
+	return file_services_kernel_proto_rawDescGZIP(), []int{50}
 }
 
-func (x *NodeMetricsEntriesResponse) GetEntries() map[string]*sentinel.AdminNodeMetrics {
+func (x *NodeMetricsEntriesResponse) GetEntries() map[string]*hazelcast.AdminNodeMetrics {
 	if x != nil {
 		return x.Entries
 	}
@@ -3714,7 +3199,7 @@ type NodeMetricsKeysResponse struct {
 
 func (x *NodeMetricsKeysResponse) Reset() {
 	*x = NodeMetricsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[56]
+	mi := &file_services_kernel_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3726,7 +3211,7 @@ func (x *NodeMetricsKeysResponse) String() string {
 func (*NodeMetricsKeysResponse) ProtoMessage() {}
 
 func (x *NodeMetricsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[56]
+	mi := &file_services_kernel_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3739,7 +3224,7 @@ func (x *NodeMetricsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsKeysResponse.ProtoReflect.Descriptor instead.
 func (*NodeMetricsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{56}
+	return file_services_kernel_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *NodeMetricsKeysResponse) GetKeys() []string {
@@ -3758,7 +3243,7 @@ type NodeMetricsSizeResponse struct {
 
 func (x *NodeMetricsSizeResponse) Reset() {
 	*x = NodeMetricsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[57]
+	mi := &file_services_kernel_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3770,7 +3255,7 @@ func (x *NodeMetricsSizeResponse) String() string {
 func (*NodeMetricsSizeResponse) ProtoMessage() {}
 
 func (x *NodeMetricsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[57]
+	mi := &file_services_kernel_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3783,7 +3268,7 @@ func (x *NodeMetricsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsSizeResponse.ProtoReflect.Descriptor instead.
 func (*NodeMetricsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{57}
+	return file_services_kernel_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *NodeMetricsSizeResponse) GetSize() int32 {
@@ -3802,7 +3287,7 @@ type NodeMetricsQueryRequest struct {
 
 func (x *NodeMetricsQueryRequest) Reset() {
 	*x = NodeMetricsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[58]
+	mi := &file_services_kernel_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3814,7 +3299,7 @@ func (x *NodeMetricsQueryRequest) String() string {
 func (*NodeMetricsQueryRequest) ProtoMessage() {}
 
 func (x *NodeMetricsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[58]
+	mi := &file_services_kernel_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3827,7 +3312,7 @@ func (x *NodeMetricsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsQueryRequest.ProtoReflect.Descriptor instead.
 func (*NodeMetricsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{58}
+	return file_services_kernel_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *NodeMetricsQueryRequest) GetQuery() *CollectionQuery {
@@ -3838,16 +3323,16 @@ func (x *NodeMetricsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type NodeMetricsQueryResponse struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	Results       []*sentinel.AdminNodeMetrics `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                        `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState        `protogen:"open.v1"`
+	Results       []*hazelcast.AdminNodeMetrics `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                         `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeMetricsQueryResponse) Reset() {
 	*x = NodeMetricsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[59]
+	mi := &file_services_kernel_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3859,7 +3344,7 @@ func (x *NodeMetricsQueryResponse) String() string {
 func (*NodeMetricsQueryResponse) ProtoMessage() {}
 
 func (x *NodeMetricsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[59]
+	mi := &file_services_kernel_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3872,10 +3357,10 @@ func (x *NodeMetricsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeMetricsQueryResponse.ProtoReflect.Descriptor instead.
 func (*NodeMetricsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{59}
+	return file_services_kernel_proto_rawDescGZIP(), []int{54}
 }
 
-func (x *NodeMetricsQueryResponse) GetResults() []*sentinel.AdminNodeMetrics {
+func (x *NodeMetricsQueryResponse) GetResults() []*hazelcast.AdminNodeMetrics {
 	if x != nil {
 		return x.Results
 	}
@@ -3898,7 +3383,7 @@ type GrpcStatsGetRequest struct {
 
 func (x *GrpcStatsGetRequest) Reset() {
 	*x = GrpcStatsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[60]
+	mi := &file_services_kernel_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3910,7 +3395,7 @@ func (x *GrpcStatsGetRequest) String() string {
 func (*GrpcStatsGetRequest) ProtoMessage() {}
 
 func (x *GrpcStatsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[60]
+	mi := &file_services_kernel_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3923,7 +3408,7 @@ func (x *GrpcStatsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsGetRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{60}
+	return file_services_kernel_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GrpcStatsGetRequest) GetKey() string {
@@ -3934,17 +3419,17 @@ func (x *GrpcStatsGetRequest) GetKey() string {
 }
 
 type GrpcStatsPutRequest struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Key           string                   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminGrpcStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                    `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Key           string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminGrpcStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                     `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GrpcStatsPutRequest) Reset() {
 	*x = GrpcStatsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[61]
+	mi := &file_services_kernel_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3956,7 +3441,7 @@ func (x *GrpcStatsPutRequest) String() string {
 func (*GrpcStatsPutRequest) ProtoMessage() {}
 
 func (x *GrpcStatsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[61]
+	mi := &file_services_kernel_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3969,7 +3454,7 @@ func (x *GrpcStatsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsPutRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{61}
+	return file_services_kernel_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *GrpcStatsPutRequest) GetKey() string {
@@ -3979,7 +3464,7 @@ func (x *GrpcStatsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *GrpcStatsPutRequest) GetValue() *sentinel.AdminGrpcStats {
+func (x *GrpcStatsPutRequest) GetValue() *hazelcast.AdminGrpcStats {
 	if x != nil {
 		return x.Value
 	}
@@ -4001,7 +3486,7 @@ type GrpcStatsGetAllRequest struct {
 
 func (x *GrpcStatsGetAllRequest) Reset() {
 	*x = GrpcStatsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[62]
+	mi := &file_services_kernel_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4013,7 +3498,7 @@ func (x *GrpcStatsGetAllRequest) String() string {
 func (*GrpcStatsGetAllRequest) ProtoMessage() {}
 
 func (x *GrpcStatsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[62]
+	mi := &file_services_kernel_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4026,7 +3511,7 @@ func (x *GrpcStatsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{62}
+	return file_services_kernel_proto_rawDescGZIP(), []int{57}
 }
 
 type GrpcStatsKeysRequest struct {
@@ -4037,7 +3522,7 @@ type GrpcStatsKeysRequest struct {
 
 func (x *GrpcStatsKeysRequest) Reset() {
 	*x = GrpcStatsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[63]
+	mi := &file_services_kernel_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4049,7 +3534,7 @@ func (x *GrpcStatsKeysRequest) String() string {
 func (*GrpcStatsKeysRequest) ProtoMessage() {}
 
 func (x *GrpcStatsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[63]
+	mi := &file_services_kernel_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4062,7 +3547,7 @@ func (x *GrpcStatsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsKeysRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{63}
+	return file_services_kernel_proto_rawDescGZIP(), []int{58}
 }
 
 type GrpcStatsSizeRequest struct {
@@ -4073,7 +3558,7 @@ type GrpcStatsSizeRequest struct {
 
 func (x *GrpcStatsSizeRequest) Reset() {
 	*x = GrpcStatsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[64]
+	mi := &file_services_kernel_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4085,7 +3570,7 @@ func (x *GrpcStatsSizeRequest) String() string {
 func (*GrpcStatsSizeRequest) ProtoMessage() {}
 
 func (x *GrpcStatsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[64]
+	mi := &file_services_kernel_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4098,7 +3583,7 @@ func (x *GrpcStatsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsSizeRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{64}
+	return file_services_kernel_proto_rawDescGZIP(), []int{59}
 }
 
 type GrpcStatsClearRequest struct {
@@ -4109,7 +3594,7 @@ type GrpcStatsClearRequest struct {
 
 func (x *GrpcStatsClearRequest) Reset() {
 	*x = GrpcStatsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[65]
+	mi := &file_services_kernel_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4121,7 +3606,7 @@ func (x *GrpcStatsClearRequest) String() string {
 func (*GrpcStatsClearRequest) ProtoMessage() {}
 
 func (x *GrpcStatsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[65]
+	mi := &file_services_kernel_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4134,20 +3619,20 @@ func (x *GrpcStatsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsClearRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{65}
+	return file_services_kernel_proto_rawDescGZIP(), []int{60}
 }
 
 type GrpcStatsValueResponse struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Value         *sentinel.AdminGrpcStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                     `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Value         *hazelcast.AdminGrpcStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                      `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GrpcStatsValueResponse) Reset() {
 	*x = GrpcStatsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[66]
+	mi := &file_services_kernel_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4159,7 +3644,7 @@ func (x *GrpcStatsValueResponse) String() string {
 func (*GrpcStatsValueResponse) ProtoMessage() {}
 
 func (x *GrpcStatsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[66]
+	mi := &file_services_kernel_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4172,10 +3657,10 @@ func (x *GrpcStatsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsValueResponse.ProtoReflect.Descriptor instead.
 func (*GrpcStatsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{66}
+	return file_services_kernel_proto_rawDescGZIP(), []int{61}
 }
 
-func (x *GrpcStatsValueResponse) GetValue() *sentinel.AdminGrpcStats {
+func (x *GrpcStatsValueResponse) GetValue() *hazelcast.AdminGrpcStats {
 	if x != nil {
 		return x.Value
 	}
@@ -4190,15 +3675,15 @@ func (x *GrpcStatsValueResponse) GetFound() bool {
 }
 
 type GrpcStatsEntriesResponse struct {
-	state         protoimpl.MessageState              `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminGrpcStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState               `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminGrpcStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GrpcStatsEntriesResponse) Reset() {
 	*x = GrpcStatsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[67]
+	mi := &file_services_kernel_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4210,7 +3695,7 @@ func (x *GrpcStatsEntriesResponse) String() string {
 func (*GrpcStatsEntriesResponse) ProtoMessage() {}
 
 func (x *GrpcStatsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[67]
+	mi := &file_services_kernel_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4223,10 +3708,10 @@ func (x *GrpcStatsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*GrpcStatsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{67}
+	return file_services_kernel_proto_rawDescGZIP(), []int{62}
 }
 
-func (x *GrpcStatsEntriesResponse) GetEntries() map[string]*sentinel.AdminGrpcStats {
+func (x *GrpcStatsEntriesResponse) GetEntries() map[string]*hazelcast.AdminGrpcStats {
 	if x != nil {
 		return x.Entries
 	}
@@ -4242,7 +3727,7 @@ type GrpcStatsKeysResponse struct {
 
 func (x *GrpcStatsKeysResponse) Reset() {
 	*x = GrpcStatsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[68]
+	mi := &file_services_kernel_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4254,7 +3739,7 @@ func (x *GrpcStatsKeysResponse) String() string {
 func (*GrpcStatsKeysResponse) ProtoMessage() {}
 
 func (x *GrpcStatsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[68]
+	mi := &file_services_kernel_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4267,7 +3752,7 @@ func (x *GrpcStatsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsKeysResponse.ProtoReflect.Descriptor instead.
 func (*GrpcStatsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{68}
+	return file_services_kernel_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *GrpcStatsKeysResponse) GetKeys() []string {
@@ -4286,7 +3771,7 @@ type GrpcStatsSizeResponse struct {
 
 func (x *GrpcStatsSizeResponse) Reset() {
 	*x = GrpcStatsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[69]
+	mi := &file_services_kernel_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4298,7 +3783,7 @@ func (x *GrpcStatsSizeResponse) String() string {
 func (*GrpcStatsSizeResponse) ProtoMessage() {}
 
 func (x *GrpcStatsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[69]
+	mi := &file_services_kernel_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4311,7 +3796,7 @@ func (x *GrpcStatsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsSizeResponse.ProtoReflect.Descriptor instead.
 func (*GrpcStatsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{69}
+	return file_services_kernel_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *GrpcStatsSizeResponse) GetSize() int32 {
@@ -4330,7 +3815,7 @@ type GrpcStatsQueryRequest struct {
 
 func (x *GrpcStatsQueryRequest) Reset() {
 	*x = GrpcStatsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[70]
+	mi := &file_services_kernel_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4342,7 +3827,7 @@ func (x *GrpcStatsQueryRequest) String() string {
 func (*GrpcStatsQueryRequest) ProtoMessage() {}
 
 func (x *GrpcStatsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[70]
+	mi := &file_services_kernel_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4355,7 +3840,7 @@ func (x *GrpcStatsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsQueryRequest.ProtoReflect.Descriptor instead.
 func (*GrpcStatsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{70}
+	return file_services_kernel_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *GrpcStatsQueryRequest) GetQuery() *CollectionQuery {
@@ -4366,16 +3851,16 @@ func (x *GrpcStatsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type GrpcStatsQueryResponse struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Results       []*sentinel.AdminGrpcStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                      `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Results       []*hazelcast.AdminGrpcStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                       `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GrpcStatsQueryResponse) Reset() {
 	*x = GrpcStatsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[71]
+	mi := &file_services_kernel_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4387,7 +3872,7 @@ func (x *GrpcStatsQueryResponse) String() string {
 func (*GrpcStatsQueryResponse) ProtoMessage() {}
 
 func (x *GrpcStatsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[71]
+	mi := &file_services_kernel_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4400,10 +3885,10 @@ func (x *GrpcStatsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcStatsQueryResponse.ProtoReflect.Descriptor instead.
 func (*GrpcStatsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{71}
+	return file_services_kernel_proto_rawDescGZIP(), []int{66}
 }
 
-func (x *GrpcStatsQueryResponse) GetResults() []*sentinel.AdminGrpcStats {
+func (x *GrpcStatsQueryResponse) GetResults() []*hazelcast.AdminGrpcStats {
 	if x != nil {
 		return x.Results
 	}
@@ -4426,7 +3911,7 @@ type PersistenceStatusGetRequest struct {
 
 func (x *PersistenceStatusGetRequest) Reset() {
 	*x = PersistenceStatusGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[72]
+	mi := &file_services_kernel_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4438,7 +3923,7 @@ func (x *PersistenceStatusGetRequest) String() string {
 func (*PersistenceStatusGetRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[72]
+	mi := &file_services_kernel_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4451,7 +3936,7 @@ func (x *PersistenceStatusGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusGetRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{72}
+	return file_services_kernel_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *PersistenceStatusGetRequest) GetKey() string {
@@ -4462,17 +3947,17 @@ func (x *PersistenceStatusGetRequest) GetKey() string {
 }
 
 type PersistenceStatusPutRequest struct {
-	state         protoimpl.MessageState           `protogen:"open.v1"`
-	Key           string                           `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminPersistenceStatus `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                            `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Key           string                            `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminPersistenceStatus `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                             `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PersistenceStatusPutRequest) Reset() {
 	*x = PersistenceStatusPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[73]
+	mi := &file_services_kernel_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4484,7 +3969,7 @@ func (x *PersistenceStatusPutRequest) String() string {
 func (*PersistenceStatusPutRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[73]
+	mi := &file_services_kernel_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4497,7 +3982,7 @@ func (x *PersistenceStatusPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusPutRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{73}
+	return file_services_kernel_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *PersistenceStatusPutRequest) GetKey() string {
@@ -4507,7 +3992,7 @@ func (x *PersistenceStatusPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *PersistenceStatusPutRequest) GetValue() *sentinel.AdminPersistenceStatus {
+func (x *PersistenceStatusPutRequest) GetValue() *hazelcast.AdminPersistenceStatus {
 	if x != nil {
 		return x.Value
 	}
@@ -4529,7 +4014,7 @@ type PersistenceStatusGetAllRequest struct {
 
 func (x *PersistenceStatusGetAllRequest) Reset() {
 	*x = PersistenceStatusGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[74]
+	mi := &file_services_kernel_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4541,7 +4026,7 @@ func (x *PersistenceStatusGetAllRequest) String() string {
 func (*PersistenceStatusGetAllRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[74]
+	mi := &file_services_kernel_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4554,7 +4039,7 @@ func (x *PersistenceStatusGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusGetAllRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{74}
+	return file_services_kernel_proto_rawDescGZIP(), []int{69}
 }
 
 type PersistenceStatusKeysRequest struct {
@@ -4565,7 +4050,7 @@ type PersistenceStatusKeysRequest struct {
 
 func (x *PersistenceStatusKeysRequest) Reset() {
 	*x = PersistenceStatusKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[75]
+	mi := &file_services_kernel_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4577,7 +4062,7 @@ func (x *PersistenceStatusKeysRequest) String() string {
 func (*PersistenceStatusKeysRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[75]
+	mi := &file_services_kernel_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4590,7 +4075,7 @@ func (x *PersistenceStatusKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusKeysRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{75}
+	return file_services_kernel_proto_rawDescGZIP(), []int{70}
 }
 
 type PersistenceStatusSizeRequest struct {
@@ -4601,7 +4086,7 @@ type PersistenceStatusSizeRequest struct {
 
 func (x *PersistenceStatusSizeRequest) Reset() {
 	*x = PersistenceStatusSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[76]
+	mi := &file_services_kernel_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4613,7 +4098,7 @@ func (x *PersistenceStatusSizeRequest) String() string {
 func (*PersistenceStatusSizeRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[76]
+	mi := &file_services_kernel_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4626,7 +4111,7 @@ func (x *PersistenceStatusSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusSizeRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{76}
+	return file_services_kernel_proto_rawDescGZIP(), []int{71}
 }
 
 type PersistenceStatusClearRequest struct {
@@ -4637,7 +4122,7 @@ type PersistenceStatusClearRequest struct {
 
 func (x *PersistenceStatusClearRequest) Reset() {
 	*x = PersistenceStatusClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[77]
+	mi := &file_services_kernel_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4649,7 +4134,7 @@ func (x *PersistenceStatusClearRequest) String() string {
 func (*PersistenceStatusClearRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[77]
+	mi := &file_services_kernel_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4662,20 +4147,20 @@ func (x *PersistenceStatusClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusClearRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{77}
+	return file_services_kernel_proto_rawDescGZIP(), []int{72}
 }
 
 type PersistenceStatusValueResponse struct {
-	state         protoimpl.MessageState           `protogen:"open.v1"`
-	Value         *sentinel.AdminPersistenceStatus `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                             `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Value         *hazelcast.AdminPersistenceStatus `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                              `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PersistenceStatusValueResponse) Reset() {
 	*x = PersistenceStatusValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[78]
+	mi := &file_services_kernel_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4687,7 +4172,7 @@ func (x *PersistenceStatusValueResponse) String() string {
 func (*PersistenceStatusValueResponse) ProtoMessage() {}
 
 func (x *PersistenceStatusValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[78]
+	mi := &file_services_kernel_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4700,10 +4185,10 @@ func (x *PersistenceStatusValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusValueResponse.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{78}
+	return file_services_kernel_proto_rawDescGZIP(), []int{73}
 }
 
-func (x *PersistenceStatusValueResponse) GetValue() *sentinel.AdminPersistenceStatus {
+func (x *PersistenceStatusValueResponse) GetValue() *hazelcast.AdminPersistenceStatus {
 	if x != nil {
 		return x.Value
 	}
@@ -4718,15 +4203,15 @@ func (x *PersistenceStatusValueResponse) GetFound() bool {
 }
 
 type PersistenceStatusEntriesResponse struct {
-	state         protoimpl.MessageState                      `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminPersistenceStatus `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                       `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminPersistenceStatus `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PersistenceStatusEntriesResponse) Reset() {
 	*x = PersistenceStatusEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[79]
+	mi := &file_services_kernel_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4738,7 +4223,7 @@ func (x *PersistenceStatusEntriesResponse) String() string {
 func (*PersistenceStatusEntriesResponse) ProtoMessage() {}
 
 func (x *PersistenceStatusEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[79]
+	mi := &file_services_kernel_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4751,10 +4236,10 @@ func (x *PersistenceStatusEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusEntriesResponse.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{79}
+	return file_services_kernel_proto_rawDescGZIP(), []int{74}
 }
 
-func (x *PersistenceStatusEntriesResponse) GetEntries() map[string]*sentinel.AdminPersistenceStatus {
+func (x *PersistenceStatusEntriesResponse) GetEntries() map[string]*hazelcast.AdminPersistenceStatus {
 	if x != nil {
 		return x.Entries
 	}
@@ -4770,7 +4255,7 @@ type PersistenceStatusKeysResponse struct {
 
 func (x *PersistenceStatusKeysResponse) Reset() {
 	*x = PersistenceStatusKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[80]
+	mi := &file_services_kernel_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4782,7 +4267,7 @@ func (x *PersistenceStatusKeysResponse) String() string {
 func (*PersistenceStatusKeysResponse) ProtoMessage() {}
 
 func (x *PersistenceStatusKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[80]
+	mi := &file_services_kernel_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4795,7 +4280,7 @@ func (x *PersistenceStatusKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusKeysResponse.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{80}
+	return file_services_kernel_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *PersistenceStatusKeysResponse) GetKeys() []string {
@@ -4814,7 +4299,7 @@ type PersistenceStatusSizeResponse struct {
 
 func (x *PersistenceStatusSizeResponse) Reset() {
 	*x = PersistenceStatusSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[81]
+	mi := &file_services_kernel_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4826,7 +4311,7 @@ func (x *PersistenceStatusSizeResponse) String() string {
 func (*PersistenceStatusSizeResponse) ProtoMessage() {}
 
 func (x *PersistenceStatusSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[81]
+	mi := &file_services_kernel_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4839,7 +4324,7 @@ func (x *PersistenceStatusSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusSizeResponse.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{81}
+	return file_services_kernel_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *PersistenceStatusSizeResponse) GetSize() int32 {
@@ -4858,7 +4343,7 @@ type PersistenceStatusQueryRequest struct {
 
 func (x *PersistenceStatusQueryRequest) Reset() {
 	*x = PersistenceStatusQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[82]
+	mi := &file_services_kernel_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4870,7 +4355,7 @@ func (x *PersistenceStatusQueryRequest) String() string {
 func (*PersistenceStatusQueryRequest) ProtoMessage() {}
 
 func (x *PersistenceStatusQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[82]
+	mi := &file_services_kernel_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4883,7 +4368,7 @@ func (x *PersistenceStatusQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusQueryRequest.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{82}
+	return file_services_kernel_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *PersistenceStatusQueryRequest) GetQuery() *CollectionQuery {
@@ -4894,16 +4379,16 @@ func (x *PersistenceStatusQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type PersistenceStatusQueryResponse struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	Results       []*sentinel.AdminPersistenceStatus `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                              `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState              `protogen:"open.v1"`
+	Results       []*hazelcast.AdminPersistenceStatus `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                               `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PersistenceStatusQueryResponse) Reset() {
 	*x = PersistenceStatusQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[83]
+	mi := &file_services_kernel_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4915,7 +4400,7 @@ func (x *PersistenceStatusQueryResponse) String() string {
 func (*PersistenceStatusQueryResponse) ProtoMessage() {}
 
 func (x *PersistenceStatusQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[83]
+	mi := &file_services_kernel_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4928,10 +4413,10 @@ func (x *PersistenceStatusQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistenceStatusQueryResponse.ProtoReflect.Descriptor instead.
 func (*PersistenceStatusQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{83}
+	return file_services_kernel_proto_rawDescGZIP(), []int{78}
 }
 
-func (x *PersistenceStatusQueryResponse) GetResults() []*sentinel.AdminPersistenceStatus {
+func (x *PersistenceStatusQueryResponse) GetResults() []*hazelcast.AdminPersistenceStatus {
 	if x != nil {
 		return x.Results
 	}
@@ -4954,7 +4439,7 @@ type NetworkStatsGetRequest struct {
 
 func (x *NetworkStatsGetRequest) Reset() {
 	*x = NetworkStatsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[84]
+	mi := &file_services_kernel_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4966,7 +4451,7 @@ func (x *NetworkStatsGetRequest) String() string {
 func (*NetworkStatsGetRequest) ProtoMessage() {}
 
 func (x *NetworkStatsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[84]
+	mi := &file_services_kernel_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4979,7 +4464,7 @@ func (x *NetworkStatsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsGetRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{84}
+	return file_services_kernel_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *NetworkStatsGetRequest) GetKey() string {
@@ -4990,17 +4475,17 @@ func (x *NetworkStatsGetRequest) GetKey() string {
 }
 
 type NetworkStatsPutRequest struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Key           string                      `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminNetworkStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                       `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Key           string                       `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminNetworkStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                        `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NetworkStatsPutRequest) Reset() {
 	*x = NetworkStatsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[85]
+	mi := &file_services_kernel_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5012,7 +4497,7 @@ func (x *NetworkStatsPutRequest) String() string {
 func (*NetworkStatsPutRequest) ProtoMessage() {}
 
 func (x *NetworkStatsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[85]
+	mi := &file_services_kernel_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5025,7 +4510,7 @@ func (x *NetworkStatsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsPutRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{85}
+	return file_services_kernel_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *NetworkStatsPutRequest) GetKey() string {
@@ -5035,7 +4520,7 @@ func (x *NetworkStatsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *NetworkStatsPutRequest) GetValue() *sentinel.AdminNetworkStats {
+func (x *NetworkStatsPutRequest) GetValue() *hazelcast.AdminNetworkStats {
 	if x != nil {
 		return x.Value
 	}
@@ -5057,7 +4542,7 @@ type NetworkStatsGetAllRequest struct {
 
 func (x *NetworkStatsGetAllRequest) Reset() {
 	*x = NetworkStatsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[86]
+	mi := &file_services_kernel_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5069,7 +4554,7 @@ func (x *NetworkStatsGetAllRequest) String() string {
 func (*NetworkStatsGetAllRequest) ProtoMessage() {}
 
 func (x *NetworkStatsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[86]
+	mi := &file_services_kernel_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5082,7 +4567,7 @@ func (x *NetworkStatsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{86}
+	return file_services_kernel_proto_rawDescGZIP(), []int{81}
 }
 
 type NetworkStatsKeysRequest struct {
@@ -5093,7 +4578,7 @@ type NetworkStatsKeysRequest struct {
 
 func (x *NetworkStatsKeysRequest) Reset() {
 	*x = NetworkStatsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[87]
+	mi := &file_services_kernel_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5105,7 +4590,7 @@ func (x *NetworkStatsKeysRequest) String() string {
 func (*NetworkStatsKeysRequest) ProtoMessage() {}
 
 func (x *NetworkStatsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[87]
+	mi := &file_services_kernel_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5118,7 +4603,7 @@ func (x *NetworkStatsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsKeysRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{87}
+	return file_services_kernel_proto_rawDescGZIP(), []int{82}
 }
 
 type NetworkStatsSizeRequest struct {
@@ -5129,7 +4614,7 @@ type NetworkStatsSizeRequest struct {
 
 func (x *NetworkStatsSizeRequest) Reset() {
 	*x = NetworkStatsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[88]
+	mi := &file_services_kernel_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5141,7 +4626,7 @@ func (x *NetworkStatsSizeRequest) String() string {
 func (*NetworkStatsSizeRequest) ProtoMessage() {}
 
 func (x *NetworkStatsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[88]
+	mi := &file_services_kernel_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5154,7 +4639,7 @@ func (x *NetworkStatsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsSizeRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{88}
+	return file_services_kernel_proto_rawDescGZIP(), []int{83}
 }
 
 type NetworkStatsClearRequest struct {
@@ -5165,7 +4650,7 @@ type NetworkStatsClearRequest struct {
 
 func (x *NetworkStatsClearRequest) Reset() {
 	*x = NetworkStatsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[89]
+	mi := &file_services_kernel_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5177,7 +4662,7 @@ func (x *NetworkStatsClearRequest) String() string {
 func (*NetworkStatsClearRequest) ProtoMessage() {}
 
 func (x *NetworkStatsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[89]
+	mi := &file_services_kernel_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5190,20 +4675,20 @@ func (x *NetworkStatsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsClearRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{89}
+	return file_services_kernel_proto_rawDescGZIP(), []int{84}
 }
 
 type NetworkStatsValueResponse struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Value         *sentinel.AdminNetworkStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                        `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Value         *hazelcast.AdminNetworkStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                         `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NetworkStatsValueResponse) Reset() {
 	*x = NetworkStatsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[90]
+	mi := &file_services_kernel_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5215,7 +4700,7 @@ func (x *NetworkStatsValueResponse) String() string {
 func (*NetworkStatsValueResponse) ProtoMessage() {}
 
 func (x *NetworkStatsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[90]
+	mi := &file_services_kernel_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5228,10 +4713,10 @@ func (x *NetworkStatsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsValueResponse.ProtoReflect.Descriptor instead.
 func (*NetworkStatsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{90}
+	return file_services_kernel_proto_rawDescGZIP(), []int{85}
 }
 
-func (x *NetworkStatsValueResponse) GetValue() *sentinel.AdminNetworkStats {
+func (x *NetworkStatsValueResponse) GetValue() *hazelcast.AdminNetworkStats {
 	if x != nil {
 		return x.Value
 	}
@@ -5246,15 +4731,15 @@ func (x *NetworkStatsValueResponse) GetFound() bool {
 }
 
 type NetworkStatsEntriesResponse struct {
-	state         protoimpl.MessageState                 `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminNetworkStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                  `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminNetworkStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NetworkStatsEntriesResponse) Reset() {
 	*x = NetworkStatsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[91]
+	mi := &file_services_kernel_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5266,7 +4751,7 @@ func (x *NetworkStatsEntriesResponse) String() string {
 func (*NetworkStatsEntriesResponse) ProtoMessage() {}
 
 func (x *NetworkStatsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[91]
+	mi := &file_services_kernel_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5279,10 +4764,10 @@ func (x *NetworkStatsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*NetworkStatsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{91}
+	return file_services_kernel_proto_rawDescGZIP(), []int{86}
 }
 
-func (x *NetworkStatsEntriesResponse) GetEntries() map[string]*sentinel.AdminNetworkStats {
+func (x *NetworkStatsEntriesResponse) GetEntries() map[string]*hazelcast.AdminNetworkStats {
 	if x != nil {
 		return x.Entries
 	}
@@ -5298,7 +4783,7 @@ type NetworkStatsKeysResponse struct {
 
 func (x *NetworkStatsKeysResponse) Reset() {
 	*x = NetworkStatsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[92]
+	mi := &file_services_kernel_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5310,7 +4795,7 @@ func (x *NetworkStatsKeysResponse) String() string {
 func (*NetworkStatsKeysResponse) ProtoMessage() {}
 
 func (x *NetworkStatsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[92]
+	mi := &file_services_kernel_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5323,7 +4808,7 @@ func (x *NetworkStatsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsKeysResponse.ProtoReflect.Descriptor instead.
 func (*NetworkStatsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{92}
+	return file_services_kernel_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *NetworkStatsKeysResponse) GetKeys() []string {
@@ -5342,7 +4827,7 @@ type NetworkStatsSizeResponse struct {
 
 func (x *NetworkStatsSizeResponse) Reset() {
 	*x = NetworkStatsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[93]
+	mi := &file_services_kernel_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5354,7 +4839,7 @@ func (x *NetworkStatsSizeResponse) String() string {
 func (*NetworkStatsSizeResponse) ProtoMessage() {}
 
 func (x *NetworkStatsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[93]
+	mi := &file_services_kernel_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5367,7 +4852,7 @@ func (x *NetworkStatsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsSizeResponse.ProtoReflect.Descriptor instead.
 func (*NetworkStatsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{93}
+	return file_services_kernel_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *NetworkStatsSizeResponse) GetSize() int32 {
@@ -5386,7 +4871,7 @@ type NetworkStatsQueryRequest struct {
 
 func (x *NetworkStatsQueryRequest) Reset() {
 	*x = NetworkStatsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[94]
+	mi := &file_services_kernel_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5398,7 +4883,7 @@ func (x *NetworkStatsQueryRequest) String() string {
 func (*NetworkStatsQueryRequest) ProtoMessage() {}
 
 func (x *NetworkStatsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[94]
+	mi := &file_services_kernel_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5411,7 +4896,7 @@ func (x *NetworkStatsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsQueryRequest.ProtoReflect.Descriptor instead.
 func (*NetworkStatsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{94}
+	return file_services_kernel_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *NetworkStatsQueryRequest) GetQuery() *CollectionQuery {
@@ -5422,16 +4907,16 @@ func (x *NetworkStatsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type NetworkStatsQueryResponse struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Results       []*sentinel.AdminNetworkStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                         `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Results       []*hazelcast.AdminNetworkStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                          `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NetworkStatsQueryResponse) Reset() {
 	*x = NetworkStatsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[95]
+	mi := &file_services_kernel_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5443,7 +4928,7 @@ func (x *NetworkStatsQueryResponse) String() string {
 func (*NetworkStatsQueryResponse) ProtoMessage() {}
 
 func (x *NetworkStatsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[95]
+	mi := &file_services_kernel_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5456,10 +4941,10 @@ func (x *NetworkStatsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatsQueryResponse.ProtoReflect.Descriptor instead.
 func (*NetworkStatsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{95}
+	return file_services_kernel_proto_rawDescGZIP(), []int{90}
 }
 
-func (x *NetworkStatsQueryResponse) GetResults() []*sentinel.AdminNetworkStats {
+func (x *NetworkStatsQueryResponse) GetResults() []*hazelcast.AdminNetworkStats {
 	if x != nil {
 		return x.Results
 	}
@@ -5482,7 +4967,7 @@ type ThreadInfoGetRequest struct {
 
 func (x *ThreadInfoGetRequest) Reset() {
 	*x = ThreadInfoGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[96]
+	mi := &file_services_kernel_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5494,7 +4979,7 @@ func (x *ThreadInfoGetRequest) String() string {
 func (*ThreadInfoGetRequest) ProtoMessage() {}
 
 func (x *ThreadInfoGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[96]
+	mi := &file_services_kernel_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5507,7 +4992,7 @@ func (x *ThreadInfoGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoGetRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{96}
+	return file_services_kernel_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *ThreadInfoGetRequest) GetKey() string {
@@ -5518,17 +5003,17 @@ func (x *ThreadInfoGetRequest) GetKey() string {
 }
 
 type ThreadInfoPutRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Key           string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminThreadInfo `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                     `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Key           string                     `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminThreadInfo `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                      `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ThreadInfoPutRequest) Reset() {
 	*x = ThreadInfoPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[97]
+	mi := &file_services_kernel_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5540,7 +5025,7 @@ func (x *ThreadInfoPutRequest) String() string {
 func (*ThreadInfoPutRequest) ProtoMessage() {}
 
 func (x *ThreadInfoPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[97]
+	mi := &file_services_kernel_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5553,7 +5038,7 @@ func (x *ThreadInfoPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoPutRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{97}
+	return file_services_kernel_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *ThreadInfoPutRequest) GetKey() string {
@@ -5563,7 +5048,7 @@ func (x *ThreadInfoPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *ThreadInfoPutRequest) GetValue() *sentinel.AdminThreadInfo {
+func (x *ThreadInfoPutRequest) GetValue() *hazelcast.AdminThreadInfo {
 	if x != nil {
 		return x.Value
 	}
@@ -5585,7 +5070,7 @@ type ThreadInfoGetAllRequest struct {
 
 func (x *ThreadInfoGetAllRequest) Reset() {
 	*x = ThreadInfoGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[98]
+	mi := &file_services_kernel_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5597,7 +5082,7 @@ func (x *ThreadInfoGetAllRequest) String() string {
 func (*ThreadInfoGetAllRequest) ProtoMessage() {}
 
 func (x *ThreadInfoGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[98]
+	mi := &file_services_kernel_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5610,7 +5095,7 @@ func (x *ThreadInfoGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoGetAllRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{98}
+	return file_services_kernel_proto_rawDescGZIP(), []int{93}
 }
 
 type ThreadInfoKeysRequest struct {
@@ -5621,7 +5106,7 @@ type ThreadInfoKeysRequest struct {
 
 func (x *ThreadInfoKeysRequest) Reset() {
 	*x = ThreadInfoKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[99]
+	mi := &file_services_kernel_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5633,7 +5118,7 @@ func (x *ThreadInfoKeysRequest) String() string {
 func (*ThreadInfoKeysRequest) ProtoMessage() {}
 
 func (x *ThreadInfoKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[99]
+	mi := &file_services_kernel_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5646,7 +5131,7 @@ func (x *ThreadInfoKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoKeysRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{99}
+	return file_services_kernel_proto_rawDescGZIP(), []int{94}
 }
 
 type ThreadInfoSizeRequest struct {
@@ -5657,7 +5142,7 @@ type ThreadInfoSizeRequest struct {
 
 func (x *ThreadInfoSizeRequest) Reset() {
 	*x = ThreadInfoSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[100]
+	mi := &file_services_kernel_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5669,7 +5154,7 @@ func (x *ThreadInfoSizeRequest) String() string {
 func (*ThreadInfoSizeRequest) ProtoMessage() {}
 
 func (x *ThreadInfoSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[100]
+	mi := &file_services_kernel_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5682,7 +5167,7 @@ func (x *ThreadInfoSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoSizeRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{100}
+	return file_services_kernel_proto_rawDescGZIP(), []int{95}
 }
 
 type ThreadInfoClearRequest struct {
@@ -5693,7 +5178,7 @@ type ThreadInfoClearRequest struct {
 
 func (x *ThreadInfoClearRequest) Reset() {
 	*x = ThreadInfoClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[101]
+	mi := &file_services_kernel_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5705,7 +5190,7 @@ func (x *ThreadInfoClearRequest) String() string {
 func (*ThreadInfoClearRequest) ProtoMessage() {}
 
 func (x *ThreadInfoClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[101]
+	mi := &file_services_kernel_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5718,20 +5203,20 @@ func (x *ThreadInfoClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoClearRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{101}
+	return file_services_kernel_proto_rawDescGZIP(), []int{96}
 }
 
 type ThreadInfoValueResponse struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Value         *sentinel.AdminThreadInfo `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                      `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Value         *hazelcast.AdminThreadInfo `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                       `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ThreadInfoValueResponse) Reset() {
 	*x = ThreadInfoValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[102]
+	mi := &file_services_kernel_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5743,7 +5228,7 @@ func (x *ThreadInfoValueResponse) String() string {
 func (*ThreadInfoValueResponse) ProtoMessage() {}
 
 func (x *ThreadInfoValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[102]
+	mi := &file_services_kernel_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5756,10 +5241,10 @@ func (x *ThreadInfoValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoValueResponse.ProtoReflect.Descriptor instead.
 func (*ThreadInfoValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{102}
+	return file_services_kernel_proto_rawDescGZIP(), []int{97}
 }
 
-func (x *ThreadInfoValueResponse) GetValue() *sentinel.AdminThreadInfo {
+func (x *ThreadInfoValueResponse) GetValue() *hazelcast.AdminThreadInfo {
 	if x != nil {
 		return x.Value
 	}
@@ -5774,15 +5259,15 @@ func (x *ThreadInfoValueResponse) GetFound() bool {
 }
 
 type ThreadInfoEntriesResponse struct {
-	state         protoimpl.MessageState               `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminThreadInfo `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminThreadInfo `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ThreadInfoEntriesResponse) Reset() {
 	*x = ThreadInfoEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[103]
+	mi := &file_services_kernel_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5794,7 +5279,7 @@ func (x *ThreadInfoEntriesResponse) String() string {
 func (*ThreadInfoEntriesResponse) ProtoMessage() {}
 
 func (x *ThreadInfoEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[103]
+	mi := &file_services_kernel_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5807,10 +5292,10 @@ func (x *ThreadInfoEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoEntriesResponse.ProtoReflect.Descriptor instead.
 func (*ThreadInfoEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{103}
+	return file_services_kernel_proto_rawDescGZIP(), []int{98}
 }
 
-func (x *ThreadInfoEntriesResponse) GetEntries() map[string]*sentinel.AdminThreadInfo {
+func (x *ThreadInfoEntriesResponse) GetEntries() map[string]*hazelcast.AdminThreadInfo {
 	if x != nil {
 		return x.Entries
 	}
@@ -5826,7 +5311,7 @@ type ThreadInfoKeysResponse struct {
 
 func (x *ThreadInfoKeysResponse) Reset() {
 	*x = ThreadInfoKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[104]
+	mi := &file_services_kernel_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5838,7 +5323,7 @@ func (x *ThreadInfoKeysResponse) String() string {
 func (*ThreadInfoKeysResponse) ProtoMessage() {}
 
 func (x *ThreadInfoKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[104]
+	mi := &file_services_kernel_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5851,7 +5336,7 @@ func (x *ThreadInfoKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoKeysResponse.ProtoReflect.Descriptor instead.
 func (*ThreadInfoKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{104}
+	return file_services_kernel_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *ThreadInfoKeysResponse) GetKeys() []string {
@@ -5870,7 +5355,7 @@ type ThreadInfoSizeResponse struct {
 
 func (x *ThreadInfoSizeResponse) Reset() {
 	*x = ThreadInfoSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[105]
+	mi := &file_services_kernel_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5882,7 +5367,7 @@ func (x *ThreadInfoSizeResponse) String() string {
 func (*ThreadInfoSizeResponse) ProtoMessage() {}
 
 func (x *ThreadInfoSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[105]
+	mi := &file_services_kernel_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5895,7 +5380,7 @@ func (x *ThreadInfoSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoSizeResponse.ProtoReflect.Descriptor instead.
 func (*ThreadInfoSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{105}
+	return file_services_kernel_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *ThreadInfoSizeResponse) GetSize() int32 {
@@ -5914,7 +5399,7 @@ type ThreadInfoQueryRequest struct {
 
 func (x *ThreadInfoQueryRequest) Reset() {
 	*x = ThreadInfoQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[106]
+	mi := &file_services_kernel_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5926,7 +5411,7 @@ func (x *ThreadInfoQueryRequest) String() string {
 func (*ThreadInfoQueryRequest) ProtoMessage() {}
 
 func (x *ThreadInfoQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[106]
+	mi := &file_services_kernel_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5939,7 +5424,7 @@ func (x *ThreadInfoQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoQueryRequest.ProtoReflect.Descriptor instead.
 func (*ThreadInfoQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{106}
+	return file_services_kernel_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *ThreadInfoQueryRequest) GetQuery() *CollectionQuery {
@@ -5950,16 +5435,16 @@ func (x *ThreadInfoQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type ThreadInfoQueryResponse struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Results       []*sentinel.AdminThreadInfo `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                       `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Results       []*hazelcast.AdminThreadInfo `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                        `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ThreadInfoQueryResponse) Reset() {
 	*x = ThreadInfoQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[107]
+	mi := &file_services_kernel_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5971,7 +5456,7 @@ func (x *ThreadInfoQueryResponse) String() string {
 func (*ThreadInfoQueryResponse) ProtoMessage() {}
 
 func (x *ThreadInfoQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[107]
+	mi := &file_services_kernel_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5984,10 +5469,10 @@ func (x *ThreadInfoQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadInfoQueryResponse.ProtoReflect.Descriptor instead.
 func (*ThreadInfoQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{107}
+	return file_services_kernel_proto_rawDescGZIP(), []int{102}
 }
 
-func (x *ThreadInfoQueryResponse) GetResults() []*sentinel.AdminThreadInfo {
+func (x *ThreadInfoQueryResponse) GetResults() []*hazelcast.AdminThreadInfo {
 	if x != nil {
 		return x.Results
 	}
@@ -6010,7 +5495,7 @@ type TokenCacheStatsGetRequest struct {
 
 func (x *TokenCacheStatsGetRequest) Reset() {
 	*x = TokenCacheStatsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[108]
+	mi := &file_services_kernel_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6022,7 +5507,7 @@ func (x *TokenCacheStatsGetRequest) String() string {
 func (*TokenCacheStatsGetRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[108]
+	mi := &file_services_kernel_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6035,7 +5520,7 @@ func (x *TokenCacheStatsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsGetRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{108}
+	return file_services_kernel_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *TokenCacheStatsGetRequest) GetKey() string {
@@ -6046,17 +5531,17 @@ func (x *TokenCacheStatsGetRequest) GetKey() string {
 }
 
 type TokenCacheStatsPutRequest struct {
-	state         protoimpl.MessageState         `protogen:"open.v1"`
-	Key           string                         `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminTokenCacheStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                          `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState          `protogen:"open.v1"`
+	Key           string                          `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminTokenCacheStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                           `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TokenCacheStatsPutRequest) Reset() {
 	*x = TokenCacheStatsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[109]
+	mi := &file_services_kernel_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6068,7 +5553,7 @@ func (x *TokenCacheStatsPutRequest) String() string {
 func (*TokenCacheStatsPutRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[109]
+	mi := &file_services_kernel_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6081,7 +5566,7 @@ func (x *TokenCacheStatsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsPutRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{109}
+	return file_services_kernel_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *TokenCacheStatsPutRequest) GetKey() string {
@@ -6091,7 +5576,7 @@ func (x *TokenCacheStatsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *TokenCacheStatsPutRequest) GetValue() *sentinel.AdminTokenCacheStats {
+func (x *TokenCacheStatsPutRequest) GetValue() *hazelcast.AdminTokenCacheStats {
 	if x != nil {
 		return x.Value
 	}
@@ -6113,7 +5598,7 @@ type TokenCacheStatsGetAllRequest struct {
 
 func (x *TokenCacheStatsGetAllRequest) Reset() {
 	*x = TokenCacheStatsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[110]
+	mi := &file_services_kernel_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6125,7 +5610,7 @@ func (x *TokenCacheStatsGetAllRequest) String() string {
 func (*TokenCacheStatsGetAllRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[110]
+	mi := &file_services_kernel_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6138,7 +5623,7 @@ func (x *TokenCacheStatsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{110}
+	return file_services_kernel_proto_rawDescGZIP(), []int{105}
 }
 
 type TokenCacheStatsKeysRequest struct {
@@ -6149,7 +5634,7 @@ type TokenCacheStatsKeysRequest struct {
 
 func (x *TokenCacheStatsKeysRequest) Reset() {
 	*x = TokenCacheStatsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[111]
+	mi := &file_services_kernel_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6161,7 +5646,7 @@ func (x *TokenCacheStatsKeysRequest) String() string {
 func (*TokenCacheStatsKeysRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[111]
+	mi := &file_services_kernel_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6174,7 +5659,7 @@ func (x *TokenCacheStatsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsKeysRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{111}
+	return file_services_kernel_proto_rawDescGZIP(), []int{106}
 }
 
 type TokenCacheStatsSizeRequest struct {
@@ -6185,7 +5670,7 @@ type TokenCacheStatsSizeRequest struct {
 
 func (x *TokenCacheStatsSizeRequest) Reset() {
 	*x = TokenCacheStatsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[112]
+	mi := &file_services_kernel_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6197,7 +5682,7 @@ func (x *TokenCacheStatsSizeRequest) String() string {
 func (*TokenCacheStatsSizeRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[112]
+	mi := &file_services_kernel_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6210,7 +5695,7 @@ func (x *TokenCacheStatsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsSizeRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{112}
+	return file_services_kernel_proto_rawDescGZIP(), []int{107}
 }
 
 type TokenCacheStatsClearRequest struct {
@@ -6221,7 +5706,7 @@ type TokenCacheStatsClearRequest struct {
 
 func (x *TokenCacheStatsClearRequest) Reset() {
 	*x = TokenCacheStatsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[113]
+	mi := &file_services_kernel_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6233,7 +5718,7 @@ func (x *TokenCacheStatsClearRequest) String() string {
 func (*TokenCacheStatsClearRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[113]
+	mi := &file_services_kernel_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6246,20 +5731,20 @@ func (x *TokenCacheStatsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsClearRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{113}
+	return file_services_kernel_proto_rawDescGZIP(), []int{108}
 }
 
 type TokenCacheStatsValueResponse struct {
-	state         protoimpl.MessageState         `protogen:"open.v1"`
-	Value         *sentinel.AdminTokenCacheStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                           `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState          `protogen:"open.v1"`
+	Value         *hazelcast.AdminTokenCacheStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                            `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TokenCacheStatsValueResponse) Reset() {
 	*x = TokenCacheStatsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[114]
+	mi := &file_services_kernel_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6271,7 +5756,7 @@ func (x *TokenCacheStatsValueResponse) String() string {
 func (*TokenCacheStatsValueResponse) ProtoMessage() {}
 
 func (x *TokenCacheStatsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[114]
+	mi := &file_services_kernel_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6284,10 +5769,10 @@ func (x *TokenCacheStatsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsValueResponse.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{114}
+	return file_services_kernel_proto_rawDescGZIP(), []int{109}
 }
 
-func (x *TokenCacheStatsValueResponse) GetValue() *sentinel.AdminTokenCacheStats {
+func (x *TokenCacheStatsValueResponse) GetValue() *hazelcast.AdminTokenCacheStats {
 	if x != nil {
 		return x.Value
 	}
@@ -6302,15 +5787,15 @@ func (x *TokenCacheStatsValueResponse) GetFound() bool {
 }
 
 type TokenCacheStatsEntriesResponse struct {
-	state         protoimpl.MessageState                    `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminTokenCacheStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                     `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminTokenCacheStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TokenCacheStatsEntriesResponse) Reset() {
 	*x = TokenCacheStatsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[115]
+	mi := &file_services_kernel_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6322,7 +5807,7 @@ func (x *TokenCacheStatsEntriesResponse) String() string {
 func (*TokenCacheStatsEntriesResponse) ProtoMessage() {}
 
 func (x *TokenCacheStatsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[115]
+	mi := &file_services_kernel_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6335,10 +5820,10 @@ func (x *TokenCacheStatsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{115}
+	return file_services_kernel_proto_rawDescGZIP(), []int{110}
 }
 
-func (x *TokenCacheStatsEntriesResponse) GetEntries() map[string]*sentinel.AdminTokenCacheStats {
+func (x *TokenCacheStatsEntriesResponse) GetEntries() map[string]*hazelcast.AdminTokenCacheStats {
 	if x != nil {
 		return x.Entries
 	}
@@ -6354,7 +5839,7 @@ type TokenCacheStatsKeysResponse struct {
 
 func (x *TokenCacheStatsKeysResponse) Reset() {
 	*x = TokenCacheStatsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[116]
+	mi := &file_services_kernel_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6366,7 +5851,7 @@ func (x *TokenCacheStatsKeysResponse) String() string {
 func (*TokenCacheStatsKeysResponse) ProtoMessage() {}
 
 func (x *TokenCacheStatsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[116]
+	mi := &file_services_kernel_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6379,7 +5864,7 @@ func (x *TokenCacheStatsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsKeysResponse.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{116}
+	return file_services_kernel_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *TokenCacheStatsKeysResponse) GetKeys() []string {
@@ -6398,7 +5883,7 @@ type TokenCacheStatsSizeResponse struct {
 
 func (x *TokenCacheStatsSizeResponse) Reset() {
 	*x = TokenCacheStatsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[117]
+	mi := &file_services_kernel_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6410,7 +5895,7 @@ func (x *TokenCacheStatsSizeResponse) String() string {
 func (*TokenCacheStatsSizeResponse) ProtoMessage() {}
 
 func (x *TokenCacheStatsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[117]
+	mi := &file_services_kernel_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6423,7 +5908,7 @@ func (x *TokenCacheStatsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsSizeResponse.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{117}
+	return file_services_kernel_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *TokenCacheStatsSizeResponse) GetSize() int32 {
@@ -6442,7 +5927,7 @@ type TokenCacheStatsQueryRequest struct {
 
 func (x *TokenCacheStatsQueryRequest) Reset() {
 	*x = TokenCacheStatsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[118]
+	mi := &file_services_kernel_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6454,7 +5939,7 @@ func (x *TokenCacheStatsQueryRequest) String() string {
 func (*TokenCacheStatsQueryRequest) ProtoMessage() {}
 
 func (x *TokenCacheStatsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[118]
+	mi := &file_services_kernel_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6467,7 +5952,7 @@ func (x *TokenCacheStatsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsQueryRequest.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{118}
+	return file_services_kernel_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *TokenCacheStatsQueryRequest) GetQuery() *CollectionQuery {
@@ -6478,16 +5963,16 @@ func (x *TokenCacheStatsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type TokenCacheStatsQueryResponse struct {
-	state         protoimpl.MessageState           `protogen:"open.v1"`
-	Results       []*sentinel.AdminTokenCacheStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                            `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Results       []*hazelcast.AdminTokenCacheStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                             `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TokenCacheStatsQueryResponse) Reset() {
 	*x = TokenCacheStatsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[119]
+	mi := &file_services_kernel_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6499,7 +5984,7 @@ func (x *TokenCacheStatsQueryResponse) String() string {
 func (*TokenCacheStatsQueryResponse) ProtoMessage() {}
 
 func (x *TokenCacheStatsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[119]
+	mi := &file_services_kernel_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6512,10 +5997,10 @@ func (x *TokenCacheStatsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenCacheStatsQueryResponse.ProtoReflect.Descriptor instead.
 func (*TokenCacheStatsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{119}
+	return file_services_kernel_proto_rawDescGZIP(), []int{114}
 }
 
-func (x *TokenCacheStatsQueryResponse) GetResults() []*sentinel.AdminTokenCacheStats {
+func (x *TokenCacheStatsQueryResponse) GetResults() []*hazelcast.AdminTokenCacheStats {
 	if x != nil {
 		return x.Results
 	}
@@ -6538,7 +6023,7 @@ type MapStatsGetRequest struct {
 
 func (x *MapStatsGetRequest) Reset() {
 	*x = MapStatsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[120]
+	mi := &file_services_kernel_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6550,7 +6035,7 @@ func (x *MapStatsGetRequest) String() string {
 func (*MapStatsGetRequest) ProtoMessage() {}
 
 func (x *MapStatsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[120]
+	mi := &file_services_kernel_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6563,7 +6048,7 @@ func (x *MapStatsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsGetRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{120}
+	return file_services_kernel_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *MapStatsGetRequest) GetKey() string {
@@ -6574,17 +6059,17 @@ func (x *MapStatsGetRequest) GetKey() string {
 }
 
 type MapStatsPutRequest struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Key           string                  `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminMapStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                   `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Key           string                   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminMapStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                    `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MapStatsPutRequest) Reset() {
 	*x = MapStatsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[121]
+	mi := &file_services_kernel_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6596,7 +6081,7 @@ func (x *MapStatsPutRequest) String() string {
 func (*MapStatsPutRequest) ProtoMessage() {}
 
 func (x *MapStatsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[121]
+	mi := &file_services_kernel_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6609,7 +6094,7 @@ func (x *MapStatsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsPutRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{121}
+	return file_services_kernel_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *MapStatsPutRequest) GetKey() string {
@@ -6619,7 +6104,7 @@ func (x *MapStatsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *MapStatsPutRequest) GetValue() *sentinel.AdminMapStats {
+func (x *MapStatsPutRequest) GetValue() *hazelcast.AdminMapStats {
 	if x != nil {
 		return x.Value
 	}
@@ -6641,7 +6126,7 @@ type MapStatsGetAllRequest struct {
 
 func (x *MapStatsGetAllRequest) Reset() {
 	*x = MapStatsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[122]
+	mi := &file_services_kernel_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6653,7 +6138,7 @@ func (x *MapStatsGetAllRequest) String() string {
 func (*MapStatsGetAllRequest) ProtoMessage() {}
 
 func (x *MapStatsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[122]
+	mi := &file_services_kernel_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6666,7 +6151,7 @@ func (x *MapStatsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{122}
+	return file_services_kernel_proto_rawDescGZIP(), []int{117}
 }
 
 type MapStatsKeysRequest struct {
@@ -6677,7 +6162,7 @@ type MapStatsKeysRequest struct {
 
 func (x *MapStatsKeysRequest) Reset() {
 	*x = MapStatsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[123]
+	mi := &file_services_kernel_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6689,7 +6174,7 @@ func (x *MapStatsKeysRequest) String() string {
 func (*MapStatsKeysRequest) ProtoMessage() {}
 
 func (x *MapStatsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[123]
+	mi := &file_services_kernel_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6702,7 +6187,7 @@ func (x *MapStatsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsKeysRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{123}
+	return file_services_kernel_proto_rawDescGZIP(), []int{118}
 }
 
 type MapStatsSizeRequest struct {
@@ -6713,7 +6198,7 @@ type MapStatsSizeRequest struct {
 
 func (x *MapStatsSizeRequest) Reset() {
 	*x = MapStatsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[124]
+	mi := &file_services_kernel_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6725,7 +6210,7 @@ func (x *MapStatsSizeRequest) String() string {
 func (*MapStatsSizeRequest) ProtoMessage() {}
 
 func (x *MapStatsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[124]
+	mi := &file_services_kernel_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6738,7 +6223,7 @@ func (x *MapStatsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsSizeRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{124}
+	return file_services_kernel_proto_rawDescGZIP(), []int{119}
 }
 
 type MapStatsClearRequest struct {
@@ -6749,7 +6234,7 @@ type MapStatsClearRequest struct {
 
 func (x *MapStatsClearRequest) Reset() {
 	*x = MapStatsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[125]
+	mi := &file_services_kernel_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6761,7 +6246,7 @@ func (x *MapStatsClearRequest) String() string {
 func (*MapStatsClearRequest) ProtoMessage() {}
 
 func (x *MapStatsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[125]
+	mi := &file_services_kernel_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6774,20 +6259,20 @@ func (x *MapStatsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsClearRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{125}
+	return file_services_kernel_proto_rawDescGZIP(), []int{120}
 }
 
 type MapStatsValueResponse struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Value         *sentinel.AdminMapStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                    `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Value         *hazelcast.AdminMapStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                     `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MapStatsValueResponse) Reset() {
 	*x = MapStatsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[126]
+	mi := &file_services_kernel_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6799,7 +6284,7 @@ func (x *MapStatsValueResponse) String() string {
 func (*MapStatsValueResponse) ProtoMessage() {}
 
 func (x *MapStatsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[126]
+	mi := &file_services_kernel_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6812,10 +6297,10 @@ func (x *MapStatsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsValueResponse.ProtoReflect.Descriptor instead.
 func (*MapStatsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{126}
+	return file_services_kernel_proto_rawDescGZIP(), []int{121}
 }
 
-func (x *MapStatsValueResponse) GetValue() *sentinel.AdminMapStats {
+func (x *MapStatsValueResponse) GetValue() *hazelcast.AdminMapStats {
 	if x != nil {
 		return x.Value
 	}
@@ -6830,15 +6315,15 @@ func (x *MapStatsValueResponse) GetFound() bool {
 }
 
 type MapStatsEntriesResponse struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminMapStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState              `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminMapStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MapStatsEntriesResponse) Reset() {
 	*x = MapStatsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[127]
+	mi := &file_services_kernel_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6850,7 +6335,7 @@ func (x *MapStatsEntriesResponse) String() string {
 func (*MapStatsEntriesResponse) ProtoMessage() {}
 
 func (x *MapStatsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[127]
+	mi := &file_services_kernel_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6863,10 +6348,10 @@ func (x *MapStatsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*MapStatsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{127}
+	return file_services_kernel_proto_rawDescGZIP(), []int{122}
 }
 
-func (x *MapStatsEntriesResponse) GetEntries() map[string]*sentinel.AdminMapStats {
+func (x *MapStatsEntriesResponse) GetEntries() map[string]*hazelcast.AdminMapStats {
 	if x != nil {
 		return x.Entries
 	}
@@ -6882,7 +6367,7 @@ type MapStatsKeysResponse struct {
 
 func (x *MapStatsKeysResponse) Reset() {
 	*x = MapStatsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[128]
+	mi := &file_services_kernel_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6894,7 +6379,7 @@ func (x *MapStatsKeysResponse) String() string {
 func (*MapStatsKeysResponse) ProtoMessage() {}
 
 func (x *MapStatsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[128]
+	mi := &file_services_kernel_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6907,7 +6392,7 @@ func (x *MapStatsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsKeysResponse.ProtoReflect.Descriptor instead.
 func (*MapStatsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{128}
+	return file_services_kernel_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *MapStatsKeysResponse) GetKeys() []string {
@@ -6926,7 +6411,7 @@ type MapStatsSizeResponse struct {
 
 func (x *MapStatsSizeResponse) Reset() {
 	*x = MapStatsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[129]
+	mi := &file_services_kernel_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6938,7 +6423,7 @@ func (x *MapStatsSizeResponse) String() string {
 func (*MapStatsSizeResponse) ProtoMessage() {}
 
 func (x *MapStatsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[129]
+	mi := &file_services_kernel_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6951,7 +6436,7 @@ func (x *MapStatsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsSizeResponse.ProtoReflect.Descriptor instead.
 func (*MapStatsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{129}
+	return file_services_kernel_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *MapStatsSizeResponse) GetSize() int32 {
@@ -6970,7 +6455,7 @@ type MapStatsQueryRequest struct {
 
 func (x *MapStatsQueryRequest) Reset() {
 	*x = MapStatsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[130]
+	mi := &file_services_kernel_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6982,7 +6467,7 @@ func (x *MapStatsQueryRequest) String() string {
 func (*MapStatsQueryRequest) ProtoMessage() {}
 
 func (x *MapStatsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[130]
+	mi := &file_services_kernel_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6995,7 +6480,7 @@ func (x *MapStatsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsQueryRequest.ProtoReflect.Descriptor instead.
 func (*MapStatsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{130}
+	return file_services_kernel_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *MapStatsQueryRequest) GetQuery() *CollectionQuery {
@@ -7006,16 +6491,16 @@ func (x *MapStatsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type MapStatsQueryResponse struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Results       []*sentinel.AdminMapStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                     `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Results       []*hazelcast.AdminMapStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                      `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MapStatsQueryResponse) Reset() {
 	*x = MapStatsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[131]
+	mi := &file_services_kernel_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7027,7 +6512,7 @@ func (x *MapStatsQueryResponse) String() string {
 func (*MapStatsQueryResponse) ProtoMessage() {}
 
 func (x *MapStatsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[131]
+	mi := &file_services_kernel_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7040,10 +6525,10 @@ func (x *MapStatsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapStatsQueryResponse.ProtoReflect.Descriptor instead.
 func (*MapStatsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{131}
+	return file_services_kernel_proto_rawDescGZIP(), []int{126}
 }
 
-func (x *MapStatsQueryResponse) GetResults() []*sentinel.AdminMapStats {
+func (x *MapStatsQueryResponse) GetResults() []*hazelcast.AdminMapStats {
 	if x != nil {
 		return x.Results
 	}
@@ -7066,7 +6551,7 @@ type GraphRegistryGetRequest struct {
 
 func (x *GraphRegistryGetRequest) Reset() {
 	*x = GraphRegistryGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[132]
+	mi := &file_services_kernel_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7078,7 +6563,7 @@ func (x *GraphRegistryGetRequest) String() string {
 func (*GraphRegistryGetRequest) ProtoMessage() {}
 
 func (x *GraphRegistryGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[132]
+	mi := &file_services_kernel_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7091,7 +6576,7 @@ func (x *GraphRegistryGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryGetRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistryGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{132}
+	return file_services_kernel_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *GraphRegistryGetRequest) GetKey() string {
@@ -7102,17 +6587,17 @@ func (x *GraphRegistryGetRequest) GetKey() string {
 }
 
 type GraphRegistryPutRequest struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Key           string                   `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminGraphInfo `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                    `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Key           string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminGraphInfo `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                     `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GraphRegistryPutRequest) Reset() {
 	*x = GraphRegistryPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[133]
+	mi := &file_services_kernel_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7124,7 +6609,7 @@ func (x *GraphRegistryPutRequest) String() string {
 func (*GraphRegistryPutRequest) ProtoMessage() {}
 
 func (x *GraphRegistryPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[133]
+	mi := &file_services_kernel_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7137,7 +6622,7 @@ func (x *GraphRegistryPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryPutRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistryPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{133}
+	return file_services_kernel_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *GraphRegistryPutRequest) GetKey() string {
@@ -7147,7 +6632,7 @@ func (x *GraphRegistryPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *GraphRegistryPutRequest) GetValue() *sentinel.AdminGraphInfo {
+func (x *GraphRegistryPutRequest) GetValue() *hazelcast.AdminGraphInfo {
 	if x != nil {
 		return x.Value
 	}
@@ -7169,7 +6654,7 @@ type GraphRegistryGetAllRequest struct {
 
 func (x *GraphRegistryGetAllRequest) Reset() {
 	*x = GraphRegistryGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[134]
+	mi := &file_services_kernel_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7181,7 +6666,7 @@ func (x *GraphRegistryGetAllRequest) String() string {
 func (*GraphRegistryGetAllRequest) ProtoMessage() {}
 
 func (x *GraphRegistryGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[134]
+	mi := &file_services_kernel_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7194,7 +6679,7 @@ func (x *GraphRegistryGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryGetAllRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistryGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{134}
+	return file_services_kernel_proto_rawDescGZIP(), []int{129}
 }
 
 type GraphRegistryKeysRequest struct {
@@ -7205,7 +6690,7 @@ type GraphRegistryKeysRequest struct {
 
 func (x *GraphRegistryKeysRequest) Reset() {
 	*x = GraphRegistryKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[135]
+	mi := &file_services_kernel_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7217,7 +6702,7 @@ func (x *GraphRegistryKeysRequest) String() string {
 func (*GraphRegistryKeysRequest) ProtoMessage() {}
 
 func (x *GraphRegistryKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[135]
+	mi := &file_services_kernel_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7230,7 +6715,7 @@ func (x *GraphRegistryKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryKeysRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistryKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{135}
+	return file_services_kernel_proto_rawDescGZIP(), []int{130}
 }
 
 type GraphRegistrySizeRequest struct {
@@ -7241,7 +6726,7 @@ type GraphRegistrySizeRequest struct {
 
 func (x *GraphRegistrySizeRequest) Reset() {
 	*x = GraphRegistrySizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[136]
+	mi := &file_services_kernel_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7253,7 +6738,7 @@ func (x *GraphRegistrySizeRequest) String() string {
 func (*GraphRegistrySizeRequest) ProtoMessage() {}
 
 func (x *GraphRegistrySizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[136]
+	mi := &file_services_kernel_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7266,7 +6751,7 @@ func (x *GraphRegistrySizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistrySizeRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistrySizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{136}
+	return file_services_kernel_proto_rawDescGZIP(), []int{131}
 }
 
 type GraphRegistryClearRequest struct {
@@ -7277,7 +6762,7 @@ type GraphRegistryClearRequest struct {
 
 func (x *GraphRegistryClearRequest) Reset() {
 	*x = GraphRegistryClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[137]
+	mi := &file_services_kernel_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7289,7 +6774,7 @@ func (x *GraphRegistryClearRequest) String() string {
 func (*GraphRegistryClearRequest) ProtoMessage() {}
 
 func (x *GraphRegistryClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[137]
+	mi := &file_services_kernel_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7302,20 +6787,20 @@ func (x *GraphRegistryClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryClearRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistryClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{137}
+	return file_services_kernel_proto_rawDescGZIP(), []int{132}
 }
 
 type GraphRegistryValueResponse struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Value         *sentinel.AdminGraphInfo `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                     `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Value         *hazelcast.AdminGraphInfo `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                      `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GraphRegistryValueResponse) Reset() {
 	*x = GraphRegistryValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[138]
+	mi := &file_services_kernel_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7327,7 +6812,7 @@ func (x *GraphRegistryValueResponse) String() string {
 func (*GraphRegistryValueResponse) ProtoMessage() {}
 
 func (x *GraphRegistryValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[138]
+	mi := &file_services_kernel_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7340,10 +6825,10 @@ func (x *GraphRegistryValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryValueResponse.ProtoReflect.Descriptor instead.
 func (*GraphRegistryValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{138}
+	return file_services_kernel_proto_rawDescGZIP(), []int{133}
 }
 
-func (x *GraphRegistryValueResponse) GetValue() *sentinel.AdminGraphInfo {
+func (x *GraphRegistryValueResponse) GetValue() *hazelcast.AdminGraphInfo {
 	if x != nil {
 		return x.Value
 	}
@@ -7358,15 +6843,15 @@ func (x *GraphRegistryValueResponse) GetFound() bool {
 }
 
 type GraphRegistryEntriesResponse struct {
-	state         protoimpl.MessageState              `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminGraphInfo `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState               `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminGraphInfo `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GraphRegistryEntriesResponse) Reset() {
 	*x = GraphRegistryEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[139]
+	mi := &file_services_kernel_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7378,7 +6863,7 @@ func (x *GraphRegistryEntriesResponse) String() string {
 func (*GraphRegistryEntriesResponse) ProtoMessage() {}
 
 func (x *GraphRegistryEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[139]
+	mi := &file_services_kernel_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7391,10 +6876,10 @@ func (x *GraphRegistryEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryEntriesResponse.ProtoReflect.Descriptor instead.
 func (*GraphRegistryEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{139}
+	return file_services_kernel_proto_rawDescGZIP(), []int{134}
 }
 
-func (x *GraphRegistryEntriesResponse) GetEntries() map[string]*sentinel.AdminGraphInfo {
+func (x *GraphRegistryEntriesResponse) GetEntries() map[string]*hazelcast.AdminGraphInfo {
 	if x != nil {
 		return x.Entries
 	}
@@ -7410,7 +6895,7 @@ type GraphRegistryKeysResponse struct {
 
 func (x *GraphRegistryKeysResponse) Reset() {
 	*x = GraphRegistryKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[140]
+	mi := &file_services_kernel_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7422,7 +6907,7 @@ func (x *GraphRegistryKeysResponse) String() string {
 func (*GraphRegistryKeysResponse) ProtoMessage() {}
 
 func (x *GraphRegistryKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[140]
+	mi := &file_services_kernel_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7435,7 +6920,7 @@ func (x *GraphRegistryKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryKeysResponse.ProtoReflect.Descriptor instead.
 func (*GraphRegistryKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{140}
+	return file_services_kernel_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *GraphRegistryKeysResponse) GetKeys() []string {
@@ -7454,7 +6939,7 @@ type GraphRegistrySizeResponse struct {
 
 func (x *GraphRegistrySizeResponse) Reset() {
 	*x = GraphRegistrySizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[141]
+	mi := &file_services_kernel_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7466,7 +6951,7 @@ func (x *GraphRegistrySizeResponse) String() string {
 func (*GraphRegistrySizeResponse) ProtoMessage() {}
 
 func (x *GraphRegistrySizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[141]
+	mi := &file_services_kernel_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7479,7 +6964,7 @@ func (x *GraphRegistrySizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistrySizeResponse.ProtoReflect.Descriptor instead.
 func (*GraphRegistrySizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{141}
+	return file_services_kernel_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *GraphRegistrySizeResponse) GetSize() int32 {
@@ -7498,7 +6983,7 @@ type GraphRegistryQueryRequest struct {
 
 func (x *GraphRegistryQueryRequest) Reset() {
 	*x = GraphRegistryQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[142]
+	mi := &file_services_kernel_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7510,7 +6995,7 @@ func (x *GraphRegistryQueryRequest) String() string {
 func (*GraphRegistryQueryRequest) ProtoMessage() {}
 
 func (x *GraphRegistryQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[142]
+	mi := &file_services_kernel_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7523,7 +7008,7 @@ func (x *GraphRegistryQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryQueryRequest.ProtoReflect.Descriptor instead.
 func (*GraphRegistryQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{142}
+	return file_services_kernel_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *GraphRegistryQueryRequest) GetQuery() *CollectionQuery {
@@ -7534,16 +7019,16 @@ func (x *GraphRegistryQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type GraphRegistryQueryResponse struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Results       []*sentinel.AdminGraphInfo `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                      `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Results       []*hazelcast.AdminGraphInfo `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                       `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GraphRegistryQueryResponse) Reset() {
 	*x = GraphRegistryQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[143]
+	mi := &file_services_kernel_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7555,7 +7040,7 @@ func (x *GraphRegistryQueryResponse) String() string {
 func (*GraphRegistryQueryResponse) ProtoMessage() {}
 
 func (x *GraphRegistryQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[143]
+	mi := &file_services_kernel_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7568,10 +7053,10 @@ func (x *GraphRegistryQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRegistryQueryResponse.ProtoReflect.Descriptor instead.
 func (*GraphRegistryQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{143}
+	return file_services_kernel_proto_rawDescGZIP(), []int{138}
 }
 
-func (x *GraphRegistryQueryResponse) GetResults() []*sentinel.AdminGraphInfo {
+func (x *GraphRegistryQueryResponse) GetResults() []*hazelcast.AdminGraphInfo {
 	if x != nil {
 		return x.Results
 	}
@@ -7594,7 +7079,7 @@ type ServiceConnectionsGetRequest struct {
 
 func (x *ServiceConnectionsGetRequest) Reset() {
 	*x = ServiceConnectionsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[144]
+	mi := &file_services_kernel_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7606,7 +7091,7 @@ func (x *ServiceConnectionsGetRequest) String() string {
 func (*ServiceConnectionsGetRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[144]
+	mi := &file_services_kernel_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7619,7 +7104,7 @@ func (x *ServiceConnectionsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsGetRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{144}
+	return file_services_kernel_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *ServiceConnectionsGetRequest) GetKey() string {
@@ -7630,17 +7115,17 @@ func (x *ServiceConnectionsGetRequest) GetKey() string {
 }
 
 type ServiceConnectionsPutRequest struct {
-	state         protoimpl.MessageState           `protogen:"open.v1"`
-	Key           string                           `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminServiceConnection `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                            `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Key           string                            `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminServiceConnection `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                             `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ServiceConnectionsPutRequest) Reset() {
 	*x = ServiceConnectionsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[145]
+	mi := &file_services_kernel_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7652,7 +7137,7 @@ func (x *ServiceConnectionsPutRequest) String() string {
 func (*ServiceConnectionsPutRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[145]
+	mi := &file_services_kernel_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7665,7 +7150,7 @@ func (x *ServiceConnectionsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsPutRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{145}
+	return file_services_kernel_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *ServiceConnectionsPutRequest) GetKey() string {
@@ -7675,7 +7160,7 @@ func (x *ServiceConnectionsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *ServiceConnectionsPutRequest) GetValue() *sentinel.AdminServiceConnection {
+func (x *ServiceConnectionsPutRequest) GetValue() *hazelcast.AdminServiceConnection {
 	if x != nil {
 		return x.Value
 	}
@@ -7697,7 +7182,7 @@ type ServiceConnectionsGetAllRequest struct {
 
 func (x *ServiceConnectionsGetAllRequest) Reset() {
 	*x = ServiceConnectionsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[146]
+	mi := &file_services_kernel_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7709,7 +7194,7 @@ func (x *ServiceConnectionsGetAllRequest) String() string {
 func (*ServiceConnectionsGetAllRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[146]
+	mi := &file_services_kernel_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7722,7 +7207,7 @@ func (x *ServiceConnectionsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{146}
+	return file_services_kernel_proto_rawDescGZIP(), []int{141}
 }
 
 type ServiceConnectionsKeysRequest struct {
@@ -7733,7 +7218,7 @@ type ServiceConnectionsKeysRequest struct {
 
 func (x *ServiceConnectionsKeysRequest) Reset() {
 	*x = ServiceConnectionsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[147]
+	mi := &file_services_kernel_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7745,7 +7230,7 @@ func (x *ServiceConnectionsKeysRequest) String() string {
 func (*ServiceConnectionsKeysRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[147]
+	mi := &file_services_kernel_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7758,7 +7243,7 @@ func (x *ServiceConnectionsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsKeysRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{147}
+	return file_services_kernel_proto_rawDescGZIP(), []int{142}
 }
 
 type ServiceConnectionsSizeRequest struct {
@@ -7769,7 +7254,7 @@ type ServiceConnectionsSizeRequest struct {
 
 func (x *ServiceConnectionsSizeRequest) Reset() {
 	*x = ServiceConnectionsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[148]
+	mi := &file_services_kernel_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7781,7 +7266,7 @@ func (x *ServiceConnectionsSizeRequest) String() string {
 func (*ServiceConnectionsSizeRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[148]
+	mi := &file_services_kernel_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7794,7 +7279,7 @@ func (x *ServiceConnectionsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsSizeRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{148}
+	return file_services_kernel_proto_rawDescGZIP(), []int{143}
 }
 
 type ServiceConnectionsClearRequest struct {
@@ -7805,7 +7290,7 @@ type ServiceConnectionsClearRequest struct {
 
 func (x *ServiceConnectionsClearRequest) Reset() {
 	*x = ServiceConnectionsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[149]
+	mi := &file_services_kernel_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7817,7 +7302,7 @@ func (x *ServiceConnectionsClearRequest) String() string {
 func (*ServiceConnectionsClearRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[149]
+	mi := &file_services_kernel_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7830,20 +7315,20 @@ func (x *ServiceConnectionsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsClearRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{149}
+	return file_services_kernel_proto_rawDescGZIP(), []int{144}
 }
 
 type ServiceConnectionsValueResponse struct {
-	state         protoimpl.MessageState           `protogen:"open.v1"`
-	Value         *sentinel.AdminServiceConnection `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                             `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Value         *hazelcast.AdminServiceConnection `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                              `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ServiceConnectionsValueResponse) Reset() {
 	*x = ServiceConnectionsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[150]
+	mi := &file_services_kernel_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7855,7 +7340,7 @@ func (x *ServiceConnectionsValueResponse) String() string {
 func (*ServiceConnectionsValueResponse) ProtoMessage() {}
 
 func (x *ServiceConnectionsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[150]
+	mi := &file_services_kernel_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7868,10 +7353,10 @@ func (x *ServiceConnectionsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsValueResponse.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{150}
+	return file_services_kernel_proto_rawDescGZIP(), []int{145}
 }
 
-func (x *ServiceConnectionsValueResponse) GetValue() *sentinel.AdminServiceConnection {
+func (x *ServiceConnectionsValueResponse) GetValue() *hazelcast.AdminServiceConnection {
 	if x != nil {
 		return x.Value
 	}
@@ -7886,15 +7371,15 @@ func (x *ServiceConnectionsValueResponse) GetFound() bool {
 }
 
 type ServiceConnectionsEntriesResponse struct {
-	state         protoimpl.MessageState                      `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminServiceConnection `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                       `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminServiceConnection `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ServiceConnectionsEntriesResponse) Reset() {
 	*x = ServiceConnectionsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[151]
+	mi := &file_services_kernel_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7906,7 +7391,7 @@ func (x *ServiceConnectionsEntriesResponse) String() string {
 func (*ServiceConnectionsEntriesResponse) ProtoMessage() {}
 
 func (x *ServiceConnectionsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[151]
+	mi := &file_services_kernel_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7919,10 +7404,10 @@ func (x *ServiceConnectionsEntriesResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ServiceConnectionsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{151}
+	return file_services_kernel_proto_rawDescGZIP(), []int{146}
 }
 
-func (x *ServiceConnectionsEntriesResponse) GetEntries() map[string]*sentinel.AdminServiceConnection {
+func (x *ServiceConnectionsEntriesResponse) GetEntries() map[string]*hazelcast.AdminServiceConnection {
 	if x != nil {
 		return x.Entries
 	}
@@ -7938,7 +7423,7 @@ type ServiceConnectionsKeysResponse struct {
 
 func (x *ServiceConnectionsKeysResponse) Reset() {
 	*x = ServiceConnectionsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[152]
+	mi := &file_services_kernel_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7950,7 +7435,7 @@ func (x *ServiceConnectionsKeysResponse) String() string {
 func (*ServiceConnectionsKeysResponse) ProtoMessage() {}
 
 func (x *ServiceConnectionsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[152]
+	mi := &file_services_kernel_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7963,7 +7448,7 @@ func (x *ServiceConnectionsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsKeysResponse.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{152}
+	return file_services_kernel_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *ServiceConnectionsKeysResponse) GetKeys() []string {
@@ -7982,7 +7467,7 @@ type ServiceConnectionsSizeResponse struct {
 
 func (x *ServiceConnectionsSizeResponse) Reset() {
 	*x = ServiceConnectionsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[153]
+	mi := &file_services_kernel_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7994,7 +7479,7 @@ func (x *ServiceConnectionsSizeResponse) String() string {
 func (*ServiceConnectionsSizeResponse) ProtoMessage() {}
 
 func (x *ServiceConnectionsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[153]
+	mi := &file_services_kernel_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8007,7 +7492,7 @@ func (x *ServiceConnectionsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsSizeResponse.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{153}
+	return file_services_kernel_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *ServiceConnectionsSizeResponse) GetSize() int32 {
@@ -8026,7 +7511,7 @@ type ServiceConnectionsQueryRequest struct {
 
 func (x *ServiceConnectionsQueryRequest) Reset() {
 	*x = ServiceConnectionsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[154]
+	mi := &file_services_kernel_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8038,7 +7523,7 @@ func (x *ServiceConnectionsQueryRequest) String() string {
 func (*ServiceConnectionsQueryRequest) ProtoMessage() {}
 
 func (x *ServiceConnectionsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[154]
+	mi := &file_services_kernel_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8051,7 +7536,7 @@ func (x *ServiceConnectionsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsQueryRequest.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{154}
+	return file_services_kernel_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *ServiceConnectionsQueryRequest) GetQuery() *CollectionQuery {
@@ -8062,16 +7547,16 @@ func (x *ServiceConnectionsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type ServiceConnectionsQueryResponse struct {
-	state         protoimpl.MessageState             `protogen:"open.v1"`
-	Results       []*sentinel.AdminServiceConnection `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                              `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState              `protogen:"open.v1"`
+	Results       []*hazelcast.AdminServiceConnection `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                               `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ServiceConnectionsQueryResponse) Reset() {
 	*x = ServiceConnectionsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[155]
+	mi := &file_services_kernel_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8083,7 +7568,7 @@ func (x *ServiceConnectionsQueryResponse) String() string {
 func (*ServiceConnectionsQueryResponse) ProtoMessage() {}
 
 func (x *ServiceConnectionsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[155]
+	mi := &file_services_kernel_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8096,10 +7581,10 @@ func (x *ServiceConnectionsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceConnectionsQueryResponse.ProtoReflect.Descriptor instead.
 func (*ServiceConnectionsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{155}
+	return file_services_kernel_proto_rawDescGZIP(), []int{150}
 }
 
-func (x *ServiceConnectionsQueryResponse) GetResults() []*sentinel.AdminServiceConnection {
+func (x *ServiceConnectionsQueryResponse) GetResults() []*hazelcast.AdminServiceConnection {
 	if x != nil {
 		return x.Results
 	}
@@ -8122,7 +7607,7 @@ type QueueStatsGetRequest struct {
 
 func (x *QueueStatsGetRequest) Reset() {
 	*x = QueueStatsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[156]
+	mi := &file_services_kernel_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8134,7 +7619,7 @@ func (x *QueueStatsGetRequest) String() string {
 func (*QueueStatsGetRequest) ProtoMessage() {}
 
 func (x *QueueStatsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[156]
+	mi := &file_services_kernel_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8147,7 +7632,7 @@ func (x *QueueStatsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsGetRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{156}
+	return file_services_kernel_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *QueueStatsGetRequest) GetKey() string {
@@ -8158,17 +7643,17 @@ func (x *QueueStatsGetRequest) GetKey() string {
 }
 
 type QueueStatsPutRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Key           string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminQueueStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                     `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Key           string                     `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminQueueStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                      `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *QueueStatsPutRequest) Reset() {
 	*x = QueueStatsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[157]
+	mi := &file_services_kernel_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8180,7 +7665,7 @@ func (x *QueueStatsPutRequest) String() string {
 func (*QueueStatsPutRequest) ProtoMessage() {}
 
 func (x *QueueStatsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[157]
+	mi := &file_services_kernel_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8193,7 +7678,7 @@ func (x *QueueStatsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsPutRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{157}
+	return file_services_kernel_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *QueueStatsPutRequest) GetKey() string {
@@ -8203,7 +7688,7 @@ func (x *QueueStatsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *QueueStatsPutRequest) GetValue() *sentinel.AdminQueueStats {
+func (x *QueueStatsPutRequest) GetValue() *hazelcast.AdminQueueStats {
 	if x != nil {
 		return x.Value
 	}
@@ -8225,7 +7710,7 @@ type QueueStatsGetAllRequest struct {
 
 func (x *QueueStatsGetAllRequest) Reset() {
 	*x = QueueStatsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[158]
+	mi := &file_services_kernel_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8237,7 +7722,7 @@ func (x *QueueStatsGetAllRequest) String() string {
 func (*QueueStatsGetAllRequest) ProtoMessage() {}
 
 func (x *QueueStatsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[158]
+	mi := &file_services_kernel_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8250,7 +7735,7 @@ func (x *QueueStatsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{158}
+	return file_services_kernel_proto_rawDescGZIP(), []int{153}
 }
 
 type QueueStatsKeysRequest struct {
@@ -8261,7 +7746,7 @@ type QueueStatsKeysRequest struct {
 
 func (x *QueueStatsKeysRequest) Reset() {
 	*x = QueueStatsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[159]
+	mi := &file_services_kernel_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8273,7 +7758,7 @@ func (x *QueueStatsKeysRequest) String() string {
 func (*QueueStatsKeysRequest) ProtoMessage() {}
 
 func (x *QueueStatsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[159]
+	mi := &file_services_kernel_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8286,7 +7771,7 @@ func (x *QueueStatsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsKeysRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{159}
+	return file_services_kernel_proto_rawDescGZIP(), []int{154}
 }
 
 type QueueStatsSizeRequest struct {
@@ -8297,7 +7782,7 @@ type QueueStatsSizeRequest struct {
 
 func (x *QueueStatsSizeRequest) Reset() {
 	*x = QueueStatsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[160]
+	mi := &file_services_kernel_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8309,7 +7794,7 @@ func (x *QueueStatsSizeRequest) String() string {
 func (*QueueStatsSizeRequest) ProtoMessage() {}
 
 func (x *QueueStatsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[160]
+	mi := &file_services_kernel_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8322,7 +7807,7 @@ func (x *QueueStatsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsSizeRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{160}
+	return file_services_kernel_proto_rawDescGZIP(), []int{155}
 }
 
 type QueueStatsClearRequest struct {
@@ -8333,7 +7818,7 @@ type QueueStatsClearRequest struct {
 
 func (x *QueueStatsClearRequest) Reset() {
 	*x = QueueStatsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[161]
+	mi := &file_services_kernel_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8345,7 +7830,7 @@ func (x *QueueStatsClearRequest) String() string {
 func (*QueueStatsClearRequest) ProtoMessage() {}
 
 func (x *QueueStatsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[161]
+	mi := &file_services_kernel_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8358,20 +7843,20 @@ func (x *QueueStatsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsClearRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{161}
+	return file_services_kernel_proto_rawDescGZIP(), []int{156}
 }
 
 type QueueStatsValueResponse struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Value         *sentinel.AdminQueueStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                      `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Value         *hazelcast.AdminQueueStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                       `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *QueueStatsValueResponse) Reset() {
 	*x = QueueStatsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[162]
+	mi := &file_services_kernel_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8383,7 +7868,7 @@ func (x *QueueStatsValueResponse) String() string {
 func (*QueueStatsValueResponse) ProtoMessage() {}
 
 func (x *QueueStatsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[162]
+	mi := &file_services_kernel_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8396,10 +7881,10 @@ func (x *QueueStatsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsValueResponse.ProtoReflect.Descriptor instead.
 func (*QueueStatsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{162}
+	return file_services_kernel_proto_rawDescGZIP(), []int{157}
 }
 
-func (x *QueueStatsValueResponse) GetValue() *sentinel.AdminQueueStats {
+func (x *QueueStatsValueResponse) GetValue() *hazelcast.AdminQueueStats {
 	if x != nil {
 		return x.Value
 	}
@@ -8414,15 +7899,15 @@ func (x *QueueStatsValueResponse) GetFound() bool {
 }
 
 type QueueStatsEntriesResponse struct {
-	state         protoimpl.MessageState               `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminQueueStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminQueueStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *QueueStatsEntriesResponse) Reset() {
 	*x = QueueStatsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[163]
+	mi := &file_services_kernel_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8434,7 +7919,7 @@ func (x *QueueStatsEntriesResponse) String() string {
 func (*QueueStatsEntriesResponse) ProtoMessage() {}
 
 func (x *QueueStatsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[163]
+	mi := &file_services_kernel_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8447,10 +7932,10 @@ func (x *QueueStatsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*QueueStatsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{163}
+	return file_services_kernel_proto_rawDescGZIP(), []int{158}
 }
 
-func (x *QueueStatsEntriesResponse) GetEntries() map[string]*sentinel.AdminQueueStats {
+func (x *QueueStatsEntriesResponse) GetEntries() map[string]*hazelcast.AdminQueueStats {
 	if x != nil {
 		return x.Entries
 	}
@@ -8466,7 +7951,7 @@ type QueueStatsKeysResponse struct {
 
 func (x *QueueStatsKeysResponse) Reset() {
 	*x = QueueStatsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[164]
+	mi := &file_services_kernel_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8478,7 +7963,7 @@ func (x *QueueStatsKeysResponse) String() string {
 func (*QueueStatsKeysResponse) ProtoMessage() {}
 
 func (x *QueueStatsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[164]
+	mi := &file_services_kernel_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8491,7 +7976,7 @@ func (x *QueueStatsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsKeysResponse.ProtoReflect.Descriptor instead.
 func (*QueueStatsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{164}
+	return file_services_kernel_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *QueueStatsKeysResponse) GetKeys() []string {
@@ -8510,7 +7995,7 @@ type QueueStatsSizeResponse struct {
 
 func (x *QueueStatsSizeResponse) Reset() {
 	*x = QueueStatsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[165]
+	mi := &file_services_kernel_proto_msgTypes[160]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8522,7 +8007,7 @@ func (x *QueueStatsSizeResponse) String() string {
 func (*QueueStatsSizeResponse) ProtoMessage() {}
 
 func (x *QueueStatsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[165]
+	mi := &file_services_kernel_proto_msgTypes[160]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8535,7 +8020,7 @@ func (x *QueueStatsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsSizeResponse.ProtoReflect.Descriptor instead.
 func (*QueueStatsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{165}
+	return file_services_kernel_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *QueueStatsSizeResponse) GetSize() int32 {
@@ -8554,7 +8039,7 @@ type QueueStatsQueryRequest struct {
 
 func (x *QueueStatsQueryRequest) Reset() {
 	*x = QueueStatsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[166]
+	mi := &file_services_kernel_proto_msgTypes[161]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8566,7 +8051,7 @@ func (x *QueueStatsQueryRequest) String() string {
 func (*QueueStatsQueryRequest) ProtoMessage() {}
 
 func (x *QueueStatsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[166]
+	mi := &file_services_kernel_proto_msgTypes[161]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8579,7 +8064,7 @@ func (x *QueueStatsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsQueryRequest.ProtoReflect.Descriptor instead.
 func (*QueueStatsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{166}
+	return file_services_kernel_proto_rawDescGZIP(), []int{161}
 }
 
 func (x *QueueStatsQueryRequest) GetQuery() *CollectionQuery {
@@ -8590,16 +8075,16 @@ func (x *QueueStatsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type QueueStatsQueryResponse struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Results       []*sentinel.AdminQueueStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                       `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Results       []*hazelcast.AdminQueueStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                        `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *QueueStatsQueryResponse) Reset() {
 	*x = QueueStatsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[167]
+	mi := &file_services_kernel_proto_msgTypes[162]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8611,7 +8096,7 @@ func (x *QueueStatsQueryResponse) String() string {
 func (*QueueStatsQueryResponse) ProtoMessage() {}
 
 func (x *QueueStatsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[167]
+	mi := &file_services_kernel_proto_msgTypes[162]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8624,10 +8109,10 @@ func (x *QueueStatsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueStatsQueryResponse.ProtoReflect.Descriptor instead.
 func (*QueueStatsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{167}
+	return file_services_kernel_proto_rawDescGZIP(), []int{162}
 }
 
-func (x *QueueStatsQueryResponse) GetResults() []*sentinel.AdminQueueStats {
+func (x *QueueStatsQueryResponse) GetResults() []*hazelcast.AdminQueueStats {
 	if x != nil {
 		return x.Results
 	}
@@ -8650,7 +8135,7 @@ type TopicStatsGetRequest struct {
 
 func (x *TopicStatsGetRequest) Reset() {
 	*x = TopicStatsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[168]
+	mi := &file_services_kernel_proto_msgTypes[163]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8662,7 +8147,7 @@ func (x *TopicStatsGetRequest) String() string {
 func (*TopicStatsGetRequest) ProtoMessage() {}
 
 func (x *TopicStatsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[168]
+	mi := &file_services_kernel_proto_msgTypes[163]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8675,7 +8160,7 @@ func (x *TopicStatsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsGetRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{168}
+	return file_services_kernel_proto_rawDescGZIP(), []int{163}
 }
 
 func (x *TopicStatsGetRequest) GetKey() string {
@@ -8686,17 +8171,17 @@ func (x *TopicStatsGetRequest) GetKey() string {
 }
 
 type TopicStatsPutRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Key           string                    `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminTopicStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                     `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Key           string                     `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminTopicStats `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                      `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TopicStatsPutRequest) Reset() {
 	*x = TopicStatsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[169]
+	mi := &file_services_kernel_proto_msgTypes[164]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8708,7 +8193,7 @@ func (x *TopicStatsPutRequest) String() string {
 func (*TopicStatsPutRequest) ProtoMessage() {}
 
 func (x *TopicStatsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[169]
+	mi := &file_services_kernel_proto_msgTypes[164]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8721,7 +8206,7 @@ func (x *TopicStatsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsPutRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{169}
+	return file_services_kernel_proto_rawDescGZIP(), []int{164}
 }
 
 func (x *TopicStatsPutRequest) GetKey() string {
@@ -8731,7 +8216,7 @@ func (x *TopicStatsPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *TopicStatsPutRequest) GetValue() *sentinel.AdminTopicStats {
+func (x *TopicStatsPutRequest) GetValue() *hazelcast.AdminTopicStats {
 	if x != nil {
 		return x.Value
 	}
@@ -8753,7 +8238,7 @@ type TopicStatsGetAllRequest struct {
 
 func (x *TopicStatsGetAllRequest) Reset() {
 	*x = TopicStatsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[170]
+	mi := &file_services_kernel_proto_msgTypes[165]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8765,7 +8250,7 @@ func (x *TopicStatsGetAllRequest) String() string {
 func (*TopicStatsGetAllRequest) ProtoMessage() {}
 
 func (x *TopicStatsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[170]
+	mi := &file_services_kernel_proto_msgTypes[165]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8778,7 +8263,7 @@ func (x *TopicStatsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{170}
+	return file_services_kernel_proto_rawDescGZIP(), []int{165}
 }
 
 type TopicStatsKeysRequest struct {
@@ -8789,7 +8274,7 @@ type TopicStatsKeysRequest struct {
 
 func (x *TopicStatsKeysRequest) Reset() {
 	*x = TopicStatsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[171]
+	mi := &file_services_kernel_proto_msgTypes[166]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8801,7 +8286,7 @@ func (x *TopicStatsKeysRequest) String() string {
 func (*TopicStatsKeysRequest) ProtoMessage() {}
 
 func (x *TopicStatsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[171]
+	mi := &file_services_kernel_proto_msgTypes[166]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8814,7 +8299,7 @@ func (x *TopicStatsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsKeysRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{171}
+	return file_services_kernel_proto_rawDescGZIP(), []int{166}
 }
 
 type TopicStatsSizeRequest struct {
@@ -8825,7 +8310,7 @@ type TopicStatsSizeRequest struct {
 
 func (x *TopicStatsSizeRequest) Reset() {
 	*x = TopicStatsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[172]
+	mi := &file_services_kernel_proto_msgTypes[167]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8837,7 +8322,7 @@ func (x *TopicStatsSizeRequest) String() string {
 func (*TopicStatsSizeRequest) ProtoMessage() {}
 
 func (x *TopicStatsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[172]
+	mi := &file_services_kernel_proto_msgTypes[167]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8850,7 +8335,7 @@ func (x *TopicStatsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsSizeRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{172}
+	return file_services_kernel_proto_rawDescGZIP(), []int{167}
 }
 
 type TopicStatsClearRequest struct {
@@ -8861,7 +8346,7 @@ type TopicStatsClearRequest struct {
 
 func (x *TopicStatsClearRequest) Reset() {
 	*x = TopicStatsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[173]
+	mi := &file_services_kernel_proto_msgTypes[168]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8873,7 +8358,7 @@ func (x *TopicStatsClearRequest) String() string {
 func (*TopicStatsClearRequest) ProtoMessage() {}
 
 func (x *TopicStatsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[173]
+	mi := &file_services_kernel_proto_msgTypes[168]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8886,20 +8371,20 @@ func (x *TopicStatsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsClearRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{173}
+	return file_services_kernel_proto_rawDescGZIP(), []int{168}
 }
 
 type TopicStatsValueResponse struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Value         *sentinel.AdminTopicStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                      `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Value         *hazelcast.AdminTopicStats `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                       `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TopicStatsValueResponse) Reset() {
 	*x = TopicStatsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[174]
+	mi := &file_services_kernel_proto_msgTypes[169]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8911,7 +8396,7 @@ func (x *TopicStatsValueResponse) String() string {
 func (*TopicStatsValueResponse) ProtoMessage() {}
 
 func (x *TopicStatsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[174]
+	mi := &file_services_kernel_proto_msgTypes[169]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8924,10 +8409,10 @@ func (x *TopicStatsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsValueResponse.ProtoReflect.Descriptor instead.
 func (*TopicStatsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{174}
+	return file_services_kernel_proto_rawDescGZIP(), []int{169}
 }
 
-func (x *TopicStatsValueResponse) GetValue() *sentinel.AdminTopicStats {
+func (x *TopicStatsValueResponse) GetValue() *hazelcast.AdminTopicStats {
 	if x != nil {
 		return x.Value
 	}
@@ -8942,15 +8427,15 @@ func (x *TopicStatsValueResponse) GetFound() bool {
 }
 
 type TopicStatsEntriesResponse struct {
-	state         protoimpl.MessageState               `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminTopicStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminTopicStats `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TopicStatsEntriesResponse) Reset() {
 	*x = TopicStatsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[175]
+	mi := &file_services_kernel_proto_msgTypes[170]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8962,7 +8447,7 @@ func (x *TopicStatsEntriesResponse) String() string {
 func (*TopicStatsEntriesResponse) ProtoMessage() {}
 
 func (x *TopicStatsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[175]
+	mi := &file_services_kernel_proto_msgTypes[170]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8975,10 +8460,10 @@ func (x *TopicStatsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*TopicStatsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{175}
+	return file_services_kernel_proto_rawDescGZIP(), []int{170}
 }
 
-func (x *TopicStatsEntriesResponse) GetEntries() map[string]*sentinel.AdminTopicStats {
+func (x *TopicStatsEntriesResponse) GetEntries() map[string]*hazelcast.AdminTopicStats {
 	if x != nil {
 		return x.Entries
 	}
@@ -8994,7 +8479,7 @@ type TopicStatsKeysResponse struct {
 
 func (x *TopicStatsKeysResponse) Reset() {
 	*x = TopicStatsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[176]
+	mi := &file_services_kernel_proto_msgTypes[171]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9006,7 +8491,7 @@ func (x *TopicStatsKeysResponse) String() string {
 func (*TopicStatsKeysResponse) ProtoMessage() {}
 
 func (x *TopicStatsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[176]
+	mi := &file_services_kernel_proto_msgTypes[171]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9019,7 +8504,7 @@ func (x *TopicStatsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsKeysResponse.ProtoReflect.Descriptor instead.
 func (*TopicStatsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{176}
+	return file_services_kernel_proto_rawDescGZIP(), []int{171}
 }
 
 func (x *TopicStatsKeysResponse) GetKeys() []string {
@@ -9038,7 +8523,7 @@ type TopicStatsSizeResponse struct {
 
 func (x *TopicStatsSizeResponse) Reset() {
 	*x = TopicStatsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[177]
+	mi := &file_services_kernel_proto_msgTypes[172]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9050,7 +8535,7 @@ func (x *TopicStatsSizeResponse) String() string {
 func (*TopicStatsSizeResponse) ProtoMessage() {}
 
 func (x *TopicStatsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[177]
+	mi := &file_services_kernel_proto_msgTypes[172]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9063,7 +8548,7 @@ func (x *TopicStatsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsSizeResponse.ProtoReflect.Descriptor instead.
 func (*TopicStatsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{177}
+	return file_services_kernel_proto_rawDescGZIP(), []int{172}
 }
 
 func (x *TopicStatsSizeResponse) GetSize() int32 {
@@ -9082,7 +8567,7 @@ type TopicStatsQueryRequest struct {
 
 func (x *TopicStatsQueryRequest) Reset() {
 	*x = TopicStatsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[178]
+	mi := &file_services_kernel_proto_msgTypes[173]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9094,7 +8579,7 @@ func (x *TopicStatsQueryRequest) String() string {
 func (*TopicStatsQueryRequest) ProtoMessage() {}
 
 func (x *TopicStatsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[178]
+	mi := &file_services_kernel_proto_msgTypes[173]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9107,7 +8592,7 @@ func (x *TopicStatsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsQueryRequest.ProtoReflect.Descriptor instead.
 func (*TopicStatsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{178}
+	return file_services_kernel_proto_rawDescGZIP(), []int{173}
 }
 
 func (x *TopicStatsQueryRequest) GetQuery() *CollectionQuery {
@@ -9118,16 +8603,16 @@ func (x *TopicStatsQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type TopicStatsQueryResponse struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Results       []*sentinel.AdminTopicStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                       `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Results       []*hazelcast.AdminTopicStats `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                        `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TopicStatsQueryResponse) Reset() {
 	*x = TopicStatsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[179]
+	mi := &file_services_kernel_proto_msgTypes[174]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9139,7 +8624,7 @@ func (x *TopicStatsQueryResponse) String() string {
 func (*TopicStatsQueryResponse) ProtoMessage() {}
 
 func (x *TopicStatsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[179]
+	mi := &file_services_kernel_proto_msgTypes[174]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9152,10 +8637,10 @@ func (x *TopicStatsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicStatsQueryResponse.ProtoReflect.Descriptor instead.
 func (*TopicStatsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{179}
+	return file_services_kernel_proto_rawDescGZIP(), []int{174}
 }
 
-func (x *TopicStatsQueryResponse) GetResults() []*sentinel.AdminTopicStats {
+func (x *TopicStatsQueryResponse) GetResults() []*hazelcast.AdminTopicStats {
 	if x != nil {
 		return x.Results
 	}
@@ -9178,7 +8663,7 @@ type WatchHealthGetRequest struct {
 
 func (x *WatchHealthGetRequest) Reset() {
 	*x = WatchHealthGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[180]
+	mi := &file_services_kernel_proto_msgTypes[175]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9190,7 +8675,7 @@ func (x *WatchHealthGetRequest) String() string {
 func (*WatchHealthGetRequest) ProtoMessage() {}
 
 func (x *WatchHealthGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[180]
+	mi := &file_services_kernel_proto_msgTypes[175]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9203,7 +8688,7 @@ func (x *WatchHealthGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthGetRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{180}
+	return file_services_kernel_proto_rawDescGZIP(), []int{175}
 }
 
 func (x *WatchHealthGetRequest) GetKey() string {
@@ -9214,17 +8699,17 @@ func (x *WatchHealthGetRequest) GetKey() string {
 }
 
 type WatchHealthPutRequest struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Key           string                     `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminWatchHealth `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                      `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Key           string                      `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminWatchHealth `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                       `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WatchHealthPutRequest) Reset() {
 	*x = WatchHealthPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[181]
+	mi := &file_services_kernel_proto_msgTypes[176]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9236,7 +8721,7 @@ func (x *WatchHealthPutRequest) String() string {
 func (*WatchHealthPutRequest) ProtoMessage() {}
 
 func (x *WatchHealthPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[181]
+	mi := &file_services_kernel_proto_msgTypes[176]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9249,7 +8734,7 @@ func (x *WatchHealthPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthPutRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{181}
+	return file_services_kernel_proto_rawDescGZIP(), []int{176}
 }
 
 func (x *WatchHealthPutRequest) GetKey() string {
@@ -9259,7 +8744,7 @@ func (x *WatchHealthPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *WatchHealthPutRequest) GetValue() *sentinel.AdminWatchHealth {
+func (x *WatchHealthPutRequest) GetValue() *hazelcast.AdminWatchHealth {
 	if x != nil {
 		return x.Value
 	}
@@ -9281,7 +8766,7 @@ type WatchHealthGetAllRequest struct {
 
 func (x *WatchHealthGetAllRequest) Reset() {
 	*x = WatchHealthGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[182]
+	mi := &file_services_kernel_proto_msgTypes[177]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9293,7 +8778,7 @@ func (x *WatchHealthGetAllRequest) String() string {
 func (*WatchHealthGetAllRequest) ProtoMessage() {}
 
 func (x *WatchHealthGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[182]
+	mi := &file_services_kernel_proto_msgTypes[177]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9306,7 +8791,7 @@ func (x *WatchHealthGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthGetAllRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{182}
+	return file_services_kernel_proto_rawDescGZIP(), []int{177}
 }
 
 type WatchHealthKeysRequest struct {
@@ -9317,7 +8802,7 @@ type WatchHealthKeysRequest struct {
 
 func (x *WatchHealthKeysRequest) Reset() {
 	*x = WatchHealthKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[183]
+	mi := &file_services_kernel_proto_msgTypes[178]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9329,7 +8814,7 @@ func (x *WatchHealthKeysRequest) String() string {
 func (*WatchHealthKeysRequest) ProtoMessage() {}
 
 func (x *WatchHealthKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[183]
+	mi := &file_services_kernel_proto_msgTypes[178]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9342,7 +8827,7 @@ func (x *WatchHealthKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthKeysRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{183}
+	return file_services_kernel_proto_rawDescGZIP(), []int{178}
 }
 
 type WatchHealthSizeRequest struct {
@@ -9353,7 +8838,7 @@ type WatchHealthSizeRequest struct {
 
 func (x *WatchHealthSizeRequest) Reset() {
 	*x = WatchHealthSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[184]
+	mi := &file_services_kernel_proto_msgTypes[179]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9365,7 +8850,7 @@ func (x *WatchHealthSizeRequest) String() string {
 func (*WatchHealthSizeRequest) ProtoMessage() {}
 
 func (x *WatchHealthSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[184]
+	mi := &file_services_kernel_proto_msgTypes[179]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9378,7 +8863,7 @@ func (x *WatchHealthSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthSizeRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{184}
+	return file_services_kernel_proto_rawDescGZIP(), []int{179}
 }
 
 type WatchHealthClearRequest struct {
@@ -9389,7 +8874,7 @@ type WatchHealthClearRequest struct {
 
 func (x *WatchHealthClearRequest) Reset() {
 	*x = WatchHealthClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[185]
+	mi := &file_services_kernel_proto_msgTypes[180]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9401,7 +8886,7 @@ func (x *WatchHealthClearRequest) String() string {
 func (*WatchHealthClearRequest) ProtoMessage() {}
 
 func (x *WatchHealthClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[185]
+	mi := &file_services_kernel_proto_msgTypes[180]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9414,20 +8899,20 @@ func (x *WatchHealthClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthClearRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{185}
+	return file_services_kernel_proto_rawDescGZIP(), []int{180}
 }
 
 type WatchHealthValueResponse struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Value         *sentinel.AdminWatchHealth `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                       `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Value         *hazelcast.AdminWatchHealth `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                        `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WatchHealthValueResponse) Reset() {
 	*x = WatchHealthValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[186]
+	mi := &file_services_kernel_proto_msgTypes[181]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9439,7 +8924,7 @@ func (x *WatchHealthValueResponse) String() string {
 func (*WatchHealthValueResponse) ProtoMessage() {}
 
 func (x *WatchHealthValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[186]
+	mi := &file_services_kernel_proto_msgTypes[181]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9452,10 +8937,10 @@ func (x *WatchHealthValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthValueResponse.ProtoReflect.Descriptor instead.
 func (*WatchHealthValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{186}
+	return file_services_kernel_proto_rawDescGZIP(), []int{181}
 }
 
-func (x *WatchHealthValueResponse) GetValue() *sentinel.AdminWatchHealth {
+func (x *WatchHealthValueResponse) GetValue() *hazelcast.AdminWatchHealth {
 	if x != nil {
 		return x.Value
 	}
@@ -9470,15 +8955,15 @@ func (x *WatchHealthValueResponse) GetFound() bool {
 }
 
 type WatchHealthEntriesResponse struct {
-	state         protoimpl.MessageState                `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminWatchHealth `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                 `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminWatchHealth `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WatchHealthEntriesResponse) Reset() {
 	*x = WatchHealthEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[187]
+	mi := &file_services_kernel_proto_msgTypes[182]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9490,7 +8975,7 @@ func (x *WatchHealthEntriesResponse) String() string {
 func (*WatchHealthEntriesResponse) ProtoMessage() {}
 
 func (x *WatchHealthEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[187]
+	mi := &file_services_kernel_proto_msgTypes[182]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9503,10 +8988,10 @@ func (x *WatchHealthEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthEntriesResponse.ProtoReflect.Descriptor instead.
 func (*WatchHealthEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{187}
+	return file_services_kernel_proto_rawDescGZIP(), []int{182}
 }
 
-func (x *WatchHealthEntriesResponse) GetEntries() map[string]*sentinel.AdminWatchHealth {
+func (x *WatchHealthEntriesResponse) GetEntries() map[string]*hazelcast.AdminWatchHealth {
 	if x != nil {
 		return x.Entries
 	}
@@ -9522,7 +9007,7 @@ type WatchHealthKeysResponse struct {
 
 func (x *WatchHealthKeysResponse) Reset() {
 	*x = WatchHealthKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[188]
+	mi := &file_services_kernel_proto_msgTypes[183]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9534,7 +9019,7 @@ func (x *WatchHealthKeysResponse) String() string {
 func (*WatchHealthKeysResponse) ProtoMessage() {}
 
 func (x *WatchHealthKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[188]
+	mi := &file_services_kernel_proto_msgTypes[183]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9547,7 +9032,7 @@ func (x *WatchHealthKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthKeysResponse.ProtoReflect.Descriptor instead.
 func (*WatchHealthKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{188}
+	return file_services_kernel_proto_rawDescGZIP(), []int{183}
 }
 
 func (x *WatchHealthKeysResponse) GetKeys() []string {
@@ -9566,7 +9051,7 @@ type WatchHealthSizeResponse struct {
 
 func (x *WatchHealthSizeResponse) Reset() {
 	*x = WatchHealthSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[189]
+	mi := &file_services_kernel_proto_msgTypes[184]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9578,7 +9063,7 @@ func (x *WatchHealthSizeResponse) String() string {
 func (*WatchHealthSizeResponse) ProtoMessage() {}
 
 func (x *WatchHealthSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[189]
+	mi := &file_services_kernel_proto_msgTypes[184]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9591,7 +9076,7 @@ func (x *WatchHealthSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthSizeResponse.ProtoReflect.Descriptor instead.
 func (*WatchHealthSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{189}
+	return file_services_kernel_proto_rawDescGZIP(), []int{184}
 }
 
 func (x *WatchHealthSizeResponse) GetSize() int32 {
@@ -9610,7 +9095,7 @@ type WatchHealthQueryRequest struct {
 
 func (x *WatchHealthQueryRequest) Reset() {
 	*x = WatchHealthQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[190]
+	mi := &file_services_kernel_proto_msgTypes[185]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9622,7 +9107,7 @@ func (x *WatchHealthQueryRequest) String() string {
 func (*WatchHealthQueryRequest) ProtoMessage() {}
 
 func (x *WatchHealthQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[190]
+	mi := &file_services_kernel_proto_msgTypes[185]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9635,7 +9120,7 @@ func (x *WatchHealthQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthQueryRequest.ProtoReflect.Descriptor instead.
 func (*WatchHealthQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{190}
+	return file_services_kernel_proto_rawDescGZIP(), []int{185}
 }
 
 func (x *WatchHealthQueryRequest) GetQuery() *CollectionQuery {
@@ -9646,16 +9131,16 @@ func (x *WatchHealthQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type WatchHealthQueryResponse struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	Results       []*sentinel.AdminWatchHealth `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                        `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState        `protogen:"open.v1"`
+	Results       []*hazelcast.AdminWatchHealth `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                         `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WatchHealthQueryResponse) Reset() {
 	*x = WatchHealthQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[191]
+	mi := &file_services_kernel_proto_msgTypes[186]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9667,7 +9152,7 @@ func (x *WatchHealthQueryResponse) String() string {
 func (*WatchHealthQueryResponse) ProtoMessage() {}
 
 func (x *WatchHealthQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[191]
+	mi := &file_services_kernel_proto_msgTypes[186]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9680,10 +9165,10 @@ func (x *WatchHealthQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchHealthQueryResponse.ProtoReflect.Descriptor instead.
 func (*WatchHealthQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{191}
+	return file_services_kernel_proto_rawDescGZIP(), []int{186}
 }
 
-func (x *WatchHealthQueryResponse) GetResults() []*sentinel.AdminWatchHealth {
+func (x *WatchHealthQueryResponse) GetResults() []*hazelcast.AdminWatchHealth {
 	if x != nil {
 		return x.Results
 	}
@@ -9706,7 +9191,7 @@ type MutationRatesGetRequest struct {
 
 func (x *MutationRatesGetRequest) Reset() {
 	*x = MutationRatesGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[192]
+	mi := &file_services_kernel_proto_msgTypes[187]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9718,7 +9203,7 @@ func (x *MutationRatesGetRequest) String() string {
 func (*MutationRatesGetRequest) ProtoMessage() {}
 
 func (x *MutationRatesGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[192]
+	mi := &file_services_kernel_proto_msgTypes[187]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9731,7 +9216,7 @@ func (x *MutationRatesGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesGetRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{192}
+	return file_services_kernel_proto_rawDescGZIP(), []int{187}
 }
 
 func (x *MutationRatesGetRequest) GetKey() string {
@@ -9742,17 +9227,17 @@ func (x *MutationRatesGetRequest) GetKey() string {
 }
 
 type MutationRatesPutRequest struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Key           string                      `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *sentinel.AdminMutationRate `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	LockCounter   int64                       `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Key           string                       `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         *hazelcast.AdminMutationRate `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	LockCounter   int64                        `protobuf:"varint,3,opt,name=lock_counter,json=lockCounter,proto3" json:"lock_counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MutationRatesPutRequest) Reset() {
 	*x = MutationRatesPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[193]
+	mi := &file_services_kernel_proto_msgTypes[188]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9764,7 +9249,7 @@ func (x *MutationRatesPutRequest) String() string {
 func (*MutationRatesPutRequest) ProtoMessage() {}
 
 func (x *MutationRatesPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[193]
+	mi := &file_services_kernel_proto_msgTypes[188]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9777,7 +9262,7 @@ func (x *MutationRatesPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesPutRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{193}
+	return file_services_kernel_proto_rawDescGZIP(), []int{188}
 }
 
 func (x *MutationRatesPutRequest) GetKey() string {
@@ -9787,7 +9272,7 @@ func (x *MutationRatesPutRequest) GetKey() string {
 	return ""
 }
 
-func (x *MutationRatesPutRequest) GetValue() *sentinel.AdminMutationRate {
+func (x *MutationRatesPutRequest) GetValue() *hazelcast.AdminMutationRate {
 	if x != nil {
 		return x.Value
 	}
@@ -9809,7 +9294,7 @@ type MutationRatesGetAllRequest struct {
 
 func (x *MutationRatesGetAllRequest) Reset() {
 	*x = MutationRatesGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[194]
+	mi := &file_services_kernel_proto_msgTypes[189]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9821,7 +9306,7 @@ func (x *MutationRatesGetAllRequest) String() string {
 func (*MutationRatesGetAllRequest) ProtoMessage() {}
 
 func (x *MutationRatesGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[194]
+	mi := &file_services_kernel_proto_msgTypes[189]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9834,7 +9319,7 @@ func (x *MutationRatesGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesGetAllRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{194}
+	return file_services_kernel_proto_rawDescGZIP(), []int{189}
 }
 
 type MutationRatesKeysRequest struct {
@@ -9845,7 +9330,7 @@ type MutationRatesKeysRequest struct {
 
 func (x *MutationRatesKeysRequest) Reset() {
 	*x = MutationRatesKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[195]
+	mi := &file_services_kernel_proto_msgTypes[190]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9857,7 +9342,7 @@ func (x *MutationRatesKeysRequest) String() string {
 func (*MutationRatesKeysRequest) ProtoMessage() {}
 
 func (x *MutationRatesKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[195]
+	mi := &file_services_kernel_proto_msgTypes[190]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9870,7 +9355,7 @@ func (x *MutationRatesKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesKeysRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{195}
+	return file_services_kernel_proto_rawDescGZIP(), []int{190}
 }
 
 type MutationRatesSizeRequest struct {
@@ -9881,7 +9366,7 @@ type MutationRatesSizeRequest struct {
 
 func (x *MutationRatesSizeRequest) Reset() {
 	*x = MutationRatesSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[196]
+	mi := &file_services_kernel_proto_msgTypes[191]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9893,7 +9378,7 @@ func (x *MutationRatesSizeRequest) String() string {
 func (*MutationRatesSizeRequest) ProtoMessage() {}
 
 func (x *MutationRatesSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[196]
+	mi := &file_services_kernel_proto_msgTypes[191]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9906,7 +9391,7 @@ func (x *MutationRatesSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesSizeRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{196}
+	return file_services_kernel_proto_rawDescGZIP(), []int{191}
 }
 
 type MutationRatesClearRequest struct {
@@ -9917,7 +9402,7 @@ type MutationRatesClearRequest struct {
 
 func (x *MutationRatesClearRequest) Reset() {
 	*x = MutationRatesClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[197]
+	mi := &file_services_kernel_proto_msgTypes[192]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9929,7 +9414,7 @@ func (x *MutationRatesClearRequest) String() string {
 func (*MutationRatesClearRequest) ProtoMessage() {}
 
 func (x *MutationRatesClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[197]
+	mi := &file_services_kernel_proto_msgTypes[192]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9942,20 +9427,20 @@ func (x *MutationRatesClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesClearRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{197}
+	return file_services_kernel_proto_rawDescGZIP(), []int{192}
 }
 
 type MutationRatesValueResponse struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Value         *sentinel.AdminMutationRate `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	Found         bool                        `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Value         *hazelcast.AdminMutationRate `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Found         bool                         `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MutationRatesValueResponse) Reset() {
 	*x = MutationRatesValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[198]
+	mi := &file_services_kernel_proto_msgTypes[193]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9967,7 +9452,7 @@ func (x *MutationRatesValueResponse) String() string {
 func (*MutationRatesValueResponse) ProtoMessage() {}
 
 func (x *MutationRatesValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[198]
+	mi := &file_services_kernel_proto_msgTypes[193]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9980,10 +9465,10 @@ func (x *MutationRatesValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesValueResponse.ProtoReflect.Descriptor instead.
 func (*MutationRatesValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{198}
+	return file_services_kernel_proto_rawDescGZIP(), []int{193}
 }
 
-func (x *MutationRatesValueResponse) GetValue() *sentinel.AdminMutationRate {
+func (x *MutationRatesValueResponse) GetValue() *hazelcast.AdminMutationRate {
 	if x != nil {
 		return x.Value
 	}
@@ -9998,15 +9483,15 @@ func (x *MutationRatesValueResponse) GetFound() bool {
 }
 
 type MutationRatesEntriesResponse struct {
-	state         protoimpl.MessageState                 `protogen:"open.v1"`
-	Entries       map[string]*sentinel.AdminMutationRate `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state         protoimpl.MessageState                  `protogen:"open.v1"`
+	Entries       map[string]*hazelcast.AdminMutationRate `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MutationRatesEntriesResponse) Reset() {
 	*x = MutationRatesEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[199]
+	mi := &file_services_kernel_proto_msgTypes[194]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10018,7 +9503,7 @@ func (x *MutationRatesEntriesResponse) String() string {
 func (*MutationRatesEntriesResponse) ProtoMessage() {}
 
 func (x *MutationRatesEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[199]
+	mi := &file_services_kernel_proto_msgTypes[194]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10031,10 +9516,10 @@ func (x *MutationRatesEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesEntriesResponse.ProtoReflect.Descriptor instead.
 func (*MutationRatesEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{199}
+	return file_services_kernel_proto_rawDescGZIP(), []int{194}
 }
 
-func (x *MutationRatesEntriesResponse) GetEntries() map[string]*sentinel.AdminMutationRate {
+func (x *MutationRatesEntriesResponse) GetEntries() map[string]*hazelcast.AdminMutationRate {
 	if x != nil {
 		return x.Entries
 	}
@@ -10050,7 +9535,7 @@ type MutationRatesKeysResponse struct {
 
 func (x *MutationRatesKeysResponse) Reset() {
 	*x = MutationRatesKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[200]
+	mi := &file_services_kernel_proto_msgTypes[195]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10062,7 +9547,7 @@ func (x *MutationRatesKeysResponse) String() string {
 func (*MutationRatesKeysResponse) ProtoMessage() {}
 
 func (x *MutationRatesKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[200]
+	mi := &file_services_kernel_proto_msgTypes[195]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10075,7 +9560,7 @@ func (x *MutationRatesKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesKeysResponse.ProtoReflect.Descriptor instead.
 func (*MutationRatesKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{200}
+	return file_services_kernel_proto_rawDescGZIP(), []int{195}
 }
 
 func (x *MutationRatesKeysResponse) GetKeys() []string {
@@ -10094,7 +9579,7 @@ type MutationRatesSizeResponse struct {
 
 func (x *MutationRatesSizeResponse) Reset() {
 	*x = MutationRatesSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[201]
+	mi := &file_services_kernel_proto_msgTypes[196]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10106,7 +9591,7 @@ func (x *MutationRatesSizeResponse) String() string {
 func (*MutationRatesSizeResponse) ProtoMessage() {}
 
 func (x *MutationRatesSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[201]
+	mi := &file_services_kernel_proto_msgTypes[196]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10119,7 +9604,7 @@ func (x *MutationRatesSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesSizeResponse.ProtoReflect.Descriptor instead.
 func (*MutationRatesSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{201}
+	return file_services_kernel_proto_rawDescGZIP(), []int{196}
 }
 
 func (x *MutationRatesSizeResponse) GetSize() int32 {
@@ -10138,7 +9623,7 @@ type MutationRatesQueryRequest struct {
 
 func (x *MutationRatesQueryRequest) Reset() {
 	*x = MutationRatesQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[202]
+	mi := &file_services_kernel_proto_msgTypes[197]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10150,7 +9635,7 @@ func (x *MutationRatesQueryRequest) String() string {
 func (*MutationRatesQueryRequest) ProtoMessage() {}
 
 func (x *MutationRatesQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[202]
+	mi := &file_services_kernel_proto_msgTypes[197]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10163,7 +9648,7 @@ func (x *MutationRatesQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesQueryRequest.ProtoReflect.Descriptor instead.
 func (*MutationRatesQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{202}
+	return file_services_kernel_proto_rawDescGZIP(), []int{197}
 }
 
 func (x *MutationRatesQueryRequest) GetQuery() *CollectionQuery {
@@ -10174,16 +9659,16 @@ func (x *MutationRatesQueryRequest) GetQuery() *CollectionQuery {
 }
 
 type MutationRatesQueryResponse struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Results       []*sentinel.AdminMutationRate `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	TotalCount    int32                         `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Results       []*hazelcast.AdminMutationRate `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	TotalCount    int32                          `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MutationRatesQueryResponse) Reset() {
 	*x = MutationRatesQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[203]
+	mi := &file_services_kernel_proto_msgTypes[198]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10195,7 +9680,7 @@ func (x *MutationRatesQueryResponse) String() string {
 func (*MutationRatesQueryResponse) ProtoMessage() {}
 
 func (x *MutationRatesQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[203]
+	mi := &file_services_kernel_proto_msgTypes[198]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10208,10 +9693,10 @@ func (x *MutationRatesQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MutationRatesQueryResponse.ProtoReflect.Descriptor instead.
 func (*MutationRatesQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{203}
+	return file_services_kernel_proto_rawDescGZIP(), []int{198}
 }
 
-func (x *MutationRatesQueryResponse) GetResults() []*sentinel.AdminMutationRate {
+func (x *MutationRatesQueryResponse) GetResults() []*hazelcast.AdminMutationRate {
 	if x != nil {
 		return x.Results
 	}
@@ -10234,7 +9719,7 @@ type InstancesGetRequest struct {
 
 func (x *InstancesGetRequest) Reset() {
 	*x = InstancesGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[204]
+	mi := &file_services_kernel_proto_msgTypes[199]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10246,7 +9731,7 @@ func (x *InstancesGetRequest) String() string {
 func (*InstancesGetRequest) ProtoMessage() {}
 
 func (x *InstancesGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[204]
+	mi := &file_services_kernel_proto_msgTypes[199]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10259,7 +9744,7 @@ func (x *InstancesGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesGetRequest.ProtoReflect.Descriptor instead.
 func (*InstancesGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{204}
+	return file_services_kernel_proto_rawDescGZIP(), []int{199}
 }
 
 func (x *InstancesGetRequest) GetKey() string {
@@ -10277,7 +9762,7 @@ type InstancesGetAllRequest struct {
 
 func (x *InstancesGetAllRequest) Reset() {
 	*x = InstancesGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[205]
+	mi := &file_services_kernel_proto_msgTypes[200]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10289,7 +9774,7 @@ func (x *InstancesGetAllRequest) String() string {
 func (*InstancesGetAllRequest) ProtoMessage() {}
 
 func (x *InstancesGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[205]
+	mi := &file_services_kernel_proto_msgTypes[200]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10302,7 +9787,7 @@ func (x *InstancesGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesGetAllRequest.ProtoReflect.Descriptor instead.
 func (*InstancesGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{205}
+	return file_services_kernel_proto_rawDescGZIP(), []int{200}
 }
 
 type InstancesKeysRequest struct {
@@ -10313,7 +9798,7 @@ type InstancesKeysRequest struct {
 
 func (x *InstancesKeysRequest) Reset() {
 	*x = InstancesKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[206]
+	mi := &file_services_kernel_proto_msgTypes[201]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10325,7 +9810,7 @@ func (x *InstancesKeysRequest) String() string {
 func (*InstancesKeysRequest) ProtoMessage() {}
 
 func (x *InstancesKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[206]
+	mi := &file_services_kernel_proto_msgTypes[201]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10338,7 +9823,7 @@ func (x *InstancesKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesKeysRequest.ProtoReflect.Descriptor instead.
 func (*InstancesKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{206}
+	return file_services_kernel_proto_rawDescGZIP(), []int{201}
 }
 
 type InstancesSizeRequest struct {
@@ -10349,7 +9834,7 @@ type InstancesSizeRequest struct {
 
 func (x *InstancesSizeRequest) Reset() {
 	*x = InstancesSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[207]
+	mi := &file_services_kernel_proto_msgTypes[202]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10361,7 +9846,7 @@ func (x *InstancesSizeRequest) String() string {
 func (*InstancesSizeRequest) ProtoMessage() {}
 
 func (x *InstancesSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[207]
+	mi := &file_services_kernel_proto_msgTypes[202]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10374,7 +9859,7 @@ func (x *InstancesSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesSizeRequest.ProtoReflect.Descriptor instead.
 func (*InstancesSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{207}
+	return file_services_kernel_proto_rawDescGZIP(), []int{202}
 }
 
 type InstancesValueResponse struct {
@@ -10387,7 +9872,7 @@ type InstancesValueResponse struct {
 
 func (x *InstancesValueResponse) Reset() {
 	*x = InstancesValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[208]
+	mi := &file_services_kernel_proto_msgTypes[203]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10399,7 +9884,7 @@ func (x *InstancesValueResponse) String() string {
 func (*InstancesValueResponse) ProtoMessage() {}
 
 func (x *InstancesValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[208]
+	mi := &file_services_kernel_proto_msgTypes[203]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10412,7 +9897,7 @@ func (x *InstancesValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesValueResponse.ProtoReflect.Descriptor instead.
 func (*InstancesValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{208}
+	return file_services_kernel_proto_rawDescGZIP(), []int{203}
 }
 
 func (x *InstancesValueResponse) GetValue() *healthreport.ServiceInstanceHealth {
@@ -10438,7 +9923,7 @@ type InstancesEntriesResponse struct {
 
 func (x *InstancesEntriesResponse) Reset() {
 	*x = InstancesEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[209]
+	mi := &file_services_kernel_proto_msgTypes[204]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10450,7 +9935,7 @@ func (x *InstancesEntriesResponse) String() string {
 func (*InstancesEntriesResponse) ProtoMessage() {}
 
 func (x *InstancesEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[209]
+	mi := &file_services_kernel_proto_msgTypes[204]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10463,7 +9948,7 @@ func (x *InstancesEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesEntriesResponse.ProtoReflect.Descriptor instead.
 func (*InstancesEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{209}
+	return file_services_kernel_proto_rawDescGZIP(), []int{204}
 }
 
 func (x *InstancesEntriesResponse) GetEntries() map[string]*healthreport.ServiceInstanceHealth {
@@ -10482,7 +9967,7 @@ type InstancesKeysResponse struct {
 
 func (x *InstancesKeysResponse) Reset() {
 	*x = InstancesKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[210]
+	mi := &file_services_kernel_proto_msgTypes[205]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10494,7 +9979,7 @@ func (x *InstancesKeysResponse) String() string {
 func (*InstancesKeysResponse) ProtoMessage() {}
 
 func (x *InstancesKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[210]
+	mi := &file_services_kernel_proto_msgTypes[205]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10507,7 +9992,7 @@ func (x *InstancesKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesKeysResponse.ProtoReflect.Descriptor instead.
 func (*InstancesKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{210}
+	return file_services_kernel_proto_rawDescGZIP(), []int{205}
 }
 
 func (x *InstancesKeysResponse) GetKeys() []string {
@@ -10526,7 +10011,7 @@ type InstancesSizeResponse struct {
 
 func (x *InstancesSizeResponse) Reset() {
 	*x = InstancesSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[211]
+	mi := &file_services_kernel_proto_msgTypes[206]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10538,7 +10023,7 @@ func (x *InstancesSizeResponse) String() string {
 func (*InstancesSizeResponse) ProtoMessage() {}
 
 func (x *InstancesSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[211]
+	mi := &file_services_kernel_proto_msgTypes[206]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10551,7 +10036,7 @@ func (x *InstancesSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesSizeResponse.ProtoReflect.Descriptor instead.
 func (*InstancesSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{211}
+	return file_services_kernel_proto_rawDescGZIP(), []int{206}
 }
 
 func (x *InstancesSizeResponse) GetSize() int32 {
@@ -10570,7 +10055,7 @@ type InstancesQueryRequest struct {
 
 func (x *InstancesQueryRequest) Reset() {
 	*x = InstancesQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[212]
+	mi := &file_services_kernel_proto_msgTypes[207]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10582,7 +10067,7 @@ func (x *InstancesQueryRequest) String() string {
 func (*InstancesQueryRequest) ProtoMessage() {}
 
 func (x *InstancesQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[212]
+	mi := &file_services_kernel_proto_msgTypes[207]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10595,7 +10080,7 @@ func (x *InstancesQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesQueryRequest.ProtoReflect.Descriptor instead.
 func (*InstancesQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{212}
+	return file_services_kernel_proto_rawDescGZIP(), []int{207}
 }
 
 func (x *InstancesQueryRequest) GetQuery() *CollectionQuery {
@@ -10615,7 +10100,7 @@ type InstancesQueryResponse struct {
 
 func (x *InstancesQueryResponse) Reset() {
 	*x = InstancesQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[213]
+	mi := &file_services_kernel_proto_msgTypes[208]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10627,7 +10112,7 @@ func (x *InstancesQueryResponse) String() string {
 func (*InstancesQueryResponse) ProtoMessage() {}
 
 func (x *InstancesQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[213]
+	mi := &file_services_kernel_proto_msgTypes[208]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10640,7 +10125,7 @@ func (x *InstancesQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstancesQueryResponse.ProtoReflect.Descriptor instead.
 func (*InstancesQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{213}
+	return file_services_kernel_proto_rawDescGZIP(), []int{208}
 }
 
 func (x *InstancesQueryResponse) GetResults() []*healthreport.ServiceInstanceHealth {
@@ -10666,7 +10151,7 @@ type CaCertsGetRequest struct {
 
 func (x *CaCertsGetRequest) Reset() {
 	*x = CaCertsGetRequest{}
-	mi := &file_services_kernel_proto_msgTypes[214]
+	mi := &file_services_kernel_proto_msgTypes[209]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10678,7 +10163,7 @@ func (x *CaCertsGetRequest) String() string {
 func (*CaCertsGetRequest) ProtoMessage() {}
 
 func (x *CaCertsGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[214]
+	mi := &file_services_kernel_proto_msgTypes[209]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10691,7 +10176,7 @@ func (x *CaCertsGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsGetRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsGetRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{214}
+	return file_services_kernel_proto_rawDescGZIP(), []int{209}
 }
 
 func (x *CaCertsGetRequest) GetKey() string {
@@ -10712,7 +10197,7 @@ type CaCertsPutRequest struct {
 
 func (x *CaCertsPutRequest) Reset() {
 	*x = CaCertsPutRequest{}
-	mi := &file_services_kernel_proto_msgTypes[215]
+	mi := &file_services_kernel_proto_msgTypes[210]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10724,7 +10209,7 @@ func (x *CaCertsPutRequest) String() string {
 func (*CaCertsPutRequest) ProtoMessage() {}
 
 func (x *CaCertsPutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[215]
+	mi := &file_services_kernel_proto_msgTypes[210]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10737,7 +10222,7 @@ func (x *CaCertsPutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsPutRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsPutRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{215}
+	return file_services_kernel_proto_rawDescGZIP(), []int{210}
 }
 
 func (x *CaCertsPutRequest) GetKey() string {
@@ -10769,7 +10254,7 @@ type CaCertsGetAllRequest struct {
 
 func (x *CaCertsGetAllRequest) Reset() {
 	*x = CaCertsGetAllRequest{}
-	mi := &file_services_kernel_proto_msgTypes[216]
+	mi := &file_services_kernel_proto_msgTypes[211]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10781,7 +10266,7 @@ func (x *CaCertsGetAllRequest) String() string {
 func (*CaCertsGetAllRequest) ProtoMessage() {}
 
 func (x *CaCertsGetAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[216]
+	mi := &file_services_kernel_proto_msgTypes[211]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10794,7 +10279,7 @@ func (x *CaCertsGetAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsGetAllRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsGetAllRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{216}
+	return file_services_kernel_proto_rawDescGZIP(), []int{211}
 }
 
 type CaCertsKeysRequest struct {
@@ -10805,7 +10290,7 @@ type CaCertsKeysRequest struct {
 
 func (x *CaCertsKeysRequest) Reset() {
 	*x = CaCertsKeysRequest{}
-	mi := &file_services_kernel_proto_msgTypes[217]
+	mi := &file_services_kernel_proto_msgTypes[212]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10817,7 +10302,7 @@ func (x *CaCertsKeysRequest) String() string {
 func (*CaCertsKeysRequest) ProtoMessage() {}
 
 func (x *CaCertsKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[217]
+	mi := &file_services_kernel_proto_msgTypes[212]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10830,7 +10315,7 @@ func (x *CaCertsKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsKeysRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsKeysRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{217}
+	return file_services_kernel_proto_rawDescGZIP(), []int{212}
 }
 
 type CaCertsSizeRequest struct {
@@ -10841,7 +10326,7 @@ type CaCertsSizeRequest struct {
 
 func (x *CaCertsSizeRequest) Reset() {
 	*x = CaCertsSizeRequest{}
-	mi := &file_services_kernel_proto_msgTypes[218]
+	mi := &file_services_kernel_proto_msgTypes[213]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10853,7 +10338,7 @@ func (x *CaCertsSizeRequest) String() string {
 func (*CaCertsSizeRequest) ProtoMessage() {}
 
 func (x *CaCertsSizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[218]
+	mi := &file_services_kernel_proto_msgTypes[213]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10866,7 +10351,7 @@ func (x *CaCertsSizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsSizeRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsSizeRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{218}
+	return file_services_kernel_proto_rawDescGZIP(), []int{213}
 }
 
 type CaCertsClearRequest struct {
@@ -10877,7 +10362,7 @@ type CaCertsClearRequest struct {
 
 func (x *CaCertsClearRequest) Reset() {
 	*x = CaCertsClearRequest{}
-	mi := &file_services_kernel_proto_msgTypes[219]
+	mi := &file_services_kernel_proto_msgTypes[214]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10889,7 +10374,7 @@ func (x *CaCertsClearRequest) String() string {
 func (*CaCertsClearRequest) ProtoMessage() {}
 
 func (x *CaCertsClearRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[219]
+	mi := &file_services_kernel_proto_msgTypes[214]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10902,7 +10387,7 @@ func (x *CaCertsClearRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsClearRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsClearRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{219}
+	return file_services_kernel_proto_rawDescGZIP(), []int{214}
 }
 
 type CaCertsValueResponse struct {
@@ -10915,7 +10400,7 @@ type CaCertsValueResponse struct {
 
 func (x *CaCertsValueResponse) Reset() {
 	*x = CaCertsValueResponse{}
-	mi := &file_services_kernel_proto_msgTypes[220]
+	mi := &file_services_kernel_proto_msgTypes[215]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10927,7 +10412,7 @@ func (x *CaCertsValueResponse) String() string {
 func (*CaCertsValueResponse) ProtoMessage() {}
 
 func (x *CaCertsValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[220]
+	mi := &file_services_kernel_proto_msgTypes[215]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10940,7 +10425,7 @@ func (x *CaCertsValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsValueResponse.ProtoReflect.Descriptor instead.
 func (*CaCertsValueResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{220}
+	return file_services_kernel_proto_rawDescGZIP(), []int{215}
 }
 
 func (x *CaCertsValueResponse) GetValue() *x509.X509Cert {
@@ -10966,7 +10451,7 @@ type CaCertsEntriesResponse struct {
 
 func (x *CaCertsEntriesResponse) Reset() {
 	*x = CaCertsEntriesResponse{}
-	mi := &file_services_kernel_proto_msgTypes[221]
+	mi := &file_services_kernel_proto_msgTypes[216]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10978,7 +10463,7 @@ func (x *CaCertsEntriesResponse) String() string {
 func (*CaCertsEntriesResponse) ProtoMessage() {}
 
 func (x *CaCertsEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[221]
+	mi := &file_services_kernel_proto_msgTypes[216]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10991,7 +10476,7 @@ func (x *CaCertsEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsEntriesResponse.ProtoReflect.Descriptor instead.
 func (*CaCertsEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{221}
+	return file_services_kernel_proto_rawDescGZIP(), []int{216}
 }
 
 func (x *CaCertsEntriesResponse) GetEntries() map[string]*x509.X509Cert {
@@ -11010,7 +10495,7 @@ type CaCertsKeysResponse struct {
 
 func (x *CaCertsKeysResponse) Reset() {
 	*x = CaCertsKeysResponse{}
-	mi := &file_services_kernel_proto_msgTypes[222]
+	mi := &file_services_kernel_proto_msgTypes[217]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11022,7 +10507,7 @@ func (x *CaCertsKeysResponse) String() string {
 func (*CaCertsKeysResponse) ProtoMessage() {}
 
 func (x *CaCertsKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[222]
+	mi := &file_services_kernel_proto_msgTypes[217]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11035,7 +10520,7 @@ func (x *CaCertsKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsKeysResponse.ProtoReflect.Descriptor instead.
 func (*CaCertsKeysResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{222}
+	return file_services_kernel_proto_rawDescGZIP(), []int{217}
 }
 
 func (x *CaCertsKeysResponse) GetKeys() []string {
@@ -11054,7 +10539,7 @@ type CaCertsSizeResponse struct {
 
 func (x *CaCertsSizeResponse) Reset() {
 	*x = CaCertsSizeResponse{}
-	mi := &file_services_kernel_proto_msgTypes[223]
+	mi := &file_services_kernel_proto_msgTypes[218]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11066,7 +10551,7 @@ func (x *CaCertsSizeResponse) String() string {
 func (*CaCertsSizeResponse) ProtoMessage() {}
 
 func (x *CaCertsSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[223]
+	mi := &file_services_kernel_proto_msgTypes[218]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11079,7 +10564,7 @@ func (x *CaCertsSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsSizeResponse.ProtoReflect.Descriptor instead.
 func (*CaCertsSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{223}
+	return file_services_kernel_proto_rawDescGZIP(), []int{218}
 }
 
 func (x *CaCertsSizeResponse) GetSize() int32 {
@@ -11098,7 +10583,7 @@ type CaCertsQueryRequest struct {
 
 func (x *CaCertsQueryRequest) Reset() {
 	*x = CaCertsQueryRequest{}
-	mi := &file_services_kernel_proto_msgTypes[224]
+	mi := &file_services_kernel_proto_msgTypes[219]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11110,7 +10595,7 @@ func (x *CaCertsQueryRequest) String() string {
 func (*CaCertsQueryRequest) ProtoMessage() {}
 
 func (x *CaCertsQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[224]
+	mi := &file_services_kernel_proto_msgTypes[219]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11123,7 +10608,7 @@ func (x *CaCertsQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsQueryRequest.ProtoReflect.Descriptor instead.
 func (*CaCertsQueryRequest) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{224}
+	return file_services_kernel_proto_rawDescGZIP(), []int{219}
 }
 
 func (x *CaCertsQueryRequest) GetQuery() *CollectionQuery {
@@ -11143,7 +10628,7 @@ type CaCertsQueryResponse struct {
 
 func (x *CaCertsQueryResponse) Reset() {
 	*x = CaCertsQueryResponse{}
-	mi := &file_services_kernel_proto_msgTypes[225]
+	mi := &file_services_kernel_proto_msgTypes[220]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11155,7 +10640,7 @@ func (x *CaCertsQueryResponse) String() string {
 func (*CaCertsQueryResponse) ProtoMessage() {}
 
 func (x *CaCertsQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[225]
+	mi := &file_services_kernel_proto_msgTypes[220]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11168,7 +10653,7 @@ func (x *CaCertsQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaCertsQueryResponse.ProtoReflect.Descriptor instead.
 func (*CaCertsQueryResponse) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{225}
+	return file_services_kernel_proto_rawDescGZIP(), []int{220}
 }
 
 func (x *CaCertsQueryResponse) GetResults() []*x509.X509Cert {
@@ -11193,7 +10678,7 @@ type MapEmpty struct {
 
 func (x *MapEmpty) Reset() {
 	*x = MapEmpty{}
-	mi := &file_services_kernel_proto_msgTypes[226]
+	mi := &file_services_kernel_proto_msgTypes[221]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11205,7 +10690,7 @@ func (x *MapEmpty) String() string {
 func (*MapEmpty) ProtoMessage() {}
 
 func (x *MapEmpty) ProtoReflect() protoreflect.Message {
-	mi := &file_services_kernel_proto_msgTypes[226]
+	mi := &file_services_kernel_proto_msgTypes[221]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11218,14 +10703,14 @@ func (x *MapEmpty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapEmpty.ProtoReflect.Descriptor instead.
 func (*MapEmpty) Descriptor() ([]byte, []int) {
-	return file_services_kernel_proto_rawDescGZIP(), []int{226}
+	return file_services_kernel_proto_rawDescGZIP(), []int{221}
 }
 
 var File_services_kernel_proto protoreflect.FileDescriptor
 
 const file_services_kernel_proto_rawDesc = "" +
 	"\n" +
-	"\x15services/kernel.proto\x12\x06kernel\x1a\x0flibs/spec.proto\x1a\x0flibs/host.proto\x1a\x11libs/logger.proto\x1a\x17libs/outputformat.proto\x1a\x0elibs/jwk.proto\x1a\x0flibs/x509.proto\x1a\x10libs/token.proto\x1a\x18libs/cloudidentity.proto\x1a\x16libs/cloudvendor.proto\x1a\x19common/tokenrequest.proto\x1a\x17libs/healthreport.proto\x1a\x17services/sentinel.proto\x1a\x14libs/generated.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xc3\x06\n" +
+	"\x15services/kernel.proto\x12\x06kernel\x1a\x0flibs/spec.proto\x1a\x0flibs/host.proto\x1a\x11libs/logger.proto\x1a\x17libs/outputformat.proto\x1a\x0elibs/jwk.proto\x1a\x0flibs/x509.proto\x1a\x10libs/token.proto\x1a\x18libs/cloudidentity.proto\x1a\x16libs/cloudvendor.proto\x1a\x19common/tokenrequest.proto\x1a\x16common/hazelcast.proto\x1a\x17libs/healthreport.proto\x1a\x14libs/generated.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xcc\x06\n" +
 	"\x0fBootstrapConfig\x12'\n" +
 	"\fcluster_name\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\vclusterName\x12,\n" +
 	"\blistener\x18\x02 \x01(\v2\n" +
@@ -11234,10 +10719,10 @@ const file_services_kernel_proto_rawDesc = "" +
 	".host.HostB\b\x88\xa6\x1d\x01\xc0\xa8\x1d R\amembers\x12#\n" +
 	"\n" +
 	"node_count\x18\x04 \x01(\x05B\x04\xa8\xa7\x1d\x00R\tnodeCount\x122\n" +
-	"\x0fpartition_count\x18\x05 \x01(\x05B\t\xa8\xa7\x1d\x00\x90\xa8\x1d\x8f\x02R\x0epartitionCount\x125\n" +
-	"\anetwork\x18\x06 \x01(\v2\x15.kernel.NetworkConfigB\x04\x88\xa6\x1d\x01R\anetwork\x122\n" +
-	"\x06logger\x18\a \x01(\v2\x14.logger.LoggerConfigB\x04\x88\xa6\x1d\x01R\x06logger\x12B\n" +
-	"\fcp_subsystem\x18\b \x01(\v2\x19.kernel.CPSubsystemConfigB\x04\x88\xa6\x1d\x01R\vcpSubsystem\x128\n" +
+	"\x0fpartition_count\x18\x05 \x01(\x05B\t\xa8\xa7\x1d\x00\x90\xa8\x1d\x8f\x02R\x0epartitionCount\x128\n" +
+	"\anetwork\x18\x06 \x01(\v2\x18.hazelcast.NetworkConfigB\x04\x88\xa6\x1d\x01R\anetwork\x122\n" +
+	"\x06logger\x18\a \x01(\v2\x14.logger.LoggerConfigB\x04\x88\xa6\x1d\x01R\x06logger\x12E\n" +
+	"\fcp_subsystem\x18\b \x01(\v2\x1c.hazelcast.CPSubsystemConfigB\x04\x88\xa6\x1d\x01R\vcpSubsystem\x128\n" +
 	"\x0fpersistence_dir\x18\t \x01(\tB\x0f\x8a\xa8\x1d\vdata/kernelR\x0epersistenceDir\x12I\n" +
 	"\x12persistence_format\x18\n" +
 	" \x01(\x0e2\x1a.outputformat.OutputFormatR\x11persistenceFormat\x122\n" +
@@ -11247,35 +10732,9 @@ const file_services_kernel_proto_rawDesc = "" +
 	"fileLoader\x121\n" +
 	"\tloader_ca\x18\r \x03(\v2\x0e.x509.X509CertB\x04\xc0\xa8\x1d\x10R\bloaderCa\x12*\n" +
 	"\x03tls\x18\x0e \x01(\v2\x12.x509.X509CertPairB\x04\x88\xa6\x1d\x01R\x03tls\x12\"\n" +
-	"\traft_port\x18\x0f \x01(\x05B\x05\x90\xa8\x1d\x8a'R\braftPort\x12$\n" +
-	"\x04mode\x18\x10 \x01(\x0e2\x10.kernel.NodeModeR\x04modeB\b\n" +
-	"\x06config\"\xdf\x01\n" +
-	"\rNetworkConfig\x12@\n" +
-	"\x17connect_timeout_seconds\x18\x01 \x01(\x03B\b\xc0\xa6\x1d\x01\x90\xa8\x1d\x05R\x15connectTimeoutSeconds\x12F\n" +
-	"\x1aheartbeat_interval_seconds\x18\x02 \x01(\x03B\b\xc0\xa6\x1d\x01\x90\xa8\x1d\x05R\x18heartbeatIntervalSeconds\x12D\n" +
-	"\x19heartbeat_timeout_seconds\x18\x03 \x01(\x03B\b\xc0\xa6\x1d\x01\x90\xa8\x1d<R\x17heartbeatTimeoutSeconds\"\xd7\x02\n" +
-	"\x11CPSubsystemConfig\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x120\n" +
-	"\x0fcp_member_count\x18\x02 \x01(\x05B\b\xb0\xa7\x1d\x03\x90\xa8\x1d\x03R\rcpMemberCount\x12A\n" +
-	"\x17session_timeout_seconds\x18\x03 \x01(\x03B\t\xc0\xa6\x1d\x01\x90\xa8\x1d\xac\x02R\x15sessionTimeoutSeconds\x12U\n" +
-	"\"session_heartbeat_interval_seconds\x18\x04 \x01(\x03B\b\xc0\xa6\x1d\x01\x90\xa8\x1d\x05R\x1fsessionHeartbeatIntervalSeconds\x12\\\n" +
-	"&missing_cp_member_auto_removal_seconds\x18\x05 \x01(\x03B\t\xc0\xa6\x1d\x02\x90\xa8\x1d\xc0pR!missingCpMemberAutoRemovalSeconds\"m\n" +
-	"\x0fRateLimitConfig\x12.\n" +
-	"\fpolling_rate\x18\x01 \x01(\x01B\v\x99\xa8\x1d\x00\x00\x00\x00\x00\x00\x00@R\vpollingRate\x12*\n" +
-	"\n" +
-	"unary_rate\x18\x02 \x01(\x01B\v\x99\xa8\x1d\x00\x00\x00\x00\x00\x00$@R\tunaryRate\"\xcf\x01\n" +
-	"\fRedoLogEntry\x12\x19\n" +
-	"\bmap_name\x18\x01 \x01(\tR\amapName\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\fR\x05value\x12\x1e\n" +
-	"\x02op\x18\x04 \x01(\x0e2\x0e.kernel.OpTypeR\x02op\x12!\n" +
-	"\ftimestamp_ms\x18\x05 \x01(\x03R\vtimestampMs\x129\n" +
-	"\vconsistency\x18\x06 \x01(\x0e2\x17.kernel.ConsistencyTypeR\vconsistency\"m\n" +
-	"\x0eFullDumpHeader\x12!\n" +
-	"\ftimestamp_ms\x18\x01 \x01(\x03R\vtimestampMs\x12\x1f\n" +
-	"\ventry_count\x18\x02 \x01(\x05R\n" +
-	"entryCount\x12\x17\n" +
-	"\anode_id\x18\x03 \x01(\tR\x06nodeId\"\x89\x01\n" +
+	"\traft_port\x18\x0f \x01(\x05B\x05\x90\xa8\x1d\x8a'R\braftPort\x12'\n" +
+	"\x04mode\x18\x10 \x01(\x0e2\x13.hazelcast.NodeModeR\x04modeB\b\n" +
+	"\x06config\"\x89\x01\n" +
 	"\x13TokenExchangerState\x12Q\n" +
 	"\x0everifying_keys\x18\x01 \x03(\v2\b.jwk.JwkB \xe0\xb5\x18\x02\xe0\xb6\x18\x01\x9a\xb7\x18\x14JwkVerifyingKeysViewR\rverifyingKeys:\x1f\x9a\xa8\x1d\x13TokenExchangerState\xa0\xa8\x1d\x02\xe0\xa8\x1d\x01\"c\n" +
 	"\x0eTrustedCaState\x125\n" +
@@ -11289,12 +10748,12 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\n" +
 	"cred_pairs\x18\x02 \x03(\v2\b.jwk.JwkB\x04\xc0\xa8\x1d\bR\tcredPairs\x12M\n" +
 	"\x10cloud_identities\x18\x03 \x03(\v2\x1c.kernel.CloudIdentityMatcherB\x04\xc0\xa8\x1d\bR\x0fcloudIdentities\x125\n" +
-	"\x13authorized_services\x18\x04 \x03(\tB\x04\xc0\xa8\x1d@R\x12authorizedServices\"\xc8\x03\n" +
+	"\x13authorized_services\x18\x04 \x03(\tB\x04\xc0\xa8\x1d@R\x12authorizedServices\"\xcb\x03\n" +
 	"\x06Config\x125\n" +
 	"\vtrusted_cas\x18\x02 \x03(\v2\x0e.x509.X509CertB\x04\xc0\xa8\x1d\x10R\n" +
-	"trustedCas\x12<\n" +
+	"trustedCas\x12?\n" +
 	"\n" +
-	"rate_limit\x18\x05 \x01(\v2\x17.kernel.RateLimitConfigB\x04\x88\xa6\x1d\x01R\trateLimit\x123\n" +
+	"rate_limit\x18\x05 \x01(\v2\x1a.hazelcast.RateLimitConfigB\x04\x88\xa6\x1d\x01R\trateLimit\x123\n" +
 	"\aconfigs\x18\a \x01(\v2\x13.generated.ServicesB\x04\x88\xa6\x1d\x01R\aconfigs\x12I\n" +
 	"\x1dkey_rotation_interval_seconds\x18\n" +
 	" \x01(\x03B\x06\x90\xa8\x1d\x80\xa3\x05R\x1akeyRotationIntervalSeconds\x12F\n" +
@@ -11306,29 +10765,29 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"&\n" +
 	"\n" +
 	"FileLoader\x12\x18\n" +
-	"\x04path\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\x04path\"\x83\f\n" +
-	"\fClusterState\x12C\n" +
-	"\fcluster_info\x18\x01 \x01(\v2\x1a.sentinel.AdminClusterInfoB\x04\xe0\xb5\x18\x02R\vclusterInfo\x12I\n" +
-	"\x0ecluster_health\x18\x02 \x01(\v2\x1c.sentinel.AdminClusterHealthB\x04\xe0\xb5\x18\x02R\rclusterHealth\x12G\n" +
-	"\fnode_metrics\x18\x03 \x03(\v2\x1a.sentinel.AdminNodeMetricsB\b\xe0\xb5\x18\x02ȶ\x18xR\vnodeMetrics\x12A\n" +
+	"\x04path\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\x04path\"\x92\f\n" +
+	"\fClusterState\x12D\n" +
+	"\fcluster_info\x18\x01 \x01(\v2\x1b.hazelcast.AdminClusterInfoB\x04\xe0\xb5\x18\x02R\vclusterInfo\x12J\n" +
+	"\x0ecluster_health\x18\x02 \x01(\v2\x1d.hazelcast.AdminClusterHealthB\x04\xe0\xb5\x18\x02R\rclusterHealth\x12H\n" +
+	"\fnode_metrics\x18\x03 \x03(\v2\x1b.hazelcast.AdminNodeMetricsB\b\xe0\xb5\x18\x02ȶ\x18xR\vnodeMetrics\x12B\n" +
 	"\n" +
-	"grpc_stats\x18\x04 \x03(\v2\x18.sentinel.AdminGrpcStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\tgrpcStats\x12Y\n" +
-	"\x12persistence_status\x18\x05 \x03(\v2 .sentinel.AdminPersistenceStatusB\b\xe0\xb5\x18\x02ȶ\x18xR\x11persistenceStatus\x12J\n" +
-	"\rnetwork_stats\x18\x06 \x03(\v2\x1b.sentinel.AdminNetworkStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\fnetworkStats\x12D\n" +
-	"\vthread_info\x18\a \x03(\v2\x19.sentinel.AdminThreadInfoB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
-	"threadInfo\x12T\n" +
-	"\x11token_cache_stats\x18\b \x03(\v2\x1e.sentinel.AdminTokenCacheStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\x0ftokenCacheStats\x12>\n" +
-	"\tmap_stats\x18\t \x03(\v2\x17.sentinel.AdminMapStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\bmapStats\x12L\n" +
+	"grpc_stats\x18\x04 \x03(\v2\x19.hazelcast.AdminGrpcStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\tgrpcStats\x12Z\n" +
+	"\x12persistence_status\x18\x05 \x03(\v2!.hazelcast.AdminPersistenceStatusB\b\xe0\xb5\x18\x02ȶ\x18xR\x11persistenceStatus\x12K\n" +
+	"\rnetwork_stats\x18\x06 \x03(\v2\x1c.hazelcast.AdminNetworkStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\fnetworkStats\x12E\n" +
+	"\vthread_info\x18\a \x03(\v2\x1a.hazelcast.AdminThreadInfoB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
+	"threadInfo\x12U\n" +
+	"\x11token_cache_stats\x18\b \x03(\v2\x1f.hazelcast.AdminTokenCacheStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\x0ftokenCacheStats\x12?\n" +
+	"\tmap_stats\x18\t \x03(\v2\x18.hazelcast.AdminMapStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\bmapStats\x12L\n" +
 	"\x10bootstrap_config\x18\r \x01(\v2\x17.kernel.BootstrapConfigB\b\xe0\xb5\x18\x02\xe8\xb5\x18\x01R\x0fbootstrapConfig\x12=\n" +
-	"\x0ffrontend_config\x18\x0e \x01(\v2\x0e.kernel.ConfigB\x04\xe0\xb5\x18\x02R\x0efrontendConfig\x12E\n" +
-	"\x0egraph_registry\x18\x11 \x03(\v2\x18.sentinel.AdminGraphInfoB\x04\xe0\xb5\x18\x02R\rgraphRegistry\x12[\n" +
-	"\x13service_connections\x18\x12 \x03(\v2 .sentinel.AdminServiceConnectionB\b\xe0\xb5\x18\x02ȶ\x18xR\x12serviceConnections\x12D\n" +
-	"\vqueue_stats\x18\x13 \x03(\v2\x19.sentinel.AdminQueueStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
-	"queueStats\x12D\n" +
-	"\vtopic_stats\x18\x14 \x03(\v2\x19.sentinel.AdminTopicStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
-	"topicStats\x12G\n" +
-	"\fwatch_health\x18\x15 \x03(\v2\x1a.sentinel.AdminWatchHealthB\b\xe0\xb5\x18\x02ȶ\x18<R\vwatchHealth\x12L\n" +
-	"\x0emutation_rates\x18\x16 \x03(\v2\x1b.sentinel.AdminMutationRateB\b\xe0\xb5\x18\x02ȶ\x18xR\rmutationRates\x12I\n" +
+	"\x0ffrontend_config\x18\x0e \x01(\v2\x0e.kernel.ConfigB\x04\xe0\xb5\x18\x02R\x0efrontendConfig\x12F\n" +
+	"\x0egraph_registry\x18\x11 \x03(\v2\x19.hazelcast.AdminGraphInfoB\x04\xe0\xb5\x18\x02R\rgraphRegistry\x12\\\n" +
+	"\x13service_connections\x18\x12 \x03(\v2!.hazelcast.AdminServiceConnectionB\b\xe0\xb5\x18\x02ȶ\x18xR\x12serviceConnections\x12E\n" +
+	"\vqueue_stats\x18\x13 \x03(\v2\x1a.hazelcast.AdminQueueStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
+	"queueStats\x12E\n" +
+	"\vtopic_stats\x18\x14 \x03(\v2\x1a.hazelcast.AdminTopicStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
+	"topicStats\x12H\n" +
+	"\fwatch_health\x18\x15 \x03(\v2\x1b.hazelcast.AdminWatchHealthB\b\xe0\xb5\x18\x02ȶ\x18<R\vwatchHealth\x12M\n" +
+	"\x0emutation_rates\x18\x16 \x03(\v2\x1c.hazelcast.AdminMutationRateB\b\xe0\xb5\x18\x02ȶ\x18xR\rmutationRates\x12I\n" +
 	"\rset_log_level\x18\n" +
 	" \x01(\v2\x1f.kernel.AdminSetLogLevelRequestB\x04\x80\xb7\x18\x01R\vsetLogLevel\x12[\n" +
 	"\rreload_config\x18\f \x01(\v2 .kernel.AdminReloadConfigRequestB\x14\x80\xb7\x18\x01\xa2\xb7\x18\forchestratorR\freloadConfig\x12B\n" +
@@ -11432,367 +10891,367 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\")\n" +
 	"\x15NodeMetricsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"~\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x7f\n" +
 	"\x15NodeMetricsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.sentinel.AdminNodeMetricsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
+	"\x05value\x18\x02 \x01(\v2\x1b.hazelcast.AdminNodeMetricsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x1a\n" +
 	"\x18NodeMetricsGetAllRequest\"\x18\n" +
 	"\x16NodeMetricsKeysRequest\"\x18\n" +
 	"\x16NodeMetricsSizeRequest\"\x19\n" +
-	"\x17NodeMetricsClearRequest\"b\n" +
-	"\x18NodeMetricsValueResponse\x120\n" +
-	"\x05value\x18\x01 \x01(\v2\x1a.sentinel.AdminNodeMetricsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xbf\x01\n" +
+	"\x17NodeMetricsClearRequest\"c\n" +
+	"\x18NodeMetricsValueResponse\x121\n" +
+	"\x05value\x18\x01 \x01(\v2\x1b.hazelcast.AdminNodeMetricsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xc0\x01\n" +
 	"\x1aNodeMetricsEntriesResponse\x12I\n" +
-	"\aentries\x18\x01 \x03(\v2/.kernel.NodeMetricsEntriesResponse.EntriesEntryR\aentries\x1aV\n" +
+	"\aentries\x18\x01 \x03(\v2/.kernel.NodeMetricsEntriesResponse.EntriesEntryR\aentries\x1aW\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.sentinel.AdminNodeMetricsR\x05value:\x028\x01\"-\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
+	"\x05value\x18\x02 \x01(\v2\x1b.hazelcast.AdminNodeMetricsR\x05value:\x028\x01\"-\n" +
 	"\x17NodeMetricsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"-\n" +
 	"\x17NodeMetricsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"H\n" +
 	"\x17NodeMetricsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"q\n" +
-	"\x18NodeMetricsQueryResponse\x124\n" +
-	"\aresults\x18\x01 \x03(\v2\x1a.sentinel.AdminNodeMetricsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"r\n" +
+	"\x18NodeMetricsQueryResponse\x125\n" +
+	"\aresults\x18\x01 \x03(\v2\x1b.hazelcast.AdminNodeMetricsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"'\n" +
 	"\x13GrpcStatsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"z\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"{\n" +
 	"\x13GrpcStatsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
-	"\x05value\x18\x02 \x01(\v2\x18.sentinel.AdminGrpcStatsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.hazelcast.AdminGrpcStatsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x18\n" +
 	"\x16GrpcStatsGetAllRequest\"\x16\n" +
 	"\x14GrpcStatsKeysRequest\"\x16\n" +
 	"\x14GrpcStatsSizeRequest\"\x17\n" +
-	"\x15GrpcStatsClearRequest\"^\n" +
-	"\x16GrpcStatsValueResponse\x12.\n" +
-	"\x05value\x18\x01 \x01(\v2\x18.sentinel.AdminGrpcStatsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xb9\x01\n" +
+	"\x15GrpcStatsClearRequest\"_\n" +
+	"\x16GrpcStatsValueResponse\x12/\n" +
+	"\x05value\x18\x01 \x01(\v2\x19.hazelcast.AdminGrpcStatsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xba\x01\n" +
 	"\x18GrpcStatsEntriesResponse\x12G\n" +
-	"\aentries\x18\x01 \x03(\v2-.kernel.GrpcStatsEntriesResponse.EntriesEntryR\aentries\x1aT\n" +
+	"\aentries\x18\x01 \x03(\v2-.kernel.GrpcStatsEntriesResponse.EntriesEntryR\aentries\x1aU\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
-	"\x05value\x18\x02 \x01(\v2\x18.sentinel.AdminGrpcStatsR\x05value:\x028\x01\"+\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.hazelcast.AdminGrpcStatsR\x05value:\x028\x01\"+\n" +
 	"\x15GrpcStatsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"+\n" +
 	"\x15GrpcStatsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"F\n" +
 	"\x15GrpcStatsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"m\n" +
-	"\x16GrpcStatsQueryResponse\x122\n" +
-	"\aresults\x18\x01 \x03(\v2\x18.sentinel.AdminGrpcStatsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"n\n" +
+	"\x16GrpcStatsQueryResponse\x123\n" +
+	"\aresults\x18\x01 \x03(\v2\x19.hazelcast.AdminGrpcStatsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"/\n" +
 	"\x1bPersistenceStatusGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"\x8a\x01\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x8b\x01\n" +
 	"\x1bPersistenceStatusPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .sentinel.AdminPersistenceStatusR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x127\n" +
+	"\x05value\x18\x02 \x01(\v2!.hazelcast.AdminPersistenceStatusR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\" \n" +
 	"\x1ePersistenceStatusGetAllRequest\"\x1e\n" +
 	"\x1cPersistenceStatusKeysRequest\"\x1e\n" +
 	"\x1cPersistenceStatusSizeRequest\"\x1f\n" +
-	"\x1dPersistenceStatusClearRequest\"n\n" +
-	"\x1ePersistenceStatusValueResponse\x126\n" +
-	"\x05value\x18\x01 \x01(\v2 .sentinel.AdminPersistenceStatusR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xd1\x01\n" +
+	"\x1dPersistenceStatusClearRequest\"o\n" +
+	"\x1ePersistenceStatusValueResponse\x127\n" +
+	"\x05value\x18\x01 \x01(\v2!.hazelcast.AdminPersistenceStatusR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xd2\x01\n" +
 	" PersistenceStatusEntriesResponse\x12O\n" +
-	"\aentries\x18\x01 \x03(\v25.kernel.PersistenceStatusEntriesResponse.EntriesEntryR\aentries\x1a\\\n" +
+	"\aentries\x18\x01 \x03(\v25.kernel.PersistenceStatusEntriesResponse.EntriesEntryR\aentries\x1a]\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .sentinel.AdminPersistenceStatusR\x05value:\x028\x01\"3\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x127\n" +
+	"\x05value\x18\x02 \x01(\v2!.hazelcast.AdminPersistenceStatusR\x05value:\x028\x01\"3\n" +
 	"\x1dPersistenceStatusKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"3\n" +
 	"\x1dPersistenceStatusSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"N\n" +
 	"\x1dPersistenceStatusQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"}\n" +
-	"\x1ePersistenceStatusQueryResponse\x12:\n" +
-	"\aresults\x18\x01 \x03(\v2 .sentinel.AdminPersistenceStatusR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"~\n" +
+	"\x1ePersistenceStatusQueryResponse\x12;\n" +
+	"\aresults\x18\x01 \x03(\v2!.hazelcast.AdminPersistenceStatusR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"*\n" +
 	"\x16NetworkStatsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"\x80\x01\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x81\x01\n" +
 	"\x16NetworkStatsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
-	"\x05value\x18\x02 \x01(\v2\x1b.sentinel.AdminNetworkStatsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.hazelcast.AdminNetworkStatsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x1b\n" +
 	"\x19NetworkStatsGetAllRequest\"\x19\n" +
 	"\x17NetworkStatsKeysRequest\"\x19\n" +
 	"\x17NetworkStatsSizeRequest\"\x1a\n" +
-	"\x18NetworkStatsClearRequest\"d\n" +
-	"\x19NetworkStatsValueResponse\x121\n" +
-	"\x05value\x18\x01 \x01(\v2\x1b.sentinel.AdminNetworkStatsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xc2\x01\n" +
+	"\x18NetworkStatsClearRequest\"e\n" +
+	"\x19NetworkStatsValueResponse\x122\n" +
+	"\x05value\x18\x01 \x01(\v2\x1c.hazelcast.AdminNetworkStatsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xc3\x01\n" +
 	"\x1bNetworkStatsEntriesResponse\x12J\n" +
-	"\aentries\x18\x01 \x03(\v20.kernel.NetworkStatsEntriesResponse.EntriesEntryR\aentries\x1aW\n" +
+	"\aentries\x18\x01 \x03(\v20.kernel.NetworkStatsEntriesResponse.EntriesEntryR\aentries\x1aX\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
-	"\x05value\x18\x02 \x01(\v2\x1b.sentinel.AdminNetworkStatsR\x05value:\x028\x01\".\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.hazelcast.AdminNetworkStatsR\x05value:\x028\x01\".\n" +
 	"\x18NetworkStatsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\".\n" +
 	"\x18NetworkStatsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"I\n" +
 	"\x18NetworkStatsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"s\n" +
-	"\x19NetworkStatsQueryResponse\x125\n" +
-	"\aresults\x18\x01 \x03(\v2\x1b.sentinel.AdminNetworkStatsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"t\n" +
+	"\x19NetworkStatsQueryResponse\x126\n" +
+	"\aresults\x18\x01 \x03(\v2\x1c.hazelcast.AdminNetworkStatsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"(\n" +
 	"\x14ThreadInfoGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"|\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"}\n" +
 	"\x14ThreadInfoPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.sentinel.AdminThreadInfoR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.hazelcast.AdminThreadInfoR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x19\n" +
 	"\x17ThreadInfoGetAllRequest\"\x17\n" +
 	"\x15ThreadInfoKeysRequest\"\x17\n" +
 	"\x15ThreadInfoSizeRequest\"\x18\n" +
-	"\x16ThreadInfoClearRequest\"`\n" +
-	"\x17ThreadInfoValueResponse\x12/\n" +
-	"\x05value\x18\x01 \x01(\v2\x19.sentinel.AdminThreadInfoR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xbc\x01\n" +
+	"\x16ThreadInfoClearRequest\"a\n" +
+	"\x17ThreadInfoValueResponse\x120\n" +
+	"\x05value\x18\x01 \x01(\v2\x1a.hazelcast.AdminThreadInfoR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xbd\x01\n" +
 	"\x19ThreadInfoEntriesResponse\x12H\n" +
-	"\aentries\x18\x01 \x03(\v2..kernel.ThreadInfoEntriesResponse.EntriesEntryR\aentries\x1aU\n" +
+	"\aentries\x18\x01 \x03(\v2..kernel.ThreadInfoEntriesResponse.EntriesEntryR\aentries\x1aV\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.sentinel.AdminThreadInfoR\x05value:\x028\x01\",\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.hazelcast.AdminThreadInfoR\x05value:\x028\x01\",\n" +
 	"\x16ThreadInfoKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\",\n" +
 	"\x16ThreadInfoSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"G\n" +
 	"\x16ThreadInfoQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"o\n" +
-	"\x17ThreadInfoQueryResponse\x123\n" +
-	"\aresults\x18\x01 \x03(\v2\x19.sentinel.AdminThreadInfoR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"p\n" +
+	"\x17ThreadInfoQueryResponse\x124\n" +
+	"\aresults\x18\x01 \x03(\v2\x1a.hazelcast.AdminThreadInfoR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"-\n" +
 	"\x19TokenCacheStatsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"\x86\x01\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x87\x01\n" +
 	"\x19TokenCacheStatsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x124\n" +
-	"\x05value\x18\x02 \x01(\v2\x1e.sentinel.AdminTokenCacheStatsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
+	"\x05value\x18\x02 \x01(\v2\x1f.hazelcast.AdminTokenCacheStatsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x1e\n" +
 	"\x1cTokenCacheStatsGetAllRequest\"\x1c\n" +
 	"\x1aTokenCacheStatsKeysRequest\"\x1c\n" +
 	"\x1aTokenCacheStatsSizeRequest\"\x1d\n" +
-	"\x1bTokenCacheStatsClearRequest\"j\n" +
-	"\x1cTokenCacheStatsValueResponse\x124\n" +
-	"\x05value\x18\x01 \x01(\v2\x1e.sentinel.AdminTokenCacheStatsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xcb\x01\n" +
+	"\x1bTokenCacheStatsClearRequest\"k\n" +
+	"\x1cTokenCacheStatsValueResponse\x125\n" +
+	"\x05value\x18\x01 \x01(\v2\x1f.hazelcast.AdminTokenCacheStatsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xcc\x01\n" +
 	"\x1eTokenCacheStatsEntriesResponse\x12M\n" +
-	"\aentries\x18\x01 \x03(\v23.kernel.TokenCacheStatsEntriesResponse.EntriesEntryR\aentries\x1aZ\n" +
+	"\aentries\x18\x01 \x03(\v23.kernel.TokenCacheStatsEntriesResponse.EntriesEntryR\aentries\x1a[\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x124\n" +
-	"\x05value\x18\x02 \x01(\v2\x1e.sentinel.AdminTokenCacheStatsR\x05value:\x028\x01\"1\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
+	"\x05value\x18\x02 \x01(\v2\x1f.hazelcast.AdminTokenCacheStatsR\x05value:\x028\x01\"1\n" +
 	"\x1bTokenCacheStatsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"1\n" +
 	"\x1bTokenCacheStatsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"L\n" +
 	"\x1bTokenCacheStatsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"y\n" +
-	"\x1cTokenCacheStatsQueryResponse\x128\n" +
-	"\aresults\x18\x01 \x03(\v2\x1e.sentinel.AdminTokenCacheStatsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"z\n" +
+	"\x1cTokenCacheStatsQueryResponse\x129\n" +
+	"\aresults\x18\x01 \x03(\v2\x1f.hazelcast.AdminTokenCacheStatsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"&\n" +
 	"\x12MapStatsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"x\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"y\n" +
 	"\x12MapStatsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.sentinel.AdminMapStatsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
+	"\x05value\x18\x02 \x01(\v2\x18.hazelcast.AdminMapStatsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x17\n" +
 	"\x15MapStatsGetAllRequest\"\x15\n" +
 	"\x13MapStatsKeysRequest\"\x15\n" +
 	"\x13MapStatsSizeRequest\"\x16\n" +
-	"\x14MapStatsClearRequest\"\\\n" +
-	"\x15MapStatsValueResponse\x12-\n" +
-	"\x05value\x18\x01 \x01(\v2\x17.sentinel.AdminMapStatsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xb6\x01\n" +
+	"\x14MapStatsClearRequest\"]\n" +
+	"\x15MapStatsValueResponse\x12.\n" +
+	"\x05value\x18\x01 \x01(\v2\x18.hazelcast.AdminMapStatsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xb7\x01\n" +
 	"\x17MapStatsEntriesResponse\x12F\n" +
-	"\aentries\x18\x01 \x03(\v2,.kernel.MapStatsEntriesResponse.EntriesEntryR\aentries\x1aS\n" +
+	"\aentries\x18\x01 \x03(\v2,.kernel.MapStatsEntriesResponse.EntriesEntryR\aentries\x1aT\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.sentinel.AdminMapStatsR\x05value:\x028\x01\"*\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
+	"\x05value\x18\x02 \x01(\v2\x18.hazelcast.AdminMapStatsR\x05value:\x028\x01\"*\n" +
 	"\x14MapStatsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"*\n" +
 	"\x14MapStatsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"E\n" +
 	"\x14MapStatsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"k\n" +
-	"\x15MapStatsQueryResponse\x121\n" +
-	"\aresults\x18\x01 \x03(\v2\x17.sentinel.AdminMapStatsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"l\n" +
+	"\x15MapStatsQueryResponse\x122\n" +
+	"\aresults\x18\x01 \x03(\v2\x18.hazelcast.AdminMapStatsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"+\n" +
 	"\x17GraphRegistryGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"~\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x7f\n" +
 	"\x17GraphRegistryPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
-	"\x05value\x18\x02 \x01(\v2\x18.sentinel.AdminGraphInfoR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.hazelcast.AdminGraphInfoR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x1c\n" +
 	"\x1aGraphRegistryGetAllRequest\"\x1a\n" +
 	"\x18GraphRegistryKeysRequest\"\x1a\n" +
 	"\x18GraphRegistrySizeRequest\"\x1b\n" +
-	"\x19GraphRegistryClearRequest\"b\n" +
-	"\x1aGraphRegistryValueResponse\x12.\n" +
-	"\x05value\x18\x01 \x01(\v2\x18.sentinel.AdminGraphInfoR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xc1\x01\n" +
+	"\x19GraphRegistryClearRequest\"c\n" +
+	"\x1aGraphRegistryValueResponse\x12/\n" +
+	"\x05value\x18\x01 \x01(\v2\x19.hazelcast.AdminGraphInfoR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xc2\x01\n" +
 	"\x1cGraphRegistryEntriesResponse\x12K\n" +
-	"\aentries\x18\x01 \x03(\v21.kernel.GraphRegistryEntriesResponse.EntriesEntryR\aentries\x1aT\n" +
+	"\aentries\x18\x01 \x03(\v21.kernel.GraphRegistryEntriesResponse.EntriesEntryR\aentries\x1aU\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12.\n" +
-	"\x05value\x18\x02 \x01(\v2\x18.sentinel.AdminGraphInfoR\x05value:\x028\x01\"/\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.hazelcast.AdminGraphInfoR\x05value:\x028\x01\"/\n" +
 	"\x19GraphRegistryKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"/\n" +
 	"\x19GraphRegistrySizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"J\n" +
 	"\x19GraphRegistryQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"q\n" +
-	"\x1aGraphRegistryQueryResponse\x122\n" +
-	"\aresults\x18\x01 \x03(\v2\x18.sentinel.AdminGraphInfoR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"r\n" +
+	"\x1aGraphRegistryQueryResponse\x123\n" +
+	"\aresults\x18\x01 \x03(\v2\x19.hazelcast.AdminGraphInfoR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"0\n" +
 	"\x1cServiceConnectionsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"\x8b\x01\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x8c\x01\n" +
 	"\x1cServiceConnectionsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .sentinel.AdminServiceConnectionR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x127\n" +
+	"\x05value\x18\x02 \x01(\v2!.hazelcast.AdminServiceConnectionR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"!\n" +
 	"\x1fServiceConnectionsGetAllRequest\"\x1f\n" +
 	"\x1dServiceConnectionsKeysRequest\"\x1f\n" +
 	"\x1dServiceConnectionsSizeRequest\" \n" +
-	"\x1eServiceConnectionsClearRequest\"o\n" +
-	"\x1fServiceConnectionsValueResponse\x126\n" +
-	"\x05value\x18\x01 \x01(\v2 .sentinel.AdminServiceConnectionR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xd3\x01\n" +
+	"\x1eServiceConnectionsClearRequest\"p\n" +
+	"\x1fServiceConnectionsValueResponse\x127\n" +
+	"\x05value\x18\x01 \x01(\v2!.hazelcast.AdminServiceConnectionR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xd4\x01\n" +
 	"!ServiceConnectionsEntriesResponse\x12P\n" +
-	"\aentries\x18\x01 \x03(\v26.kernel.ServiceConnectionsEntriesResponse.EntriesEntryR\aentries\x1a\\\n" +
+	"\aentries\x18\x01 \x03(\v26.kernel.ServiceConnectionsEntriesResponse.EntriesEntryR\aentries\x1a]\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .sentinel.AdminServiceConnectionR\x05value:\x028\x01\"4\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x127\n" +
+	"\x05value\x18\x02 \x01(\v2!.hazelcast.AdminServiceConnectionR\x05value:\x028\x01\"4\n" +
 	"\x1eServiceConnectionsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"4\n" +
 	"\x1eServiceConnectionsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"O\n" +
 	"\x1eServiceConnectionsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"~\n" +
-	"\x1fServiceConnectionsQueryResponse\x12:\n" +
-	"\aresults\x18\x01 \x03(\v2 .sentinel.AdminServiceConnectionR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"\x7f\n" +
+	"\x1fServiceConnectionsQueryResponse\x12;\n" +
+	"\aresults\x18\x01 \x03(\v2!.hazelcast.AdminServiceConnectionR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"(\n" +
 	"\x14QueueStatsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"|\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"}\n" +
 	"\x14QueueStatsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.sentinel.AdminQueueStatsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.hazelcast.AdminQueueStatsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x19\n" +
 	"\x17QueueStatsGetAllRequest\"\x17\n" +
 	"\x15QueueStatsKeysRequest\"\x17\n" +
 	"\x15QueueStatsSizeRequest\"\x18\n" +
-	"\x16QueueStatsClearRequest\"`\n" +
-	"\x17QueueStatsValueResponse\x12/\n" +
-	"\x05value\x18\x01 \x01(\v2\x19.sentinel.AdminQueueStatsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xbc\x01\n" +
+	"\x16QueueStatsClearRequest\"a\n" +
+	"\x17QueueStatsValueResponse\x120\n" +
+	"\x05value\x18\x01 \x01(\v2\x1a.hazelcast.AdminQueueStatsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xbd\x01\n" +
 	"\x19QueueStatsEntriesResponse\x12H\n" +
-	"\aentries\x18\x01 \x03(\v2..kernel.QueueStatsEntriesResponse.EntriesEntryR\aentries\x1aU\n" +
+	"\aentries\x18\x01 \x03(\v2..kernel.QueueStatsEntriesResponse.EntriesEntryR\aentries\x1aV\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.sentinel.AdminQueueStatsR\x05value:\x028\x01\",\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.hazelcast.AdminQueueStatsR\x05value:\x028\x01\",\n" +
 	"\x16QueueStatsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\",\n" +
 	"\x16QueueStatsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"G\n" +
 	"\x16QueueStatsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"o\n" +
-	"\x17QueueStatsQueryResponse\x123\n" +
-	"\aresults\x18\x01 \x03(\v2\x19.sentinel.AdminQueueStatsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"p\n" +
+	"\x17QueueStatsQueryResponse\x124\n" +
+	"\aresults\x18\x01 \x03(\v2\x1a.hazelcast.AdminQueueStatsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"(\n" +
 	"\x14TopicStatsGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"|\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"}\n" +
 	"\x14TopicStatsPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.sentinel.AdminTopicStatsR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.hazelcast.AdminTopicStatsR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x19\n" +
 	"\x17TopicStatsGetAllRequest\"\x17\n" +
 	"\x15TopicStatsKeysRequest\"\x17\n" +
 	"\x15TopicStatsSizeRequest\"\x18\n" +
-	"\x16TopicStatsClearRequest\"`\n" +
-	"\x17TopicStatsValueResponse\x12/\n" +
-	"\x05value\x18\x01 \x01(\v2\x19.sentinel.AdminTopicStatsR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xbc\x01\n" +
+	"\x16TopicStatsClearRequest\"a\n" +
+	"\x17TopicStatsValueResponse\x120\n" +
+	"\x05value\x18\x01 \x01(\v2\x1a.hazelcast.AdminTopicStatsR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xbd\x01\n" +
 	"\x19TopicStatsEntriesResponse\x12H\n" +
-	"\aentries\x18\x01 \x03(\v2..kernel.TopicStatsEntriesResponse.EntriesEntryR\aentries\x1aU\n" +
+	"\aentries\x18\x01 \x03(\v2..kernel.TopicStatsEntriesResponse.EntriesEntryR\aentries\x1aV\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
-	"\x05value\x18\x02 \x01(\v2\x19.sentinel.AdminTopicStatsR\x05value:\x028\x01\",\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.hazelcast.AdminTopicStatsR\x05value:\x028\x01\",\n" +
 	"\x16TopicStatsKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\",\n" +
 	"\x16TopicStatsSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"G\n" +
 	"\x16TopicStatsQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"o\n" +
-	"\x17TopicStatsQueryResponse\x123\n" +
-	"\aresults\x18\x01 \x03(\v2\x19.sentinel.AdminTopicStatsR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"p\n" +
+	"\x17TopicStatsQueryResponse\x124\n" +
+	"\aresults\x18\x01 \x03(\v2\x1a.hazelcast.AdminTopicStatsR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\")\n" +
 	"\x15WatchHealthGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"~\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x7f\n" +
 	"\x15WatchHealthPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.sentinel.AdminWatchHealthR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
+	"\x05value\x18\x02 \x01(\v2\x1b.hazelcast.AdminWatchHealthR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x1a\n" +
 	"\x18WatchHealthGetAllRequest\"\x18\n" +
 	"\x16WatchHealthKeysRequest\"\x18\n" +
 	"\x16WatchHealthSizeRequest\"\x19\n" +
-	"\x17WatchHealthClearRequest\"b\n" +
-	"\x18WatchHealthValueResponse\x120\n" +
-	"\x05value\x18\x01 \x01(\v2\x1a.sentinel.AdminWatchHealthR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xbf\x01\n" +
+	"\x17WatchHealthClearRequest\"c\n" +
+	"\x18WatchHealthValueResponse\x121\n" +
+	"\x05value\x18\x01 \x01(\v2\x1b.hazelcast.AdminWatchHealthR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xc0\x01\n" +
 	"\x1aWatchHealthEntriesResponse\x12I\n" +
-	"\aentries\x18\x01 \x03(\v2/.kernel.WatchHealthEntriesResponse.EntriesEntryR\aentries\x1aV\n" +
+	"\aentries\x18\x01 \x03(\v2/.kernel.WatchHealthEntriesResponse.EntriesEntryR\aentries\x1aW\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.sentinel.AdminWatchHealthR\x05value:\x028\x01\"-\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
+	"\x05value\x18\x02 \x01(\v2\x1b.hazelcast.AdminWatchHealthR\x05value:\x028\x01\"-\n" +
 	"\x17WatchHealthKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"-\n" +
 	"\x17WatchHealthSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"H\n" +
 	"\x17WatchHealthQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"q\n" +
-	"\x18WatchHealthQueryResponse\x124\n" +
-	"\aresults\x18\x01 \x03(\v2\x1a.sentinel.AdminWatchHealthR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"r\n" +
+	"\x18WatchHealthQueryResponse\x125\n" +
+	"\aresults\x18\x01 \x03(\v2\x1b.hazelcast.AdminWatchHealthR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"+\n" +
 	"\x17MutationRatesGetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"\x81\x01\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"\x82\x01\n" +
 	"\x17MutationRatesPutRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
-	"\x05value\x18\x02 \x01(\v2\x1b.sentinel.AdminMutationRateR\x05value\x12!\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.hazelcast.AdminMutationRateR\x05value\x12!\n" +
 	"\flock_counter\x18\x03 \x01(\x03R\vlockCounter\"\x1c\n" +
 	"\x1aMutationRatesGetAllRequest\"\x1a\n" +
 	"\x18MutationRatesKeysRequest\"\x1a\n" +
 	"\x18MutationRatesSizeRequest\"\x1b\n" +
-	"\x19MutationRatesClearRequest\"e\n" +
-	"\x1aMutationRatesValueResponse\x121\n" +
-	"\x05value\x18\x01 \x01(\v2\x1b.sentinel.AdminMutationRateR\x05value\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"\xc4\x01\n" +
+	"\x19MutationRatesClearRequest\"f\n" +
+	"\x1aMutationRatesValueResponse\x122\n" +
+	"\x05value\x18\x01 \x01(\v2\x1c.hazelcast.AdminMutationRateR\x05value\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"\xc5\x01\n" +
 	"\x1cMutationRatesEntriesResponse\x12K\n" +
-	"\aentries\x18\x01 \x03(\v21.kernel.MutationRatesEntriesResponse.EntriesEntryR\aentries\x1aW\n" +
+	"\aentries\x18\x01 \x03(\v21.kernel.MutationRatesEntriesResponse.EntriesEntryR\aentries\x1aX\n" +
 	"\fEntriesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x121\n" +
-	"\x05value\x18\x02 \x01(\v2\x1b.sentinel.AdminMutationRateR\x05value:\x028\x01\"/\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.hazelcast.AdminMutationRateR\x05value:\x028\x01\"/\n" +
 	"\x19MutationRatesKeysResponse\x12\x12\n" +
 	"\x04keys\x18\x01 \x03(\tR\x04keys\"/\n" +
 	"\x19MutationRatesSizeResponse\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\x05R\x04size\"J\n" +
 	"\x19MutationRatesQueryRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"t\n" +
-	"\x1aMutationRatesQueryResponse\x125\n" +
-	"\aresults\x18\x01 \x03(\v2\x1b.sentinel.AdminMutationRateR\aresults\x12\x1f\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.kernel.CollectionQueryR\x05query\"u\n" +
+	"\x1aMutationRatesQueryResponse\x126\n" +
+	"\aresults\x18\x01 \x03(\v2\x1c.hazelcast.AdminMutationRateR\aresults\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"'\n" +
 	"\x13InstancesGetRequest\x12\x10\n" +
@@ -11847,17 +11306,7 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"\n" +
 	"\n" +
-	"\bMapEmpty*K\n" +
-	"\bNodeMode\x12\x17\n" +
-	"\x13NODE_MODE_CORE_EDGE\x10\x00\x12\x12\n" +
-	"\x0eNODE_MODE_CORE\x10\x01\x12\x12\n" +
-	"\x0eNODE_MODE_EDGE\x10\x02*-\n" +
-	"\x06OpType\x12\x0f\n" +
-	"\vOP_TYPE_PUT\x10\x00\x12\x12\n" +
-	"\x0eOP_TYPE_DELETE\x10\x01*E\n" +
-	"\x0fConsistencyType\x12\x1a\n" +
-	"\x16CONSISTENCY_CONVERGENT\x10\x00\x12\x16\n" +
-	"\x12CONSISTENCY_ATOMIC\x10\x01*\xb3\x02\n" +
+	"\bMapEmpty*\xb3\x02\n" +
 	"\fComparisonOp\x12\x1d\n" +
 	"\x19COMPARISON_OP_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10COMPARISON_OP_EQ\x10\x01\x12\x14\n" +
@@ -11913,14 +11362,14 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\x15PutIfAbsentTrustedCas\x12\x1c.kernel.TrustedCasPutRequest\x1a\x1f.kernel.TrustedCasValueResponse\x12N\n" +
 	"\x0fWatchTrustedCas\x12\x16.google.protobuf.Empty\x1a!.kernel.TrustedCasEntriesResponse0\x01\x12R\n" +
 	"\x0fQueryTrustedCas\x12\x1e.kernel.TrustedCasQueryRequest\x1a\x1f.kernel.TrustedCasQueryResponse\x12Y\n" +
-	"\x14WatchQueryTrustedCas\x12\x1e.kernel.TrustedCasQueryRequest\x1a\x1f.kernel.TrustedCasQueryResponse0\x012\xed\x80\x01\n" +
-	"\x1aClusterStateBackendService\x12D\n" +
-	"\x0eGetClusterInfo\x12\x16.google.protobuf.Empty\x1a\x1a.sentinel.AdminClusterInfo\x12H\n" +
-	"\x0eSetClusterInfo\x12\x1a.sentinel.AdminClusterInfo\x1a\x1a.sentinel.AdminClusterInfo\x12H\n" +
-	"\x10WatchClusterInfo\x12\x16.google.protobuf.Empty\x1a\x1a.sentinel.AdminClusterInfo0\x01\x12H\n" +
-	"\x10GetClusterHealth\x12\x16.google.protobuf.Empty\x1a\x1c.sentinel.AdminClusterHealth\x12N\n" +
-	"\x10SetClusterHealth\x12\x1c.sentinel.AdminClusterHealth\x1a\x1c.sentinel.AdminClusterHealth\x12L\n" +
-	"\x12WatchClusterHealth\x12\x16.google.protobuf.Empty\x1a\x1c.sentinel.AdminClusterHealth0\x01\x12;\n" +
+	"\x14WatchQueryTrustedCas\x12\x1e.kernel.TrustedCasQueryRequest\x1a\x1f.kernel.TrustedCasQueryResponse0\x012\xf5\x80\x01\n" +
+	"\x1aClusterStateBackendService\x12E\n" +
+	"\x0eGetClusterInfo\x12\x16.google.protobuf.Empty\x1a\x1b.hazelcast.AdminClusterInfo\x12J\n" +
+	"\x0eSetClusterInfo\x12\x1b.hazelcast.AdminClusterInfo\x1a\x1b.hazelcast.AdminClusterInfo\x12I\n" +
+	"\x10WatchClusterInfo\x12\x16.google.protobuf.Empty\x1a\x1b.hazelcast.AdminClusterInfo0\x01\x12I\n" +
+	"\x10GetClusterHealth\x12\x16.google.protobuf.Empty\x1a\x1d.hazelcast.AdminClusterHealth\x12P\n" +
+	"\x10SetClusterHealth\x12\x1d.hazelcast.AdminClusterHealth\x1a\x1d.hazelcast.AdminClusterHealth\x12M\n" +
+	"\x12WatchClusterHealth\x12\x16.google.protobuf.Empty\x1a\x1d.hazelcast.AdminClusterHealth0\x01\x12;\n" +
 	"\x11GetFrontendConfig\x12\x16.google.protobuf.Empty\x1a\x0e.kernel.Config\x123\n" +
 	"\x11SetFrontendConfig\x12\x0e.kernel.Config\x1a\x0e.kernel.Config\x12?\n" +
 	"\x13WatchFrontendConfig\x12\x16.google.protobuf.Empty\x1a\x0e.kernel.Config0\x01\x12Q\n" +
@@ -12150,940 +11599,934 @@ func file_services_kernel_proto_rawDescGZIP() []byte {
 	return file_services_kernel_proto_rawDescData
 }
 
-var file_services_kernel_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_services_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 244)
+var file_services_kernel_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_services_kernel_proto_msgTypes = make([]protoimpl.MessageInfo, 239)
 var file_services_kernel_proto_goTypes = []any{
-	(NodeMode)(0),                              // 0: kernel.NodeMode
-	(OpType)(0),                                // 1: kernel.OpType
-	(ConsistencyType)(0),                       // 2: kernel.ConsistencyType
-	(ComparisonOp)(0),                          // 3: kernel.ComparisonOp
-	(SortDirection)(0),                         // 4: kernel.SortDirection
-	(LogicalOp)(0),                             // 5: kernel.LogicalOp
-	(*BootstrapConfig)(nil),                    // 6: kernel.BootstrapConfig
-	(*NetworkConfig)(nil),                      // 7: kernel.NetworkConfig
-	(*CPSubsystemConfig)(nil),                  // 8: kernel.CPSubsystemConfig
-	(*RateLimitConfig)(nil),                    // 9: kernel.RateLimitConfig
-	(*RedoLogEntry)(nil),                       // 10: kernel.RedoLogEntry
-	(*FullDumpHeader)(nil),                     // 11: kernel.FullDumpHeader
-	(*TokenExchangerState)(nil),                // 12: kernel.TokenExchangerState
-	(*TrustedCaState)(nil),                     // 13: kernel.TrustedCaState
-	(*CloudIdentityMatcher)(nil),               // 14: kernel.CloudIdentityMatcher
-	(*Delegate)(nil),                           // 15: kernel.Delegate
-	(*Config)(nil),                             // 16: kernel.Config
-	(*UrlLoader)(nil),                          // 17: kernel.UrlLoader
-	(*FileLoader)(nil),                         // 18: kernel.FileLoader
-	(*ClusterState)(nil),                       // 19: kernel.ClusterState
-	(*AdminSetLogLevelRequest)(nil),            // 20: kernel.AdminSetLogLevelRequest
-	(*AdminReloadConfigRequest)(nil),           // 21: kernel.AdminReloadConfigRequest
-	(*AdminConfigDump)(nil),                    // 22: kernel.AdminConfigDump
-	(*ServiceHealthState)(nil),                 // 23: kernel.ServiceHealthState
-	(*CaState)(nil),                            // 24: kernel.CaState
-	(*QueryValue)(nil),                         // 25: kernel.QueryValue
-	(*Predicate)(nil),                          // 26: kernel.Predicate
-	(*PredicateGroup)(nil),                     // 27: kernel.PredicateGroup
-	(*SortField)(nil),                          // 28: kernel.SortField
-	(*CollectionQuery)(nil),                    // 29: kernel.CollectionQuery
-	(*VerifyingKeysGetRequest)(nil),            // 30: kernel.VerifyingKeysGetRequest
-	(*VerifyingKeysPutRequest)(nil),            // 31: kernel.VerifyingKeysPutRequest
-	(*VerifyingKeysGetAllRequest)(nil),         // 32: kernel.VerifyingKeysGetAllRequest
-	(*VerifyingKeysKeysRequest)(nil),           // 33: kernel.VerifyingKeysKeysRequest
-	(*VerifyingKeysSizeRequest)(nil),           // 34: kernel.VerifyingKeysSizeRequest
-	(*VerifyingKeysClearRequest)(nil),          // 35: kernel.VerifyingKeysClearRequest
-	(*VerifyingKeysValueResponse)(nil),         // 36: kernel.VerifyingKeysValueResponse
-	(*VerifyingKeysEntriesResponse)(nil),       // 37: kernel.VerifyingKeysEntriesResponse
-	(*VerifyingKeysKeysResponse)(nil),          // 38: kernel.VerifyingKeysKeysResponse
-	(*VerifyingKeysSizeResponse)(nil),          // 39: kernel.VerifyingKeysSizeResponse
-	(*VerifyingKeysQueryRequest)(nil),          // 40: kernel.VerifyingKeysQueryRequest
-	(*VerifyingKeysQueryResponse)(nil),         // 41: kernel.VerifyingKeysQueryResponse
-	(*TrustedCasGetRequest)(nil),               // 42: kernel.TrustedCasGetRequest
-	(*TrustedCasPutRequest)(nil),               // 43: kernel.TrustedCasPutRequest
-	(*TrustedCasGetAllRequest)(nil),            // 44: kernel.TrustedCasGetAllRequest
-	(*TrustedCasKeysRequest)(nil),              // 45: kernel.TrustedCasKeysRequest
-	(*TrustedCasSizeRequest)(nil),              // 46: kernel.TrustedCasSizeRequest
-	(*TrustedCasClearRequest)(nil),             // 47: kernel.TrustedCasClearRequest
-	(*TrustedCasValueResponse)(nil),            // 48: kernel.TrustedCasValueResponse
-	(*TrustedCasEntriesResponse)(nil),          // 49: kernel.TrustedCasEntriesResponse
-	(*TrustedCasKeysResponse)(nil),             // 50: kernel.TrustedCasKeysResponse
-	(*TrustedCasSizeResponse)(nil),             // 51: kernel.TrustedCasSizeResponse
-	(*TrustedCasQueryRequest)(nil),             // 52: kernel.TrustedCasQueryRequest
-	(*TrustedCasQueryResponse)(nil),            // 53: kernel.TrustedCasQueryResponse
-	(*NodeMetricsGetRequest)(nil),              // 54: kernel.NodeMetricsGetRequest
-	(*NodeMetricsPutRequest)(nil),              // 55: kernel.NodeMetricsPutRequest
-	(*NodeMetricsGetAllRequest)(nil),           // 56: kernel.NodeMetricsGetAllRequest
-	(*NodeMetricsKeysRequest)(nil),             // 57: kernel.NodeMetricsKeysRequest
-	(*NodeMetricsSizeRequest)(nil),             // 58: kernel.NodeMetricsSizeRequest
-	(*NodeMetricsClearRequest)(nil),            // 59: kernel.NodeMetricsClearRequest
-	(*NodeMetricsValueResponse)(nil),           // 60: kernel.NodeMetricsValueResponse
-	(*NodeMetricsEntriesResponse)(nil),         // 61: kernel.NodeMetricsEntriesResponse
-	(*NodeMetricsKeysResponse)(nil),            // 62: kernel.NodeMetricsKeysResponse
-	(*NodeMetricsSizeResponse)(nil),            // 63: kernel.NodeMetricsSizeResponse
-	(*NodeMetricsQueryRequest)(nil),            // 64: kernel.NodeMetricsQueryRequest
-	(*NodeMetricsQueryResponse)(nil),           // 65: kernel.NodeMetricsQueryResponse
-	(*GrpcStatsGetRequest)(nil),                // 66: kernel.GrpcStatsGetRequest
-	(*GrpcStatsPutRequest)(nil),                // 67: kernel.GrpcStatsPutRequest
-	(*GrpcStatsGetAllRequest)(nil),             // 68: kernel.GrpcStatsGetAllRequest
-	(*GrpcStatsKeysRequest)(nil),               // 69: kernel.GrpcStatsKeysRequest
-	(*GrpcStatsSizeRequest)(nil),               // 70: kernel.GrpcStatsSizeRequest
-	(*GrpcStatsClearRequest)(nil),              // 71: kernel.GrpcStatsClearRequest
-	(*GrpcStatsValueResponse)(nil),             // 72: kernel.GrpcStatsValueResponse
-	(*GrpcStatsEntriesResponse)(nil),           // 73: kernel.GrpcStatsEntriesResponse
-	(*GrpcStatsKeysResponse)(nil),              // 74: kernel.GrpcStatsKeysResponse
-	(*GrpcStatsSizeResponse)(nil),              // 75: kernel.GrpcStatsSizeResponse
-	(*GrpcStatsQueryRequest)(nil),              // 76: kernel.GrpcStatsQueryRequest
-	(*GrpcStatsQueryResponse)(nil),             // 77: kernel.GrpcStatsQueryResponse
-	(*PersistenceStatusGetRequest)(nil),        // 78: kernel.PersistenceStatusGetRequest
-	(*PersistenceStatusPutRequest)(nil),        // 79: kernel.PersistenceStatusPutRequest
-	(*PersistenceStatusGetAllRequest)(nil),     // 80: kernel.PersistenceStatusGetAllRequest
-	(*PersistenceStatusKeysRequest)(nil),       // 81: kernel.PersistenceStatusKeysRequest
-	(*PersistenceStatusSizeRequest)(nil),       // 82: kernel.PersistenceStatusSizeRequest
-	(*PersistenceStatusClearRequest)(nil),      // 83: kernel.PersistenceStatusClearRequest
-	(*PersistenceStatusValueResponse)(nil),     // 84: kernel.PersistenceStatusValueResponse
-	(*PersistenceStatusEntriesResponse)(nil),   // 85: kernel.PersistenceStatusEntriesResponse
-	(*PersistenceStatusKeysResponse)(nil),      // 86: kernel.PersistenceStatusKeysResponse
-	(*PersistenceStatusSizeResponse)(nil),      // 87: kernel.PersistenceStatusSizeResponse
-	(*PersistenceStatusQueryRequest)(nil),      // 88: kernel.PersistenceStatusQueryRequest
-	(*PersistenceStatusQueryResponse)(nil),     // 89: kernel.PersistenceStatusQueryResponse
-	(*NetworkStatsGetRequest)(nil),             // 90: kernel.NetworkStatsGetRequest
-	(*NetworkStatsPutRequest)(nil),             // 91: kernel.NetworkStatsPutRequest
-	(*NetworkStatsGetAllRequest)(nil),          // 92: kernel.NetworkStatsGetAllRequest
-	(*NetworkStatsKeysRequest)(nil),            // 93: kernel.NetworkStatsKeysRequest
-	(*NetworkStatsSizeRequest)(nil),            // 94: kernel.NetworkStatsSizeRequest
-	(*NetworkStatsClearRequest)(nil),           // 95: kernel.NetworkStatsClearRequest
-	(*NetworkStatsValueResponse)(nil),          // 96: kernel.NetworkStatsValueResponse
-	(*NetworkStatsEntriesResponse)(nil),        // 97: kernel.NetworkStatsEntriesResponse
-	(*NetworkStatsKeysResponse)(nil),           // 98: kernel.NetworkStatsKeysResponse
-	(*NetworkStatsSizeResponse)(nil),           // 99: kernel.NetworkStatsSizeResponse
-	(*NetworkStatsQueryRequest)(nil),           // 100: kernel.NetworkStatsQueryRequest
-	(*NetworkStatsQueryResponse)(nil),          // 101: kernel.NetworkStatsQueryResponse
-	(*ThreadInfoGetRequest)(nil),               // 102: kernel.ThreadInfoGetRequest
-	(*ThreadInfoPutRequest)(nil),               // 103: kernel.ThreadInfoPutRequest
-	(*ThreadInfoGetAllRequest)(nil),            // 104: kernel.ThreadInfoGetAllRequest
-	(*ThreadInfoKeysRequest)(nil),              // 105: kernel.ThreadInfoKeysRequest
-	(*ThreadInfoSizeRequest)(nil),              // 106: kernel.ThreadInfoSizeRequest
-	(*ThreadInfoClearRequest)(nil),             // 107: kernel.ThreadInfoClearRequest
-	(*ThreadInfoValueResponse)(nil),            // 108: kernel.ThreadInfoValueResponse
-	(*ThreadInfoEntriesResponse)(nil),          // 109: kernel.ThreadInfoEntriesResponse
-	(*ThreadInfoKeysResponse)(nil),             // 110: kernel.ThreadInfoKeysResponse
-	(*ThreadInfoSizeResponse)(nil),             // 111: kernel.ThreadInfoSizeResponse
-	(*ThreadInfoQueryRequest)(nil),             // 112: kernel.ThreadInfoQueryRequest
-	(*ThreadInfoQueryResponse)(nil),            // 113: kernel.ThreadInfoQueryResponse
-	(*TokenCacheStatsGetRequest)(nil),          // 114: kernel.TokenCacheStatsGetRequest
-	(*TokenCacheStatsPutRequest)(nil),          // 115: kernel.TokenCacheStatsPutRequest
-	(*TokenCacheStatsGetAllRequest)(nil),       // 116: kernel.TokenCacheStatsGetAllRequest
-	(*TokenCacheStatsKeysRequest)(nil),         // 117: kernel.TokenCacheStatsKeysRequest
-	(*TokenCacheStatsSizeRequest)(nil),         // 118: kernel.TokenCacheStatsSizeRequest
-	(*TokenCacheStatsClearRequest)(nil),        // 119: kernel.TokenCacheStatsClearRequest
-	(*TokenCacheStatsValueResponse)(nil),       // 120: kernel.TokenCacheStatsValueResponse
-	(*TokenCacheStatsEntriesResponse)(nil),     // 121: kernel.TokenCacheStatsEntriesResponse
-	(*TokenCacheStatsKeysResponse)(nil),        // 122: kernel.TokenCacheStatsKeysResponse
-	(*TokenCacheStatsSizeResponse)(nil),        // 123: kernel.TokenCacheStatsSizeResponse
-	(*TokenCacheStatsQueryRequest)(nil),        // 124: kernel.TokenCacheStatsQueryRequest
-	(*TokenCacheStatsQueryResponse)(nil),       // 125: kernel.TokenCacheStatsQueryResponse
-	(*MapStatsGetRequest)(nil),                 // 126: kernel.MapStatsGetRequest
-	(*MapStatsPutRequest)(nil),                 // 127: kernel.MapStatsPutRequest
-	(*MapStatsGetAllRequest)(nil),              // 128: kernel.MapStatsGetAllRequest
-	(*MapStatsKeysRequest)(nil),                // 129: kernel.MapStatsKeysRequest
-	(*MapStatsSizeRequest)(nil),                // 130: kernel.MapStatsSizeRequest
-	(*MapStatsClearRequest)(nil),               // 131: kernel.MapStatsClearRequest
-	(*MapStatsValueResponse)(nil),              // 132: kernel.MapStatsValueResponse
-	(*MapStatsEntriesResponse)(nil),            // 133: kernel.MapStatsEntriesResponse
-	(*MapStatsKeysResponse)(nil),               // 134: kernel.MapStatsKeysResponse
-	(*MapStatsSizeResponse)(nil),               // 135: kernel.MapStatsSizeResponse
-	(*MapStatsQueryRequest)(nil),               // 136: kernel.MapStatsQueryRequest
-	(*MapStatsQueryResponse)(nil),              // 137: kernel.MapStatsQueryResponse
-	(*GraphRegistryGetRequest)(nil),            // 138: kernel.GraphRegistryGetRequest
-	(*GraphRegistryPutRequest)(nil),            // 139: kernel.GraphRegistryPutRequest
-	(*GraphRegistryGetAllRequest)(nil),         // 140: kernel.GraphRegistryGetAllRequest
-	(*GraphRegistryKeysRequest)(nil),           // 141: kernel.GraphRegistryKeysRequest
-	(*GraphRegistrySizeRequest)(nil),           // 142: kernel.GraphRegistrySizeRequest
-	(*GraphRegistryClearRequest)(nil),          // 143: kernel.GraphRegistryClearRequest
-	(*GraphRegistryValueResponse)(nil),         // 144: kernel.GraphRegistryValueResponse
-	(*GraphRegistryEntriesResponse)(nil),       // 145: kernel.GraphRegistryEntriesResponse
-	(*GraphRegistryKeysResponse)(nil),          // 146: kernel.GraphRegistryKeysResponse
-	(*GraphRegistrySizeResponse)(nil),          // 147: kernel.GraphRegistrySizeResponse
-	(*GraphRegistryQueryRequest)(nil),          // 148: kernel.GraphRegistryQueryRequest
-	(*GraphRegistryQueryResponse)(nil),         // 149: kernel.GraphRegistryQueryResponse
-	(*ServiceConnectionsGetRequest)(nil),       // 150: kernel.ServiceConnectionsGetRequest
-	(*ServiceConnectionsPutRequest)(nil),       // 151: kernel.ServiceConnectionsPutRequest
-	(*ServiceConnectionsGetAllRequest)(nil),    // 152: kernel.ServiceConnectionsGetAllRequest
-	(*ServiceConnectionsKeysRequest)(nil),      // 153: kernel.ServiceConnectionsKeysRequest
-	(*ServiceConnectionsSizeRequest)(nil),      // 154: kernel.ServiceConnectionsSizeRequest
-	(*ServiceConnectionsClearRequest)(nil),     // 155: kernel.ServiceConnectionsClearRequest
-	(*ServiceConnectionsValueResponse)(nil),    // 156: kernel.ServiceConnectionsValueResponse
-	(*ServiceConnectionsEntriesResponse)(nil),  // 157: kernel.ServiceConnectionsEntriesResponse
-	(*ServiceConnectionsKeysResponse)(nil),     // 158: kernel.ServiceConnectionsKeysResponse
-	(*ServiceConnectionsSizeResponse)(nil),     // 159: kernel.ServiceConnectionsSizeResponse
-	(*ServiceConnectionsQueryRequest)(nil),     // 160: kernel.ServiceConnectionsQueryRequest
-	(*ServiceConnectionsQueryResponse)(nil),    // 161: kernel.ServiceConnectionsQueryResponse
-	(*QueueStatsGetRequest)(nil),               // 162: kernel.QueueStatsGetRequest
-	(*QueueStatsPutRequest)(nil),               // 163: kernel.QueueStatsPutRequest
-	(*QueueStatsGetAllRequest)(nil),            // 164: kernel.QueueStatsGetAllRequest
-	(*QueueStatsKeysRequest)(nil),              // 165: kernel.QueueStatsKeysRequest
-	(*QueueStatsSizeRequest)(nil),              // 166: kernel.QueueStatsSizeRequest
-	(*QueueStatsClearRequest)(nil),             // 167: kernel.QueueStatsClearRequest
-	(*QueueStatsValueResponse)(nil),            // 168: kernel.QueueStatsValueResponse
-	(*QueueStatsEntriesResponse)(nil),          // 169: kernel.QueueStatsEntriesResponse
-	(*QueueStatsKeysResponse)(nil),             // 170: kernel.QueueStatsKeysResponse
-	(*QueueStatsSizeResponse)(nil),             // 171: kernel.QueueStatsSizeResponse
-	(*QueueStatsQueryRequest)(nil),             // 172: kernel.QueueStatsQueryRequest
-	(*QueueStatsQueryResponse)(nil),            // 173: kernel.QueueStatsQueryResponse
-	(*TopicStatsGetRequest)(nil),               // 174: kernel.TopicStatsGetRequest
-	(*TopicStatsPutRequest)(nil),               // 175: kernel.TopicStatsPutRequest
-	(*TopicStatsGetAllRequest)(nil),            // 176: kernel.TopicStatsGetAllRequest
-	(*TopicStatsKeysRequest)(nil),              // 177: kernel.TopicStatsKeysRequest
-	(*TopicStatsSizeRequest)(nil),              // 178: kernel.TopicStatsSizeRequest
-	(*TopicStatsClearRequest)(nil),             // 179: kernel.TopicStatsClearRequest
-	(*TopicStatsValueResponse)(nil),            // 180: kernel.TopicStatsValueResponse
-	(*TopicStatsEntriesResponse)(nil),          // 181: kernel.TopicStatsEntriesResponse
-	(*TopicStatsKeysResponse)(nil),             // 182: kernel.TopicStatsKeysResponse
-	(*TopicStatsSizeResponse)(nil),             // 183: kernel.TopicStatsSizeResponse
-	(*TopicStatsQueryRequest)(nil),             // 184: kernel.TopicStatsQueryRequest
-	(*TopicStatsQueryResponse)(nil),            // 185: kernel.TopicStatsQueryResponse
-	(*WatchHealthGetRequest)(nil),              // 186: kernel.WatchHealthGetRequest
-	(*WatchHealthPutRequest)(nil),              // 187: kernel.WatchHealthPutRequest
-	(*WatchHealthGetAllRequest)(nil),           // 188: kernel.WatchHealthGetAllRequest
-	(*WatchHealthKeysRequest)(nil),             // 189: kernel.WatchHealthKeysRequest
-	(*WatchHealthSizeRequest)(nil),             // 190: kernel.WatchHealthSizeRequest
-	(*WatchHealthClearRequest)(nil),            // 191: kernel.WatchHealthClearRequest
-	(*WatchHealthValueResponse)(nil),           // 192: kernel.WatchHealthValueResponse
-	(*WatchHealthEntriesResponse)(nil),         // 193: kernel.WatchHealthEntriesResponse
-	(*WatchHealthKeysResponse)(nil),            // 194: kernel.WatchHealthKeysResponse
-	(*WatchHealthSizeResponse)(nil),            // 195: kernel.WatchHealthSizeResponse
-	(*WatchHealthQueryRequest)(nil),            // 196: kernel.WatchHealthQueryRequest
-	(*WatchHealthQueryResponse)(nil),           // 197: kernel.WatchHealthQueryResponse
-	(*MutationRatesGetRequest)(nil),            // 198: kernel.MutationRatesGetRequest
-	(*MutationRatesPutRequest)(nil),            // 199: kernel.MutationRatesPutRequest
-	(*MutationRatesGetAllRequest)(nil),         // 200: kernel.MutationRatesGetAllRequest
-	(*MutationRatesKeysRequest)(nil),           // 201: kernel.MutationRatesKeysRequest
-	(*MutationRatesSizeRequest)(nil),           // 202: kernel.MutationRatesSizeRequest
-	(*MutationRatesClearRequest)(nil),          // 203: kernel.MutationRatesClearRequest
-	(*MutationRatesValueResponse)(nil),         // 204: kernel.MutationRatesValueResponse
-	(*MutationRatesEntriesResponse)(nil),       // 205: kernel.MutationRatesEntriesResponse
-	(*MutationRatesKeysResponse)(nil),          // 206: kernel.MutationRatesKeysResponse
-	(*MutationRatesSizeResponse)(nil),          // 207: kernel.MutationRatesSizeResponse
-	(*MutationRatesQueryRequest)(nil),          // 208: kernel.MutationRatesQueryRequest
-	(*MutationRatesQueryResponse)(nil),         // 209: kernel.MutationRatesQueryResponse
-	(*InstancesGetRequest)(nil),                // 210: kernel.InstancesGetRequest
-	(*InstancesGetAllRequest)(nil),             // 211: kernel.InstancesGetAllRequest
-	(*InstancesKeysRequest)(nil),               // 212: kernel.InstancesKeysRequest
-	(*InstancesSizeRequest)(nil),               // 213: kernel.InstancesSizeRequest
-	(*InstancesValueResponse)(nil),             // 214: kernel.InstancesValueResponse
-	(*InstancesEntriesResponse)(nil),           // 215: kernel.InstancesEntriesResponse
-	(*InstancesKeysResponse)(nil),              // 216: kernel.InstancesKeysResponse
-	(*InstancesSizeResponse)(nil),              // 217: kernel.InstancesSizeResponse
-	(*InstancesQueryRequest)(nil),              // 218: kernel.InstancesQueryRequest
-	(*InstancesQueryResponse)(nil),             // 219: kernel.InstancesQueryResponse
-	(*CaCertsGetRequest)(nil),                  // 220: kernel.CaCertsGetRequest
-	(*CaCertsPutRequest)(nil),                  // 221: kernel.CaCertsPutRequest
-	(*CaCertsGetAllRequest)(nil),               // 222: kernel.CaCertsGetAllRequest
-	(*CaCertsKeysRequest)(nil),                 // 223: kernel.CaCertsKeysRequest
-	(*CaCertsSizeRequest)(nil),                 // 224: kernel.CaCertsSizeRequest
-	(*CaCertsClearRequest)(nil),                // 225: kernel.CaCertsClearRequest
-	(*CaCertsValueResponse)(nil),               // 226: kernel.CaCertsValueResponse
-	(*CaCertsEntriesResponse)(nil),             // 227: kernel.CaCertsEntriesResponse
-	(*CaCertsKeysResponse)(nil),                // 228: kernel.CaCertsKeysResponse
-	(*CaCertsSizeResponse)(nil),                // 229: kernel.CaCertsSizeResponse
-	(*CaCertsQueryRequest)(nil),                // 230: kernel.CaCertsQueryRequest
-	(*CaCertsQueryResponse)(nil),               // 231: kernel.CaCertsQueryResponse
-	(*MapEmpty)(nil),                           // 232: kernel.MapEmpty
-	nil,                                        // 233: kernel.VerifyingKeysEntriesResponse.EntriesEntry
-	nil,                                        // 234: kernel.TrustedCasEntriesResponse.EntriesEntry
-	nil,                                        // 235: kernel.NodeMetricsEntriesResponse.EntriesEntry
-	nil,                                        // 236: kernel.GrpcStatsEntriesResponse.EntriesEntry
-	nil,                                        // 237: kernel.PersistenceStatusEntriesResponse.EntriesEntry
-	nil,                                        // 238: kernel.NetworkStatsEntriesResponse.EntriesEntry
-	nil,                                        // 239: kernel.ThreadInfoEntriesResponse.EntriesEntry
-	nil,                                        // 240: kernel.TokenCacheStatsEntriesResponse.EntriesEntry
-	nil,                                        // 241: kernel.MapStatsEntriesResponse.EntriesEntry
-	nil,                                        // 242: kernel.GraphRegistryEntriesResponse.EntriesEntry
-	nil,                                        // 243: kernel.ServiceConnectionsEntriesResponse.EntriesEntry
-	nil,                                        // 244: kernel.QueueStatsEntriesResponse.EntriesEntry
-	nil,                                        // 245: kernel.TopicStatsEntriesResponse.EntriesEntry
-	nil,                                        // 246: kernel.WatchHealthEntriesResponse.EntriesEntry
-	nil,                                        // 247: kernel.MutationRatesEntriesResponse.EntriesEntry
-	nil,                                        // 248: kernel.InstancesEntriesResponse.EntriesEntry
-	nil,                                        // 249: kernel.CaCertsEntriesResponse.EntriesEntry
-	(*host.Host)(nil),                          // 250: host.Host
-	(*logger.LoggerConfig)(nil),                // 251: logger.LoggerConfig
-	(outputformat.OutputFormat)(0),             // 252: outputformat.OutputFormat
-	(*x509.X509Cert)(nil),                      // 253: x509.X509Cert
-	(*x509.X509CertPair)(nil),                  // 254: x509.X509CertPair
-	(*jwk.Jwk)(nil),                            // 255: jwk.Jwk
-	(cloudvendor.CloudVendor)(0),               // 256: cloudvendor.CloudVendor
-	(*generated.Services)(nil),                 // 257: generated.Services
-	(*sentinel.AdminClusterInfo)(nil),          // 258: sentinel.AdminClusterInfo
-	(*sentinel.AdminClusterHealth)(nil),        // 259: sentinel.AdminClusterHealth
-	(*sentinel.AdminNodeMetrics)(nil),          // 260: sentinel.AdminNodeMetrics
-	(*sentinel.AdminGrpcStats)(nil),            // 261: sentinel.AdminGrpcStats
-	(*sentinel.AdminPersistenceStatus)(nil),    // 262: sentinel.AdminPersistenceStatus
-	(*sentinel.AdminNetworkStats)(nil),         // 263: sentinel.AdminNetworkStats
-	(*sentinel.AdminThreadInfo)(nil),           // 264: sentinel.AdminThreadInfo
-	(*sentinel.AdminTokenCacheStats)(nil),      // 265: sentinel.AdminTokenCacheStats
-	(*sentinel.AdminMapStats)(nil),             // 266: sentinel.AdminMapStats
-	(*sentinel.AdminGraphInfo)(nil),            // 267: sentinel.AdminGraphInfo
-	(*sentinel.AdminServiceConnection)(nil),    // 268: sentinel.AdminServiceConnection
-	(*sentinel.AdminQueueStats)(nil),           // 269: sentinel.AdminQueueStats
-	(*sentinel.AdminTopicStats)(nil),           // 270: sentinel.AdminTopicStats
-	(*sentinel.AdminWatchHealth)(nil),          // 271: sentinel.AdminWatchHealth
-	(*sentinel.AdminMutationRate)(nil),         // 272: sentinel.AdminMutationRate
-	(*healthreport.ServiceInstanceHealth)(nil), // 273: healthreport.ServiceInstanceHealth
-	(*tokenrequest.TokenRequest)(nil),          // 274: tokenrequest.TokenRequest
-	(*x509.X509CertRequest)(nil),               // 275: x509.X509CertRequest
-	(*emptypb.Empty)(nil),                      // 276: google.protobuf.Empty
-	(*token.Token)(nil),                        // 277: token.Token
+	(ComparisonOp)(0),                          // 0: kernel.ComparisonOp
+	(SortDirection)(0),                         // 1: kernel.SortDirection
+	(LogicalOp)(0),                             // 2: kernel.LogicalOp
+	(*BootstrapConfig)(nil),                    // 3: kernel.BootstrapConfig
+	(*TokenExchangerState)(nil),                // 4: kernel.TokenExchangerState
+	(*TrustedCaState)(nil),                     // 5: kernel.TrustedCaState
+	(*CloudIdentityMatcher)(nil),               // 6: kernel.CloudIdentityMatcher
+	(*Delegate)(nil),                           // 7: kernel.Delegate
+	(*Config)(nil),                             // 8: kernel.Config
+	(*UrlLoader)(nil),                          // 9: kernel.UrlLoader
+	(*FileLoader)(nil),                         // 10: kernel.FileLoader
+	(*ClusterState)(nil),                       // 11: kernel.ClusterState
+	(*AdminSetLogLevelRequest)(nil),            // 12: kernel.AdminSetLogLevelRequest
+	(*AdminReloadConfigRequest)(nil),           // 13: kernel.AdminReloadConfigRequest
+	(*AdminConfigDump)(nil),                    // 14: kernel.AdminConfigDump
+	(*ServiceHealthState)(nil),                 // 15: kernel.ServiceHealthState
+	(*CaState)(nil),                            // 16: kernel.CaState
+	(*QueryValue)(nil),                         // 17: kernel.QueryValue
+	(*Predicate)(nil),                          // 18: kernel.Predicate
+	(*PredicateGroup)(nil),                     // 19: kernel.PredicateGroup
+	(*SortField)(nil),                          // 20: kernel.SortField
+	(*CollectionQuery)(nil),                    // 21: kernel.CollectionQuery
+	(*VerifyingKeysGetRequest)(nil),            // 22: kernel.VerifyingKeysGetRequest
+	(*VerifyingKeysPutRequest)(nil),            // 23: kernel.VerifyingKeysPutRequest
+	(*VerifyingKeysGetAllRequest)(nil),         // 24: kernel.VerifyingKeysGetAllRequest
+	(*VerifyingKeysKeysRequest)(nil),           // 25: kernel.VerifyingKeysKeysRequest
+	(*VerifyingKeysSizeRequest)(nil),           // 26: kernel.VerifyingKeysSizeRequest
+	(*VerifyingKeysClearRequest)(nil),          // 27: kernel.VerifyingKeysClearRequest
+	(*VerifyingKeysValueResponse)(nil),         // 28: kernel.VerifyingKeysValueResponse
+	(*VerifyingKeysEntriesResponse)(nil),       // 29: kernel.VerifyingKeysEntriesResponse
+	(*VerifyingKeysKeysResponse)(nil),          // 30: kernel.VerifyingKeysKeysResponse
+	(*VerifyingKeysSizeResponse)(nil),          // 31: kernel.VerifyingKeysSizeResponse
+	(*VerifyingKeysQueryRequest)(nil),          // 32: kernel.VerifyingKeysQueryRequest
+	(*VerifyingKeysQueryResponse)(nil),         // 33: kernel.VerifyingKeysQueryResponse
+	(*TrustedCasGetRequest)(nil),               // 34: kernel.TrustedCasGetRequest
+	(*TrustedCasPutRequest)(nil),               // 35: kernel.TrustedCasPutRequest
+	(*TrustedCasGetAllRequest)(nil),            // 36: kernel.TrustedCasGetAllRequest
+	(*TrustedCasKeysRequest)(nil),              // 37: kernel.TrustedCasKeysRequest
+	(*TrustedCasSizeRequest)(nil),              // 38: kernel.TrustedCasSizeRequest
+	(*TrustedCasClearRequest)(nil),             // 39: kernel.TrustedCasClearRequest
+	(*TrustedCasValueResponse)(nil),            // 40: kernel.TrustedCasValueResponse
+	(*TrustedCasEntriesResponse)(nil),          // 41: kernel.TrustedCasEntriesResponse
+	(*TrustedCasKeysResponse)(nil),             // 42: kernel.TrustedCasKeysResponse
+	(*TrustedCasSizeResponse)(nil),             // 43: kernel.TrustedCasSizeResponse
+	(*TrustedCasQueryRequest)(nil),             // 44: kernel.TrustedCasQueryRequest
+	(*TrustedCasQueryResponse)(nil),            // 45: kernel.TrustedCasQueryResponse
+	(*NodeMetricsGetRequest)(nil),              // 46: kernel.NodeMetricsGetRequest
+	(*NodeMetricsPutRequest)(nil),              // 47: kernel.NodeMetricsPutRequest
+	(*NodeMetricsGetAllRequest)(nil),           // 48: kernel.NodeMetricsGetAllRequest
+	(*NodeMetricsKeysRequest)(nil),             // 49: kernel.NodeMetricsKeysRequest
+	(*NodeMetricsSizeRequest)(nil),             // 50: kernel.NodeMetricsSizeRequest
+	(*NodeMetricsClearRequest)(nil),            // 51: kernel.NodeMetricsClearRequest
+	(*NodeMetricsValueResponse)(nil),           // 52: kernel.NodeMetricsValueResponse
+	(*NodeMetricsEntriesResponse)(nil),         // 53: kernel.NodeMetricsEntriesResponse
+	(*NodeMetricsKeysResponse)(nil),            // 54: kernel.NodeMetricsKeysResponse
+	(*NodeMetricsSizeResponse)(nil),            // 55: kernel.NodeMetricsSizeResponse
+	(*NodeMetricsQueryRequest)(nil),            // 56: kernel.NodeMetricsQueryRequest
+	(*NodeMetricsQueryResponse)(nil),           // 57: kernel.NodeMetricsQueryResponse
+	(*GrpcStatsGetRequest)(nil),                // 58: kernel.GrpcStatsGetRequest
+	(*GrpcStatsPutRequest)(nil),                // 59: kernel.GrpcStatsPutRequest
+	(*GrpcStatsGetAllRequest)(nil),             // 60: kernel.GrpcStatsGetAllRequest
+	(*GrpcStatsKeysRequest)(nil),               // 61: kernel.GrpcStatsKeysRequest
+	(*GrpcStatsSizeRequest)(nil),               // 62: kernel.GrpcStatsSizeRequest
+	(*GrpcStatsClearRequest)(nil),              // 63: kernel.GrpcStatsClearRequest
+	(*GrpcStatsValueResponse)(nil),             // 64: kernel.GrpcStatsValueResponse
+	(*GrpcStatsEntriesResponse)(nil),           // 65: kernel.GrpcStatsEntriesResponse
+	(*GrpcStatsKeysResponse)(nil),              // 66: kernel.GrpcStatsKeysResponse
+	(*GrpcStatsSizeResponse)(nil),              // 67: kernel.GrpcStatsSizeResponse
+	(*GrpcStatsQueryRequest)(nil),              // 68: kernel.GrpcStatsQueryRequest
+	(*GrpcStatsQueryResponse)(nil),             // 69: kernel.GrpcStatsQueryResponse
+	(*PersistenceStatusGetRequest)(nil),        // 70: kernel.PersistenceStatusGetRequest
+	(*PersistenceStatusPutRequest)(nil),        // 71: kernel.PersistenceStatusPutRequest
+	(*PersistenceStatusGetAllRequest)(nil),     // 72: kernel.PersistenceStatusGetAllRequest
+	(*PersistenceStatusKeysRequest)(nil),       // 73: kernel.PersistenceStatusKeysRequest
+	(*PersistenceStatusSizeRequest)(nil),       // 74: kernel.PersistenceStatusSizeRequest
+	(*PersistenceStatusClearRequest)(nil),      // 75: kernel.PersistenceStatusClearRequest
+	(*PersistenceStatusValueResponse)(nil),     // 76: kernel.PersistenceStatusValueResponse
+	(*PersistenceStatusEntriesResponse)(nil),   // 77: kernel.PersistenceStatusEntriesResponse
+	(*PersistenceStatusKeysResponse)(nil),      // 78: kernel.PersistenceStatusKeysResponse
+	(*PersistenceStatusSizeResponse)(nil),      // 79: kernel.PersistenceStatusSizeResponse
+	(*PersistenceStatusQueryRequest)(nil),      // 80: kernel.PersistenceStatusQueryRequest
+	(*PersistenceStatusQueryResponse)(nil),     // 81: kernel.PersistenceStatusQueryResponse
+	(*NetworkStatsGetRequest)(nil),             // 82: kernel.NetworkStatsGetRequest
+	(*NetworkStatsPutRequest)(nil),             // 83: kernel.NetworkStatsPutRequest
+	(*NetworkStatsGetAllRequest)(nil),          // 84: kernel.NetworkStatsGetAllRequest
+	(*NetworkStatsKeysRequest)(nil),            // 85: kernel.NetworkStatsKeysRequest
+	(*NetworkStatsSizeRequest)(nil),            // 86: kernel.NetworkStatsSizeRequest
+	(*NetworkStatsClearRequest)(nil),           // 87: kernel.NetworkStatsClearRequest
+	(*NetworkStatsValueResponse)(nil),          // 88: kernel.NetworkStatsValueResponse
+	(*NetworkStatsEntriesResponse)(nil),        // 89: kernel.NetworkStatsEntriesResponse
+	(*NetworkStatsKeysResponse)(nil),           // 90: kernel.NetworkStatsKeysResponse
+	(*NetworkStatsSizeResponse)(nil),           // 91: kernel.NetworkStatsSizeResponse
+	(*NetworkStatsQueryRequest)(nil),           // 92: kernel.NetworkStatsQueryRequest
+	(*NetworkStatsQueryResponse)(nil),          // 93: kernel.NetworkStatsQueryResponse
+	(*ThreadInfoGetRequest)(nil),               // 94: kernel.ThreadInfoGetRequest
+	(*ThreadInfoPutRequest)(nil),               // 95: kernel.ThreadInfoPutRequest
+	(*ThreadInfoGetAllRequest)(nil),            // 96: kernel.ThreadInfoGetAllRequest
+	(*ThreadInfoKeysRequest)(nil),              // 97: kernel.ThreadInfoKeysRequest
+	(*ThreadInfoSizeRequest)(nil),              // 98: kernel.ThreadInfoSizeRequest
+	(*ThreadInfoClearRequest)(nil),             // 99: kernel.ThreadInfoClearRequest
+	(*ThreadInfoValueResponse)(nil),            // 100: kernel.ThreadInfoValueResponse
+	(*ThreadInfoEntriesResponse)(nil),          // 101: kernel.ThreadInfoEntriesResponse
+	(*ThreadInfoKeysResponse)(nil),             // 102: kernel.ThreadInfoKeysResponse
+	(*ThreadInfoSizeResponse)(nil),             // 103: kernel.ThreadInfoSizeResponse
+	(*ThreadInfoQueryRequest)(nil),             // 104: kernel.ThreadInfoQueryRequest
+	(*ThreadInfoQueryResponse)(nil),            // 105: kernel.ThreadInfoQueryResponse
+	(*TokenCacheStatsGetRequest)(nil),          // 106: kernel.TokenCacheStatsGetRequest
+	(*TokenCacheStatsPutRequest)(nil),          // 107: kernel.TokenCacheStatsPutRequest
+	(*TokenCacheStatsGetAllRequest)(nil),       // 108: kernel.TokenCacheStatsGetAllRequest
+	(*TokenCacheStatsKeysRequest)(nil),         // 109: kernel.TokenCacheStatsKeysRequest
+	(*TokenCacheStatsSizeRequest)(nil),         // 110: kernel.TokenCacheStatsSizeRequest
+	(*TokenCacheStatsClearRequest)(nil),        // 111: kernel.TokenCacheStatsClearRequest
+	(*TokenCacheStatsValueResponse)(nil),       // 112: kernel.TokenCacheStatsValueResponse
+	(*TokenCacheStatsEntriesResponse)(nil),     // 113: kernel.TokenCacheStatsEntriesResponse
+	(*TokenCacheStatsKeysResponse)(nil),        // 114: kernel.TokenCacheStatsKeysResponse
+	(*TokenCacheStatsSizeResponse)(nil),        // 115: kernel.TokenCacheStatsSizeResponse
+	(*TokenCacheStatsQueryRequest)(nil),        // 116: kernel.TokenCacheStatsQueryRequest
+	(*TokenCacheStatsQueryResponse)(nil),       // 117: kernel.TokenCacheStatsQueryResponse
+	(*MapStatsGetRequest)(nil),                 // 118: kernel.MapStatsGetRequest
+	(*MapStatsPutRequest)(nil),                 // 119: kernel.MapStatsPutRequest
+	(*MapStatsGetAllRequest)(nil),              // 120: kernel.MapStatsGetAllRequest
+	(*MapStatsKeysRequest)(nil),                // 121: kernel.MapStatsKeysRequest
+	(*MapStatsSizeRequest)(nil),                // 122: kernel.MapStatsSizeRequest
+	(*MapStatsClearRequest)(nil),               // 123: kernel.MapStatsClearRequest
+	(*MapStatsValueResponse)(nil),              // 124: kernel.MapStatsValueResponse
+	(*MapStatsEntriesResponse)(nil),            // 125: kernel.MapStatsEntriesResponse
+	(*MapStatsKeysResponse)(nil),               // 126: kernel.MapStatsKeysResponse
+	(*MapStatsSizeResponse)(nil),               // 127: kernel.MapStatsSizeResponse
+	(*MapStatsQueryRequest)(nil),               // 128: kernel.MapStatsQueryRequest
+	(*MapStatsQueryResponse)(nil),              // 129: kernel.MapStatsQueryResponse
+	(*GraphRegistryGetRequest)(nil),            // 130: kernel.GraphRegistryGetRequest
+	(*GraphRegistryPutRequest)(nil),            // 131: kernel.GraphRegistryPutRequest
+	(*GraphRegistryGetAllRequest)(nil),         // 132: kernel.GraphRegistryGetAllRequest
+	(*GraphRegistryKeysRequest)(nil),           // 133: kernel.GraphRegistryKeysRequest
+	(*GraphRegistrySizeRequest)(nil),           // 134: kernel.GraphRegistrySizeRequest
+	(*GraphRegistryClearRequest)(nil),          // 135: kernel.GraphRegistryClearRequest
+	(*GraphRegistryValueResponse)(nil),         // 136: kernel.GraphRegistryValueResponse
+	(*GraphRegistryEntriesResponse)(nil),       // 137: kernel.GraphRegistryEntriesResponse
+	(*GraphRegistryKeysResponse)(nil),          // 138: kernel.GraphRegistryKeysResponse
+	(*GraphRegistrySizeResponse)(nil),          // 139: kernel.GraphRegistrySizeResponse
+	(*GraphRegistryQueryRequest)(nil),          // 140: kernel.GraphRegistryQueryRequest
+	(*GraphRegistryQueryResponse)(nil),         // 141: kernel.GraphRegistryQueryResponse
+	(*ServiceConnectionsGetRequest)(nil),       // 142: kernel.ServiceConnectionsGetRequest
+	(*ServiceConnectionsPutRequest)(nil),       // 143: kernel.ServiceConnectionsPutRequest
+	(*ServiceConnectionsGetAllRequest)(nil),    // 144: kernel.ServiceConnectionsGetAllRequest
+	(*ServiceConnectionsKeysRequest)(nil),      // 145: kernel.ServiceConnectionsKeysRequest
+	(*ServiceConnectionsSizeRequest)(nil),      // 146: kernel.ServiceConnectionsSizeRequest
+	(*ServiceConnectionsClearRequest)(nil),     // 147: kernel.ServiceConnectionsClearRequest
+	(*ServiceConnectionsValueResponse)(nil),    // 148: kernel.ServiceConnectionsValueResponse
+	(*ServiceConnectionsEntriesResponse)(nil),  // 149: kernel.ServiceConnectionsEntriesResponse
+	(*ServiceConnectionsKeysResponse)(nil),     // 150: kernel.ServiceConnectionsKeysResponse
+	(*ServiceConnectionsSizeResponse)(nil),     // 151: kernel.ServiceConnectionsSizeResponse
+	(*ServiceConnectionsQueryRequest)(nil),     // 152: kernel.ServiceConnectionsQueryRequest
+	(*ServiceConnectionsQueryResponse)(nil),    // 153: kernel.ServiceConnectionsQueryResponse
+	(*QueueStatsGetRequest)(nil),               // 154: kernel.QueueStatsGetRequest
+	(*QueueStatsPutRequest)(nil),               // 155: kernel.QueueStatsPutRequest
+	(*QueueStatsGetAllRequest)(nil),            // 156: kernel.QueueStatsGetAllRequest
+	(*QueueStatsKeysRequest)(nil),              // 157: kernel.QueueStatsKeysRequest
+	(*QueueStatsSizeRequest)(nil),              // 158: kernel.QueueStatsSizeRequest
+	(*QueueStatsClearRequest)(nil),             // 159: kernel.QueueStatsClearRequest
+	(*QueueStatsValueResponse)(nil),            // 160: kernel.QueueStatsValueResponse
+	(*QueueStatsEntriesResponse)(nil),          // 161: kernel.QueueStatsEntriesResponse
+	(*QueueStatsKeysResponse)(nil),             // 162: kernel.QueueStatsKeysResponse
+	(*QueueStatsSizeResponse)(nil),             // 163: kernel.QueueStatsSizeResponse
+	(*QueueStatsQueryRequest)(nil),             // 164: kernel.QueueStatsQueryRequest
+	(*QueueStatsQueryResponse)(nil),            // 165: kernel.QueueStatsQueryResponse
+	(*TopicStatsGetRequest)(nil),               // 166: kernel.TopicStatsGetRequest
+	(*TopicStatsPutRequest)(nil),               // 167: kernel.TopicStatsPutRequest
+	(*TopicStatsGetAllRequest)(nil),            // 168: kernel.TopicStatsGetAllRequest
+	(*TopicStatsKeysRequest)(nil),              // 169: kernel.TopicStatsKeysRequest
+	(*TopicStatsSizeRequest)(nil),              // 170: kernel.TopicStatsSizeRequest
+	(*TopicStatsClearRequest)(nil),             // 171: kernel.TopicStatsClearRequest
+	(*TopicStatsValueResponse)(nil),            // 172: kernel.TopicStatsValueResponse
+	(*TopicStatsEntriesResponse)(nil),          // 173: kernel.TopicStatsEntriesResponse
+	(*TopicStatsKeysResponse)(nil),             // 174: kernel.TopicStatsKeysResponse
+	(*TopicStatsSizeResponse)(nil),             // 175: kernel.TopicStatsSizeResponse
+	(*TopicStatsQueryRequest)(nil),             // 176: kernel.TopicStatsQueryRequest
+	(*TopicStatsQueryResponse)(nil),            // 177: kernel.TopicStatsQueryResponse
+	(*WatchHealthGetRequest)(nil),              // 178: kernel.WatchHealthGetRequest
+	(*WatchHealthPutRequest)(nil),              // 179: kernel.WatchHealthPutRequest
+	(*WatchHealthGetAllRequest)(nil),           // 180: kernel.WatchHealthGetAllRequest
+	(*WatchHealthKeysRequest)(nil),             // 181: kernel.WatchHealthKeysRequest
+	(*WatchHealthSizeRequest)(nil),             // 182: kernel.WatchHealthSizeRequest
+	(*WatchHealthClearRequest)(nil),            // 183: kernel.WatchHealthClearRequest
+	(*WatchHealthValueResponse)(nil),           // 184: kernel.WatchHealthValueResponse
+	(*WatchHealthEntriesResponse)(nil),         // 185: kernel.WatchHealthEntriesResponse
+	(*WatchHealthKeysResponse)(nil),            // 186: kernel.WatchHealthKeysResponse
+	(*WatchHealthSizeResponse)(nil),            // 187: kernel.WatchHealthSizeResponse
+	(*WatchHealthQueryRequest)(nil),            // 188: kernel.WatchHealthQueryRequest
+	(*WatchHealthQueryResponse)(nil),           // 189: kernel.WatchHealthQueryResponse
+	(*MutationRatesGetRequest)(nil),            // 190: kernel.MutationRatesGetRequest
+	(*MutationRatesPutRequest)(nil),            // 191: kernel.MutationRatesPutRequest
+	(*MutationRatesGetAllRequest)(nil),         // 192: kernel.MutationRatesGetAllRequest
+	(*MutationRatesKeysRequest)(nil),           // 193: kernel.MutationRatesKeysRequest
+	(*MutationRatesSizeRequest)(nil),           // 194: kernel.MutationRatesSizeRequest
+	(*MutationRatesClearRequest)(nil),          // 195: kernel.MutationRatesClearRequest
+	(*MutationRatesValueResponse)(nil),         // 196: kernel.MutationRatesValueResponse
+	(*MutationRatesEntriesResponse)(nil),       // 197: kernel.MutationRatesEntriesResponse
+	(*MutationRatesKeysResponse)(nil),          // 198: kernel.MutationRatesKeysResponse
+	(*MutationRatesSizeResponse)(nil),          // 199: kernel.MutationRatesSizeResponse
+	(*MutationRatesQueryRequest)(nil),          // 200: kernel.MutationRatesQueryRequest
+	(*MutationRatesQueryResponse)(nil),         // 201: kernel.MutationRatesQueryResponse
+	(*InstancesGetRequest)(nil),                // 202: kernel.InstancesGetRequest
+	(*InstancesGetAllRequest)(nil),             // 203: kernel.InstancesGetAllRequest
+	(*InstancesKeysRequest)(nil),               // 204: kernel.InstancesKeysRequest
+	(*InstancesSizeRequest)(nil),               // 205: kernel.InstancesSizeRequest
+	(*InstancesValueResponse)(nil),             // 206: kernel.InstancesValueResponse
+	(*InstancesEntriesResponse)(nil),           // 207: kernel.InstancesEntriesResponse
+	(*InstancesKeysResponse)(nil),              // 208: kernel.InstancesKeysResponse
+	(*InstancesSizeResponse)(nil),              // 209: kernel.InstancesSizeResponse
+	(*InstancesQueryRequest)(nil),              // 210: kernel.InstancesQueryRequest
+	(*InstancesQueryResponse)(nil),             // 211: kernel.InstancesQueryResponse
+	(*CaCertsGetRequest)(nil),                  // 212: kernel.CaCertsGetRequest
+	(*CaCertsPutRequest)(nil),                  // 213: kernel.CaCertsPutRequest
+	(*CaCertsGetAllRequest)(nil),               // 214: kernel.CaCertsGetAllRequest
+	(*CaCertsKeysRequest)(nil),                 // 215: kernel.CaCertsKeysRequest
+	(*CaCertsSizeRequest)(nil),                 // 216: kernel.CaCertsSizeRequest
+	(*CaCertsClearRequest)(nil),                // 217: kernel.CaCertsClearRequest
+	(*CaCertsValueResponse)(nil),               // 218: kernel.CaCertsValueResponse
+	(*CaCertsEntriesResponse)(nil),             // 219: kernel.CaCertsEntriesResponse
+	(*CaCertsKeysResponse)(nil),                // 220: kernel.CaCertsKeysResponse
+	(*CaCertsSizeResponse)(nil),                // 221: kernel.CaCertsSizeResponse
+	(*CaCertsQueryRequest)(nil),                // 222: kernel.CaCertsQueryRequest
+	(*CaCertsQueryResponse)(nil),               // 223: kernel.CaCertsQueryResponse
+	(*MapEmpty)(nil),                           // 224: kernel.MapEmpty
+	nil,                                        // 225: kernel.VerifyingKeysEntriesResponse.EntriesEntry
+	nil,                                        // 226: kernel.TrustedCasEntriesResponse.EntriesEntry
+	nil,                                        // 227: kernel.NodeMetricsEntriesResponse.EntriesEntry
+	nil,                                        // 228: kernel.GrpcStatsEntriesResponse.EntriesEntry
+	nil,                                        // 229: kernel.PersistenceStatusEntriesResponse.EntriesEntry
+	nil,                                        // 230: kernel.NetworkStatsEntriesResponse.EntriesEntry
+	nil,                                        // 231: kernel.ThreadInfoEntriesResponse.EntriesEntry
+	nil,                                        // 232: kernel.TokenCacheStatsEntriesResponse.EntriesEntry
+	nil,                                        // 233: kernel.MapStatsEntriesResponse.EntriesEntry
+	nil,                                        // 234: kernel.GraphRegistryEntriesResponse.EntriesEntry
+	nil,                                        // 235: kernel.ServiceConnectionsEntriesResponse.EntriesEntry
+	nil,                                        // 236: kernel.QueueStatsEntriesResponse.EntriesEntry
+	nil,                                        // 237: kernel.TopicStatsEntriesResponse.EntriesEntry
+	nil,                                        // 238: kernel.WatchHealthEntriesResponse.EntriesEntry
+	nil,                                        // 239: kernel.MutationRatesEntriesResponse.EntriesEntry
+	nil,                                        // 240: kernel.InstancesEntriesResponse.EntriesEntry
+	nil,                                        // 241: kernel.CaCertsEntriesResponse.EntriesEntry
+	(*host.Host)(nil),                          // 242: host.Host
+	(*hazelcast.NetworkConfig)(nil),            // 243: hazelcast.NetworkConfig
+	(*logger.LoggerConfig)(nil),                // 244: logger.LoggerConfig
+	(*hazelcast.CPSubsystemConfig)(nil),        // 245: hazelcast.CPSubsystemConfig
+	(outputformat.OutputFormat)(0),             // 246: outputformat.OutputFormat
+	(*x509.X509Cert)(nil),                      // 247: x509.X509Cert
+	(*x509.X509CertPair)(nil),                  // 248: x509.X509CertPair
+	(hazelcast.NodeMode)(0),                    // 249: hazelcast.NodeMode
+	(*jwk.Jwk)(nil),                            // 250: jwk.Jwk
+	(cloudvendor.CloudVendor)(0),               // 251: cloudvendor.CloudVendor
+	(*hazelcast.RateLimitConfig)(nil),          // 252: hazelcast.RateLimitConfig
+	(*generated.Services)(nil),                 // 253: generated.Services
+	(*hazelcast.AdminClusterInfo)(nil),         // 254: hazelcast.AdminClusterInfo
+	(*hazelcast.AdminClusterHealth)(nil),       // 255: hazelcast.AdminClusterHealth
+	(*hazelcast.AdminNodeMetrics)(nil),         // 256: hazelcast.AdminNodeMetrics
+	(*hazelcast.AdminGrpcStats)(nil),           // 257: hazelcast.AdminGrpcStats
+	(*hazelcast.AdminPersistenceStatus)(nil),   // 258: hazelcast.AdminPersistenceStatus
+	(*hazelcast.AdminNetworkStats)(nil),        // 259: hazelcast.AdminNetworkStats
+	(*hazelcast.AdminThreadInfo)(nil),          // 260: hazelcast.AdminThreadInfo
+	(*hazelcast.AdminTokenCacheStats)(nil),     // 261: hazelcast.AdminTokenCacheStats
+	(*hazelcast.AdminMapStats)(nil),            // 262: hazelcast.AdminMapStats
+	(*hazelcast.AdminGraphInfo)(nil),           // 263: hazelcast.AdminGraphInfo
+	(*hazelcast.AdminServiceConnection)(nil),   // 264: hazelcast.AdminServiceConnection
+	(*hazelcast.AdminQueueStats)(nil),          // 265: hazelcast.AdminQueueStats
+	(*hazelcast.AdminTopicStats)(nil),          // 266: hazelcast.AdminTopicStats
+	(*hazelcast.AdminWatchHealth)(nil),         // 267: hazelcast.AdminWatchHealth
+	(*hazelcast.AdminMutationRate)(nil),        // 268: hazelcast.AdminMutationRate
+	(*healthreport.ServiceInstanceHealth)(nil), // 269: healthreport.ServiceInstanceHealth
+	(*tokenrequest.TokenRequest)(nil),          // 270: tokenrequest.TokenRequest
+	(*x509.X509CertRequest)(nil),               // 271: x509.X509CertRequest
+	(*emptypb.Empty)(nil),                      // 272: google.protobuf.Empty
+	(*token.Token)(nil),                        // 273: token.Token
 }
 var file_services_kernel_proto_depIdxs = []int32{
-	250, // 0: kernel.BootstrapConfig.listener:type_name -> host.Host
-	250, // 1: kernel.BootstrapConfig.members:type_name -> host.Host
-	7,   // 2: kernel.BootstrapConfig.network:type_name -> kernel.NetworkConfig
-	251, // 3: kernel.BootstrapConfig.logger:type_name -> logger.LoggerConfig
-	8,   // 4: kernel.BootstrapConfig.cp_subsystem:type_name -> kernel.CPSubsystemConfig
-	252, // 5: kernel.BootstrapConfig.persistence_format:type_name -> outputformat.OutputFormat
-	17,  // 6: kernel.BootstrapConfig.url_loader:type_name -> kernel.UrlLoader
-	18,  // 7: kernel.BootstrapConfig.file_loader:type_name -> kernel.FileLoader
-	253, // 8: kernel.BootstrapConfig.loader_ca:type_name -> x509.X509Cert
-	254, // 9: kernel.BootstrapConfig.tls:type_name -> x509.X509CertPair
-	0,   // 10: kernel.BootstrapConfig.mode:type_name -> kernel.NodeMode
-	1,   // 11: kernel.RedoLogEntry.op:type_name -> kernel.OpType
-	2,   // 12: kernel.RedoLogEntry.consistency:type_name -> kernel.ConsistencyType
-	255, // 13: kernel.TokenExchangerState.verifying_keys:type_name -> jwk.Jwk
-	253, // 14: kernel.TrustedCaState.trusted_cas:type_name -> x509.X509Cert
-	256, // 15: kernel.CloudIdentityMatcher.vendor:type_name -> cloudvendor.CloudVendor
-	255, // 16: kernel.Delegate.cred_pairs:type_name -> jwk.Jwk
-	14,  // 17: kernel.Delegate.cloud_identities:type_name -> kernel.CloudIdentityMatcher
-	253, // 18: kernel.Config.trusted_cas:type_name -> x509.X509Cert
-	9,   // 19: kernel.Config.rate_limit:type_name -> kernel.RateLimitConfig
-	257, // 20: kernel.Config.configs:type_name -> generated.Services
-	15,  // 21: kernel.Config.delegates:type_name -> kernel.Delegate
-	258, // 22: kernel.ClusterState.cluster_info:type_name -> sentinel.AdminClusterInfo
-	259, // 23: kernel.ClusterState.cluster_health:type_name -> sentinel.AdminClusterHealth
-	260, // 24: kernel.ClusterState.node_metrics:type_name -> sentinel.AdminNodeMetrics
-	261, // 25: kernel.ClusterState.grpc_stats:type_name -> sentinel.AdminGrpcStats
-	262, // 26: kernel.ClusterState.persistence_status:type_name -> sentinel.AdminPersistenceStatus
-	263, // 27: kernel.ClusterState.network_stats:type_name -> sentinel.AdminNetworkStats
-	264, // 28: kernel.ClusterState.thread_info:type_name -> sentinel.AdminThreadInfo
-	265, // 29: kernel.ClusterState.token_cache_stats:type_name -> sentinel.AdminTokenCacheStats
-	266, // 30: kernel.ClusterState.map_stats:type_name -> sentinel.AdminMapStats
-	6,   // 31: kernel.ClusterState.bootstrap_config:type_name -> kernel.BootstrapConfig
-	16,  // 32: kernel.ClusterState.frontend_config:type_name -> kernel.Config
-	267, // 33: kernel.ClusterState.graph_registry:type_name -> sentinel.AdminGraphInfo
-	268, // 34: kernel.ClusterState.service_connections:type_name -> sentinel.AdminServiceConnection
-	269, // 35: kernel.ClusterState.queue_stats:type_name -> sentinel.AdminQueueStats
-	270, // 36: kernel.ClusterState.topic_stats:type_name -> sentinel.AdminTopicStats
-	271, // 37: kernel.ClusterState.watch_health:type_name -> sentinel.AdminWatchHealth
-	272, // 38: kernel.ClusterState.mutation_rates:type_name -> sentinel.AdminMutationRate
-	20,  // 39: kernel.ClusterState.set_log_level:type_name -> kernel.AdminSetLogLevelRequest
-	21,  // 40: kernel.ClusterState.reload_config:type_name -> kernel.AdminReloadConfigRequest
-	22,  // 41: kernel.ClusterState.config_dump:type_name -> kernel.AdminConfigDump
-	273, // 42: kernel.ServiceHealthState.instances:type_name -> healthreport.ServiceInstanceHealth
-	253, // 43: kernel.CaState.ca_certs:type_name -> x509.X509Cert
-	3,   // 44: kernel.Predicate.op:type_name -> kernel.ComparisonOp
-	25,  // 45: kernel.Predicate.value:type_name -> kernel.QueryValue
-	25,  // 46: kernel.Predicate.values:type_name -> kernel.QueryValue
-	5,   // 47: kernel.PredicateGroup.op:type_name -> kernel.LogicalOp
-	26,  // 48: kernel.PredicateGroup.predicates:type_name -> kernel.Predicate
-	27,  // 49: kernel.PredicateGroup.groups:type_name -> kernel.PredicateGroup
-	4,   // 50: kernel.SortField.direction:type_name -> kernel.SortDirection
-	27,  // 51: kernel.CollectionQuery.where:type_name -> kernel.PredicateGroup
-	28,  // 52: kernel.CollectionQuery.order_by:type_name -> kernel.SortField
-	255, // 53: kernel.VerifyingKeysPutRequest.value:type_name -> jwk.Jwk
-	255, // 54: kernel.VerifyingKeysValueResponse.value:type_name -> jwk.Jwk
-	233, // 55: kernel.VerifyingKeysEntriesResponse.entries:type_name -> kernel.VerifyingKeysEntriesResponse.EntriesEntry
-	29,  // 56: kernel.VerifyingKeysQueryRequest.query:type_name -> kernel.CollectionQuery
-	255, // 57: kernel.VerifyingKeysQueryResponse.results:type_name -> jwk.Jwk
-	253, // 58: kernel.TrustedCasPutRequest.value:type_name -> x509.X509Cert
-	253, // 59: kernel.TrustedCasValueResponse.value:type_name -> x509.X509Cert
-	234, // 60: kernel.TrustedCasEntriesResponse.entries:type_name -> kernel.TrustedCasEntriesResponse.EntriesEntry
-	29,  // 61: kernel.TrustedCasQueryRequest.query:type_name -> kernel.CollectionQuery
-	253, // 62: kernel.TrustedCasQueryResponse.results:type_name -> x509.X509Cert
-	260, // 63: kernel.NodeMetricsPutRequest.value:type_name -> sentinel.AdminNodeMetrics
-	260, // 64: kernel.NodeMetricsValueResponse.value:type_name -> sentinel.AdminNodeMetrics
-	235, // 65: kernel.NodeMetricsEntriesResponse.entries:type_name -> kernel.NodeMetricsEntriesResponse.EntriesEntry
-	29,  // 66: kernel.NodeMetricsQueryRequest.query:type_name -> kernel.CollectionQuery
-	260, // 67: kernel.NodeMetricsQueryResponse.results:type_name -> sentinel.AdminNodeMetrics
-	261, // 68: kernel.GrpcStatsPutRequest.value:type_name -> sentinel.AdminGrpcStats
-	261, // 69: kernel.GrpcStatsValueResponse.value:type_name -> sentinel.AdminGrpcStats
-	236, // 70: kernel.GrpcStatsEntriesResponse.entries:type_name -> kernel.GrpcStatsEntriesResponse.EntriesEntry
-	29,  // 71: kernel.GrpcStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	261, // 72: kernel.GrpcStatsQueryResponse.results:type_name -> sentinel.AdminGrpcStats
-	262, // 73: kernel.PersistenceStatusPutRequest.value:type_name -> sentinel.AdminPersistenceStatus
-	262, // 74: kernel.PersistenceStatusValueResponse.value:type_name -> sentinel.AdminPersistenceStatus
-	237, // 75: kernel.PersistenceStatusEntriesResponse.entries:type_name -> kernel.PersistenceStatusEntriesResponse.EntriesEntry
-	29,  // 76: kernel.PersistenceStatusQueryRequest.query:type_name -> kernel.CollectionQuery
-	262, // 77: kernel.PersistenceStatusQueryResponse.results:type_name -> sentinel.AdminPersistenceStatus
-	263, // 78: kernel.NetworkStatsPutRequest.value:type_name -> sentinel.AdminNetworkStats
-	263, // 79: kernel.NetworkStatsValueResponse.value:type_name -> sentinel.AdminNetworkStats
-	238, // 80: kernel.NetworkStatsEntriesResponse.entries:type_name -> kernel.NetworkStatsEntriesResponse.EntriesEntry
-	29,  // 81: kernel.NetworkStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	263, // 82: kernel.NetworkStatsQueryResponse.results:type_name -> sentinel.AdminNetworkStats
-	264, // 83: kernel.ThreadInfoPutRequest.value:type_name -> sentinel.AdminThreadInfo
-	264, // 84: kernel.ThreadInfoValueResponse.value:type_name -> sentinel.AdminThreadInfo
-	239, // 85: kernel.ThreadInfoEntriesResponse.entries:type_name -> kernel.ThreadInfoEntriesResponse.EntriesEntry
-	29,  // 86: kernel.ThreadInfoQueryRequest.query:type_name -> kernel.CollectionQuery
-	264, // 87: kernel.ThreadInfoQueryResponse.results:type_name -> sentinel.AdminThreadInfo
-	265, // 88: kernel.TokenCacheStatsPutRequest.value:type_name -> sentinel.AdminTokenCacheStats
-	265, // 89: kernel.TokenCacheStatsValueResponse.value:type_name -> sentinel.AdminTokenCacheStats
-	240, // 90: kernel.TokenCacheStatsEntriesResponse.entries:type_name -> kernel.TokenCacheStatsEntriesResponse.EntriesEntry
-	29,  // 91: kernel.TokenCacheStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	265, // 92: kernel.TokenCacheStatsQueryResponse.results:type_name -> sentinel.AdminTokenCacheStats
-	266, // 93: kernel.MapStatsPutRequest.value:type_name -> sentinel.AdminMapStats
-	266, // 94: kernel.MapStatsValueResponse.value:type_name -> sentinel.AdminMapStats
-	241, // 95: kernel.MapStatsEntriesResponse.entries:type_name -> kernel.MapStatsEntriesResponse.EntriesEntry
-	29,  // 96: kernel.MapStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	266, // 97: kernel.MapStatsQueryResponse.results:type_name -> sentinel.AdminMapStats
-	267, // 98: kernel.GraphRegistryPutRequest.value:type_name -> sentinel.AdminGraphInfo
-	267, // 99: kernel.GraphRegistryValueResponse.value:type_name -> sentinel.AdminGraphInfo
-	242, // 100: kernel.GraphRegistryEntriesResponse.entries:type_name -> kernel.GraphRegistryEntriesResponse.EntriesEntry
-	29,  // 101: kernel.GraphRegistryQueryRequest.query:type_name -> kernel.CollectionQuery
-	267, // 102: kernel.GraphRegistryQueryResponse.results:type_name -> sentinel.AdminGraphInfo
-	268, // 103: kernel.ServiceConnectionsPutRequest.value:type_name -> sentinel.AdminServiceConnection
-	268, // 104: kernel.ServiceConnectionsValueResponse.value:type_name -> sentinel.AdminServiceConnection
-	243, // 105: kernel.ServiceConnectionsEntriesResponse.entries:type_name -> kernel.ServiceConnectionsEntriesResponse.EntriesEntry
-	29,  // 106: kernel.ServiceConnectionsQueryRequest.query:type_name -> kernel.CollectionQuery
-	268, // 107: kernel.ServiceConnectionsQueryResponse.results:type_name -> sentinel.AdminServiceConnection
-	269, // 108: kernel.QueueStatsPutRequest.value:type_name -> sentinel.AdminQueueStats
-	269, // 109: kernel.QueueStatsValueResponse.value:type_name -> sentinel.AdminQueueStats
-	244, // 110: kernel.QueueStatsEntriesResponse.entries:type_name -> kernel.QueueStatsEntriesResponse.EntriesEntry
-	29,  // 111: kernel.QueueStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	269, // 112: kernel.QueueStatsQueryResponse.results:type_name -> sentinel.AdminQueueStats
-	270, // 113: kernel.TopicStatsPutRequest.value:type_name -> sentinel.AdminTopicStats
-	270, // 114: kernel.TopicStatsValueResponse.value:type_name -> sentinel.AdminTopicStats
-	245, // 115: kernel.TopicStatsEntriesResponse.entries:type_name -> kernel.TopicStatsEntriesResponse.EntriesEntry
-	29,  // 116: kernel.TopicStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	270, // 117: kernel.TopicStatsQueryResponse.results:type_name -> sentinel.AdminTopicStats
-	271, // 118: kernel.WatchHealthPutRequest.value:type_name -> sentinel.AdminWatchHealth
-	271, // 119: kernel.WatchHealthValueResponse.value:type_name -> sentinel.AdminWatchHealth
-	246, // 120: kernel.WatchHealthEntriesResponse.entries:type_name -> kernel.WatchHealthEntriesResponse.EntriesEntry
-	29,  // 121: kernel.WatchHealthQueryRequest.query:type_name -> kernel.CollectionQuery
-	271, // 122: kernel.WatchHealthQueryResponse.results:type_name -> sentinel.AdminWatchHealth
-	272, // 123: kernel.MutationRatesPutRequest.value:type_name -> sentinel.AdminMutationRate
-	272, // 124: kernel.MutationRatesValueResponse.value:type_name -> sentinel.AdminMutationRate
-	247, // 125: kernel.MutationRatesEntriesResponse.entries:type_name -> kernel.MutationRatesEntriesResponse.EntriesEntry
-	29,  // 126: kernel.MutationRatesQueryRequest.query:type_name -> kernel.CollectionQuery
-	272, // 127: kernel.MutationRatesQueryResponse.results:type_name -> sentinel.AdminMutationRate
-	273, // 128: kernel.InstancesValueResponse.value:type_name -> healthreport.ServiceInstanceHealth
-	248, // 129: kernel.InstancesEntriesResponse.entries:type_name -> kernel.InstancesEntriesResponse.EntriesEntry
-	29,  // 130: kernel.InstancesQueryRequest.query:type_name -> kernel.CollectionQuery
-	273, // 131: kernel.InstancesQueryResponse.results:type_name -> healthreport.ServiceInstanceHealth
-	253, // 132: kernel.CaCertsPutRequest.value:type_name -> x509.X509Cert
-	253, // 133: kernel.CaCertsValueResponse.value:type_name -> x509.X509Cert
-	249, // 134: kernel.CaCertsEntriesResponse.entries:type_name -> kernel.CaCertsEntriesResponse.EntriesEntry
-	29,  // 135: kernel.CaCertsQueryRequest.query:type_name -> kernel.CollectionQuery
-	253, // 136: kernel.CaCertsQueryResponse.results:type_name -> x509.X509Cert
-	255, // 137: kernel.VerifyingKeysEntriesResponse.EntriesEntry.value:type_name -> jwk.Jwk
-	253, // 138: kernel.TrustedCasEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
-	260, // 139: kernel.NodeMetricsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminNodeMetrics
-	261, // 140: kernel.GrpcStatsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminGrpcStats
-	262, // 141: kernel.PersistenceStatusEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminPersistenceStatus
-	263, // 142: kernel.NetworkStatsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminNetworkStats
-	264, // 143: kernel.ThreadInfoEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminThreadInfo
-	265, // 144: kernel.TokenCacheStatsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminTokenCacheStats
-	266, // 145: kernel.MapStatsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminMapStats
-	267, // 146: kernel.GraphRegistryEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminGraphInfo
-	268, // 147: kernel.ServiceConnectionsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminServiceConnection
-	269, // 148: kernel.QueueStatsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminQueueStats
-	270, // 149: kernel.TopicStatsEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminTopicStats
-	271, // 150: kernel.WatchHealthEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminWatchHealth
-	272, // 151: kernel.MutationRatesEntriesResponse.EntriesEntry.value:type_name -> sentinel.AdminMutationRate
-	273, // 152: kernel.InstancesEntriesResponse.EntriesEntry.value:type_name -> healthreport.ServiceInstanceHealth
-	253, // 153: kernel.CaCertsEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
-	274, // 154: kernel.TokenExchangerService.ExchangeToken:input_type -> tokenrequest.TokenRequest
-	275, // 155: kernel.X509CertExchangerService.SignCert:input_type -> x509.X509CertRequest
-	30,  // 156: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	31,  // 157: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
-	31,  // 158: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
-	30,  // 159: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	30,  // 160: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	30,  // 161: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	32,  // 162: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:input_type -> kernel.VerifyingKeysGetAllRequest
-	33,  // 163: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:input_type -> kernel.VerifyingKeysKeysRequest
-	34,  // 164: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:input_type -> kernel.VerifyingKeysSizeRequest
-	35,  // 165: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:input_type -> kernel.VerifyingKeysClearRequest
-	31,  // 166: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
-	276, // 167: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:input_type -> google.protobuf.Empty
-	40,  // 168: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
-	40,  // 169: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
-	42,  // 170: kernel.TrustedCaStateBackendService.GetTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	43,  // 171: kernel.TrustedCaStateBackendService.PutTrustedCas:input_type -> kernel.TrustedCasPutRequest
-	43,  // 172: kernel.TrustedCaStateBackendService.SetTrustedCas:input_type -> kernel.TrustedCasPutRequest
-	42,  // 173: kernel.TrustedCaStateBackendService.RemoveTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	42,  // 174: kernel.TrustedCaStateBackendService.DeleteTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	42,  // 175: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	44,  // 176: kernel.TrustedCaStateBackendService.GetAllTrustedCas:input_type -> kernel.TrustedCasGetAllRequest
-	45,  // 177: kernel.TrustedCaStateBackendService.KeySetTrustedCas:input_type -> kernel.TrustedCasKeysRequest
-	46,  // 178: kernel.TrustedCaStateBackendService.SizeTrustedCas:input_type -> kernel.TrustedCasSizeRequest
-	47,  // 179: kernel.TrustedCaStateBackendService.ClearTrustedCas:input_type -> kernel.TrustedCasClearRequest
-	43,  // 180: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:input_type -> kernel.TrustedCasPutRequest
-	276, // 181: kernel.TrustedCaStateBackendService.WatchTrustedCas:input_type -> google.protobuf.Empty
-	52,  // 182: kernel.TrustedCaStateBackendService.QueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
-	52,  // 183: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
-	276, // 184: kernel.ClusterStateBackendService.GetClusterInfo:input_type -> google.protobuf.Empty
-	258, // 185: kernel.ClusterStateBackendService.SetClusterInfo:input_type -> sentinel.AdminClusterInfo
-	276, // 186: kernel.ClusterStateBackendService.WatchClusterInfo:input_type -> google.protobuf.Empty
-	276, // 187: kernel.ClusterStateBackendService.GetClusterHealth:input_type -> google.protobuf.Empty
-	259, // 188: kernel.ClusterStateBackendService.SetClusterHealth:input_type -> sentinel.AdminClusterHealth
-	276, // 189: kernel.ClusterStateBackendService.WatchClusterHealth:input_type -> google.protobuf.Empty
-	276, // 190: kernel.ClusterStateBackendService.GetFrontendConfig:input_type -> google.protobuf.Empty
-	16,  // 191: kernel.ClusterStateBackendService.SetFrontendConfig:input_type -> kernel.Config
-	276, // 192: kernel.ClusterStateBackendService.WatchFrontendConfig:input_type -> google.protobuf.Empty
-	54,  // 193: kernel.ClusterStateBackendService.GetNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	55,  // 194: kernel.ClusterStateBackendService.PutNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
-	55,  // 195: kernel.ClusterStateBackendService.SetNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
-	54,  // 196: kernel.ClusterStateBackendService.RemoveNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	54,  // 197: kernel.ClusterStateBackendService.DeleteNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	54,  // 198: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	56,  // 199: kernel.ClusterStateBackendService.GetAllNodeMetrics:input_type -> kernel.NodeMetricsGetAllRequest
-	57,  // 200: kernel.ClusterStateBackendService.KeySetNodeMetrics:input_type -> kernel.NodeMetricsKeysRequest
-	58,  // 201: kernel.ClusterStateBackendService.SizeNodeMetrics:input_type -> kernel.NodeMetricsSizeRequest
-	59,  // 202: kernel.ClusterStateBackendService.ClearNodeMetrics:input_type -> kernel.NodeMetricsClearRequest
-	55,  // 203: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
-	276, // 204: kernel.ClusterStateBackendService.WatchNodeMetrics:input_type -> google.protobuf.Empty
-	64,  // 205: kernel.ClusterStateBackendService.QueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
-	64,  // 206: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
-	66,  // 207: kernel.ClusterStateBackendService.GetGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	67,  // 208: kernel.ClusterStateBackendService.PutGrpcStats:input_type -> kernel.GrpcStatsPutRequest
-	67,  // 209: kernel.ClusterStateBackendService.SetGrpcStats:input_type -> kernel.GrpcStatsPutRequest
-	66,  // 210: kernel.ClusterStateBackendService.RemoveGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	66,  // 211: kernel.ClusterStateBackendService.DeleteGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	66,  // 212: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	68,  // 213: kernel.ClusterStateBackendService.GetAllGrpcStats:input_type -> kernel.GrpcStatsGetAllRequest
-	69,  // 214: kernel.ClusterStateBackendService.KeySetGrpcStats:input_type -> kernel.GrpcStatsKeysRequest
-	70,  // 215: kernel.ClusterStateBackendService.SizeGrpcStats:input_type -> kernel.GrpcStatsSizeRequest
-	71,  // 216: kernel.ClusterStateBackendService.ClearGrpcStats:input_type -> kernel.GrpcStatsClearRequest
-	67,  // 217: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:input_type -> kernel.GrpcStatsPutRequest
-	276, // 218: kernel.ClusterStateBackendService.WatchGrpcStats:input_type -> google.protobuf.Empty
-	76,  // 219: kernel.ClusterStateBackendService.QueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
-	76,  // 220: kernel.ClusterStateBackendService.WatchQueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
-	78,  // 221: kernel.ClusterStateBackendService.GetPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	79,  // 222: kernel.ClusterStateBackendService.PutPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
-	79,  // 223: kernel.ClusterStateBackendService.SetPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
-	78,  // 224: kernel.ClusterStateBackendService.RemovePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	78,  // 225: kernel.ClusterStateBackendService.DeletePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	78,  // 226: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	80,  // 227: kernel.ClusterStateBackendService.GetAllPersistenceStatus:input_type -> kernel.PersistenceStatusGetAllRequest
-	81,  // 228: kernel.ClusterStateBackendService.KeySetPersistenceStatus:input_type -> kernel.PersistenceStatusKeysRequest
-	82,  // 229: kernel.ClusterStateBackendService.SizePersistenceStatus:input_type -> kernel.PersistenceStatusSizeRequest
-	83,  // 230: kernel.ClusterStateBackendService.ClearPersistenceStatus:input_type -> kernel.PersistenceStatusClearRequest
-	79,  // 231: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
-	276, // 232: kernel.ClusterStateBackendService.WatchPersistenceStatus:input_type -> google.protobuf.Empty
-	88,  // 233: kernel.ClusterStateBackendService.QueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
-	88,  // 234: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
-	90,  // 235: kernel.ClusterStateBackendService.GetNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	91,  // 236: kernel.ClusterStateBackendService.PutNetworkStats:input_type -> kernel.NetworkStatsPutRequest
-	91,  // 237: kernel.ClusterStateBackendService.SetNetworkStats:input_type -> kernel.NetworkStatsPutRequest
-	90,  // 238: kernel.ClusterStateBackendService.RemoveNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	90,  // 239: kernel.ClusterStateBackendService.DeleteNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	90,  // 240: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	92,  // 241: kernel.ClusterStateBackendService.GetAllNetworkStats:input_type -> kernel.NetworkStatsGetAllRequest
-	93,  // 242: kernel.ClusterStateBackendService.KeySetNetworkStats:input_type -> kernel.NetworkStatsKeysRequest
-	94,  // 243: kernel.ClusterStateBackendService.SizeNetworkStats:input_type -> kernel.NetworkStatsSizeRequest
-	95,  // 244: kernel.ClusterStateBackendService.ClearNetworkStats:input_type -> kernel.NetworkStatsClearRequest
-	91,  // 245: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:input_type -> kernel.NetworkStatsPutRequest
-	276, // 246: kernel.ClusterStateBackendService.WatchNetworkStats:input_type -> google.protobuf.Empty
-	100, // 247: kernel.ClusterStateBackendService.QueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
-	100, // 248: kernel.ClusterStateBackendService.WatchQueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
-	102, // 249: kernel.ClusterStateBackendService.GetThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	103, // 250: kernel.ClusterStateBackendService.PutThreadInfo:input_type -> kernel.ThreadInfoPutRequest
-	103, // 251: kernel.ClusterStateBackendService.SetThreadInfo:input_type -> kernel.ThreadInfoPutRequest
-	102, // 252: kernel.ClusterStateBackendService.RemoveThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	102, // 253: kernel.ClusterStateBackendService.DeleteThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	102, // 254: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	104, // 255: kernel.ClusterStateBackendService.GetAllThreadInfo:input_type -> kernel.ThreadInfoGetAllRequest
-	105, // 256: kernel.ClusterStateBackendService.KeySetThreadInfo:input_type -> kernel.ThreadInfoKeysRequest
-	106, // 257: kernel.ClusterStateBackendService.SizeThreadInfo:input_type -> kernel.ThreadInfoSizeRequest
-	107, // 258: kernel.ClusterStateBackendService.ClearThreadInfo:input_type -> kernel.ThreadInfoClearRequest
-	103, // 259: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:input_type -> kernel.ThreadInfoPutRequest
-	276, // 260: kernel.ClusterStateBackendService.WatchThreadInfo:input_type -> google.protobuf.Empty
-	112, // 261: kernel.ClusterStateBackendService.QueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
-	112, // 262: kernel.ClusterStateBackendService.WatchQueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
-	114, // 263: kernel.ClusterStateBackendService.GetTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	115, // 264: kernel.ClusterStateBackendService.PutTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
-	115, // 265: kernel.ClusterStateBackendService.SetTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
-	114, // 266: kernel.ClusterStateBackendService.RemoveTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	114, // 267: kernel.ClusterStateBackendService.DeleteTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	114, // 268: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	116, // 269: kernel.ClusterStateBackendService.GetAllTokenCacheStats:input_type -> kernel.TokenCacheStatsGetAllRequest
-	117, // 270: kernel.ClusterStateBackendService.KeySetTokenCacheStats:input_type -> kernel.TokenCacheStatsKeysRequest
-	118, // 271: kernel.ClusterStateBackendService.SizeTokenCacheStats:input_type -> kernel.TokenCacheStatsSizeRequest
-	119, // 272: kernel.ClusterStateBackendService.ClearTokenCacheStats:input_type -> kernel.TokenCacheStatsClearRequest
-	115, // 273: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
-	276, // 274: kernel.ClusterStateBackendService.WatchTokenCacheStats:input_type -> google.protobuf.Empty
-	124, // 275: kernel.ClusterStateBackendService.QueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
-	124, // 276: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
-	126, // 277: kernel.ClusterStateBackendService.GetMapStats:input_type -> kernel.MapStatsGetRequest
-	127, // 278: kernel.ClusterStateBackendService.PutMapStats:input_type -> kernel.MapStatsPutRequest
-	127, // 279: kernel.ClusterStateBackendService.SetMapStats:input_type -> kernel.MapStatsPutRequest
-	126, // 280: kernel.ClusterStateBackendService.RemoveMapStats:input_type -> kernel.MapStatsGetRequest
-	126, // 281: kernel.ClusterStateBackendService.DeleteMapStats:input_type -> kernel.MapStatsGetRequest
-	126, // 282: kernel.ClusterStateBackendService.ContainsKeyMapStats:input_type -> kernel.MapStatsGetRequest
-	128, // 283: kernel.ClusterStateBackendService.GetAllMapStats:input_type -> kernel.MapStatsGetAllRequest
-	129, // 284: kernel.ClusterStateBackendService.KeySetMapStats:input_type -> kernel.MapStatsKeysRequest
-	130, // 285: kernel.ClusterStateBackendService.SizeMapStats:input_type -> kernel.MapStatsSizeRequest
-	131, // 286: kernel.ClusterStateBackendService.ClearMapStats:input_type -> kernel.MapStatsClearRequest
-	127, // 287: kernel.ClusterStateBackendService.PutIfAbsentMapStats:input_type -> kernel.MapStatsPutRequest
-	276, // 288: kernel.ClusterStateBackendService.WatchMapStats:input_type -> google.protobuf.Empty
-	136, // 289: kernel.ClusterStateBackendService.QueryMapStats:input_type -> kernel.MapStatsQueryRequest
-	136, // 290: kernel.ClusterStateBackendService.WatchQueryMapStats:input_type -> kernel.MapStatsQueryRequest
-	138, // 291: kernel.ClusterStateBackendService.GetGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	139, // 292: kernel.ClusterStateBackendService.PutGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
-	139, // 293: kernel.ClusterStateBackendService.SetGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
-	138, // 294: kernel.ClusterStateBackendService.RemoveGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	138, // 295: kernel.ClusterStateBackendService.DeleteGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	138, // 296: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	140, // 297: kernel.ClusterStateBackendService.GetAllGraphRegistry:input_type -> kernel.GraphRegistryGetAllRequest
-	141, // 298: kernel.ClusterStateBackendService.KeySetGraphRegistry:input_type -> kernel.GraphRegistryKeysRequest
-	142, // 299: kernel.ClusterStateBackendService.SizeGraphRegistry:input_type -> kernel.GraphRegistrySizeRequest
-	143, // 300: kernel.ClusterStateBackendService.ClearGraphRegistry:input_type -> kernel.GraphRegistryClearRequest
-	139, // 301: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
-	276, // 302: kernel.ClusterStateBackendService.WatchGraphRegistry:input_type -> google.protobuf.Empty
-	148, // 303: kernel.ClusterStateBackendService.QueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
-	148, // 304: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
-	150, // 305: kernel.ClusterStateBackendService.GetServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	151, // 306: kernel.ClusterStateBackendService.PutServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
-	151, // 307: kernel.ClusterStateBackendService.SetServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
-	150, // 308: kernel.ClusterStateBackendService.RemoveServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	150, // 309: kernel.ClusterStateBackendService.DeleteServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	150, // 310: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	152, // 311: kernel.ClusterStateBackendService.GetAllServiceConnections:input_type -> kernel.ServiceConnectionsGetAllRequest
-	153, // 312: kernel.ClusterStateBackendService.KeySetServiceConnections:input_type -> kernel.ServiceConnectionsKeysRequest
-	154, // 313: kernel.ClusterStateBackendService.SizeServiceConnections:input_type -> kernel.ServiceConnectionsSizeRequest
-	155, // 314: kernel.ClusterStateBackendService.ClearServiceConnections:input_type -> kernel.ServiceConnectionsClearRequest
-	151, // 315: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
-	276, // 316: kernel.ClusterStateBackendService.WatchServiceConnections:input_type -> google.protobuf.Empty
-	160, // 317: kernel.ClusterStateBackendService.QueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
-	160, // 318: kernel.ClusterStateBackendService.WatchQueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
-	162, // 319: kernel.ClusterStateBackendService.GetQueueStats:input_type -> kernel.QueueStatsGetRequest
-	163, // 320: kernel.ClusterStateBackendService.PutQueueStats:input_type -> kernel.QueueStatsPutRequest
-	163, // 321: kernel.ClusterStateBackendService.SetQueueStats:input_type -> kernel.QueueStatsPutRequest
-	162, // 322: kernel.ClusterStateBackendService.RemoveQueueStats:input_type -> kernel.QueueStatsGetRequest
-	162, // 323: kernel.ClusterStateBackendService.DeleteQueueStats:input_type -> kernel.QueueStatsGetRequest
-	162, // 324: kernel.ClusterStateBackendService.ContainsKeyQueueStats:input_type -> kernel.QueueStatsGetRequest
-	164, // 325: kernel.ClusterStateBackendService.GetAllQueueStats:input_type -> kernel.QueueStatsGetAllRequest
-	165, // 326: kernel.ClusterStateBackendService.KeySetQueueStats:input_type -> kernel.QueueStatsKeysRequest
-	166, // 327: kernel.ClusterStateBackendService.SizeQueueStats:input_type -> kernel.QueueStatsSizeRequest
-	167, // 328: kernel.ClusterStateBackendService.ClearQueueStats:input_type -> kernel.QueueStatsClearRequest
-	163, // 329: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:input_type -> kernel.QueueStatsPutRequest
-	276, // 330: kernel.ClusterStateBackendService.WatchQueueStats:input_type -> google.protobuf.Empty
-	172, // 331: kernel.ClusterStateBackendService.QueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
-	172, // 332: kernel.ClusterStateBackendService.WatchQueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
-	174, // 333: kernel.ClusterStateBackendService.GetTopicStats:input_type -> kernel.TopicStatsGetRequest
-	175, // 334: kernel.ClusterStateBackendService.PutTopicStats:input_type -> kernel.TopicStatsPutRequest
-	175, // 335: kernel.ClusterStateBackendService.SetTopicStats:input_type -> kernel.TopicStatsPutRequest
-	174, // 336: kernel.ClusterStateBackendService.RemoveTopicStats:input_type -> kernel.TopicStatsGetRequest
-	174, // 337: kernel.ClusterStateBackendService.DeleteTopicStats:input_type -> kernel.TopicStatsGetRequest
-	174, // 338: kernel.ClusterStateBackendService.ContainsKeyTopicStats:input_type -> kernel.TopicStatsGetRequest
-	176, // 339: kernel.ClusterStateBackendService.GetAllTopicStats:input_type -> kernel.TopicStatsGetAllRequest
-	177, // 340: kernel.ClusterStateBackendService.KeySetTopicStats:input_type -> kernel.TopicStatsKeysRequest
-	178, // 341: kernel.ClusterStateBackendService.SizeTopicStats:input_type -> kernel.TopicStatsSizeRequest
-	179, // 342: kernel.ClusterStateBackendService.ClearTopicStats:input_type -> kernel.TopicStatsClearRequest
-	175, // 343: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:input_type -> kernel.TopicStatsPutRequest
-	276, // 344: kernel.ClusterStateBackendService.WatchTopicStats:input_type -> google.protobuf.Empty
-	184, // 345: kernel.ClusterStateBackendService.QueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
-	184, // 346: kernel.ClusterStateBackendService.WatchQueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
-	186, // 347: kernel.ClusterStateBackendService.GetWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	187, // 348: kernel.ClusterStateBackendService.PutWatchHealth:input_type -> kernel.WatchHealthPutRequest
-	187, // 349: kernel.ClusterStateBackendService.SetWatchHealth:input_type -> kernel.WatchHealthPutRequest
-	186, // 350: kernel.ClusterStateBackendService.RemoveWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	186, // 351: kernel.ClusterStateBackendService.DeleteWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	186, // 352: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	188, // 353: kernel.ClusterStateBackendService.GetAllWatchHealth:input_type -> kernel.WatchHealthGetAllRequest
-	189, // 354: kernel.ClusterStateBackendService.KeySetWatchHealth:input_type -> kernel.WatchHealthKeysRequest
-	190, // 355: kernel.ClusterStateBackendService.SizeWatchHealth:input_type -> kernel.WatchHealthSizeRequest
-	191, // 356: kernel.ClusterStateBackendService.ClearWatchHealth:input_type -> kernel.WatchHealthClearRequest
-	187, // 357: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:input_type -> kernel.WatchHealthPutRequest
-	276, // 358: kernel.ClusterStateBackendService.WatchWatchHealth:input_type -> google.protobuf.Empty
-	196, // 359: kernel.ClusterStateBackendService.QueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
-	196, // 360: kernel.ClusterStateBackendService.WatchQueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
-	198, // 361: kernel.ClusterStateBackendService.GetMutationRates:input_type -> kernel.MutationRatesGetRequest
-	199, // 362: kernel.ClusterStateBackendService.PutMutationRates:input_type -> kernel.MutationRatesPutRequest
-	199, // 363: kernel.ClusterStateBackendService.SetMutationRates:input_type -> kernel.MutationRatesPutRequest
-	198, // 364: kernel.ClusterStateBackendService.RemoveMutationRates:input_type -> kernel.MutationRatesGetRequest
-	198, // 365: kernel.ClusterStateBackendService.DeleteMutationRates:input_type -> kernel.MutationRatesGetRequest
-	198, // 366: kernel.ClusterStateBackendService.ContainsKeyMutationRates:input_type -> kernel.MutationRatesGetRequest
-	200, // 367: kernel.ClusterStateBackendService.GetAllMutationRates:input_type -> kernel.MutationRatesGetAllRequest
-	201, // 368: kernel.ClusterStateBackendService.KeySetMutationRates:input_type -> kernel.MutationRatesKeysRequest
-	202, // 369: kernel.ClusterStateBackendService.SizeMutationRates:input_type -> kernel.MutationRatesSizeRequest
-	203, // 370: kernel.ClusterStateBackendService.ClearMutationRates:input_type -> kernel.MutationRatesClearRequest
-	199, // 371: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:input_type -> kernel.MutationRatesPutRequest
-	276, // 372: kernel.ClusterStateBackendService.WatchMutationRates:input_type -> google.protobuf.Empty
-	208, // 373: kernel.ClusterStateBackendService.QueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
-	208, // 374: kernel.ClusterStateBackendService.WatchQueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
-	20,  // 375: kernel.ClusterStateBackendService.SetLogLevel:input_type -> kernel.AdminSetLogLevelRequest
-	21,  // 376: kernel.ClusterStateBackendService.ReloadConfig:input_type -> kernel.AdminReloadConfigRequest
-	273, // 377: kernel.ServiceHealthStateBackendService.SetInstances:input_type -> healthreport.ServiceInstanceHealth
-	210, // 378: kernel.ServiceHealthStateBackendService.GetInstances:input_type -> kernel.InstancesGetRequest
-	211, // 379: kernel.ServiceHealthStateBackendService.GetAllInstances:input_type -> kernel.InstancesGetAllRequest
-	210, // 380: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:input_type -> kernel.InstancesGetRequest
-	212, // 381: kernel.ServiceHealthStateBackendService.KeySetInstances:input_type -> kernel.InstancesKeysRequest
-	213, // 382: kernel.ServiceHealthStateBackendService.SizeInstances:input_type -> kernel.InstancesSizeRequest
-	276, // 383: kernel.ServiceHealthStateBackendService.WatchInstances:input_type -> google.protobuf.Empty
-	218, // 384: kernel.ServiceHealthStateBackendService.QueryInstances:input_type -> kernel.InstancesQueryRequest
-	218, // 385: kernel.ServiceHealthStateBackendService.WatchQueryInstances:input_type -> kernel.InstancesQueryRequest
-	220, // 386: kernel.CaStateBackendService.GetCaCerts:input_type -> kernel.CaCertsGetRequest
-	221, // 387: kernel.CaStateBackendService.PutCaCerts:input_type -> kernel.CaCertsPutRequest
-	221, // 388: kernel.CaStateBackendService.SetCaCerts:input_type -> kernel.CaCertsPutRequest
-	220, // 389: kernel.CaStateBackendService.RemoveCaCerts:input_type -> kernel.CaCertsGetRequest
-	220, // 390: kernel.CaStateBackendService.DeleteCaCerts:input_type -> kernel.CaCertsGetRequest
-	220, // 391: kernel.CaStateBackendService.ContainsKeyCaCerts:input_type -> kernel.CaCertsGetRequest
-	222, // 392: kernel.CaStateBackendService.GetAllCaCerts:input_type -> kernel.CaCertsGetAllRequest
-	223, // 393: kernel.CaStateBackendService.KeySetCaCerts:input_type -> kernel.CaCertsKeysRequest
-	224, // 394: kernel.CaStateBackendService.SizeCaCerts:input_type -> kernel.CaCertsSizeRequest
-	225, // 395: kernel.CaStateBackendService.ClearCaCerts:input_type -> kernel.CaCertsClearRequest
-	221, // 396: kernel.CaStateBackendService.PutIfAbsentCaCerts:input_type -> kernel.CaCertsPutRequest
-	276, // 397: kernel.CaStateBackendService.WatchCaCerts:input_type -> google.protobuf.Empty
-	230, // 398: kernel.CaStateBackendService.QueryCaCerts:input_type -> kernel.CaCertsQueryRequest
-	230, // 399: kernel.CaStateBackendService.WatchQueryCaCerts:input_type -> kernel.CaCertsQueryRequest
-	277, // 400: kernel.TokenExchangerService.ExchangeToken:output_type -> token.Token
-	253, // 401: kernel.X509CertExchangerService.SignCert:output_type -> x509.X509Cert
-	36,  // 402: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	36,  // 403: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	232, // 404: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:output_type -> kernel.MapEmpty
-	36,  // 405: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	232, // 406: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:output_type -> kernel.MapEmpty
-	36,  // 407: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	37,  // 408: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
-	38,  // 409: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:output_type -> kernel.VerifyingKeysKeysResponse
-	39,  // 410: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:output_type -> kernel.VerifyingKeysSizeResponse
-	232, // 411: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:output_type -> kernel.MapEmpty
-	36,  // 412: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	37,  // 413: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
-	41,  // 414: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
-	41,  // 415: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
-	48,  // 416: kernel.TrustedCaStateBackendService.GetTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	48,  // 417: kernel.TrustedCaStateBackendService.PutTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	232, // 418: kernel.TrustedCaStateBackendService.SetTrustedCas:output_type -> kernel.MapEmpty
-	48,  // 419: kernel.TrustedCaStateBackendService.RemoveTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	232, // 420: kernel.TrustedCaStateBackendService.DeleteTrustedCas:output_type -> kernel.MapEmpty
-	48,  // 421: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	49,  // 422: kernel.TrustedCaStateBackendService.GetAllTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
-	50,  // 423: kernel.TrustedCaStateBackendService.KeySetTrustedCas:output_type -> kernel.TrustedCasKeysResponse
-	51,  // 424: kernel.TrustedCaStateBackendService.SizeTrustedCas:output_type -> kernel.TrustedCasSizeResponse
-	232, // 425: kernel.TrustedCaStateBackendService.ClearTrustedCas:output_type -> kernel.MapEmpty
-	48,  // 426: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	49,  // 427: kernel.TrustedCaStateBackendService.WatchTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
-	53,  // 428: kernel.TrustedCaStateBackendService.QueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
-	53,  // 429: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
-	258, // 430: kernel.ClusterStateBackendService.GetClusterInfo:output_type -> sentinel.AdminClusterInfo
-	258, // 431: kernel.ClusterStateBackendService.SetClusterInfo:output_type -> sentinel.AdminClusterInfo
-	258, // 432: kernel.ClusterStateBackendService.WatchClusterInfo:output_type -> sentinel.AdminClusterInfo
-	259, // 433: kernel.ClusterStateBackendService.GetClusterHealth:output_type -> sentinel.AdminClusterHealth
-	259, // 434: kernel.ClusterStateBackendService.SetClusterHealth:output_type -> sentinel.AdminClusterHealth
-	259, // 435: kernel.ClusterStateBackendService.WatchClusterHealth:output_type -> sentinel.AdminClusterHealth
-	16,  // 436: kernel.ClusterStateBackendService.GetFrontendConfig:output_type -> kernel.Config
-	16,  // 437: kernel.ClusterStateBackendService.SetFrontendConfig:output_type -> kernel.Config
-	16,  // 438: kernel.ClusterStateBackendService.WatchFrontendConfig:output_type -> kernel.Config
-	60,  // 439: kernel.ClusterStateBackendService.GetNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	60,  // 440: kernel.ClusterStateBackendService.PutNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	232, // 441: kernel.ClusterStateBackendService.SetNodeMetrics:output_type -> kernel.MapEmpty
-	60,  // 442: kernel.ClusterStateBackendService.RemoveNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	232, // 443: kernel.ClusterStateBackendService.DeleteNodeMetrics:output_type -> kernel.MapEmpty
-	60,  // 444: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	61,  // 445: kernel.ClusterStateBackendService.GetAllNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
-	62,  // 446: kernel.ClusterStateBackendService.KeySetNodeMetrics:output_type -> kernel.NodeMetricsKeysResponse
-	63,  // 447: kernel.ClusterStateBackendService.SizeNodeMetrics:output_type -> kernel.NodeMetricsSizeResponse
-	232, // 448: kernel.ClusterStateBackendService.ClearNodeMetrics:output_type -> kernel.MapEmpty
-	60,  // 449: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	61,  // 450: kernel.ClusterStateBackendService.WatchNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
-	65,  // 451: kernel.ClusterStateBackendService.QueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
-	65,  // 452: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
-	72,  // 453: kernel.ClusterStateBackendService.GetGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	72,  // 454: kernel.ClusterStateBackendService.PutGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	232, // 455: kernel.ClusterStateBackendService.SetGrpcStats:output_type -> kernel.MapEmpty
-	72,  // 456: kernel.ClusterStateBackendService.RemoveGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	232, // 457: kernel.ClusterStateBackendService.DeleteGrpcStats:output_type -> kernel.MapEmpty
-	72,  // 458: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	73,  // 459: kernel.ClusterStateBackendService.GetAllGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
-	74,  // 460: kernel.ClusterStateBackendService.KeySetGrpcStats:output_type -> kernel.GrpcStatsKeysResponse
-	75,  // 461: kernel.ClusterStateBackendService.SizeGrpcStats:output_type -> kernel.GrpcStatsSizeResponse
-	232, // 462: kernel.ClusterStateBackendService.ClearGrpcStats:output_type -> kernel.MapEmpty
-	72,  // 463: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	73,  // 464: kernel.ClusterStateBackendService.WatchGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
-	77,  // 465: kernel.ClusterStateBackendService.QueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
-	77,  // 466: kernel.ClusterStateBackendService.WatchQueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
-	84,  // 467: kernel.ClusterStateBackendService.GetPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	84,  // 468: kernel.ClusterStateBackendService.PutPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	232, // 469: kernel.ClusterStateBackendService.SetPersistenceStatus:output_type -> kernel.MapEmpty
-	84,  // 470: kernel.ClusterStateBackendService.RemovePersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	232, // 471: kernel.ClusterStateBackendService.DeletePersistenceStatus:output_type -> kernel.MapEmpty
-	84,  // 472: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	85,  // 473: kernel.ClusterStateBackendService.GetAllPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
-	86,  // 474: kernel.ClusterStateBackendService.KeySetPersistenceStatus:output_type -> kernel.PersistenceStatusKeysResponse
-	87,  // 475: kernel.ClusterStateBackendService.SizePersistenceStatus:output_type -> kernel.PersistenceStatusSizeResponse
-	232, // 476: kernel.ClusterStateBackendService.ClearPersistenceStatus:output_type -> kernel.MapEmpty
-	84,  // 477: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	85,  // 478: kernel.ClusterStateBackendService.WatchPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
-	89,  // 479: kernel.ClusterStateBackendService.QueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
-	89,  // 480: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
-	96,  // 481: kernel.ClusterStateBackendService.GetNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	96,  // 482: kernel.ClusterStateBackendService.PutNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	232, // 483: kernel.ClusterStateBackendService.SetNetworkStats:output_type -> kernel.MapEmpty
-	96,  // 484: kernel.ClusterStateBackendService.RemoveNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	232, // 485: kernel.ClusterStateBackendService.DeleteNetworkStats:output_type -> kernel.MapEmpty
-	96,  // 486: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	97,  // 487: kernel.ClusterStateBackendService.GetAllNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
-	98,  // 488: kernel.ClusterStateBackendService.KeySetNetworkStats:output_type -> kernel.NetworkStatsKeysResponse
-	99,  // 489: kernel.ClusterStateBackendService.SizeNetworkStats:output_type -> kernel.NetworkStatsSizeResponse
-	232, // 490: kernel.ClusterStateBackendService.ClearNetworkStats:output_type -> kernel.MapEmpty
-	96,  // 491: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	97,  // 492: kernel.ClusterStateBackendService.WatchNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
-	101, // 493: kernel.ClusterStateBackendService.QueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
-	101, // 494: kernel.ClusterStateBackendService.WatchQueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
-	108, // 495: kernel.ClusterStateBackendService.GetThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	108, // 496: kernel.ClusterStateBackendService.PutThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	232, // 497: kernel.ClusterStateBackendService.SetThreadInfo:output_type -> kernel.MapEmpty
-	108, // 498: kernel.ClusterStateBackendService.RemoveThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	232, // 499: kernel.ClusterStateBackendService.DeleteThreadInfo:output_type -> kernel.MapEmpty
-	108, // 500: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	109, // 501: kernel.ClusterStateBackendService.GetAllThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
-	110, // 502: kernel.ClusterStateBackendService.KeySetThreadInfo:output_type -> kernel.ThreadInfoKeysResponse
-	111, // 503: kernel.ClusterStateBackendService.SizeThreadInfo:output_type -> kernel.ThreadInfoSizeResponse
-	232, // 504: kernel.ClusterStateBackendService.ClearThreadInfo:output_type -> kernel.MapEmpty
-	108, // 505: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	109, // 506: kernel.ClusterStateBackendService.WatchThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
-	113, // 507: kernel.ClusterStateBackendService.QueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
-	113, // 508: kernel.ClusterStateBackendService.WatchQueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
-	120, // 509: kernel.ClusterStateBackendService.GetTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	120, // 510: kernel.ClusterStateBackendService.PutTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	232, // 511: kernel.ClusterStateBackendService.SetTokenCacheStats:output_type -> kernel.MapEmpty
-	120, // 512: kernel.ClusterStateBackendService.RemoveTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	232, // 513: kernel.ClusterStateBackendService.DeleteTokenCacheStats:output_type -> kernel.MapEmpty
-	120, // 514: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	121, // 515: kernel.ClusterStateBackendService.GetAllTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
-	122, // 516: kernel.ClusterStateBackendService.KeySetTokenCacheStats:output_type -> kernel.TokenCacheStatsKeysResponse
-	123, // 517: kernel.ClusterStateBackendService.SizeTokenCacheStats:output_type -> kernel.TokenCacheStatsSizeResponse
-	232, // 518: kernel.ClusterStateBackendService.ClearTokenCacheStats:output_type -> kernel.MapEmpty
-	120, // 519: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	121, // 520: kernel.ClusterStateBackendService.WatchTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
-	125, // 521: kernel.ClusterStateBackendService.QueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
-	125, // 522: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
-	132, // 523: kernel.ClusterStateBackendService.GetMapStats:output_type -> kernel.MapStatsValueResponse
-	132, // 524: kernel.ClusterStateBackendService.PutMapStats:output_type -> kernel.MapStatsValueResponse
-	232, // 525: kernel.ClusterStateBackendService.SetMapStats:output_type -> kernel.MapEmpty
-	132, // 526: kernel.ClusterStateBackendService.RemoveMapStats:output_type -> kernel.MapStatsValueResponse
-	232, // 527: kernel.ClusterStateBackendService.DeleteMapStats:output_type -> kernel.MapEmpty
-	132, // 528: kernel.ClusterStateBackendService.ContainsKeyMapStats:output_type -> kernel.MapStatsValueResponse
-	133, // 529: kernel.ClusterStateBackendService.GetAllMapStats:output_type -> kernel.MapStatsEntriesResponse
-	134, // 530: kernel.ClusterStateBackendService.KeySetMapStats:output_type -> kernel.MapStatsKeysResponse
-	135, // 531: kernel.ClusterStateBackendService.SizeMapStats:output_type -> kernel.MapStatsSizeResponse
-	232, // 532: kernel.ClusterStateBackendService.ClearMapStats:output_type -> kernel.MapEmpty
-	132, // 533: kernel.ClusterStateBackendService.PutIfAbsentMapStats:output_type -> kernel.MapStatsValueResponse
-	133, // 534: kernel.ClusterStateBackendService.WatchMapStats:output_type -> kernel.MapStatsEntriesResponse
-	137, // 535: kernel.ClusterStateBackendService.QueryMapStats:output_type -> kernel.MapStatsQueryResponse
-	137, // 536: kernel.ClusterStateBackendService.WatchQueryMapStats:output_type -> kernel.MapStatsQueryResponse
-	144, // 537: kernel.ClusterStateBackendService.GetGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	144, // 538: kernel.ClusterStateBackendService.PutGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	232, // 539: kernel.ClusterStateBackendService.SetGraphRegistry:output_type -> kernel.MapEmpty
-	144, // 540: kernel.ClusterStateBackendService.RemoveGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	232, // 541: kernel.ClusterStateBackendService.DeleteGraphRegistry:output_type -> kernel.MapEmpty
-	144, // 542: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	145, // 543: kernel.ClusterStateBackendService.GetAllGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
-	146, // 544: kernel.ClusterStateBackendService.KeySetGraphRegistry:output_type -> kernel.GraphRegistryKeysResponse
-	147, // 545: kernel.ClusterStateBackendService.SizeGraphRegistry:output_type -> kernel.GraphRegistrySizeResponse
-	232, // 546: kernel.ClusterStateBackendService.ClearGraphRegistry:output_type -> kernel.MapEmpty
-	144, // 547: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	145, // 548: kernel.ClusterStateBackendService.WatchGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
-	149, // 549: kernel.ClusterStateBackendService.QueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
-	149, // 550: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
-	156, // 551: kernel.ClusterStateBackendService.GetServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	156, // 552: kernel.ClusterStateBackendService.PutServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	232, // 553: kernel.ClusterStateBackendService.SetServiceConnections:output_type -> kernel.MapEmpty
-	156, // 554: kernel.ClusterStateBackendService.RemoveServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	232, // 555: kernel.ClusterStateBackendService.DeleteServiceConnections:output_type -> kernel.MapEmpty
-	156, // 556: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	157, // 557: kernel.ClusterStateBackendService.GetAllServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
-	158, // 558: kernel.ClusterStateBackendService.KeySetServiceConnections:output_type -> kernel.ServiceConnectionsKeysResponse
-	159, // 559: kernel.ClusterStateBackendService.SizeServiceConnections:output_type -> kernel.ServiceConnectionsSizeResponse
-	232, // 560: kernel.ClusterStateBackendService.ClearServiceConnections:output_type -> kernel.MapEmpty
-	156, // 561: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	157, // 562: kernel.ClusterStateBackendService.WatchServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
-	161, // 563: kernel.ClusterStateBackendService.QueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
-	161, // 564: kernel.ClusterStateBackendService.WatchQueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
-	168, // 565: kernel.ClusterStateBackendService.GetQueueStats:output_type -> kernel.QueueStatsValueResponse
-	168, // 566: kernel.ClusterStateBackendService.PutQueueStats:output_type -> kernel.QueueStatsValueResponse
-	232, // 567: kernel.ClusterStateBackendService.SetQueueStats:output_type -> kernel.MapEmpty
-	168, // 568: kernel.ClusterStateBackendService.RemoveQueueStats:output_type -> kernel.QueueStatsValueResponse
-	232, // 569: kernel.ClusterStateBackendService.DeleteQueueStats:output_type -> kernel.MapEmpty
-	168, // 570: kernel.ClusterStateBackendService.ContainsKeyQueueStats:output_type -> kernel.QueueStatsValueResponse
-	169, // 571: kernel.ClusterStateBackendService.GetAllQueueStats:output_type -> kernel.QueueStatsEntriesResponse
-	170, // 572: kernel.ClusterStateBackendService.KeySetQueueStats:output_type -> kernel.QueueStatsKeysResponse
-	171, // 573: kernel.ClusterStateBackendService.SizeQueueStats:output_type -> kernel.QueueStatsSizeResponse
-	232, // 574: kernel.ClusterStateBackendService.ClearQueueStats:output_type -> kernel.MapEmpty
-	168, // 575: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:output_type -> kernel.QueueStatsValueResponse
-	169, // 576: kernel.ClusterStateBackendService.WatchQueueStats:output_type -> kernel.QueueStatsEntriesResponse
-	173, // 577: kernel.ClusterStateBackendService.QueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
-	173, // 578: kernel.ClusterStateBackendService.WatchQueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
-	180, // 579: kernel.ClusterStateBackendService.GetTopicStats:output_type -> kernel.TopicStatsValueResponse
-	180, // 580: kernel.ClusterStateBackendService.PutTopicStats:output_type -> kernel.TopicStatsValueResponse
-	232, // 581: kernel.ClusterStateBackendService.SetTopicStats:output_type -> kernel.MapEmpty
-	180, // 582: kernel.ClusterStateBackendService.RemoveTopicStats:output_type -> kernel.TopicStatsValueResponse
-	232, // 583: kernel.ClusterStateBackendService.DeleteTopicStats:output_type -> kernel.MapEmpty
-	180, // 584: kernel.ClusterStateBackendService.ContainsKeyTopicStats:output_type -> kernel.TopicStatsValueResponse
-	181, // 585: kernel.ClusterStateBackendService.GetAllTopicStats:output_type -> kernel.TopicStatsEntriesResponse
-	182, // 586: kernel.ClusterStateBackendService.KeySetTopicStats:output_type -> kernel.TopicStatsKeysResponse
-	183, // 587: kernel.ClusterStateBackendService.SizeTopicStats:output_type -> kernel.TopicStatsSizeResponse
-	232, // 588: kernel.ClusterStateBackendService.ClearTopicStats:output_type -> kernel.MapEmpty
-	180, // 589: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:output_type -> kernel.TopicStatsValueResponse
-	181, // 590: kernel.ClusterStateBackendService.WatchTopicStats:output_type -> kernel.TopicStatsEntriesResponse
-	185, // 591: kernel.ClusterStateBackendService.QueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
-	185, // 592: kernel.ClusterStateBackendService.WatchQueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
-	192, // 593: kernel.ClusterStateBackendService.GetWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	192, // 594: kernel.ClusterStateBackendService.PutWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	232, // 595: kernel.ClusterStateBackendService.SetWatchHealth:output_type -> kernel.MapEmpty
-	192, // 596: kernel.ClusterStateBackendService.RemoveWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	232, // 597: kernel.ClusterStateBackendService.DeleteWatchHealth:output_type -> kernel.MapEmpty
-	192, // 598: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	193, // 599: kernel.ClusterStateBackendService.GetAllWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
-	194, // 600: kernel.ClusterStateBackendService.KeySetWatchHealth:output_type -> kernel.WatchHealthKeysResponse
-	195, // 601: kernel.ClusterStateBackendService.SizeWatchHealth:output_type -> kernel.WatchHealthSizeResponse
-	232, // 602: kernel.ClusterStateBackendService.ClearWatchHealth:output_type -> kernel.MapEmpty
-	192, // 603: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	193, // 604: kernel.ClusterStateBackendService.WatchWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
-	197, // 605: kernel.ClusterStateBackendService.QueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
-	197, // 606: kernel.ClusterStateBackendService.WatchQueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
-	204, // 607: kernel.ClusterStateBackendService.GetMutationRates:output_type -> kernel.MutationRatesValueResponse
-	204, // 608: kernel.ClusterStateBackendService.PutMutationRates:output_type -> kernel.MutationRatesValueResponse
-	232, // 609: kernel.ClusterStateBackendService.SetMutationRates:output_type -> kernel.MapEmpty
-	204, // 610: kernel.ClusterStateBackendService.RemoveMutationRates:output_type -> kernel.MutationRatesValueResponse
-	232, // 611: kernel.ClusterStateBackendService.DeleteMutationRates:output_type -> kernel.MapEmpty
-	204, // 612: kernel.ClusterStateBackendService.ContainsKeyMutationRates:output_type -> kernel.MutationRatesValueResponse
-	205, // 613: kernel.ClusterStateBackendService.GetAllMutationRates:output_type -> kernel.MutationRatesEntriesResponse
-	206, // 614: kernel.ClusterStateBackendService.KeySetMutationRates:output_type -> kernel.MutationRatesKeysResponse
-	207, // 615: kernel.ClusterStateBackendService.SizeMutationRates:output_type -> kernel.MutationRatesSizeResponse
-	232, // 616: kernel.ClusterStateBackendService.ClearMutationRates:output_type -> kernel.MapEmpty
-	204, // 617: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:output_type -> kernel.MutationRatesValueResponse
-	205, // 618: kernel.ClusterStateBackendService.WatchMutationRates:output_type -> kernel.MutationRatesEntriesResponse
-	209, // 619: kernel.ClusterStateBackendService.QueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
-	209, // 620: kernel.ClusterStateBackendService.WatchQueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
-	276, // 621: kernel.ClusterStateBackendService.SetLogLevel:output_type -> google.protobuf.Empty
-	276, // 622: kernel.ClusterStateBackendService.ReloadConfig:output_type -> google.protobuf.Empty
-	232, // 623: kernel.ServiceHealthStateBackendService.SetInstances:output_type -> kernel.MapEmpty
-	214, // 624: kernel.ServiceHealthStateBackendService.GetInstances:output_type -> kernel.InstancesValueResponse
-	215, // 625: kernel.ServiceHealthStateBackendService.GetAllInstances:output_type -> kernel.InstancesEntriesResponse
-	214, // 626: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:output_type -> kernel.InstancesValueResponse
-	216, // 627: kernel.ServiceHealthStateBackendService.KeySetInstances:output_type -> kernel.InstancesKeysResponse
-	217, // 628: kernel.ServiceHealthStateBackendService.SizeInstances:output_type -> kernel.InstancesSizeResponse
-	215, // 629: kernel.ServiceHealthStateBackendService.WatchInstances:output_type -> kernel.InstancesEntriesResponse
-	219, // 630: kernel.ServiceHealthStateBackendService.QueryInstances:output_type -> kernel.InstancesQueryResponse
-	219, // 631: kernel.ServiceHealthStateBackendService.WatchQueryInstances:output_type -> kernel.InstancesQueryResponse
-	226, // 632: kernel.CaStateBackendService.GetCaCerts:output_type -> kernel.CaCertsValueResponse
-	226, // 633: kernel.CaStateBackendService.PutCaCerts:output_type -> kernel.CaCertsValueResponse
-	232, // 634: kernel.CaStateBackendService.SetCaCerts:output_type -> kernel.MapEmpty
-	226, // 635: kernel.CaStateBackendService.RemoveCaCerts:output_type -> kernel.CaCertsValueResponse
-	232, // 636: kernel.CaStateBackendService.DeleteCaCerts:output_type -> kernel.MapEmpty
-	226, // 637: kernel.CaStateBackendService.ContainsKeyCaCerts:output_type -> kernel.CaCertsValueResponse
-	227, // 638: kernel.CaStateBackendService.GetAllCaCerts:output_type -> kernel.CaCertsEntriesResponse
-	228, // 639: kernel.CaStateBackendService.KeySetCaCerts:output_type -> kernel.CaCertsKeysResponse
-	229, // 640: kernel.CaStateBackendService.SizeCaCerts:output_type -> kernel.CaCertsSizeResponse
-	232, // 641: kernel.CaStateBackendService.ClearCaCerts:output_type -> kernel.MapEmpty
-	226, // 642: kernel.CaStateBackendService.PutIfAbsentCaCerts:output_type -> kernel.CaCertsValueResponse
-	227, // 643: kernel.CaStateBackendService.WatchCaCerts:output_type -> kernel.CaCertsEntriesResponse
-	231, // 644: kernel.CaStateBackendService.QueryCaCerts:output_type -> kernel.CaCertsQueryResponse
-	231, // 645: kernel.CaStateBackendService.WatchQueryCaCerts:output_type -> kernel.CaCertsQueryResponse
-	400, // [400:646] is the sub-list for method output_type
-	154, // [154:400] is the sub-list for method input_type
-	154, // [154:154] is the sub-list for extension type_name
-	154, // [154:154] is the sub-list for extension extendee
-	0,   // [0:154] is the sub-list for field type_name
+	242, // 0: kernel.BootstrapConfig.listener:type_name -> host.Host
+	242, // 1: kernel.BootstrapConfig.members:type_name -> host.Host
+	243, // 2: kernel.BootstrapConfig.network:type_name -> hazelcast.NetworkConfig
+	244, // 3: kernel.BootstrapConfig.logger:type_name -> logger.LoggerConfig
+	245, // 4: kernel.BootstrapConfig.cp_subsystem:type_name -> hazelcast.CPSubsystemConfig
+	246, // 5: kernel.BootstrapConfig.persistence_format:type_name -> outputformat.OutputFormat
+	9,   // 6: kernel.BootstrapConfig.url_loader:type_name -> kernel.UrlLoader
+	10,  // 7: kernel.BootstrapConfig.file_loader:type_name -> kernel.FileLoader
+	247, // 8: kernel.BootstrapConfig.loader_ca:type_name -> x509.X509Cert
+	248, // 9: kernel.BootstrapConfig.tls:type_name -> x509.X509CertPair
+	249, // 10: kernel.BootstrapConfig.mode:type_name -> hazelcast.NodeMode
+	250, // 11: kernel.TokenExchangerState.verifying_keys:type_name -> jwk.Jwk
+	247, // 12: kernel.TrustedCaState.trusted_cas:type_name -> x509.X509Cert
+	251, // 13: kernel.CloudIdentityMatcher.vendor:type_name -> cloudvendor.CloudVendor
+	250, // 14: kernel.Delegate.cred_pairs:type_name -> jwk.Jwk
+	6,   // 15: kernel.Delegate.cloud_identities:type_name -> kernel.CloudIdentityMatcher
+	247, // 16: kernel.Config.trusted_cas:type_name -> x509.X509Cert
+	252, // 17: kernel.Config.rate_limit:type_name -> hazelcast.RateLimitConfig
+	253, // 18: kernel.Config.configs:type_name -> generated.Services
+	7,   // 19: kernel.Config.delegates:type_name -> kernel.Delegate
+	254, // 20: kernel.ClusterState.cluster_info:type_name -> hazelcast.AdminClusterInfo
+	255, // 21: kernel.ClusterState.cluster_health:type_name -> hazelcast.AdminClusterHealth
+	256, // 22: kernel.ClusterState.node_metrics:type_name -> hazelcast.AdminNodeMetrics
+	257, // 23: kernel.ClusterState.grpc_stats:type_name -> hazelcast.AdminGrpcStats
+	258, // 24: kernel.ClusterState.persistence_status:type_name -> hazelcast.AdminPersistenceStatus
+	259, // 25: kernel.ClusterState.network_stats:type_name -> hazelcast.AdminNetworkStats
+	260, // 26: kernel.ClusterState.thread_info:type_name -> hazelcast.AdminThreadInfo
+	261, // 27: kernel.ClusterState.token_cache_stats:type_name -> hazelcast.AdminTokenCacheStats
+	262, // 28: kernel.ClusterState.map_stats:type_name -> hazelcast.AdminMapStats
+	3,   // 29: kernel.ClusterState.bootstrap_config:type_name -> kernel.BootstrapConfig
+	8,   // 30: kernel.ClusterState.frontend_config:type_name -> kernel.Config
+	263, // 31: kernel.ClusterState.graph_registry:type_name -> hazelcast.AdminGraphInfo
+	264, // 32: kernel.ClusterState.service_connections:type_name -> hazelcast.AdminServiceConnection
+	265, // 33: kernel.ClusterState.queue_stats:type_name -> hazelcast.AdminQueueStats
+	266, // 34: kernel.ClusterState.topic_stats:type_name -> hazelcast.AdminTopicStats
+	267, // 35: kernel.ClusterState.watch_health:type_name -> hazelcast.AdminWatchHealth
+	268, // 36: kernel.ClusterState.mutation_rates:type_name -> hazelcast.AdminMutationRate
+	12,  // 37: kernel.ClusterState.set_log_level:type_name -> kernel.AdminSetLogLevelRequest
+	13,  // 38: kernel.ClusterState.reload_config:type_name -> kernel.AdminReloadConfigRequest
+	14,  // 39: kernel.ClusterState.config_dump:type_name -> kernel.AdminConfigDump
+	269, // 40: kernel.ServiceHealthState.instances:type_name -> healthreport.ServiceInstanceHealth
+	247, // 41: kernel.CaState.ca_certs:type_name -> x509.X509Cert
+	0,   // 42: kernel.Predicate.op:type_name -> kernel.ComparisonOp
+	17,  // 43: kernel.Predicate.value:type_name -> kernel.QueryValue
+	17,  // 44: kernel.Predicate.values:type_name -> kernel.QueryValue
+	2,   // 45: kernel.PredicateGroup.op:type_name -> kernel.LogicalOp
+	18,  // 46: kernel.PredicateGroup.predicates:type_name -> kernel.Predicate
+	19,  // 47: kernel.PredicateGroup.groups:type_name -> kernel.PredicateGroup
+	1,   // 48: kernel.SortField.direction:type_name -> kernel.SortDirection
+	19,  // 49: kernel.CollectionQuery.where:type_name -> kernel.PredicateGroup
+	20,  // 50: kernel.CollectionQuery.order_by:type_name -> kernel.SortField
+	250, // 51: kernel.VerifyingKeysPutRequest.value:type_name -> jwk.Jwk
+	250, // 52: kernel.VerifyingKeysValueResponse.value:type_name -> jwk.Jwk
+	225, // 53: kernel.VerifyingKeysEntriesResponse.entries:type_name -> kernel.VerifyingKeysEntriesResponse.EntriesEntry
+	21,  // 54: kernel.VerifyingKeysQueryRequest.query:type_name -> kernel.CollectionQuery
+	250, // 55: kernel.VerifyingKeysQueryResponse.results:type_name -> jwk.Jwk
+	247, // 56: kernel.TrustedCasPutRequest.value:type_name -> x509.X509Cert
+	247, // 57: kernel.TrustedCasValueResponse.value:type_name -> x509.X509Cert
+	226, // 58: kernel.TrustedCasEntriesResponse.entries:type_name -> kernel.TrustedCasEntriesResponse.EntriesEntry
+	21,  // 59: kernel.TrustedCasQueryRequest.query:type_name -> kernel.CollectionQuery
+	247, // 60: kernel.TrustedCasQueryResponse.results:type_name -> x509.X509Cert
+	256, // 61: kernel.NodeMetricsPutRequest.value:type_name -> hazelcast.AdminNodeMetrics
+	256, // 62: kernel.NodeMetricsValueResponse.value:type_name -> hazelcast.AdminNodeMetrics
+	227, // 63: kernel.NodeMetricsEntriesResponse.entries:type_name -> kernel.NodeMetricsEntriesResponse.EntriesEntry
+	21,  // 64: kernel.NodeMetricsQueryRequest.query:type_name -> kernel.CollectionQuery
+	256, // 65: kernel.NodeMetricsQueryResponse.results:type_name -> hazelcast.AdminNodeMetrics
+	257, // 66: kernel.GrpcStatsPutRequest.value:type_name -> hazelcast.AdminGrpcStats
+	257, // 67: kernel.GrpcStatsValueResponse.value:type_name -> hazelcast.AdminGrpcStats
+	228, // 68: kernel.GrpcStatsEntriesResponse.entries:type_name -> kernel.GrpcStatsEntriesResponse.EntriesEntry
+	21,  // 69: kernel.GrpcStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	257, // 70: kernel.GrpcStatsQueryResponse.results:type_name -> hazelcast.AdminGrpcStats
+	258, // 71: kernel.PersistenceStatusPutRequest.value:type_name -> hazelcast.AdminPersistenceStatus
+	258, // 72: kernel.PersistenceStatusValueResponse.value:type_name -> hazelcast.AdminPersistenceStatus
+	229, // 73: kernel.PersistenceStatusEntriesResponse.entries:type_name -> kernel.PersistenceStatusEntriesResponse.EntriesEntry
+	21,  // 74: kernel.PersistenceStatusQueryRequest.query:type_name -> kernel.CollectionQuery
+	258, // 75: kernel.PersistenceStatusQueryResponse.results:type_name -> hazelcast.AdminPersistenceStatus
+	259, // 76: kernel.NetworkStatsPutRequest.value:type_name -> hazelcast.AdminNetworkStats
+	259, // 77: kernel.NetworkStatsValueResponse.value:type_name -> hazelcast.AdminNetworkStats
+	230, // 78: kernel.NetworkStatsEntriesResponse.entries:type_name -> kernel.NetworkStatsEntriesResponse.EntriesEntry
+	21,  // 79: kernel.NetworkStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	259, // 80: kernel.NetworkStatsQueryResponse.results:type_name -> hazelcast.AdminNetworkStats
+	260, // 81: kernel.ThreadInfoPutRequest.value:type_name -> hazelcast.AdminThreadInfo
+	260, // 82: kernel.ThreadInfoValueResponse.value:type_name -> hazelcast.AdminThreadInfo
+	231, // 83: kernel.ThreadInfoEntriesResponse.entries:type_name -> kernel.ThreadInfoEntriesResponse.EntriesEntry
+	21,  // 84: kernel.ThreadInfoQueryRequest.query:type_name -> kernel.CollectionQuery
+	260, // 85: kernel.ThreadInfoQueryResponse.results:type_name -> hazelcast.AdminThreadInfo
+	261, // 86: kernel.TokenCacheStatsPutRequest.value:type_name -> hazelcast.AdminTokenCacheStats
+	261, // 87: kernel.TokenCacheStatsValueResponse.value:type_name -> hazelcast.AdminTokenCacheStats
+	232, // 88: kernel.TokenCacheStatsEntriesResponse.entries:type_name -> kernel.TokenCacheStatsEntriesResponse.EntriesEntry
+	21,  // 89: kernel.TokenCacheStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	261, // 90: kernel.TokenCacheStatsQueryResponse.results:type_name -> hazelcast.AdminTokenCacheStats
+	262, // 91: kernel.MapStatsPutRequest.value:type_name -> hazelcast.AdminMapStats
+	262, // 92: kernel.MapStatsValueResponse.value:type_name -> hazelcast.AdminMapStats
+	233, // 93: kernel.MapStatsEntriesResponse.entries:type_name -> kernel.MapStatsEntriesResponse.EntriesEntry
+	21,  // 94: kernel.MapStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	262, // 95: kernel.MapStatsQueryResponse.results:type_name -> hazelcast.AdminMapStats
+	263, // 96: kernel.GraphRegistryPutRequest.value:type_name -> hazelcast.AdminGraphInfo
+	263, // 97: kernel.GraphRegistryValueResponse.value:type_name -> hazelcast.AdminGraphInfo
+	234, // 98: kernel.GraphRegistryEntriesResponse.entries:type_name -> kernel.GraphRegistryEntriesResponse.EntriesEntry
+	21,  // 99: kernel.GraphRegistryQueryRequest.query:type_name -> kernel.CollectionQuery
+	263, // 100: kernel.GraphRegistryQueryResponse.results:type_name -> hazelcast.AdminGraphInfo
+	264, // 101: kernel.ServiceConnectionsPutRequest.value:type_name -> hazelcast.AdminServiceConnection
+	264, // 102: kernel.ServiceConnectionsValueResponse.value:type_name -> hazelcast.AdminServiceConnection
+	235, // 103: kernel.ServiceConnectionsEntriesResponse.entries:type_name -> kernel.ServiceConnectionsEntriesResponse.EntriesEntry
+	21,  // 104: kernel.ServiceConnectionsQueryRequest.query:type_name -> kernel.CollectionQuery
+	264, // 105: kernel.ServiceConnectionsQueryResponse.results:type_name -> hazelcast.AdminServiceConnection
+	265, // 106: kernel.QueueStatsPutRequest.value:type_name -> hazelcast.AdminQueueStats
+	265, // 107: kernel.QueueStatsValueResponse.value:type_name -> hazelcast.AdminQueueStats
+	236, // 108: kernel.QueueStatsEntriesResponse.entries:type_name -> kernel.QueueStatsEntriesResponse.EntriesEntry
+	21,  // 109: kernel.QueueStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	265, // 110: kernel.QueueStatsQueryResponse.results:type_name -> hazelcast.AdminQueueStats
+	266, // 111: kernel.TopicStatsPutRequest.value:type_name -> hazelcast.AdminTopicStats
+	266, // 112: kernel.TopicStatsValueResponse.value:type_name -> hazelcast.AdminTopicStats
+	237, // 113: kernel.TopicStatsEntriesResponse.entries:type_name -> kernel.TopicStatsEntriesResponse.EntriesEntry
+	21,  // 114: kernel.TopicStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	266, // 115: kernel.TopicStatsQueryResponse.results:type_name -> hazelcast.AdminTopicStats
+	267, // 116: kernel.WatchHealthPutRequest.value:type_name -> hazelcast.AdminWatchHealth
+	267, // 117: kernel.WatchHealthValueResponse.value:type_name -> hazelcast.AdminWatchHealth
+	238, // 118: kernel.WatchHealthEntriesResponse.entries:type_name -> kernel.WatchHealthEntriesResponse.EntriesEntry
+	21,  // 119: kernel.WatchHealthQueryRequest.query:type_name -> kernel.CollectionQuery
+	267, // 120: kernel.WatchHealthQueryResponse.results:type_name -> hazelcast.AdminWatchHealth
+	268, // 121: kernel.MutationRatesPutRequest.value:type_name -> hazelcast.AdminMutationRate
+	268, // 122: kernel.MutationRatesValueResponse.value:type_name -> hazelcast.AdminMutationRate
+	239, // 123: kernel.MutationRatesEntriesResponse.entries:type_name -> kernel.MutationRatesEntriesResponse.EntriesEntry
+	21,  // 124: kernel.MutationRatesQueryRequest.query:type_name -> kernel.CollectionQuery
+	268, // 125: kernel.MutationRatesQueryResponse.results:type_name -> hazelcast.AdminMutationRate
+	269, // 126: kernel.InstancesValueResponse.value:type_name -> healthreport.ServiceInstanceHealth
+	240, // 127: kernel.InstancesEntriesResponse.entries:type_name -> kernel.InstancesEntriesResponse.EntriesEntry
+	21,  // 128: kernel.InstancesQueryRequest.query:type_name -> kernel.CollectionQuery
+	269, // 129: kernel.InstancesQueryResponse.results:type_name -> healthreport.ServiceInstanceHealth
+	247, // 130: kernel.CaCertsPutRequest.value:type_name -> x509.X509Cert
+	247, // 131: kernel.CaCertsValueResponse.value:type_name -> x509.X509Cert
+	241, // 132: kernel.CaCertsEntriesResponse.entries:type_name -> kernel.CaCertsEntriesResponse.EntriesEntry
+	21,  // 133: kernel.CaCertsQueryRequest.query:type_name -> kernel.CollectionQuery
+	247, // 134: kernel.CaCertsQueryResponse.results:type_name -> x509.X509Cert
+	250, // 135: kernel.VerifyingKeysEntriesResponse.EntriesEntry.value:type_name -> jwk.Jwk
+	247, // 136: kernel.TrustedCasEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
+	256, // 137: kernel.NodeMetricsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminNodeMetrics
+	257, // 138: kernel.GrpcStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminGrpcStats
+	258, // 139: kernel.PersistenceStatusEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminPersistenceStatus
+	259, // 140: kernel.NetworkStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminNetworkStats
+	260, // 141: kernel.ThreadInfoEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminThreadInfo
+	261, // 142: kernel.TokenCacheStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminTokenCacheStats
+	262, // 143: kernel.MapStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminMapStats
+	263, // 144: kernel.GraphRegistryEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminGraphInfo
+	264, // 145: kernel.ServiceConnectionsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminServiceConnection
+	265, // 146: kernel.QueueStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminQueueStats
+	266, // 147: kernel.TopicStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminTopicStats
+	267, // 148: kernel.WatchHealthEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminWatchHealth
+	268, // 149: kernel.MutationRatesEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminMutationRate
+	269, // 150: kernel.InstancesEntriesResponse.EntriesEntry.value:type_name -> healthreport.ServiceInstanceHealth
+	247, // 151: kernel.CaCertsEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
+	270, // 152: kernel.TokenExchangerService.ExchangeToken:input_type -> tokenrequest.TokenRequest
+	271, // 153: kernel.X509CertExchangerService.SignCert:input_type -> x509.X509CertRequest
+	22,  // 154: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	23,  // 155: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
+	23,  // 156: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
+	22,  // 157: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	22,  // 158: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	22,  // 159: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	24,  // 160: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:input_type -> kernel.VerifyingKeysGetAllRequest
+	25,  // 161: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:input_type -> kernel.VerifyingKeysKeysRequest
+	26,  // 162: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:input_type -> kernel.VerifyingKeysSizeRequest
+	27,  // 163: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:input_type -> kernel.VerifyingKeysClearRequest
+	23,  // 164: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
+	272, // 165: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:input_type -> google.protobuf.Empty
+	32,  // 166: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
+	32,  // 167: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
+	34,  // 168: kernel.TrustedCaStateBackendService.GetTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	35,  // 169: kernel.TrustedCaStateBackendService.PutTrustedCas:input_type -> kernel.TrustedCasPutRequest
+	35,  // 170: kernel.TrustedCaStateBackendService.SetTrustedCas:input_type -> kernel.TrustedCasPutRequest
+	34,  // 171: kernel.TrustedCaStateBackendService.RemoveTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	34,  // 172: kernel.TrustedCaStateBackendService.DeleteTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	34,  // 173: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	36,  // 174: kernel.TrustedCaStateBackendService.GetAllTrustedCas:input_type -> kernel.TrustedCasGetAllRequest
+	37,  // 175: kernel.TrustedCaStateBackendService.KeySetTrustedCas:input_type -> kernel.TrustedCasKeysRequest
+	38,  // 176: kernel.TrustedCaStateBackendService.SizeTrustedCas:input_type -> kernel.TrustedCasSizeRequest
+	39,  // 177: kernel.TrustedCaStateBackendService.ClearTrustedCas:input_type -> kernel.TrustedCasClearRequest
+	35,  // 178: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:input_type -> kernel.TrustedCasPutRequest
+	272, // 179: kernel.TrustedCaStateBackendService.WatchTrustedCas:input_type -> google.protobuf.Empty
+	44,  // 180: kernel.TrustedCaStateBackendService.QueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
+	44,  // 181: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
+	272, // 182: kernel.ClusterStateBackendService.GetClusterInfo:input_type -> google.protobuf.Empty
+	254, // 183: kernel.ClusterStateBackendService.SetClusterInfo:input_type -> hazelcast.AdminClusterInfo
+	272, // 184: kernel.ClusterStateBackendService.WatchClusterInfo:input_type -> google.protobuf.Empty
+	272, // 185: kernel.ClusterStateBackendService.GetClusterHealth:input_type -> google.protobuf.Empty
+	255, // 186: kernel.ClusterStateBackendService.SetClusterHealth:input_type -> hazelcast.AdminClusterHealth
+	272, // 187: kernel.ClusterStateBackendService.WatchClusterHealth:input_type -> google.protobuf.Empty
+	272, // 188: kernel.ClusterStateBackendService.GetFrontendConfig:input_type -> google.protobuf.Empty
+	8,   // 189: kernel.ClusterStateBackendService.SetFrontendConfig:input_type -> kernel.Config
+	272, // 190: kernel.ClusterStateBackendService.WatchFrontendConfig:input_type -> google.protobuf.Empty
+	46,  // 191: kernel.ClusterStateBackendService.GetNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	47,  // 192: kernel.ClusterStateBackendService.PutNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
+	47,  // 193: kernel.ClusterStateBackendService.SetNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
+	46,  // 194: kernel.ClusterStateBackendService.RemoveNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	46,  // 195: kernel.ClusterStateBackendService.DeleteNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	46,  // 196: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	48,  // 197: kernel.ClusterStateBackendService.GetAllNodeMetrics:input_type -> kernel.NodeMetricsGetAllRequest
+	49,  // 198: kernel.ClusterStateBackendService.KeySetNodeMetrics:input_type -> kernel.NodeMetricsKeysRequest
+	50,  // 199: kernel.ClusterStateBackendService.SizeNodeMetrics:input_type -> kernel.NodeMetricsSizeRequest
+	51,  // 200: kernel.ClusterStateBackendService.ClearNodeMetrics:input_type -> kernel.NodeMetricsClearRequest
+	47,  // 201: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
+	272, // 202: kernel.ClusterStateBackendService.WatchNodeMetrics:input_type -> google.protobuf.Empty
+	56,  // 203: kernel.ClusterStateBackendService.QueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
+	56,  // 204: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
+	58,  // 205: kernel.ClusterStateBackendService.GetGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	59,  // 206: kernel.ClusterStateBackendService.PutGrpcStats:input_type -> kernel.GrpcStatsPutRequest
+	59,  // 207: kernel.ClusterStateBackendService.SetGrpcStats:input_type -> kernel.GrpcStatsPutRequest
+	58,  // 208: kernel.ClusterStateBackendService.RemoveGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	58,  // 209: kernel.ClusterStateBackendService.DeleteGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	58,  // 210: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	60,  // 211: kernel.ClusterStateBackendService.GetAllGrpcStats:input_type -> kernel.GrpcStatsGetAllRequest
+	61,  // 212: kernel.ClusterStateBackendService.KeySetGrpcStats:input_type -> kernel.GrpcStatsKeysRequest
+	62,  // 213: kernel.ClusterStateBackendService.SizeGrpcStats:input_type -> kernel.GrpcStatsSizeRequest
+	63,  // 214: kernel.ClusterStateBackendService.ClearGrpcStats:input_type -> kernel.GrpcStatsClearRequest
+	59,  // 215: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:input_type -> kernel.GrpcStatsPutRequest
+	272, // 216: kernel.ClusterStateBackendService.WatchGrpcStats:input_type -> google.protobuf.Empty
+	68,  // 217: kernel.ClusterStateBackendService.QueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
+	68,  // 218: kernel.ClusterStateBackendService.WatchQueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
+	70,  // 219: kernel.ClusterStateBackendService.GetPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	71,  // 220: kernel.ClusterStateBackendService.PutPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
+	71,  // 221: kernel.ClusterStateBackendService.SetPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
+	70,  // 222: kernel.ClusterStateBackendService.RemovePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	70,  // 223: kernel.ClusterStateBackendService.DeletePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	70,  // 224: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	72,  // 225: kernel.ClusterStateBackendService.GetAllPersistenceStatus:input_type -> kernel.PersistenceStatusGetAllRequest
+	73,  // 226: kernel.ClusterStateBackendService.KeySetPersistenceStatus:input_type -> kernel.PersistenceStatusKeysRequest
+	74,  // 227: kernel.ClusterStateBackendService.SizePersistenceStatus:input_type -> kernel.PersistenceStatusSizeRequest
+	75,  // 228: kernel.ClusterStateBackendService.ClearPersistenceStatus:input_type -> kernel.PersistenceStatusClearRequest
+	71,  // 229: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
+	272, // 230: kernel.ClusterStateBackendService.WatchPersistenceStatus:input_type -> google.protobuf.Empty
+	80,  // 231: kernel.ClusterStateBackendService.QueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
+	80,  // 232: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
+	82,  // 233: kernel.ClusterStateBackendService.GetNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	83,  // 234: kernel.ClusterStateBackendService.PutNetworkStats:input_type -> kernel.NetworkStatsPutRequest
+	83,  // 235: kernel.ClusterStateBackendService.SetNetworkStats:input_type -> kernel.NetworkStatsPutRequest
+	82,  // 236: kernel.ClusterStateBackendService.RemoveNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	82,  // 237: kernel.ClusterStateBackendService.DeleteNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	82,  // 238: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	84,  // 239: kernel.ClusterStateBackendService.GetAllNetworkStats:input_type -> kernel.NetworkStatsGetAllRequest
+	85,  // 240: kernel.ClusterStateBackendService.KeySetNetworkStats:input_type -> kernel.NetworkStatsKeysRequest
+	86,  // 241: kernel.ClusterStateBackendService.SizeNetworkStats:input_type -> kernel.NetworkStatsSizeRequest
+	87,  // 242: kernel.ClusterStateBackendService.ClearNetworkStats:input_type -> kernel.NetworkStatsClearRequest
+	83,  // 243: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:input_type -> kernel.NetworkStatsPutRequest
+	272, // 244: kernel.ClusterStateBackendService.WatchNetworkStats:input_type -> google.protobuf.Empty
+	92,  // 245: kernel.ClusterStateBackendService.QueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
+	92,  // 246: kernel.ClusterStateBackendService.WatchQueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
+	94,  // 247: kernel.ClusterStateBackendService.GetThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	95,  // 248: kernel.ClusterStateBackendService.PutThreadInfo:input_type -> kernel.ThreadInfoPutRequest
+	95,  // 249: kernel.ClusterStateBackendService.SetThreadInfo:input_type -> kernel.ThreadInfoPutRequest
+	94,  // 250: kernel.ClusterStateBackendService.RemoveThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	94,  // 251: kernel.ClusterStateBackendService.DeleteThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	94,  // 252: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	96,  // 253: kernel.ClusterStateBackendService.GetAllThreadInfo:input_type -> kernel.ThreadInfoGetAllRequest
+	97,  // 254: kernel.ClusterStateBackendService.KeySetThreadInfo:input_type -> kernel.ThreadInfoKeysRequest
+	98,  // 255: kernel.ClusterStateBackendService.SizeThreadInfo:input_type -> kernel.ThreadInfoSizeRequest
+	99,  // 256: kernel.ClusterStateBackendService.ClearThreadInfo:input_type -> kernel.ThreadInfoClearRequest
+	95,  // 257: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:input_type -> kernel.ThreadInfoPutRequest
+	272, // 258: kernel.ClusterStateBackendService.WatchThreadInfo:input_type -> google.protobuf.Empty
+	104, // 259: kernel.ClusterStateBackendService.QueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
+	104, // 260: kernel.ClusterStateBackendService.WatchQueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
+	106, // 261: kernel.ClusterStateBackendService.GetTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	107, // 262: kernel.ClusterStateBackendService.PutTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
+	107, // 263: kernel.ClusterStateBackendService.SetTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
+	106, // 264: kernel.ClusterStateBackendService.RemoveTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	106, // 265: kernel.ClusterStateBackendService.DeleteTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	106, // 266: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	108, // 267: kernel.ClusterStateBackendService.GetAllTokenCacheStats:input_type -> kernel.TokenCacheStatsGetAllRequest
+	109, // 268: kernel.ClusterStateBackendService.KeySetTokenCacheStats:input_type -> kernel.TokenCacheStatsKeysRequest
+	110, // 269: kernel.ClusterStateBackendService.SizeTokenCacheStats:input_type -> kernel.TokenCacheStatsSizeRequest
+	111, // 270: kernel.ClusterStateBackendService.ClearTokenCacheStats:input_type -> kernel.TokenCacheStatsClearRequest
+	107, // 271: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
+	272, // 272: kernel.ClusterStateBackendService.WatchTokenCacheStats:input_type -> google.protobuf.Empty
+	116, // 273: kernel.ClusterStateBackendService.QueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
+	116, // 274: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
+	118, // 275: kernel.ClusterStateBackendService.GetMapStats:input_type -> kernel.MapStatsGetRequest
+	119, // 276: kernel.ClusterStateBackendService.PutMapStats:input_type -> kernel.MapStatsPutRequest
+	119, // 277: kernel.ClusterStateBackendService.SetMapStats:input_type -> kernel.MapStatsPutRequest
+	118, // 278: kernel.ClusterStateBackendService.RemoveMapStats:input_type -> kernel.MapStatsGetRequest
+	118, // 279: kernel.ClusterStateBackendService.DeleteMapStats:input_type -> kernel.MapStatsGetRequest
+	118, // 280: kernel.ClusterStateBackendService.ContainsKeyMapStats:input_type -> kernel.MapStatsGetRequest
+	120, // 281: kernel.ClusterStateBackendService.GetAllMapStats:input_type -> kernel.MapStatsGetAllRequest
+	121, // 282: kernel.ClusterStateBackendService.KeySetMapStats:input_type -> kernel.MapStatsKeysRequest
+	122, // 283: kernel.ClusterStateBackendService.SizeMapStats:input_type -> kernel.MapStatsSizeRequest
+	123, // 284: kernel.ClusterStateBackendService.ClearMapStats:input_type -> kernel.MapStatsClearRequest
+	119, // 285: kernel.ClusterStateBackendService.PutIfAbsentMapStats:input_type -> kernel.MapStatsPutRequest
+	272, // 286: kernel.ClusterStateBackendService.WatchMapStats:input_type -> google.protobuf.Empty
+	128, // 287: kernel.ClusterStateBackendService.QueryMapStats:input_type -> kernel.MapStatsQueryRequest
+	128, // 288: kernel.ClusterStateBackendService.WatchQueryMapStats:input_type -> kernel.MapStatsQueryRequest
+	130, // 289: kernel.ClusterStateBackendService.GetGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	131, // 290: kernel.ClusterStateBackendService.PutGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
+	131, // 291: kernel.ClusterStateBackendService.SetGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
+	130, // 292: kernel.ClusterStateBackendService.RemoveGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	130, // 293: kernel.ClusterStateBackendService.DeleteGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	130, // 294: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	132, // 295: kernel.ClusterStateBackendService.GetAllGraphRegistry:input_type -> kernel.GraphRegistryGetAllRequest
+	133, // 296: kernel.ClusterStateBackendService.KeySetGraphRegistry:input_type -> kernel.GraphRegistryKeysRequest
+	134, // 297: kernel.ClusterStateBackendService.SizeGraphRegistry:input_type -> kernel.GraphRegistrySizeRequest
+	135, // 298: kernel.ClusterStateBackendService.ClearGraphRegistry:input_type -> kernel.GraphRegistryClearRequest
+	131, // 299: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
+	272, // 300: kernel.ClusterStateBackendService.WatchGraphRegistry:input_type -> google.protobuf.Empty
+	140, // 301: kernel.ClusterStateBackendService.QueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
+	140, // 302: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
+	142, // 303: kernel.ClusterStateBackendService.GetServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	143, // 304: kernel.ClusterStateBackendService.PutServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
+	143, // 305: kernel.ClusterStateBackendService.SetServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
+	142, // 306: kernel.ClusterStateBackendService.RemoveServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	142, // 307: kernel.ClusterStateBackendService.DeleteServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	142, // 308: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	144, // 309: kernel.ClusterStateBackendService.GetAllServiceConnections:input_type -> kernel.ServiceConnectionsGetAllRequest
+	145, // 310: kernel.ClusterStateBackendService.KeySetServiceConnections:input_type -> kernel.ServiceConnectionsKeysRequest
+	146, // 311: kernel.ClusterStateBackendService.SizeServiceConnections:input_type -> kernel.ServiceConnectionsSizeRequest
+	147, // 312: kernel.ClusterStateBackendService.ClearServiceConnections:input_type -> kernel.ServiceConnectionsClearRequest
+	143, // 313: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
+	272, // 314: kernel.ClusterStateBackendService.WatchServiceConnections:input_type -> google.protobuf.Empty
+	152, // 315: kernel.ClusterStateBackendService.QueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
+	152, // 316: kernel.ClusterStateBackendService.WatchQueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
+	154, // 317: kernel.ClusterStateBackendService.GetQueueStats:input_type -> kernel.QueueStatsGetRequest
+	155, // 318: kernel.ClusterStateBackendService.PutQueueStats:input_type -> kernel.QueueStatsPutRequest
+	155, // 319: kernel.ClusterStateBackendService.SetQueueStats:input_type -> kernel.QueueStatsPutRequest
+	154, // 320: kernel.ClusterStateBackendService.RemoveQueueStats:input_type -> kernel.QueueStatsGetRequest
+	154, // 321: kernel.ClusterStateBackendService.DeleteQueueStats:input_type -> kernel.QueueStatsGetRequest
+	154, // 322: kernel.ClusterStateBackendService.ContainsKeyQueueStats:input_type -> kernel.QueueStatsGetRequest
+	156, // 323: kernel.ClusterStateBackendService.GetAllQueueStats:input_type -> kernel.QueueStatsGetAllRequest
+	157, // 324: kernel.ClusterStateBackendService.KeySetQueueStats:input_type -> kernel.QueueStatsKeysRequest
+	158, // 325: kernel.ClusterStateBackendService.SizeQueueStats:input_type -> kernel.QueueStatsSizeRequest
+	159, // 326: kernel.ClusterStateBackendService.ClearQueueStats:input_type -> kernel.QueueStatsClearRequest
+	155, // 327: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:input_type -> kernel.QueueStatsPutRequest
+	272, // 328: kernel.ClusterStateBackendService.WatchQueueStats:input_type -> google.protobuf.Empty
+	164, // 329: kernel.ClusterStateBackendService.QueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
+	164, // 330: kernel.ClusterStateBackendService.WatchQueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
+	166, // 331: kernel.ClusterStateBackendService.GetTopicStats:input_type -> kernel.TopicStatsGetRequest
+	167, // 332: kernel.ClusterStateBackendService.PutTopicStats:input_type -> kernel.TopicStatsPutRequest
+	167, // 333: kernel.ClusterStateBackendService.SetTopicStats:input_type -> kernel.TopicStatsPutRequest
+	166, // 334: kernel.ClusterStateBackendService.RemoveTopicStats:input_type -> kernel.TopicStatsGetRequest
+	166, // 335: kernel.ClusterStateBackendService.DeleteTopicStats:input_type -> kernel.TopicStatsGetRequest
+	166, // 336: kernel.ClusterStateBackendService.ContainsKeyTopicStats:input_type -> kernel.TopicStatsGetRequest
+	168, // 337: kernel.ClusterStateBackendService.GetAllTopicStats:input_type -> kernel.TopicStatsGetAllRequest
+	169, // 338: kernel.ClusterStateBackendService.KeySetTopicStats:input_type -> kernel.TopicStatsKeysRequest
+	170, // 339: kernel.ClusterStateBackendService.SizeTopicStats:input_type -> kernel.TopicStatsSizeRequest
+	171, // 340: kernel.ClusterStateBackendService.ClearTopicStats:input_type -> kernel.TopicStatsClearRequest
+	167, // 341: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:input_type -> kernel.TopicStatsPutRequest
+	272, // 342: kernel.ClusterStateBackendService.WatchTopicStats:input_type -> google.protobuf.Empty
+	176, // 343: kernel.ClusterStateBackendService.QueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
+	176, // 344: kernel.ClusterStateBackendService.WatchQueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
+	178, // 345: kernel.ClusterStateBackendService.GetWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	179, // 346: kernel.ClusterStateBackendService.PutWatchHealth:input_type -> kernel.WatchHealthPutRequest
+	179, // 347: kernel.ClusterStateBackendService.SetWatchHealth:input_type -> kernel.WatchHealthPutRequest
+	178, // 348: kernel.ClusterStateBackendService.RemoveWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	178, // 349: kernel.ClusterStateBackendService.DeleteWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	178, // 350: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	180, // 351: kernel.ClusterStateBackendService.GetAllWatchHealth:input_type -> kernel.WatchHealthGetAllRequest
+	181, // 352: kernel.ClusterStateBackendService.KeySetWatchHealth:input_type -> kernel.WatchHealthKeysRequest
+	182, // 353: kernel.ClusterStateBackendService.SizeWatchHealth:input_type -> kernel.WatchHealthSizeRequest
+	183, // 354: kernel.ClusterStateBackendService.ClearWatchHealth:input_type -> kernel.WatchHealthClearRequest
+	179, // 355: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:input_type -> kernel.WatchHealthPutRequest
+	272, // 356: kernel.ClusterStateBackendService.WatchWatchHealth:input_type -> google.protobuf.Empty
+	188, // 357: kernel.ClusterStateBackendService.QueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
+	188, // 358: kernel.ClusterStateBackendService.WatchQueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
+	190, // 359: kernel.ClusterStateBackendService.GetMutationRates:input_type -> kernel.MutationRatesGetRequest
+	191, // 360: kernel.ClusterStateBackendService.PutMutationRates:input_type -> kernel.MutationRatesPutRequest
+	191, // 361: kernel.ClusterStateBackendService.SetMutationRates:input_type -> kernel.MutationRatesPutRequest
+	190, // 362: kernel.ClusterStateBackendService.RemoveMutationRates:input_type -> kernel.MutationRatesGetRequest
+	190, // 363: kernel.ClusterStateBackendService.DeleteMutationRates:input_type -> kernel.MutationRatesGetRequest
+	190, // 364: kernel.ClusterStateBackendService.ContainsKeyMutationRates:input_type -> kernel.MutationRatesGetRequest
+	192, // 365: kernel.ClusterStateBackendService.GetAllMutationRates:input_type -> kernel.MutationRatesGetAllRequest
+	193, // 366: kernel.ClusterStateBackendService.KeySetMutationRates:input_type -> kernel.MutationRatesKeysRequest
+	194, // 367: kernel.ClusterStateBackendService.SizeMutationRates:input_type -> kernel.MutationRatesSizeRequest
+	195, // 368: kernel.ClusterStateBackendService.ClearMutationRates:input_type -> kernel.MutationRatesClearRequest
+	191, // 369: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:input_type -> kernel.MutationRatesPutRequest
+	272, // 370: kernel.ClusterStateBackendService.WatchMutationRates:input_type -> google.protobuf.Empty
+	200, // 371: kernel.ClusterStateBackendService.QueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
+	200, // 372: kernel.ClusterStateBackendService.WatchQueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
+	12,  // 373: kernel.ClusterStateBackendService.SetLogLevel:input_type -> kernel.AdminSetLogLevelRequest
+	13,  // 374: kernel.ClusterStateBackendService.ReloadConfig:input_type -> kernel.AdminReloadConfigRequest
+	269, // 375: kernel.ServiceHealthStateBackendService.SetInstances:input_type -> healthreport.ServiceInstanceHealth
+	202, // 376: kernel.ServiceHealthStateBackendService.GetInstances:input_type -> kernel.InstancesGetRequest
+	203, // 377: kernel.ServiceHealthStateBackendService.GetAllInstances:input_type -> kernel.InstancesGetAllRequest
+	202, // 378: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:input_type -> kernel.InstancesGetRequest
+	204, // 379: kernel.ServiceHealthStateBackendService.KeySetInstances:input_type -> kernel.InstancesKeysRequest
+	205, // 380: kernel.ServiceHealthStateBackendService.SizeInstances:input_type -> kernel.InstancesSizeRequest
+	272, // 381: kernel.ServiceHealthStateBackendService.WatchInstances:input_type -> google.protobuf.Empty
+	210, // 382: kernel.ServiceHealthStateBackendService.QueryInstances:input_type -> kernel.InstancesQueryRequest
+	210, // 383: kernel.ServiceHealthStateBackendService.WatchQueryInstances:input_type -> kernel.InstancesQueryRequest
+	212, // 384: kernel.CaStateBackendService.GetCaCerts:input_type -> kernel.CaCertsGetRequest
+	213, // 385: kernel.CaStateBackendService.PutCaCerts:input_type -> kernel.CaCertsPutRequest
+	213, // 386: kernel.CaStateBackendService.SetCaCerts:input_type -> kernel.CaCertsPutRequest
+	212, // 387: kernel.CaStateBackendService.RemoveCaCerts:input_type -> kernel.CaCertsGetRequest
+	212, // 388: kernel.CaStateBackendService.DeleteCaCerts:input_type -> kernel.CaCertsGetRequest
+	212, // 389: kernel.CaStateBackendService.ContainsKeyCaCerts:input_type -> kernel.CaCertsGetRequest
+	214, // 390: kernel.CaStateBackendService.GetAllCaCerts:input_type -> kernel.CaCertsGetAllRequest
+	215, // 391: kernel.CaStateBackendService.KeySetCaCerts:input_type -> kernel.CaCertsKeysRequest
+	216, // 392: kernel.CaStateBackendService.SizeCaCerts:input_type -> kernel.CaCertsSizeRequest
+	217, // 393: kernel.CaStateBackendService.ClearCaCerts:input_type -> kernel.CaCertsClearRequest
+	213, // 394: kernel.CaStateBackendService.PutIfAbsentCaCerts:input_type -> kernel.CaCertsPutRequest
+	272, // 395: kernel.CaStateBackendService.WatchCaCerts:input_type -> google.protobuf.Empty
+	222, // 396: kernel.CaStateBackendService.QueryCaCerts:input_type -> kernel.CaCertsQueryRequest
+	222, // 397: kernel.CaStateBackendService.WatchQueryCaCerts:input_type -> kernel.CaCertsQueryRequest
+	273, // 398: kernel.TokenExchangerService.ExchangeToken:output_type -> token.Token
+	247, // 399: kernel.X509CertExchangerService.SignCert:output_type -> x509.X509Cert
+	28,  // 400: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	28,  // 401: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	224, // 402: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:output_type -> kernel.MapEmpty
+	28,  // 403: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	224, // 404: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:output_type -> kernel.MapEmpty
+	28,  // 405: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	29,  // 406: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
+	30,  // 407: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:output_type -> kernel.VerifyingKeysKeysResponse
+	31,  // 408: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:output_type -> kernel.VerifyingKeysSizeResponse
+	224, // 409: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:output_type -> kernel.MapEmpty
+	28,  // 410: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	29,  // 411: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
+	33,  // 412: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
+	33,  // 413: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
+	40,  // 414: kernel.TrustedCaStateBackendService.GetTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	40,  // 415: kernel.TrustedCaStateBackendService.PutTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	224, // 416: kernel.TrustedCaStateBackendService.SetTrustedCas:output_type -> kernel.MapEmpty
+	40,  // 417: kernel.TrustedCaStateBackendService.RemoveTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	224, // 418: kernel.TrustedCaStateBackendService.DeleteTrustedCas:output_type -> kernel.MapEmpty
+	40,  // 419: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	41,  // 420: kernel.TrustedCaStateBackendService.GetAllTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
+	42,  // 421: kernel.TrustedCaStateBackendService.KeySetTrustedCas:output_type -> kernel.TrustedCasKeysResponse
+	43,  // 422: kernel.TrustedCaStateBackendService.SizeTrustedCas:output_type -> kernel.TrustedCasSizeResponse
+	224, // 423: kernel.TrustedCaStateBackendService.ClearTrustedCas:output_type -> kernel.MapEmpty
+	40,  // 424: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	41,  // 425: kernel.TrustedCaStateBackendService.WatchTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
+	45,  // 426: kernel.TrustedCaStateBackendService.QueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
+	45,  // 427: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
+	254, // 428: kernel.ClusterStateBackendService.GetClusterInfo:output_type -> hazelcast.AdminClusterInfo
+	254, // 429: kernel.ClusterStateBackendService.SetClusterInfo:output_type -> hazelcast.AdminClusterInfo
+	254, // 430: kernel.ClusterStateBackendService.WatchClusterInfo:output_type -> hazelcast.AdminClusterInfo
+	255, // 431: kernel.ClusterStateBackendService.GetClusterHealth:output_type -> hazelcast.AdminClusterHealth
+	255, // 432: kernel.ClusterStateBackendService.SetClusterHealth:output_type -> hazelcast.AdminClusterHealth
+	255, // 433: kernel.ClusterStateBackendService.WatchClusterHealth:output_type -> hazelcast.AdminClusterHealth
+	8,   // 434: kernel.ClusterStateBackendService.GetFrontendConfig:output_type -> kernel.Config
+	8,   // 435: kernel.ClusterStateBackendService.SetFrontendConfig:output_type -> kernel.Config
+	8,   // 436: kernel.ClusterStateBackendService.WatchFrontendConfig:output_type -> kernel.Config
+	52,  // 437: kernel.ClusterStateBackendService.GetNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	52,  // 438: kernel.ClusterStateBackendService.PutNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	224, // 439: kernel.ClusterStateBackendService.SetNodeMetrics:output_type -> kernel.MapEmpty
+	52,  // 440: kernel.ClusterStateBackendService.RemoveNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	224, // 441: kernel.ClusterStateBackendService.DeleteNodeMetrics:output_type -> kernel.MapEmpty
+	52,  // 442: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	53,  // 443: kernel.ClusterStateBackendService.GetAllNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
+	54,  // 444: kernel.ClusterStateBackendService.KeySetNodeMetrics:output_type -> kernel.NodeMetricsKeysResponse
+	55,  // 445: kernel.ClusterStateBackendService.SizeNodeMetrics:output_type -> kernel.NodeMetricsSizeResponse
+	224, // 446: kernel.ClusterStateBackendService.ClearNodeMetrics:output_type -> kernel.MapEmpty
+	52,  // 447: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	53,  // 448: kernel.ClusterStateBackendService.WatchNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
+	57,  // 449: kernel.ClusterStateBackendService.QueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
+	57,  // 450: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
+	64,  // 451: kernel.ClusterStateBackendService.GetGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	64,  // 452: kernel.ClusterStateBackendService.PutGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	224, // 453: kernel.ClusterStateBackendService.SetGrpcStats:output_type -> kernel.MapEmpty
+	64,  // 454: kernel.ClusterStateBackendService.RemoveGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	224, // 455: kernel.ClusterStateBackendService.DeleteGrpcStats:output_type -> kernel.MapEmpty
+	64,  // 456: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	65,  // 457: kernel.ClusterStateBackendService.GetAllGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
+	66,  // 458: kernel.ClusterStateBackendService.KeySetGrpcStats:output_type -> kernel.GrpcStatsKeysResponse
+	67,  // 459: kernel.ClusterStateBackendService.SizeGrpcStats:output_type -> kernel.GrpcStatsSizeResponse
+	224, // 460: kernel.ClusterStateBackendService.ClearGrpcStats:output_type -> kernel.MapEmpty
+	64,  // 461: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	65,  // 462: kernel.ClusterStateBackendService.WatchGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
+	69,  // 463: kernel.ClusterStateBackendService.QueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
+	69,  // 464: kernel.ClusterStateBackendService.WatchQueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
+	76,  // 465: kernel.ClusterStateBackendService.GetPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	76,  // 466: kernel.ClusterStateBackendService.PutPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	224, // 467: kernel.ClusterStateBackendService.SetPersistenceStatus:output_type -> kernel.MapEmpty
+	76,  // 468: kernel.ClusterStateBackendService.RemovePersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	224, // 469: kernel.ClusterStateBackendService.DeletePersistenceStatus:output_type -> kernel.MapEmpty
+	76,  // 470: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	77,  // 471: kernel.ClusterStateBackendService.GetAllPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
+	78,  // 472: kernel.ClusterStateBackendService.KeySetPersistenceStatus:output_type -> kernel.PersistenceStatusKeysResponse
+	79,  // 473: kernel.ClusterStateBackendService.SizePersistenceStatus:output_type -> kernel.PersistenceStatusSizeResponse
+	224, // 474: kernel.ClusterStateBackendService.ClearPersistenceStatus:output_type -> kernel.MapEmpty
+	76,  // 475: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	77,  // 476: kernel.ClusterStateBackendService.WatchPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
+	81,  // 477: kernel.ClusterStateBackendService.QueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
+	81,  // 478: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
+	88,  // 479: kernel.ClusterStateBackendService.GetNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	88,  // 480: kernel.ClusterStateBackendService.PutNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	224, // 481: kernel.ClusterStateBackendService.SetNetworkStats:output_type -> kernel.MapEmpty
+	88,  // 482: kernel.ClusterStateBackendService.RemoveNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	224, // 483: kernel.ClusterStateBackendService.DeleteNetworkStats:output_type -> kernel.MapEmpty
+	88,  // 484: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	89,  // 485: kernel.ClusterStateBackendService.GetAllNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
+	90,  // 486: kernel.ClusterStateBackendService.KeySetNetworkStats:output_type -> kernel.NetworkStatsKeysResponse
+	91,  // 487: kernel.ClusterStateBackendService.SizeNetworkStats:output_type -> kernel.NetworkStatsSizeResponse
+	224, // 488: kernel.ClusterStateBackendService.ClearNetworkStats:output_type -> kernel.MapEmpty
+	88,  // 489: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	89,  // 490: kernel.ClusterStateBackendService.WatchNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
+	93,  // 491: kernel.ClusterStateBackendService.QueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
+	93,  // 492: kernel.ClusterStateBackendService.WatchQueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
+	100, // 493: kernel.ClusterStateBackendService.GetThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	100, // 494: kernel.ClusterStateBackendService.PutThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	224, // 495: kernel.ClusterStateBackendService.SetThreadInfo:output_type -> kernel.MapEmpty
+	100, // 496: kernel.ClusterStateBackendService.RemoveThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	224, // 497: kernel.ClusterStateBackendService.DeleteThreadInfo:output_type -> kernel.MapEmpty
+	100, // 498: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	101, // 499: kernel.ClusterStateBackendService.GetAllThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
+	102, // 500: kernel.ClusterStateBackendService.KeySetThreadInfo:output_type -> kernel.ThreadInfoKeysResponse
+	103, // 501: kernel.ClusterStateBackendService.SizeThreadInfo:output_type -> kernel.ThreadInfoSizeResponse
+	224, // 502: kernel.ClusterStateBackendService.ClearThreadInfo:output_type -> kernel.MapEmpty
+	100, // 503: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	101, // 504: kernel.ClusterStateBackendService.WatchThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
+	105, // 505: kernel.ClusterStateBackendService.QueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
+	105, // 506: kernel.ClusterStateBackendService.WatchQueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
+	112, // 507: kernel.ClusterStateBackendService.GetTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	112, // 508: kernel.ClusterStateBackendService.PutTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	224, // 509: kernel.ClusterStateBackendService.SetTokenCacheStats:output_type -> kernel.MapEmpty
+	112, // 510: kernel.ClusterStateBackendService.RemoveTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	224, // 511: kernel.ClusterStateBackendService.DeleteTokenCacheStats:output_type -> kernel.MapEmpty
+	112, // 512: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	113, // 513: kernel.ClusterStateBackendService.GetAllTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
+	114, // 514: kernel.ClusterStateBackendService.KeySetTokenCacheStats:output_type -> kernel.TokenCacheStatsKeysResponse
+	115, // 515: kernel.ClusterStateBackendService.SizeTokenCacheStats:output_type -> kernel.TokenCacheStatsSizeResponse
+	224, // 516: kernel.ClusterStateBackendService.ClearTokenCacheStats:output_type -> kernel.MapEmpty
+	112, // 517: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	113, // 518: kernel.ClusterStateBackendService.WatchTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
+	117, // 519: kernel.ClusterStateBackendService.QueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
+	117, // 520: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
+	124, // 521: kernel.ClusterStateBackendService.GetMapStats:output_type -> kernel.MapStatsValueResponse
+	124, // 522: kernel.ClusterStateBackendService.PutMapStats:output_type -> kernel.MapStatsValueResponse
+	224, // 523: kernel.ClusterStateBackendService.SetMapStats:output_type -> kernel.MapEmpty
+	124, // 524: kernel.ClusterStateBackendService.RemoveMapStats:output_type -> kernel.MapStatsValueResponse
+	224, // 525: kernel.ClusterStateBackendService.DeleteMapStats:output_type -> kernel.MapEmpty
+	124, // 526: kernel.ClusterStateBackendService.ContainsKeyMapStats:output_type -> kernel.MapStatsValueResponse
+	125, // 527: kernel.ClusterStateBackendService.GetAllMapStats:output_type -> kernel.MapStatsEntriesResponse
+	126, // 528: kernel.ClusterStateBackendService.KeySetMapStats:output_type -> kernel.MapStatsKeysResponse
+	127, // 529: kernel.ClusterStateBackendService.SizeMapStats:output_type -> kernel.MapStatsSizeResponse
+	224, // 530: kernel.ClusterStateBackendService.ClearMapStats:output_type -> kernel.MapEmpty
+	124, // 531: kernel.ClusterStateBackendService.PutIfAbsentMapStats:output_type -> kernel.MapStatsValueResponse
+	125, // 532: kernel.ClusterStateBackendService.WatchMapStats:output_type -> kernel.MapStatsEntriesResponse
+	129, // 533: kernel.ClusterStateBackendService.QueryMapStats:output_type -> kernel.MapStatsQueryResponse
+	129, // 534: kernel.ClusterStateBackendService.WatchQueryMapStats:output_type -> kernel.MapStatsQueryResponse
+	136, // 535: kernel.ClusterStateBackendService.GetGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	136, // 536: kernel.ClusterStateBackendService.PutGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	224, // 537: kernel.ClusterStateBackendService.SetGraphRegistry:output_type -> kernel.MapEmpty
+	136, // 538: kernel.ClusterStateBackendService.RemoveGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	224, // 539: kernel.ClusterStateBackendService.DeleteGraphRegistry:output_type -> kernel.MapEmpty
+	136, // 540: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	137, // 541: kernel.ClusterStateBackendService.GetAllGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
+	138, // 542: kernel.ClusterStateBackendService.KeySetGraphRegistry:output_type -> kernel.GraphRegistryKeysResponse
+	139, // 543: kernel.ClusterStateBackendService.SizeGraphRegistry:output_type -> kernel.GraphRegistrySizeResponse
+	224, // 544: kernel.ClusterStateBackendService.ClearGraphRegistry:output_type -> kernel.MapEmpty
+	136, // 545: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	137, // 546: kernel.ClusterStateBackendService.WatchGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
+	141, // 547: kernel.ClusterStateBackendService.QueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
+	141, // 548: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
+	148, // 549: kernel.ClusterStateBackendService.GetServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	148, // 550: kernel.ClusterStateBackendService.PutServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	224, // 551: kernel.ClusterStateBackendService.SetServiceConnections:output_type -> kernel.MapEmpty
+	148, // 552: kernel.ClusterStateBackendService.RemoveServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	224, // 553: kernel.ClusterStateBackendService.DeleteServiceConnections:output_type -> kernel.MapEmpty
+	148, // 554: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	149, // 555: kernel.ClusterStateBackendService.GetAllServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
+	150, // 556: kernel.ClusterStateBackendService.KeySetServiceConnections:output_type -> kernel.ServiceConnectionsKeysResponse
+	151, // 557: kernel.ClusterStateBackendService.SizeServiceConnections:output_type -> kernel.ServiceConnectionsSizeResponse
+	224, // 558: kernel.ClusterStateBackendService.ClearServiceConnections:output_type -> kernel.MapEmpty
+	148, // 559: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	149, // 560: kernel.ClusterStateBackendService.WatchServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
+	153, // 561: kernel.ClusterStateBackendService.QueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
+	153, // 562: kernel.ClusterStateBackendService.WatchQueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
+	160, // 563: kernel.ClusterStateBackendService.GetQueueStats:output_type -> kernel.QueueStatsValueResponse
+	160, // 564: kernel.ClusterStateBackendService.PutQueueStats:output_type -> kernel.QueueStatsValueResponse
+	224, // 565: kernel.ClusterStateBackendService.SetQueueStats:output_type -> kernel.MapEmpty
+	160, // 566: kernel.ClusterStateBackendService.RemoveQueueStats:output_type -> kernel.QueueStatsValueResponse
+	224, // 567: kernel.ClusterStateBackendService.DeleteQueueStats:output_type -> kernel.MapEmpty
+	160, // 568: kernel.ClusterStateBackendService.ContainsKeyQueueStats:output_type -> kernel.QueueStatsValueResponse
+	161, // 569: kernel.ClusterStateBackendService.GetAllQueueStats:output_type -> kernel.QueueStatsEntriesResponse
+	162, // 570: kernel.ClusterStateBackendService.KeySetQueueStats:output_type -> kernel.QueueStatsKeysResponse
+	163, // 571: kernel.ClusterStateBackendService.SizeQueueStats:output_type -> kernel.QueueStatsSizeResponse
+	224, // 572: kernel.ClusterStateBackendService.ClearQueueStats:output_type -> kernel.MapEmpty
+	160, // 573: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:output_type -> kernel.QueueStatsValueResponse
+	161, // 574: kernel.ClusterStateBackendService.WatchQueueStats:output_type -> kernel.QueueStatsEntriesResponse
+	165, // 575: kernel.ClusterStateBackendService.QueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
+	165, // 576: kernel.ClusterStateBackendService.WatchQueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
+	172, // 577: kernel.ClusterStateBackendService.GetTopicStats:output_type -> kernel.TopicStatsValueResponse
+	172, // 578: kernel.ClusterStateBackendService.PutTopicStats:output_type -> kernel.TopicStatsValueResponse
+	224, // 579: kernel.ClusterStateBackendService.SetTopicStats:output_type -> kernel.MapEmpty
+	172, // 580: kernel.ClusterStateBackendService.RemoveTopicStats:output_type -> kernel.TopicStatsValueResponse
+	224, // 581: kernel.ClusterStateBackendService.DeleteTopicStats:output_type -> kernel.MapEmpty
+	172, // 582: kernel.ClusterStateBackendService.ContainsKeyTopicStats:output_type -> kernel.TopicStatsValueResponse
+	173, // 583: kernel.ClusterStateBackendService.GetAllTopicStats:output_type -> kernel.TopicStatsEntriesResponse
+	174, // 584: kernel.ClusterStateBackendService.KeySetTopicStats:output_type -> kernel.TopicStatsKeysResponse
+	175, // 585: kernel.ClusterStateBackendService.SizeTopicStats:output_type -> kernel.TopicStatsSizeResponse
+	224, // 586: kernel.ClusterStateBackendService.ClearTopicStats:output_type -> kernel.MapEmpty
+	172, // 587: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:output_type -> kernel.TopicStatsValueResponse
+	173, // 588: kernel.ClusterStateBackendService.WatchTopicStats:output_type -> kernel.TopicStatsEntriesResponse
+	177, // 589: kernel.ClusterStateBackendService.QueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
+	177, // 590: kernel.ClusterStateBackendService.WatchQueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
+	184, // 591: kernel.ClusterStateBackendService.GetWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	184, // 592: kernel.ClusterStateBackendService.PutWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	224, // 593: kernel.ClusterStateBackendService.SetWatchHealth:output_type -> kernel.MapEmpty
+	184, // 594: kernel.ClusterStateBackendService.RemoveWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	224, // 595: kernel.ClusterStateBackendService.DeleteWatchHealth:output_type -> kernel.MapEmpty
+	184, // 596: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	185, // 597: kernel.ClusterStateBackendService.GetAllWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
+	186, // 598: kernel.ClusterStateBackendService.KeySetWatchHealth:output_type -> kernel.WatchHealthKeysResponse
+	187, // 599: kernel.ClusterStateBackendService.SizeWatchHealth:output_type -> kernel.WatchHealthSizeResponse
+	224, // 600: kernel.ClusterStateBackendService.ClearWatchHealth:output_type -> kernel.MapEmpty
+	184, // 601: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	185, // 602: kernel.ClusterStateBackendService.WatchWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
+	189, // 603: kernel.ClusterStateBackendService.QueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
+	189, // 604: kernel.ClusterStateBackendService.WatchQueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
+	196, // 605: kernel.ClusterStateBackendService.GetMutationRates:output_type -> kernel.MutationRatesValueResponse
+	196, // 606: kernel.ClusterStateBackendService.PutMutationRates:output_type -> kernel.MutationRatesValueResponse
+	224, // 607: kernel.ClusterStateBackendService.SetMutationRates:output_type -> kernel.MapEmpty
+	196, // 608: kernel.ClusterStateBackendService.RemoveMutationRates:output_type -> kernel.MutationRatesValueResponse
+	224, // 609: kernel.ClusterStateBackendService.DeleteMutationRates:output_type -> kernel.MapEmpty
+	196, // 610: kernel.ClusterStateBackendService.ContainsKeyMutationRates:output_type -> kernel.MutationRatesValueResponse
+	197, // 611: kernel.ClusterStateBackendService.GetAllMutationRates:output_type -> kernel.MutationRatesEntriesResponse
+	198, // 612: kernel.ClusterStateBackendService.KeySetMutationRates:output_type -> kernel.MutationRatesKeysResponse
+	199, // 613: kernel.ClusterStateBackendService.SizeMutationRates:output_type -> kernel.MutationRatesSizeResponse
+	224, // 614: kernel.ClusterStateBackendService.ClearMutationRates:output_type -> kernel.MapEmpty
+	196, // 615: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:output_type -> kernel.MutationRatesValueResponse
+	197, // 616: kernel.ClusterStateBackendService.WatchMutationRates:output_type -> kernel.MutationRatesEntriesResponse
+	201, // 617: kernel.ClusterStateBackendService.QueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
+	201, // 618: kernel.ClusterStateBackendService.WatchQueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
+	272, // 619: kernel.ClusterStateBackendService.SetLogLevel:output_type -> google.protobuf.Empty
+	272, // 620: kernel.ClusterStateBackendService.ReloadConfig:output_type -> google.protobuf.Empty
+	224, // 621: kernel.ServiceHealthStateBackendService.SetInstances:output_type -> kernel.MapEmpty
+	206, // 622: kernel.ServiceHealthStateBackendService.GetInstances:output_type -> kernel.InstancesValueResponse
+	207, // 623: kernel.ServiceHealthStateBackendService.GetAllInstances:output_type -> kernel.InstancesEntriesResponse
+	206, // 624: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:output_type -> kernel.InstancesValueResponse
+	208, // 625: kernel.ServiceHealthStateBackendService.KeySetInstances:output_type -> kernel.InstancesKeysResponse
+	209, // 626: kernel.ServiceHealthStateBackendService.SizeInstances:output_type -> kernel.InstancesSizeResponse
+	207, // 627: kernel.ServiceHealthStateBackendService.WatchInstances:output_type -> kernel.InstancesEntriesResponse
+	211, // 628: kernel.ServiceHealthStateBackendService.QueryInstances:output_type -> kernel.InstancesQueryResponse
+	211, // 629: kernel.ServiceHealthStateBackendService.WatchQueryInstances:output_type -> kernel.InstancesQueryResponse
+	218, // 630: kernel.CaStateBackendService.GetCaCerts:output_type -> kernel.CaCertsValueResponse
+	218, // 631: kernel.CaStateBackendService.PutCaCerts:output_type -> kernel.CaCertsValueResponse
+	224, // 632: kernel.CaStateBackendService.SetCaCerts:output_type -> kernel.MapEmpty
+	218, // 633: kernel.CaStateBackendService.RemoveCaCerts:output_type -> kernel.CaCertsValueResponse
+	224, // 634: kernel.CaStateBackendService.DeleteCaCerts:output_type -> kernel.MapEmpty
+	218, // 635: kernel.CaStateBackendService.ContainsKeyCaCerts:output_type -> kernel.CaCertsValueResponse
+	219, // 636: kernel.CaStateBackendService.GetAllCaCerts:output_type -> kernel.CaCertsEntriesResponse
+	220, // 637: kernel.CaStateBackendService.KeySetCaCerts:output_type -> kernel.CaCertsKeysResponse
+	221, // 638: kernel.CaStateBackendService.SizeCaCerts:output_type -> kernel.CaCertsSizeResponse
+	224, // 639: kernel.CaStateBackendService.ClearCaCerts:output_type -> kernel.MapEmpty
+	218, // 640: kernel.CaStateBackendService.PutIfAbsentCaCerts:output_type -> kernel.CaCertsValueResponse
+	219, // 641: kernel.CaStateBackendService.WatchCaCerts:output_type -> kernel.CaCertsEntriesResponse
+	223, // 642: kernel.CaStateBackendService.QueryCaCerts:output_type -> kernel.CaCertsQueryResponse
+	223, // 643: kernel.CaStateBackendService.WatchQueryCaCerts:output_type -> kernel.CaCertsQueryResponse
+	398, // [398:644] is the sub-list for method output_type
+	152, // [152:398] is the sub-list for method input_type
+	152, // [152:152] is the sub-list for extension type_name
+	152, // [152:152] is the sub-list for extension extendee
+	0,   // [0:152] is the sub-list for field type_name
 }
 
 func init() { file_services_kernel_proto_init() }
@@ -13095,7 +12538,7 @@ func file_services_kernel_proto_init() {
 		(*BootstrapConfig_UrlLoader)(nil),
 		(*BootstrapConfig_FileLoader)(nil),
 	}
-	file_services_kernel_proto_msgTypes[19].OneofWrappers = []any{
+	file_services_kernel_proto_msgTypes[14].OneofWrappers = []any{
 		(*QueryValue_StringValue)(nil),
 		(*QueryValue_IntValue)(nil),
 		(*QueryValue_DoubleValue)(nil),
@@ -13106,8 +12549,8 @@ func file_services_kernel_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_kernel_proto_rawDesc), len(file_services_kernel_proto_rawDesc)),
-			NumEnums:      6,
-			NumMessages:   244,
+			NumEnums:      3,
+			NumMessages:   239,
 			NumExtensions: 0,
 			NumServices:   7,
 		},

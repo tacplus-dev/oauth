@@ -32,7 +32,7 @@ import (
 // IPv4JSON represents IPv4 in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type ipv4JSON struct {
-	Addr fixed32 `json:"addr,omitempty"`
+	Addr uint32 `json:"addr,omitempty"`
 }
 
 // IPv4ToJSON converts IPv4 to JSON bytes.
@@ -153,8 +153,8 @@ func IPv4ToTOML(v *IPv4) ([]byte, error) {
 // IPv6JSON represents IPv6 in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type ipv6JSON struct {
-	High fixed64 `json:"high,omitempty"`
-	Low  fixed64 `json:"low,omitempty"`
+	High uint64 `json:"high,omitempty"`
+	Low  uint64 `json:"low,omitempty"`
 }
 
 // IPv6ToJSON converts IPv6 to JSON bytes.
