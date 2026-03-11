@@ -1055,6 +1055,7 @@ func ValidateLetsEncryptState(m *LetsEncryptState) error {
 		return nil
 	}
 
+	// No field validations defined
 	return nil
 }
 
@@ -1383,18 +1384,18 @@ func ConfigLlmTypeDescriptor() string {
     {
       "name": "fqdn",
       "type": "string",
-      "description": "fqdn is the fully qualified domain name to obtain a Let's Encrypt\n certificate for (e.g., \"api.example.com\").",
+      "description": "fqdn is the fully qualified domain name to obtain a Let's Encrypt\n certificate for (e.g., \"api.example.com\").\n NOTES: needs FQDN assertion",
       "required": true
     },
     {
       "name": "lets_encrypt_email",
       "type": "string",
-      "description": "lets_encrypt_email is the email address for Let's Encrypt account\n registration and certificate expiration notifications.\n If empty, letsencrypt will use \"admin@\u003cfqdn\u003e\"."
+      "description": "lets_encrypt_email is the email address for Let's Encrypt account\n registration and certificate expiration notifications.\n If empty, letsencrypt will use \"admin@\u003cfqdn\u003e\".\n NOTES: needs email assertion"
     },
     {
       "name": "http_listen",
       "type": "string",
-      "description": "http_listen is the address to bind the HTTP server for ACME HTTP-01\n challenge responses. Must be reachable on port 80 from the internet.\n Default: \":80\".",
+      "description": "http_listen is the address to bind the HTTP server for ACME HTTP-01\n challenge responses. Must be reachable on port 80 from the internet.\n Default: \":80\".\n NOTES: should use host.Host format",
       "default": ":80"
     },
     {

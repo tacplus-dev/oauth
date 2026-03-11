@@ -24,11 +24,20 @@ message Config {
   // How often to refresh health state (seconds). Default 5.
   int64 health_poll_interval_seconds = 1;
 
-  // Enable TCP listener for HTTP/1.1, HTTP/2, and gRPC. Default true.
-  bool enable_tcp = 2;
+  // Enable HTTP/1.1 and HTTP/2 listener (TCP). Default true.
+  bool enable_http = 2;
 
-  // Enable QUIC/UDP listener for HTTP/3. Default true.
-  bool enable_quic = 3;
+  // Enable HTTP/3 listener (QUIC/UDP). Default true.
+  bool enable_http3 = 3;
+
+  // Enable gRPC listener (TCP). Default true.
+  bool enable_grpc = 4;
+
+  // TCP port for HTTP/1.1, HTTP/2, and gRPC. Default DEFAULT_PORT.
+  int32 tcp_port = 5;
+
+  // UDP port for HTTP/3 (QUIC). Default DEFAULT_PORT.
+  int32 udp_port = 6;
 }
 
 // GatewayConfigState is the backend state boundary for gateway service configuration.

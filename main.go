@@ -4,7 +4,7 @@ import (
 	"log"
 
 	handler "gitlab.com/secondstarcavalier/controlplane/services/sentinel/internal"
-	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager"
+	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/sm"
 )
 
 func main() {
@@ -13,7 +13,7 @@ func main() {
 		log.Fatalf("servicemanager: %v", err)
 	}
 
-	h, err := handler.NewHandler(sm.Backends())
+	h, err := handler.NewHandler(sm)
 	if err != nil {
 		log.Fatalf("handler: %v", err)
 	}

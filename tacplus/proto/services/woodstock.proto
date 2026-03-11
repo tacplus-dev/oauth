@@ -62,14 +62,7 @@ message ServiceStatus {
 	int64 started_at = 2;
 	int32 active_tasks = 3;
 	string version = 4;
-  Lock lock = 5;
 }
-// Lock provides optimistic concurrency control for atomic state boundaries.
-message Lock {
-  string id = 1;
-  int64 counter = 2;
-}
-
 // ============================================================================
 // Auto-generated Backend Service (tacplus)
 // ============================================================================

@@ -29,62 +29,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// NodeMode determines which capabilities are active on a Hazelcast node.
-type NodeMode int32
-
-const (
-	// Core+Edge (default): full member with data partitions, persistence, Raft,
-	// AND serves gRPC for microservices.
-	NodeMode_NODE_MODE_CORE_EDGE NodeMode = 0
-	// Core only: owns data partitions, writes persistence, participates in Raft,
-	// counts toward quorum. Does NOT accept gRPC from microservices.
-	NodeMode_NODE_MODE_CORE NodeMode = 1
-	// Edge only: Hazelcast lite member (no data partitions), no persistence,
-	// no Raft. Accepts all gRPC from microservices. Scalable 0-N.
-	NodeMode_NODE_MODE_EDGE NodeMode = 2
-)
-
-// Enum value maps for NodeMode.
-var (
-	NodeMode_name = map[int32]string{
-		0: "NODE_MODE_CORE_EDGE",
-		1: "NODE_MODE_CORE",
-		2: "NODE_MODE_EDGE",
-	}
-	NodeMode_value = map[string]int32{
-		"NODE_MODE_CORE_EDGE": 0,
-		"NODE_MODE_CORE":      1,
-		"NODE_MODE_EDGE":      2,
-	}
-)
-
-func (x NodeMode) Enum() *NodeMode {
-	p := new(NodeMode)
-	*p = x
-	return p
-}
-
-func (x NodeMode) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (NodeMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_common_hazelcast_proto_enumTypes[0].Descriptor()
-}
-
-func (NodeMode) Type() protoreflect.EnumType {
-	return &file_common_hazelcast_proto_enumTypes[0]
-}
-
-func (x NodeMode) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use NodeMode.Descriptor instead.
-func (NodeMode) EnumDescriptor() ([]byte, []int) {
-	return file_common_hazelcast_proto_rawDescGZIP(), []int{0}
-}
-
 // OpType identifies the type of mutation in a redo log entry.
 type OpType int32
 
@@ -116,11 +60,11 @@ func (x OpType) String() string {
 }
 
 func (OpType) Descriptor() protoreflect.EnumDescriptor {
-	return file_common_hazelcast_proto_enumTypes[1].Descriptor()
+	return file_common_hazelcast_proto_enumTypes[0].Descriptor()
 }
 
 func (OpType) Type() protoreflect.EnumType {
-	return &file_common_hazelcast_proto_enumTypes[1]
+	return &file_common_hazelcast_proto_enumTypes[0]
 }
 
 func (x OpType) Number() protoreflect.EnumNumber {
@@ -129,7 +73,7 @@ func (x OpType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OpType.Descriptor instead.
 func (OpType) EnumDescriptor() ([]byte, []int) {
-	return file_common_hazelcast_proto_rawDescGZIP(), []int{1}
+	return file_common_hazelcast_proto_rawDescGZIP(), []int{0}
 }
 
 // ConsistencyType identifies the consistency model for a redo log entry.
@@ -163,11 +107,11 @@ func (x ConsistencyType) String() string {
 }
 
 func (ConsistencyType) Descriptor() protoreflect.EnumDescriptor {
-	return file_common_hazelcast_proto_enumTypes[2].Descriptor()
+	return file_common_hazelcast_proto_enumTypes[1].Descriptor()
 }
 
 func (ConsistencyType) Type() protoreflect.EnumType {
-	return &file_common_hazelcast_proto_enumTypes[2]
+	return &file_common_hazelcast_proto_enumTypes[1]
 }
 
 func (x ConsistencyType) Number() protoreflect.EnumNumber {
@@ -176,7 +120,7 @@ func (x ConsistencyType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ConsistencyType.Descriptor instead.
 func (ConsistencyType) EnumDescriptor() ([]byte, []int) {
-	return file_common_hazelcast_proto_rawDescGZIP(), []int{2}
+	return file_common_hazelcast_proto_rawDescGZIP(), []int{1}
 }
 
 // AdminGraphType classifies a graph boundary.
@@ -225,11 +169,11 @@ func (x AdminGraphType) String() string {
 }
 
 func (AdminGraphType) Descriptor() protoreflect.EnumDescriptor {
-	return file_common_hazelcast_proto_enumTypes[3].Descriptor()
+	return file_common_hazelcast_proto_enumTypes[2].Descriptor()
 }
 
 func (AdminGraphType) Type() protoreflect.EnumType {
-	return &file_common_hazelcast_proto_enumTypes[3]
+	return &file_common_hazelcast_proto_enumTypes[2]
 }
 
 func (x AdminGraphType) Number() protoreflect.EnumNumber {
@@ -238,7 +182,7 @@ func (x AdminGraphType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AdminGraphType.Descriptor instead.
 func (AdminGraphType) EnumDescriptor() ([]byte, []int) {
-	return file_common_hazelcast_proto_rawDescGZIP(), []int{3}
+	return file_common_hazelcast_proto_rawDescGZIP(), []int{2}
 }
 
 // NetworkConfig configures cluster networking behavior.
@@ -3840,11 +3784,7 @@ const file_common_hazelcast_proto_rawDesc = "" +
 	"\ftimestamp_ms\x18\r \x01(\x03R\vtimestampMs\x1aF\n" +
 	"\x18PerServiceMutationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01*K\n" +
-	"\bNodeMode\x12\x17\n" +
-	"\x13NODE_MODE_CORE_EDGE\x10\x00\x12\x12\n" +
-	"\x0eNODE_MODE_CORE\x10\x01\x12\x12\n" +
-	"\x0eNODE_MODE_EDGE\x10\x02*-\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01*-\n" +
 	"\x06OpType\x12\x0f\n" +
 	"\vOP_TYPE_PUT\x10\x00\x12\x12\n" +
 	"\x0eOP_TYPE_DELETE\x10\x01*E\n" +
@@ -3872,85 +3812,84 @@ func file_common_hazelcast_proto_rawDescGZIP() []byte {
 	return file_common_hazelcast_proto_rawDescData
 }
 
-var file_common_hazelcast_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_common_hazelcast_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_common_hazelcast_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_common_hazelcast_proto_goTypes = []any{
-	(NodeMode)(0),                  // 0: hazelcast.NodeMode
-	(OpType)(0),                    // 1: hazelcast.OpType
-	(ConsistencyType)(0),           // 2: hazelcast.ConsistencyType
-	(AdminGraphType)(0),            // 3: hazelcast.AdminGraphType
-	(*NetworkConfig)(nil),          // 4: hazelcast.NetworkConfig
-	(*CPSubsystemConfig)(nil),      // 5: hazelcast.CPSubsystemConfig
-	(*RateLimitConfig)(nil),        // 6: hazelcast.RateLimitConfig
-	(*RedoLogEntry)(nil),           // 7: hazelcast.RedoLogEntry
-	(*FullDumpHeader)(nil),         // 8: hazelcast.FullDumpHeader
-	(*AdminClusterInfo)(nil),       // 9: hazelcast.AdminClusterInfo
-	(*AdminMember)(nil),            // 10: hazelcast.AdminMember
-	(*AdminClusterHealth)(nil),     // 11: hazelcast.AdminClusterHealth
-	(*AdminNodeMetrics)(nil),       // 12: hazelcast.AdminNodeMetrics
-	(*AdminMemoryMetrics)(nil),     // 13: hazelcast.AdminMemoryMetrics
-	(*AdminCpuMetrics)(nil),        // 14: hazelcast.AdminCpuMetrics
-	(*AdminDiskMetrics)(nil),       // 15: hazelcast.AdminDiskMetrics
-	(*AdminGraphInfo)(nil),         // 16: hazelcast.AdminGraphInfo
-	(*AdminMapStats)(nil),          // 17: hazelcast.AdminMapStats
-	(*AdminGrpcStats)(nil),         // 18: hazelcast.AdminGrpcStats
-	(*AdminPersistenceStatus)(nil), // 19: hazelcast.AdminPersistenceStatus
-	(*AdminNetworkStats)(nil),      // 20: hazelcast.AdminNetworkStats
-	(*AdminMemberConnection)(nil),  // 21: hazelcast.AdminMemberConnection
-	(*AdminThreadInfo)(nil),        // 22: hazelcast.AdminThreadInfo
-	(*AdminTokenCacheStats)(nil),   // 23: hazelcast.AdminTokenCacheStats
-	(*AdminServiceConnection)(nil), // 24: hazelcast.AdminServiceConnection
-	(*AdminPeerActivity)(nil),      // 25: hazelcast.AdminPeerActivity
-	(*AdminLatencyStats)(nil),      // 26: hazelcast.AdminLatencyStats
-	(*AdminMethodLatency)(nil),     // 27: hazelcast.AdminMethodLatency
-	(*AdminMethodPayload)(nil),     // 28: hazelcast.AdminMethodPayload
-	(*AdminQueueStats)(nil),        // 29: hazelcast.AdminQueueStats
-	(*AdminTopicStats)(nil),        // 30: hazelcast.AdminTopicStats
-	(*AdminTopicSubscriber)(nil),   // 31: hazelcast.AdminTopicSubscriber
-	(*AdminWatchHealth)(nil),       // 32: hazelcast.AdminWatchHealth
-	(*AdminMutationRate)(nil),      // 33: hazelcast.AdminMutationRate
-	nil,                            // 34: hazelcast.AdminMember.AttributesEntry
-	nil,                            // 35: hazelcast.AdminGrpcStats.PerMethodCountsEntry
-	nil,                            // 36: hazelcast.AdminServiceConnection.PerMethodPollCountsEntry
-	nil,                            // 37: hazelcast.AdminServiceConnection.PerMethodCountsEntry
-	nil,                            // 38: hazelcast.AdminServiceConnection.PerGraphCountsEntry
-	nil,                            // 39: hazelcast.AdminServiceConnection.PerMethodRateLimitedEntry
-	nil,                            // 40: hazelcast.AdminServiceConnection.PerErrorCodeCountsEntry
-	nil,                            // 41: hazelcast.AdminServiceConnection.PerMethodErrorCountsEntry
-	nil,                            // 42: hazelcast.AdminServiceConnection.PerGraphMutationCountsEntry
-	nil,                            // 43: hazelcast.AdminPeerActivity.PerMethodCountsEntry
-	nil,                            // 44: hazelcast.AdminPeerActivity.PerErrorCodeCountsEntry
-	nil,                            // 45: hazelcast.AdminMutationRate.PerServiceMutationsEntry
+	(OpType)(0),                    // 0: hazelcast.OpType
+	(ConsistencyType)(0),           // 1: hazelcast.ConsistencyType
+	(AdminGraphType)(0),            // 2: hazelcast.AdminGraphType
+	(*NetworkConfig)(nil),          // 3: hazelcast.NetworkConfig
+	(*CPSubsystemConfig)(nil),      // 4: hazelcast.CPSubsystemConfig
+	(*RateLimitConfig)(nil),        // 5: hazelcast.RateLimitConfig
+	(*RedoLogEntry)(nil),           // 6: hazelcast.RedoLogEntry
+	(*FullDumpHeader)(nil),         // 7: hazelcast.FullDumpHeader
+	(*AdminClusterInfo)(nil),       // 8: hazelcast.AdminClusterInfo
+	(*AdminMember)(nil),            // 9: hazelcast.AdminMember
+	(*AdminClusterHealth)(nil),     // 10: hazelcast.AdminClusterHealth
+	(*AdminNodeMetrics)(nil),       // 11: hazelcast.AdminNodeMetrics
+	(*AdminMemoryMetrics)(nil),     // 12: hazelcast.AdminMemoryMetrics
+	(*AdminCpuMetrics)(nil),        // 13: hazelcast.AdminCpuMetrics
+	(*AdminDiskMetrics)(nil),       // 14: hazelcast.AdminDiskMetrics
+	(*AdminGraphInfo)(nil),         // 15: hazelcast.AdminGraphInfo
+	(*AdminMapStats)(nil),          // 16: hazelcast.AdminMapStats
+	(*AdminGrpcStats)(nil),         // 17: hazelcast.AdminGrpcStats
+	(*AdminPersistenceStatus)(nil), // 18: hazelcast.AdminPersistenceStatus
+	(*AdminNetworkStats)(nil),      // 19: hazelcast.AdminNetworkStats
+	(*AdminMemberConnection)(nil),  // 20: hazelcast.AdminMemberConnection
+	(*AdminThreadInfo)(nil),        // 21: hazelcast.AdminThreadInfo
+	(*AdminTokenCacheStats)(nil),   // 22: hazelcast.AdminTokenCacheStats
+	(*AdminServiceConnection)(nil), // 23: hazelcast.AdminServiceConnection
+	(*AdminPeerActivity)(nil),      // 24: hazelcast.AdminPeerActivity
+	(*AdminLatencyStats)(nil),      // 25: hazelcast.AdminLatencyStats
+	(*AdminMethodLatency)(nil),     // 26: hazelcast.AdminMethodLatency
+	(*AdminMethodPayload)(nil),     // 27: hazelcast.AdminMethodPayload
+	(*AdminQueueStats)(nil),        // 28: hazelcast.AdminQueueStats
+	(*AdminTopicStats)(nil),        // 29: hazelcast.AdminTopicStats
+	(*AdminTopicSubscriber)(nil),   // 30: hazelcast.AdminTopicSubscriber
+	(*AdminWatchHealth)(nil),       // 31: hazelcast.AdminWatchHealth
+	(*AdminMutationRate)(nil),      // 32: hazelcast.AdminMutationRate
+	nil,                            // 33: hazelcast.AdminMember.AttributesEntry
+	nil,                            // 34: hazelcast.AdminGrpcStats.PerMethodCountsEntry
+	nil,                            // 35: hazelcast.AdminServiceConnection.PerMethodPollCountsEntry
+	nil,                            // 36: hazelcast.AdminServiceConnection.PerMethodCountsEntry
+	nil,                            // 37: hazelcast.AdminServiceConnection.PerGraphCountsEntry
+	nil,                            // 38: hazelcast.AdminServiceConnection.PerMethodRateLimitedEntry
+	nil,                            // 39: hazelcast.AdminServiceConnection.PerErrorCodeCountsEntry
+	nil,                            // 40: hazelcast.AdminServiceConnection.PerMethodErrorCountsEntry
+	nil,                            // 41: hazelcast.AdminServiceConnection.PerGraphMutationCountsEntry
+	nil,                            // 42: hazelcast.AdminPeerActivity.PerMethodCountsEntry
+	nil,                            // 43: hazelcast.AdminPeerActivity.PerErrorCodeCountsEntry
+	nil,                            // 44: hazelcast.AdminMutationRate.PerServiceMutationsEntry
 }
 var file_common_hazelcast_proto_depIdxs = []int32{
-	1,  // 0: hazelcast.RedoLogEntry.op:type_name -> hazelcast.OpType
-	2,  // 1: hazelcast.RedoLogEntry.consistency:type_name -> hazelcast.ConsistencyType
-	10, // 2: hazelcast.AdminClusterInfo.members:type_name -> hazelcast.AdminMember
-	34, // 3: hazelcast.AdminMember.attributes:type_name -> hazelcast.AdminMember.AttributesEntry
-	13, // 4: hazelcast.AdminNodeMetrics.memory:type_name -> hazelcast.AdminMemoryMetrics
-	14, // 5: hazelcast.AdminNodeMetrics.cpu:type_name -> hazelcast.AdminCpuMetrics
-	15, // 6: hazelcast.AdminNodeMetrics.disk:type_name -> hazelcast.AdminDiskMetrics
-	3,  // 7: hazelcast.AdminGraphInfo.graph_type:type_name -> hazelcast.AdminGraphType
-	3,  // 8: hazelcast.AdminMapStats.graph_type:type_name -> hazelcast.AdminGraphType
-	35, // 9: hazelcast.AdminGrpcStats.per_method_counts:type_name -> hazelcast.AdminGrpcStats.PerMethodCountsEntry
-	21, // 10: hazelcast.AdminNetworkStats.member_connections:type_name -> hazelcast.AdminMemberConnection
-	36, // 11: hazelcast.AdminServiceConnection.per_method_poll_counts:type_name -> hazelcast.AdminServiceConnection.PerMethodPollCountsEntry
-	37, // 12: hazelcast.AdminServiceConnection.per_method_counts:type_name -> hazelcast.AdminServiceConnection.PerMethodCountsEntry
-	38, // 13: hazelcast.AdminServiceConnection.per_graph_counts:type_name -> hazelcast.AdminServiceConnection.PerGraphCountsEntry
-	25, // 14: hazelcast.AdminServiceConnection.peers:type_name -> hazelcast.AdminPeerActivity
-	39, // 15: hazelcast.AdminServiceConnection.per_method_rate_limited:type_name -> hazelcast.AdminServiceConnection.PerMethodRateLimitedEntry
-	40, // 16: hazelcast.AdminServiceConnection.per_error_code_counts:type_name -> hazelcast.AdminServiceConnection.PerErrorCodeCountsEntry
-	41, // 17: hazelcast.AdminServiceConnection.per_method_error_counts:type_name -> hazelcast.AdminServiceConnection.PerMethodErrorCountsEntry
-	26, // 18: hazelcast.AdminServiceConnection.latency:type_name -> hazelcast.AdminLatencyStats
-	27, // 19: hazelcast.AdminServiceConnection.per_method_latency:type_name -> hazelcast.AdminMethodLatency
-	28, // 20: hazelcast.AdminServiceConnection.per_method_payload:type_name -> hazelcast.AdminMethodPayload
-	42, // 21: hazelcast.AdminServiceConnection.per_graph_mutation_counts:type_name -> hazelcast.AdminServiceConnection.PerGraphMutationCountsEntry
-	43, // 22: hazelcast.AdminPeerActivity.per_method_counts:type_name -> hazelcast.AdminPeerActivity.PerMethodCountsEntry
-	44, // 23: hazelcast.AdminPeerActivity.per_error_code_counts:type_name -> hazelcast.AdminPeerActivity.PerErrorCodeCountsEntry
-	26, // 24: hazelcast.AdminMethodLatency.latency:type_name -> hazelcast.AdminLatencyStats
-	31, // 25: hazelcast.AdminTopicStats.subscribers:type_name -> hazelcast.AdminTopicSubscriber
-	3,  // 26: hazelcast.AdminMutationRate.graph_type:type_name -> hazelcast.AdminGraphType
-	45, // 27: hazelcast.AdminMutationRate.per_service_mutations:type_name -> hazelcast.AdminMutationRate.PerServiceMutationsEntry
+	0,  // 0: hazelcast.RedoLogEntry.op:type_name -> hazelcast.OpType
+	1,  // 1: hazelcast.RedoLogEntry.consistency:type_name -> hazelcast.ConsistencyType
+	9,  // 2: hazelcast.AdminClusterInfo.members:type_name -> hazelcast.AdminMember
+	33, // 3: hazelcast.AdminMember.attributes:type_name -> hazelcast.AdminMember.AttributesEntry
+	12, // 4: hazelcast.AdminNodeMetrics.memory:type_name -> hazelcast.AdminMemoryMetrics
+	13, // 5: hazelcast.AdminNodeMetrics.cpu:type_name -> hazelcast.AdminCpuMetrics
+	14, // 6: hazelcast.AdminNodeMetrics.disk:type_name -> hazelcast.AdminDiskMetrics
+	2,  // 7: hazelcast.AdminGraphInfo.graph_type:type_name -> hazelcast.AdminGraphType
+	2,  // 8: hazelcast.AdminMapStats.graph_type:type_name -> hazelcast.AdminGraphType
+	34, // 9: hazelcast.AdminGrpcStats.per_method_counts:type_name -> hazelcast.AdminGrpcStats.PerMethodCountsEntry
+	20, // 10: hazelcast.AdminNetworkStats.member_connections:type_name -> hazelcast.AdminMemberConnection
+	35, // 11: hazelcast.AdminServiceConnection.per_method_poll_counts:type_name -> hazelcast.AdminServiceConnection.PerMethodPollCountsEntry
+	36, // 12: hazelcast.AdminServiceConnection.per_method_counts:type_name -> hazelcast.AdminServiceConnection.PerMethodCountsEntry
+	37, // 13: hazelcast.AdminServiceConnection.per_graph_counts:type_name -> hazelcast.AdminServiceConnection.PerGraphCountsEntry
+	24, // 14: hazelcast.AdminServiceConnection.peers:type_name -> hazelcast.AdminPeerActivity
+	38, // 15: hazelcast.AdminServiceConnection.per_method_rate_limited:type_name -> hazelcast.AdminServiceConnection.PerMethodRateLimitedEntry
+	39, // 16: hazelcast.AdminServiceConnection.per_error_code_counts:type_name -> hazelcast.AdminServiceConnection.PerErrorCodeCountsEntry
+	40, // 17: hazelcast.AdminServiceConnection.per_method_error_counts:type_name -> hazelcast.AdminServiceConnection.PerMethodErrorCountsEntry
+	25, // 18: hazelcast.AdminServiceConnection.latency:type_name -> hazelcast.AdminLatencyStats
+	26, // 19: hazelcast.AdminServiceConnection.per_method_latency:type_name -> hazelcast.AdminMethodLatency
+	27, // 20: hazelcast.AdminServiceConnection.per_method_payload:type_name -> hazelcast.AdminMethodPayload
+	41, // 21: hazelcast.AdminServiceConnection.per_graph_mutation_counts:type_name -> hazelcast.AdminServiceConnection.PerGraphMutationCountsEntry
+	42, // 22: hazelcast.AdminPeerActivity.per_method_counts:type_name -> hazelcast.AdminPeerActivity.PerMethodCountsEntry
+	43, // 23: hazelcast.AdminPeerActivity.per_error_code_counts:type_name -> hazelcast.AdminPeerActivity.PerErrorCodeCountsEntry
+	25, // 24: hazelcast.AdminMethodLatency.latency:type_name -> hazelcast.AdminLatencyStats
+	30, // 25: hazelcast.AdminTopicStats.subscribers:type_name -> hazelcast.AdminTopicSubscriber
+	2,  // 26: hazelcast.AdminMutationRate.graph_type:type_name -> hazelcast.AdminGraphType
+	44, // 27: hazelcast.AdminMutationRate.per_service_mutations:type_name -> hazelcast.AdminMutationRate.PerServiceMutationsEntry
 	28, // [28:28] is the sub-list for method output_type
 	28, // [28:28] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
@@ -3968,7 +3907,7 @@ func file_common_hazelcast_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_hazelcast_proto_rawDesc), len(file_common_hazelcast_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      3,
 			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   0,

@@ -25,20 +25,25 @@ import "google/protobuf/empty.proto";
 // Config
 // ============================================================================
 
+// NOTES: should support multiple domains
+
 message Config {
 
   // fqdn is the fully qualified domain name to obtain a Let's Encrypt
   // certificate for (e.g., "api.example.com").
+  // NOTES: needs FQDN assertion
   string fqdn = 1;
 
   // lets_encrypt_email is the email address for Let's Encrypt account
   // registration and certificate expiration notifications.
   // If empty, letsencrypt will use "admin@<fqdn>".
+  // NOTES: needs email assertion
   string lets_encrypt_email = 2;
 
   // http_listen is the address to bind the HTTP server for ACME HTTP-01
   // challenge responses. Must be reachable on port 80 from the internet.
   // Default: ":80".
+  // NOTES: should use host.Host format
   string http_listen = 3;
 
   // renewal_check_interval_seconds is how often to check if the certificate

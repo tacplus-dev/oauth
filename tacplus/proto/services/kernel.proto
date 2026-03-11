@@ -81,9 +81,7 @@ message BootstrapConfig {
   // logger configures logging for the Kernel server.
   logger.LoggerConfig logger = 7;
 
-  // cp_subsystem configures the CP (consensus protocol) subsystem for strong consistency.
-  // Required for distributed locks (FencedLock) used by ATOMIC boundaries.
-  hazelcast.CPSubsystemConfig cp_subsystem = 8;
+  reserved 8;
 
   // persistence_dir is the directory where DB dumps and redo logs are stored.
   // Default: "data/kernel".
@@ -107,17 +105,16 @@ message BootstrapConfig {
   repeated x509.X509Cert loader_ca = 13;
 
   // tls is the node's X.509 certificate and private key, used for
-  // gRPC server TLS and Hazelcast mTLS and Ratis mTLS.
+  // gRPC server TLS and Hazelcast mTLS.
   x509.X509CertPair tls = 14;
 
-  // raft_port is the port for the Ratis (Raft consensus) server used by
-  // distributed locks. All nodes use the same raft_port (each node has a
-  // unique hostname). Default: 5002.
-  int32 raft_port = 15;
+  // grpc_port is the port the gRPC server binds to.
+  // Default: 5000.
+  int32 grpc_port = 15;
 
-  // mode determines whether this node runs as core (quorum/persistence)
-  // or edge (gRPC serving).
-  hazelcast.NodeMode mode = 16;
+  // hazelcast_port is the port Hazelcast binds to for cluster communication.
+  // Default: 5001.
+  int32 hazelcast_port = 16;
 }
 
 // ============================================================================

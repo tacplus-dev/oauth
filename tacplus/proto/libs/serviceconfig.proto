@@ -24,8 +24,6 @@ import "google/protobuf/empty.proto";
 
 // Environment variable name for bootstrap config file path.
 
-// JWT issuer for all backend service tokens. All services share this constant issuer.
-
 // ============================================================================
 // Bootstrap Configuration (static, loaded from YAML at boot)
 // ============================================================================

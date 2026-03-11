@@ -7,15 +7,9 @@ syntax = "proto3";
 package kitchen_sink;
 option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kitchen_sink";
 
-import "common/hazelcast.proto";
-import "libs/healthreport.proto";
-import "libs/jwk.proto";
-import "libs/opa.proto";
-import "libs/x509.proto";
 import "services/dgraph.proto";
 import "services/gateway.proto";
 import "services/identity.proto";
-import "services/kernel.proto";
 import "services/letsencrypt.proto";
 import "services/mcp.proto";
 import "services/policy.proto";
@@ -33,43 +27,17 @@ message KitchenSink {
 
   oneof payload {
     dgraph.Config dgraph_config = 100;
-    dgraph.DgraphNode dgraph_dgraph_node = 101;
-    gateway.Config gateway_config = 102;
-    hazelcast.AdminClusterHealth hazelcast_admin_cluster_health = 103;
-    hazelcast.AdminClusterInfo hazelcast_admin_cluster_info = 104;
-    hazelcast.AdminGraphInfo hazelcast_admin_graph_info = 105;
-    hazelcast.AdminGrpcStats hazelcast_admin_grpc_stats = 106;
-    hazelcast.AdminMapStats hazelcast_admin_map_stats = 107;
-    hazelcast.AdminMutationRate hazelcast_admin_mutation_rate = 108;
-    hazelcast.AdminNetworkStats hazelcast_admin_network_stats = 109;
-    hazelcast.AdminNodeMetrics hazelcast_admin_node_metrics = 110;
-    hazelcast.AdminPersistenceStatus hazelcast_admin_persistence_status = 111;
-    hazelcast.AdminQueueStats hazelcast_admin_queue_stats = 112;
-    hazelcast.AdminServiceConnection hazelcast_admin_service_connection = 113;
-    hazelcast.AdminThreadInfo hazelcast_admin_thread_info = 114;
-    hazelcast.AdminTokenCacheStats hazelcast_admin_token_cache_stats = 115;
-    hazelcast.AdminTopicStats hazelcast_admin_topic_stats = 116;
-    hazelcast.AdminWatchHealth hazelcast_admin_watch_health = 117;
-    healthreport.ServiceInstanceHealth healthreport_service_instance_health = 118;
-    identity.Config identity_config = 119;
-    identity.EntitlementConfig identity_entitlement_config = 120;
-    identity.ExternalJwk identity_external_jwk = 121;
-    jwk.Jwk jwk_jwk = 122;
-    kernel.Config kernel_config = 123;
-    letsencrypt.Config letsencrypt_config = 124;
-    letsencrypt.LetsEncryptCertData letsencrypt_lets_encrypt_cert_data = 125;
-    mcp.Config mcp_config = 126;
-    opa.OpaPolicy opa_opa_policy = 127;
-    policy.Config policy_config = 128;
-    policysim.Config policysim_config = 129;
-    sentinel.Config sentinel_config = 130;
-    snoopy.EventData snoopy_event_data = 131;
-    snoopy.ServiceStatus snoopy_service_status = 132;
-    snoopy.TaskItem snoopy_task_item = 133;
-    woodstock.EventData woodstock_event_data = 134;
-    woodstock.ServiceStatus woodstock_service_status = 135;
-    woodstock.TaskItem woodstock_task_item = 136;
-    x509.X509Cert x509_x509_cert = 137;
+    gateway.Config gateway_config = 101;
+    identity.Config identity_config = 102;
+    letsencrypt.Config letsencrypt_config = 103;
+    mcp.Config mcp_config = 104;
+    policy.Config policy_config = 105;
+    policysim.Config policysim_config = 106;
+    sentinel.Config sentinel_config = 107;
+    snoopy.EventData snoopy_event_data = 108;
+    snoopy.TaskItem snoopy_task_item = 109;
+    woodstock.EventData woodstock_event_data = 110;
+    woodstock.TaskItem woodstock_task_item = 111;
   }
 }
 

@@ -108,6 +108,8 @@ type Jwk struct {
 	Y string `protobuf:"bytes,9,opt,name=y,proto3" json:"y,omitempty"`
 	// Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does
 	// not specify how to handle public key expiration.
+	// When stored in a collection with epoch_expiration, Hazelcast computes TTL = exp - now
+	// and auto-evicts the entry on expiry.
 	Exp int64 `protobuf:"varint,10,opt,name=exp,proto3" json:"exp,omitempty"`
 	// Created is the Unix epoch timestamp (seconds) when the key was created (optional).
 	// If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)
@@ -665,7 +667,7 @@ var File_libs_jwk_proto protoreflect.FileDescriptor
 
 const file_libs_jwk_proto_rawDesc = "" +
 	"\n" +
-	"\x0elibs/jwk.proto\x12\x03jwk\x1a\x0elibs/key.proto\x1a\x0flibs/spec.proto\"\xa0\x02\n" +
+	"\x0elibs/jwk.proto\x12\x03jwk\x1a\x0elibs/key.proto\x1a\x0flibs/spec.proto\"\xa6\x02\n" +
 	"\x03Jwk\x12\x1e\n" +
 	"\x03kty\x18\x01 \x01(\x0e2\f.key.KeyTypeR\x03kty\x12\x1a\n" +
 	"\x03alg\x18\x02 \x01(\tB\b\x88\xa6\x1d\x01\x88\xa7\x1d\x01R\x03alg\x12\x1a\n" +
@@ -675,9 +677,9 @@ const file_libs_jwk_proto_rawDesc = "" +
 	"\x01n\x18\x06 \x01(\tB\x04\x80\xa7\x1d\x01R\x01n\x12\x10\n" +
 	"\x03crv\x18\a \x01(\tR\x03crv\x12\x12\n" +
 	"\x01x\x18\b \x01(\tB\x04\x80\xa7\x1d\x01R\x01x\x12\x12\n" +
-	"\x01y\x18\t \x01(\tB\x04\x80\xa7\x1d\x01R\x01y\x12\x10\n" +
+	"\x01y\x18\t \x01(\tB\x04\x80\xa7\x1d\x01R\x01y\x12\x16\n" +
 	"\x03exp\x18\n" +
-	" \x01(\x03R\x03exp\x12*\n" +
+	" \x01(\x03B\x04ض\x18\x01R\x03exp\x12*\n" +
 	"\acreated\x18\v \x01(\x03B\x10\xb0\xa7\x1d\x80\x8bһ\x06\xc0\xa7\x1d\x80\x86\xc1\xfc\x1dR\acreated\"+\n" +
 	"\x04Jwks\x12#\n" +
 	"\x04keys\x18\x01 \x03(\v2\b.jwk.JwkB\x05\xc0\xa8\x1d\x80\x01R\x04keys\"\xbf\x13\n" +

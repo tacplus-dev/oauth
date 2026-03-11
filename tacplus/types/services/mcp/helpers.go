@@ -1481,13 +1481,13 @@ func ValidateConfig(m *Config) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AnthropicApiKey is required")
 	}
 
-	// Validate MaxRetries (assert_ge: 1)
-	if m.MaxRetries < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 1, got: %v", m.MaxRetries)
-	}
 	// Validate MaxRetries (assert_le: 10)
 	if m.MaxRetries > 10 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be <= 10, got: %v", m.MaxRetries)
+	}
+	// Validate MaxRetries (assert_ge: 1)
+	if m.MaxRetries < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRetries must be >= 1, got: %v", m.MaxRetries)
 	}
 	// Validate SessionTtlSeconds (assert_duration: POSITIVE)
 	if m.SessionTtlSeconds <= 0 {

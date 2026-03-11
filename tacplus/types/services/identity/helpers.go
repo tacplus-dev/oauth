@@ -3488,6 +3488,10 @@ func IdentityConfigStateToTOML(v *IdentityConfigState) ([]byte, error) {
 // QueryValueJSON represents QueryValue in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type queryvalueJSON struct {
+	StringValue *string  `json:"string_value,omitempty"`
+	IntValue    *int64   `json:"int_value,omitempty"`
+	DoubleValue *float64 `json:"double_value,omitempty"`
+	BoolValue   *bool    `json:"bool_value,omitempty"`
 }
 
 // QueryValueToJSON converts QueryValue to JSON bytes.
@@ -3497,7 +3501,24 @@ func QueryValueToJSON(v *QueryValue) ([]byte, error) {
 		return nil, protoerrors.NewErrMissingInvalidData(nil, "queryvalue is nil")
 	}
 	// Convert to JSON helper struct with string enums
-	helper := queryvalueJSON{}
+	helper := queryvalueJSON{
+		StringValue: func() *string {
+			val := v.GetStringValue()
+			return &val
+		}(),
+		IntValue: func() *int64 {
+			val := v.GetIntValue()
+			return &val
+		}(),
+		DoubleValue: func() *float64 {
+			val := v.GetDoubleValue()
+			return &val
+		}(),
+		BoolValue: func() *bool {
+			val := v.GetBoolValue()
+			return &val
+		}(),
+	}
 	return json.Marshal(helper)
 }
 
@@ -3561,6 +3582,22 @@ func QueryValueFromJSON(data []byte) (*QueryValue, error) {
 	}
 	// Build result with parsed enums
 	result := &QueryValue{}
+	// Parse oneof scalar field: StringValue
+	if raw.StringValue != nil {
+		result.Value = &QueryValue_StringValue{StringValue: *raw.StringValue}
+	}
+	// Parse oneof scalar field: IntValue
+	if raw.IntValue != nil {
+		result.Value = &QueryValue_IntValue{IntValue: *raw.IntValue}
+	}
+	// Parse oneof scalar field: DoubleValue
+	if raw.DoubleValue != nil {
+		result.Value = &QueryValue_DoubleValue{DoubleValue: *raw.DoubleValue}
+	}
+	// Parse oneof scalar field: BoolValue
+	if raw.BoolValue != nil {
+		result.Value = &QueryValue_BoolValue{BoolValue: *raw.BoolValue}
+	}
 	return result, nil
 }
 
@@ -8842,14 +8879,14 @@ func ValidateProviderConfig(m *ProviderConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientId must be at least 1 characters, got: %d", len(m.ClientId))
 	}
 
-	// Validate ClientSecret (assert_min_length: 1)
-	if len(m.ClientSecret) < 1 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
-	}
-
 	// Validate ClientSecret (assert_required)
 	if m.ClientSecret == "" {
 		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret is required")
+	}
+
+	// Validate ClientSecret (assert_min_length: 1)
+	if len(m.ClientSecret) < 1 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ClientSecret must be at least 1 characters, got: %d", len(m.ClientSecret))
 	}
 
 	// Validate AuthorizationEndpoint (assert_url: URL_SCHEME_HTTPS)
@@ -8949,6 +8986,7 @@ func ValidateIdentityStateInternal(m *IdentityStateInternal) error {
 		return nil
 	}
 
+	// No field validations defined
 	return nil
 }
 
@@ -9400,14 +9438,14 @@ func ValidateAuthenticateApiKeyResponse(m *AuthenticateApiKeyResponse) error {
 		return nil
 	}
 
-	// Validate AccessToken (assert_required)
-	if m.AccessToken == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
-	}
-
 	// Validate AccessToken (assert_min_length: 1)
 	if len(m.AccessToken) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken must be at least 1 characters, got: %d", len(m.AccessToken))
+	}
+
+	// Validate AccessToken (assert_required)
+	if m.AccessToken == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field AccessToken is required")
 	}
 
 	// Validate ExpiresIn (assert_gt: 0)
@@ -11772,8 +11810,8 @@ func ConfigLlmTypeDescriptor() string {
       "description": "nonce_expire_seconds is how long OAuth2 nonces/state remain valid.\n Nonces prevent replay attacks in the authorization code flow.\n Minimum: 1 second. Default: 300 (5 minutes).",
       "default": 300,
       "constraints": [
-        "minimum value: 1",
-        "duration constraint: DURATION_TYPE_POSITIVE"
+        "duration constraint: DURATION_TYPE_POSITIVE",
+        "minimum value: 1"
       ]
     },
     {
@@ -11844,8 +11882,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "uint32",
                         "description": "owner permission bits (0-7)",
                         "constraints": [
-                          "must be \u003e= 0",
-                          "must be \u003c= 7"
+                          "must be \u003c= 7",
+                          "must be \u003e= 0"
                         ]
                       },
                       {
@@ -12226,15 +12264,15 @@ func ConfigLlmTypeDescriptor() string {
                 {
                   "name": "exp",
                   "type": "int64",
-                  "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
+                  "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration.\n When stored in a collection with epoch_expiration, Hazelcast computes TTL = exp - now\n and auto-evicts the entry on expiry."
                 },
                 {
                   "name": "created",
                   "type": "int64",
                   "description": "Created is the Unix epoch timestamp (seconds) when the key was created (optional).\n If set, valid range: 1735689600 (2025-01-01) to 8045740800 (2225-01-01)",
                   "constraints": [
-                    "must be \u003e= 1735689600",
-                    "must be \u003c= 8045740800"
+                    "must be \u003c= 8045740800",
+                    "must be \u003e= 1735689600"
                   ]
                 }
               ]

@@ -1,23 +1,22 @@
 {
-  "binary_hash": "860b8b4e037c099a8bf6baefe8da05c40ef92539d2820ca6bb2329a5719ce9dd",
-  "config_hash": "8fc245b664d8d55d1ad1fab5a55439ac73f7ea23e0b741b0a6f6d9a8f3619ec9",
-  "structure_hash": "d7248773be56dd5e72d32c492df4b9cff8dab9be2a14ca19f6f1cb6bd0df95f8",
+  "binary_hash": "363dbd65f7234327f811e231afab6a6761a579e6fbc6c8190259436b611e176a",
+  "config_hash": "3097e6cbb869a3501a32cc3576ededec0d216821a75bd52d31118fe861161ce4",
+  "structure_hash": "491ff39274c5ba21917b32b0f5478025a40a835669f24f483124533b8c5e1fc0",
   "files": {
-    "common/hazelcast.proto": "9b0e4b3b0346e1fe152869a9b1b3550875742183b90758908990356bc34549b5",
+    "common/hazelcast.proto": "ce96f11d738c2f2db9e8b779bf799f686f54e8eec91601c2ed2a8212e1104505",
     "common/tokenrequest.proto": "ed8b1ef657dc04b3b756ed385f6e81c5eb48ab115c0cae48334f376eb27b7d75",
     "dependencies.yaml": "f2822e9318492a0b88cb8a4877bc406e98179495bf4a510bc05ccc2ef5a3122c",
-    "services/cavalierctl.proto": "58a9dde5967e16ef961ff3aa263630a7505f77c6301eb4d40089b3ee357f74cc",
-    "services/dgraph.proto": "a8d3a095f178411daf9de01541f6fe805c0f87d6e74c69f0c7571aac03107423",
-    "services/gateway.proto": "3c3ddae6d87809da9fedc3b4ae5f100f3b81a849ecd9eb07d2594876fae3e588",
-    "services/identity.proto": "11a1b7c6e72236a8d71bcfe4d24a609fb138655f3efe665a5fc4dec8f5c5271b",
-    "services/kernel.proto": "d3a883e605e32a2e4e7038f148634c3bf933eafa8c6c26bb3b6e3d93bd7038f9",
-    "services/letsencrypt.proto": "2688733beafb603bc63fe36dec0fe4329d645ae1f20cb114e89959209e1b5de5",
+    "services/dgraph.proto": "c635bbe2813ffa36be36c273e76e6edab90da3cb2ce15deca39d8ea49550ea5e",
+    "services/gateway.proto": "057b70e01fde15637990524ab607522ff3150da80d0243024836d3d40d4cc1ac",
+    "services/identity.proto": "51ea9006cbbca2f4d98fa9f0bc397dcc8dfd9eb79cf43ce3bb8f99875ff5fb0a",
+    "services/kernel.proto": "66602b983595a91c86aa8c999a3ff4f7f08620a0adddadec50e64ef7088bc4b4",
+    "services/letsencrypt.proto": "629cddca75674729cea7cf8e46afcd068c33c3b9839aec451d968b0a54236aa2",
     "services/mcp.proto": "a9a40a37143e8d8bb9a223da3b273554717ef5bd39bf3dba16787a5b406277ee",
-    "services/orchestrator.proto": "6e4c719e915ebed7e6ca9e0105ee9ab484038df2c9b8c65879880e3f8efb5405",
     "services/policy.proto": "5791cd864d7d67bc32d34ca261539553a196e4ef2c55b0bd8c43114f71c22efd",
     "services/policysim.proto": "2806939e7bf48b48c5a177a18f3bfada5437e9675320768946fee21ae748d40e",
     "services/sentinel.proto": "8bb9c05a1d2bc791ef70d1867f23808cd60076aba1bee6705a21c27e611d921b",
-    "services/snoopy.proto": "3ad109bdcf347d242779c738e937136ab095acf86d05a910307d56c6a84e25b9",
-    "services/woodstock.proto": "07da50aa11dcb6531f46b0a6bc343cc766647b52c6f42dae5b21f304262f42db"
+    "services/snoopy.proto": "7a29b32c15992dca720ef0822b98048fc6f3f4e48c0219cd29096a7fb0e605a6",
+    "services/woodstock.proto": "4adeb84061aa70e5a96a3e1fc446d78d2a3f4b9050b946e56631916ba7f628ed",
+    "utils/cavalierctl.proto": "14bbc9924d4085f0669623ed6bf5d07ebf4cf6b2d8551d7d70ff885251ad2ea8"
   }
 }

@@ -277,6 +277,8 @@ func IPv6ToTOML(v *IPv6) ([]byte, error) {
 // IPAddrJSON represents IPAddr in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type ipaddrJSON struct {
+	Ipv4 json.RawMessage `json:"ipv4,omitempty"`
+	Ipv6 json.RawMessage `json:"ipv6,omitempty"`
 }
 
 // IPAddrToJSON converts IPAddr to JSON bytes.
@@ -286,7 +288,22 @@ func IPAddrToJSON(v *IPAddr) ([]byte, error) {
 		return nil, protoerrors.NewErrMissingInvalidData(nil, "ipaddr is nil")
 	}
 	// Convert to JSON helper struct with string enums
-	helper := ipaddrJSON{}
+	helper := ipaddrJSON{
+		Ipv4: func() json.RawMessage {
+			if v.GetIpv4() == nil {
+				return nil
+			}
+			data, _ := IPv4ToJSON(v.GetIpv4())
+			return data
+		}(),
+		Ipv6: func() json.RawMessage {
+			if v.GetIpv6() == nil {
+				return nil
+			}
+			data, _ := IPv6ToJSON(v.GetIpv6())
+			return data
+		}(),
+	}
 	return json.Marshal(helper)
 }
 
@@ -350,6 +367,20 @@ func IPAddrFromJSON(data []byte) (*IPAddr, error) {
 	}
 	// Build result with parsed enums
 	result := &IPAddr{}
+	// Parse oneof field: Ipv4
+	if len(raw.Ipv4) > 0 {
+		parsed, err := IPv4FromJSON(raw.Ipv4)
+		if err == nil {
+			result.Address = &IPAddr_Ipv4{Ipv4: parsed}
+		}
+	}
+	// Parse oneof field: Ipv6
+	if len(raw.Ipv6) > 0 {
+		parsed, err := IPv6FromJSON(raw.Ipv6)
+		if err == nil {
+			result.Address = &IPAddr_Ipv6{Ipv6: parsed}
+		}
+	}
 	return result, nil
 }
 
@@ -394,7 +425,9 @@ func IPAddrToTOML(v *IPAddr) ([]byte, error) {
 // IPNetJSON represents IPNet in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type ipnetJSON struct {
-	Mask uint32 `json:"mask,omitempty"`
+	Ipv4 json.RawMessage `json:"ipv4,omitempty"`
+	Ipv6 json.RawMessage `json:"ipv6,omitempty"`
+	Mask uint32          `json:"mask,omitempty"`
 }
 
 // IPNetToJSON converts IPNet to JSON bytes.
@@ -405,6 +438,20 @@ func IPNetToJSON(v *IPNet) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := ipnetJSON{
+		Ipv4: func() json.RawMessage {
+			if v.GetIpv4() == nil {
+				return nil
+			}
+			data, _ := IPv4ToJSON(v.GetIpv4())
+			return data
+		}(),
+		Ipv6: func() json.RawMessage {
+			if v.GetIpv6() == nil {
+				return nil
+			}
+			data, _ := IPv6ToJSON(v.GetIpv6())
+			return data
+		}(),
 		Mask: v.Mask,
 	}
 	return json.Marshal(helper)
@@ -470,6 +517,20 @@ func IPNetFromJSON(data []byte) (*IPNet, error) {
 	}
 	// Build result with parsed enums
 	result := &IPNet{}
+	// Parse oneof field: Ipv4
+	if len(raw.Ipv4) > 0 {
+		parsed, err := IPv4FromJSON(raw.Ipv4)
+		if err == nil {
+			result.Address = &IPNet_Ipv4{Ipv4: parsed}
+		}
+	}
+	// Parse oneof field: Ipv6
+	if len(raw.Ipv6) > 0 {
+		parsed, err := IPv6FromJSON(raw.Ipv6)
+		if err == nil {
+			result.Address = &IPNet_Ipv6{Ipv6: parsed}
+		}
+	}
 	result.Mask = raw.Mask
 	return result, nil
 }
@@ -515,7 +576,9 @@ func IPNetToTOML(v *IPNet) ([]byte, error) {
 // IPPortJSON represents IPPort in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type ipportJSON struct {
-	Port uint32 `json:"port,omitempty"`
+	Ipv4 json.RawMessage `json:"ipv4,omitempty"`
+	Ipv6 json.RawMessage `json:"ipv6,omitempty"`
+	Port uint32          `json:"port,omitempty"`
 }
 
 // IPPortToJSON converts IPPort to JSON bytes.
@@ -526,6 +589,20 @@ func IPPortToJSON(v *IPPort) ([]byte, error) {
 	}
 	// Convert to JSON helper struct with string enums
 	helper := ipportJSON{
+		Ipv4: func() json.RawMessage {
+			if v.GetIpv4() == nil {
+				return nil
+			}
+			data, _ := IPv4ToJSON(v.GetIpv4())
+			return data
+		}(),
+		Ipv6: func() json.RawMessage {
+			if v.GetIpv6() == nil {
+				return nil
+			}
+			data, _ := IPv6ToJSON(v.GetIpv6())
+			return data
+		}(),
 		Port: v.Port,
 	}
 	return json.Marshal(helper)
@@ -591,6 +668,20 @@ func IPPortFromJSON(data []byte) (*IPPort, error) {
 	}
 	// Build result with parsed enums
 	result := &IPPort{}
+	// Parse oneof field: Ipv4
+	if len(raw.Ipv4) > 0 {
+		parsed, err := IPv4FromJSON(raw.Ipv4)
+		if err == nil {
+			result.Address = &IPPort_Ipv4{Ipv4: parsed}
+		}
+	}
+	// Parse oneof field: Ipv6
+	if len(raw.Ipv6) > 0 {
+		parsed, err := IPv6FromJSON(raw.Ipv6)
+		if err == nil {
+			result.Address = &IPPort_Ipv6{Ipv6: parsed}
+		}
+	}
 	result.Port = raw.Port
 	return result, nil
 }

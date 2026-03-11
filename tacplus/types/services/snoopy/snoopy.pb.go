@@ -240,7 +240,6 @@ type ServiceStatus struct {
 	StartedAt     int64                  `protobuf:"varint,2,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
 	ActiveTasks   int32                  `protobuf:"varint,3,opt,name=active_tasks,json=activeTasks,proto3" json:"active_tasks,omitempty"`
 	Version       string                 `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	Lock          *Lock                  `protobuf:"bytes,5,opt,name=lock,proto3" json:"lock,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -303,66 +302,6 @@ func (x *ServiceStatus) GetVersion() string {
 	return ""
 }
 
-func (x *ServiceStatus) GetLock() *Lock {
-	if x != nil {
-		return x.Lock
-	}
-	return nil
-}
-
-// Lock provides optimistic concurrency control for atomic state boundaries.
-type Lock struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Counter       int64                  `protobuf:"varint,2,opt,name=counter,proto3" json:"counter,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Lock) Reset() {
-	*x = Lock{}
-	mi := &file_services_snoopy_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Lock) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Lock) ProtoMessage() {}
-
-func (x *Lock) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Lock.ProtoReflect.Descriptor instead.
-func (*Lock) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *Lock) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *Lock) GetCounter() int64 {
-	if x != nil {
-		return x.Counter
-	}
-	return 0
-}
-
 type MapEmpty struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -371,7 +310,7 @@ type MapEmpty struct {
 
 func (x *MapEmpty) Reset() {
 	*x = MapEmpty{}
-	mi := &file_services_snoopy_proto_msgTypes[5]
+	mi := &file_services_snoopy_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +322,7 @@ func (x *MapEmpty) String() string {
 func (*MapEmpty) ProtoMessage() {}
 
 func (x *MapEmpty) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[5]
+	mi := &file_services_snoopy_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +335,7 @@ func (x *MapEmpty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MapEmpty.ProtoReflect.Descriptor instead.
 func (*MapEmpty) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{5}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{4}
 }
 
 type QueueReceipt struct {
@@ -409,7 +348,7 @@ type QueueReceipt struct {
 
 func (x *QueueReceipt) Reset() {
 	*x = QueueReceipt{}
-	mi := &file_services_snoopy_proto_msgTypes[6]
+	mi := &file_services_snoopy_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -421,7 +360,7 @@ func (x *QueueReceipt) String() string {
 func (*QueueReceipt) ProtoMessage() {}
 
 func (x *QueueReceipt) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[6]
+	mi := &file_services_snoopy_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -434,7 +373,7 @@ func (x *QueueReceipt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueReceipt.ProtoReflect.Descriptor instead.
 func (*QueueReceipt) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{6}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *QueueReceipt) GetAccepted() bool {
@@ -460,7 +399,7 @@ type QueueSizeResponse struct {
 
 func (x *QueueSizeResponse) Reset() {
 	*x = QueueSizeResponse{}
-	mi := &file_services_snoopy_proto_msgTypes[7]
+	mi := &file_services_snoopy_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -472,7 +411,7 @@ func (x *QueueSizeResponse) String() string {
 func (*QueueSizeResponse) ProtoMessage() {}
 
 func (x *QueueSizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[7]
+	mi := &file_services_snoopy_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -485,7 +424,7 @@ func (x *QueueSizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueSizeResponse.ProtoReflect.Descriptor instead.
 func (*QueueSizeResponse) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{7}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *QueueSizeResponse) GetSize() int32 {
@@ -504,7 +443,7 @@ type TopicPublishReceipt struct {
 
 func (x *TopicPublishReceipt) Reset() {
 	*x = TopicPublishReceipt{}
-	mi := &file_services_snoopy_proto_msgTypes[8]
+	mi := &file_services_snoopy_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -516,7 +455,7 @@ func (x *TopicPublishReceipt) String() string {
 func (*TopicPublishReceipt) ProtoMessage() {}
 
 func (x *TopicPublishReceipt) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[8]
+	mi := &file_services_snoopy_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -529,7 +468,7 @@ func (x *TopicPublishReceipt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicPublishReceipt.ProtoReflect.Descriptor instead.
 func (*TopicPublishReceipt) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{8}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TopicPublishReceipt) GetPublished() bool {
@@ -551,7 +490,7 @@ type LeaderRecord struct {
 
 func (x *LeaderRecord) Reset() {
 	*x = LeaderRecord{}
-	mi := &file_services_snoopy_proto_msgTypes[9]
+	mi := &file_services_snoopy_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -563,7 +502,7 @@ func (x *LeaderRecord) String() string {
 func (*LeaderRecord) ProtoMessage() {}
 
 func (x *LeaderRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[9]
+	mi := &file_services_snoopy_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -576,7 +515,7 @@ func (x *LeaderRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaderRecord.ProtoReflect.Descriptor instead.
 func (*LeaderRecord) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{9}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LeaderRecord) GetLeaderId() string {
@@ -616,7 +555,7 @@ type LeaderElectRequest struct {
 
 func (x *LeaderElectRequest) Reset() {
 	*x = LeaderElectRequest{}
-	mi := &file_services_snoopy_proto_msgTypes[10]
+	mi := &file_services_snoopy_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -628,7 +567,7 @@ func (x *LeaderElectRequest) String() string {
 func (*LeaderElectRequest) ProtoMessage() {}
 
 func (x *LeaderElectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[10]
+	mi := &file_services_snoopy_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -641,7 +580,7 @@ func (x *LeaderElectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaderElectRequest.ProtoReflect.Descriptor instead.
 func (*LeaderElectRequest) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{10}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *LeaderElectRequest) GetCandidateId() string {
@@ -661,7 +600,7 @@ type LeaderResignRequest struct {
 
 func (x *LeaderResignRequest) Reset() {
 	*x = LeaderResignRequest{}
-	mi := &file_services_snoopy_proto_msgTypes[11]
+	mi := &file_services_snoopy_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -673,7 +612,7 @@ func (x *LeaderResignRequest) String() string {
 func (*LeaderResignRequest) ProtoMessage() {}
 
 func (x *LeaderResignRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[11]
+	mi := &file_services_snoopy_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -686,7 +625,7 @@ func (x *LeaderResignRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaderResignRequest.ProtoReflect.Descriptor instead.
 func (*LeaderResignRequest) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{11}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LeaderResignRequest) GetLeaderId() string {
@@ -713,7 +652,7 @@ type LeaderLeaseRenewal struct {
 
 func (x *LeaderLeaseRenewal) Reset() {
 	*x = LeaderLeaseRenewal{}
-	mi := &file_services_snoopy_proto_msgTypes[12]
+	mi := &file_services_snoopy_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -725,7 +664,7 @@ func (x *LeaderLeaseRenewal) String() string {
 func (*LeaderLeaseRenewal) ProtoMessage() {}
 
 func (x *LeaderLeaseRenewal) ProtoReflect() protoreflect.Message {
-	mi := &file_services_snoopy_proto_msgTypes[12]
+	mi := &file_services_snoopy_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -738,7 +677,7 @@ func (x *LeaderLeaseRenewal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaderLeaseRenewal.ProtoReflect.Descriptor instead.
 func (*LeaderLeaseRenewal) Descriptor() ([]byte, []int) {
-	return file_services_snoopy_proto_rawDescGZIP(), []int{12}
+	return file_services_snoopy_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *LeaderLeaseRenewal) GetLeaderId() string {
@@ -759,12 +698,12 @@ var File_services_snoopy_proto protoreflect.FileDescriptor
 
 const file_services_snoopy_proto_rawDesc = "" +
 	"\n" +
-	"\x15services/snoopy.proto\x12\x06snoopy\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd6\x01\n" +
+	"\x15services/snoopy.proto\x12\x06snoopy\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xce\x01\n" +
 	"\vSnoopyState\x129\n" +
 	"\n" +
 	"task_queue\x18\x03 \x01(\v2\x10.snoopy.TaskItemB\b\xf8\xb5\x18\x01\x90\xb6\x18\x01R\ttaskQueue\x12>\n" +
-	"\fevent_stream\x18\x05 \x01(\v2\x11.snoopy.EventDataB\b\x88\xb6\x18\x01\x90\xb6\x18\x01R\veventStream\x127\n" +
-	"\x06status\x18\a \x01(\v2\x15.snoopy.ServiceStatusB\b\xe0\xb5\x18\x01\xe0\xb6\x18\x01R\x06status:\x13\x9a\xa8\x1d\vSnoopyState\xa0\xa8\x1d\x01\"y\n" +
+	"\fevent_stream\x18\x05 \x01(\v2\x11.snoopy.EventDataB\b\x88\xb6\x18\x01\x90\xb6\x18\x01R\veventStream\x123\n" +
+	"\x06status\x18\a \x01(\v2\x15.snoopy.ServiceStatusB\x04\xe0\xb6\x18\x01R\x06status:\x0f\x9a\xa8\x1d\vSnoopyState\"y\n" +
 	"\bTaskItem\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1b\n" +
 	"\ttask_type\x18\x02 \x01(\tR\btaskType\x12\x18\n" +
@@ -776,17 +715,13 @@ const file_services_snoopy_proto_rawDesc = "" +
 	"\n" +
 	"event_type\x18\x02 \x01(\tR\teventType\x12\x18\n" +
 	"\apayload\x18\x03 \x01(\fR\apayload\x12\x1c\n" +
-	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp\"\xa6\x01\n" +
+	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp\"\x84\x01\n" +
 	"\rServiceStatus\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1d\n" +
 	"\n" +
 	"started_at\x18\x02 \x01(\x03R\tstartedAt\x12!\n" +
 	"\factive_tasks\x18\x03 \x01(\x05R\vactiveTasks\x12\x18\n" +
-	"\aversion\x18\x04 \x01(\tR\aversion\x12 \n" +
-	"\x04lock\x18\x05 \x01(\v2\f.snoopy.LockR\x04lock\"0\n" +
-	"\x04Lock\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\acounter\x18\x02 \x01(\x03R\acounter\"\n" +
+	"\aversion\x18\x04 \x01(\tR\aversion\"\n" +
 	"\n" +
 	"\bMapEmpty\"I\n" +
 	"\fQueueReceipt\x12\x1a\n" +
@@ -847,71 +782,69 @@ func file_services_snoopy_proto_rawDescGZIP() []byte {
 	return file_services_snoopy_proto_rawDescData
 }
 
-var file_services_snoopy_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_services_snoopy_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_services_snoopy_proto_goTypes = []any{
 	(*SnoopyState)(nil),         // 0: snoopy.SnoopyState
 	(*TaskItem)(nil),            // 1: snoopy.TaskItem
 	(*EventData)(nil),           // 2: snoopy.EventData
 	(*ServiceStatus)(nil),       // 3: snoopy.ServiceStatus
-	(*Lock)(nil),                // 4: snoopy.Lock
-	(*MapEmpty)(nil),            // 5: snoopy.MapEmpty
-	(*QueueReceipt)(nil),        // 6: snoopy.QueueReceipt
-	(*QueueSizeResponse)(nil),   // 7: snoopy.QueueSizeResponse
-	(*TopicPublishReceipt)(nil), // 8: snoopy.TopicPublishReceipt
-	(*LeaderRecord)(nil),        // 9: snoopy.LeaderRecord
-	(*LeaderElectRequest)(nil),  // 10: snoopy.LeaderElectRequest
-	(*LeaderResignRequest)(nil), // 11: snoopy.LeaderResignRequest
-	(*LeaderLeaseRenewal)(nil),  // 12: snoopy.LeaderLeaseRenewal
-	(*emptypb.Empty)(nil),       // 13: google.protobuf.Empty
+	(*MapEmpty)(nil),            // 4: snoopy.MapEmpty
+	(*QueueReceipt)(nil),        // 5: snoopy.QueueReceipt
+	(*QueueSizeResponse)(nil),   // 6: snoopy.QueueSizeResponse
+	(*TopicPublishReceipt)(nil), // 7: snoopy.TopicPublishReceipt
+	(*LeaderRecord)(nil),        // 8: snoopy.LeaderRecord
+	(*LeaderElectRequest)(nil),  // 9: snoopy.LeaderElectRequest
+	(*LeaderResignRequest)(nil), // 10: snoopy.LeaderResignRequest
+	(*LeaderLeaseRenewal)(nil),  // 11: snoopy.LeaderLeaseRenewal
+	(*emptypb.Empty)(nil),       // 12: google.protobuf.Empty
 }
 var file_services_snoopy_proto_depIdxs = []int32{
 	1,  // 0: snoopy.SnoopyState.task_queue:type_name -> snoopy.TaskItem
 	2,  // 1: snoopy.SnoopyState.event_stream:type_name -> snoopy.EventData
 	3,  // 2: snoopy.SnoopyState.status:type_name -> snoopy.ServiceStatus
-	4,  // 3: snoopy.ServiceStatus.lock:type_name -> snoopy.Lock
-	13, // 4: snoopy.SnoopyStateBackendService.GetStatus:input_type -> google.protobuf.Empty
-	3,  // 5: snoopy.SnoopyStateBackendService.SetStatus:input_type -> snoopy.ServiceStatus
-	13, // 6: snoopy.SnoopyStateBackendService.WatchStatus:input_type -> google.protobuf.Empty
-	1,  // 7: snoopy.SnoopyStateBackendService.OfferToTaskQueue:input_type -> snoopy.TaskItem
-	13, // 8: snoopy.SnoopyStateBackendService.ConsumeFromTaskQueue:input_type -> google.protobuf.Empty
-	13, // 9: snoopy.SnoopyStateBackendService.PeekTaskQueue:input_type -> google.protobuf.Empty
-	13, // 10: snoopy.SnoopyStateBackendService.SizeTaskQueue:input_type -> google.protobuf.Empty
-	2,  // 11: snoopy.SnoopyStateBackendService.PublishToEventStream:input_type -> snoopy.EventData
-	13, // 12: snoopy.SnoopyStateBackendService.SubscribeToEventStream:input_type -> google.protobuf.Empty
-	10, // 13: snoopy.SnoopyStateBackendService.ElectTaskQueueLeader:input_type -> snoopy.LeaderElectRequest
-	11, // 14: snoopy.SnoopyStateBackendService.ResignTaskQueueLeader:input_type -> snoopy.LeaderResignRequest
-	13, // 15: snoopy.SnoopyStateBackendService.GetLeaderTaskQueue:input_type -> google.protobuf.Empty
-	13, // 16: snoopy.SnoopyStateBackendService.WatchLeaderTaskQueue:input_type -> google.protobuf.Empty
-	12, // 17: snoopy.SnoopyStateBackendService.RenewLeaseTaskQueue:input_type -> snoopy.LeaderLeaseRenewal
-	10, // 18: snoopy.SnoopyStateBackendService.ElectEventStreamLeader:input_type -> snoopy.LeaderElectRequest
-	11, // 19: snoopy.SnoopyStateBackendService.ResignEventStreamLeader:input_type -> snoopy.LeaderResignRequest
-	13, // 20: snoopy.SnoopyStateBackendService.GetLeaderEventStream:input_type -> google.protobuf.Empty
-	13, // 21: snoopy.SnoopyStateBackendService.WatchLeaderEventStream:input_type -> google.protobuf.Empty
-	12, // 22: snoopy.SnoopyStateBackendService.RenewLeaseEventStream:input_type -> snoopy.LeaderLeaseRenewal
-	3,  // 23: snoopy.SnoopyStateBackendService.GetStatus:output_type -> snoopy.ServiceStatus
-	3,  // 24: snoopy.SnoopyStateBackendService.SetStatus:output_type -> snoopy.ServiceStatus
-	3,  // 25: snoopy.SnoopyStateBackendService.WatchStatus:output_type -> snoopy.ServiceStatus
-	6,  // 26: snoopy.SnoopyStateBackendService.OfferToTaskQueue:output_type -> snoopy.QueueReceipt
-	1,  // 27: snoopy.SnoopyStateBackendService.ConsumeFromTaskQueue:output_type -> snoopy.TaskItem
-	1,  // 28: snoopy.SnoopyStateBackendService.PeekTaskQueue:output_type -> snoopy.TaskItem
-	7,  // 29: snoopy.SnoopyStateBackendService.SizeTaskQueue:output_type -> snoopy.QueueSizeResponse
-	8,  // 30: snoopy.SnoopyStateBackendService.PublishToEventStream:output_type -> snoopy.TopicPublishReceipt
-	2,  // 31: snoopy.SnoopyStateBackendService.SubscribeToEventStream:output_type -> snoopy.EventData
-	9,  // 32: snoopy.SnoopyStateBackendService.ElectTaskQueueLeader:output_type -> snoopy.LeaderRecord
-	9,  // 33: snoopy.SnoopyStateBackendService.ResignTaskQueueLeader:output_type -> snoopy.LeaderRecord
-	9,  // 34: snoopy.SnoopyStateBackendService.GetLeaderTaskQueue:output_type -> snoopy.LeaderRecord
-	9,  // 35: snoopy.SnoopyStateBackendService.WatchLeaderTaskQueue:output_type -> snoopy.LeaderRecord
-	9,  // 36: snoopy.SnoopyStateBackendService.RenewLeaseTaskQueue:output_type -> snoopy.LeaderRecord
-	9,  // 37: snoopy.SnoopyStateBackendService.ElectEventStreamLeader:output_type -> snoopy.LeaderRecord
-	9,  // 38: snoopy.SnoopyStateBackendService.ResignEventStreamLeader:output_type -> snoopy.LeaderRecord
-	9,  // 39: snoopy.SnoopyStateBackendService.GetLeaderEventStream:output_type -> snoopy.LeaderRecord
-	9,  // 40: snoopy.SnoopyStateBackendService.WatchLeaderEventStream:output_type -> snoopy.LeaderRecord
-	9,  // 41: snoopy.SnoopyStateBackendService.RenewLeaseEventStream:output_type -> snoopy.LeaderRecord
-	23, // [23:42] is the sub-list for method output_type
-	4,  // [4:23] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	12, // 3: snoopy.SnoopyStateBackendService.GetStatus:input_type -> google.protobuf.Empty
+	3,  // 4: snoopy.SnoopyStateBackendService.SetStatus:input_type -> snoopy.ServiceStatus
+	12, // 5: snoopy.SnoopyStateBackendService.WatchStatus:input_type -> google.protobuf.Empty
+	1,  // 6: snoopy.SnoopyStateBackendService.OfferToTaskQueue:input_type -> snoopy.TaskItem
+	12, // 7: snoopy.SnoopyStateBackendService.ConsumeFromTaskQueue:input_type -> google.protobuf.Empty
+	12, // 8: snoopy.SnoopyStateBackendService.PeekTaskQueue:input_type -> google.protobuf.Empty
+	12, // 9: snoopy.SnoopyStateBackendService.SizeTaskQueue:input_type -> google.protobuf.Empty
+	2,  // 10: snoopy.SnoopyStateBackendService.PublishToEventStream:input_type -> snoopy.EventData
+	12, // 11: snoopy.SnoopyStateBackendService.SubscribeToEventStream:input_type -> google.protobuf.Empty
+	9,  // 12: snoopy.SnoopyStateBackendService.ElectTaskQueueLeader:input_type -> snoopy.LeaderElectRequest
+	10, // 13: snoopy.SnoopyStateBackendService.ResignTaskQueueLeader:input_type -> snoopy.LeaderResignRequest
+	12, // 14: snoopy.SnoopyStateBackendService.GetLeaderTaskQueue:input_type -> google.protobuf.Empty
+	12, // 15: snoopy.SnoopyStateBackendService.WatchLeaderTaskQueue:input_type -> google.protobuf.Empty
+	11, // 16: snoopy.SnoopyStateBackendService.RenewLeaseTaskQueue:input_type -> snoopy.LeaderLeaseRenewal
+	9,  // 17: snoopy.SnoopyStateBackendService.ElectEventStreamLeader:input_type -> snoopy.LeaderElectRequest
+	10, // 18: snoopy.SnoopyStateBackendService.ResignEventStreamLeader:input_type -> snoopy.LeaderResignRequest
+	12, // 19: snoopy.SnoopyStateBackendService.GetLeaderEventStream:input_type -> google.protobuf.Empty
+	12, // 20: snoopy.SnoopyStateBackendService.WatchLeaderEventStream:input_type -> google.protobuf.Empty
+	11, // 21: snoopy.SnoopyStateBackendService.RenewLeaseEventStream:input_type -> snoopy.LeaderLeaseRenewal
+	3,  // 22: snoopy.SnoopyStateBackendService.GetStatus:output_type -> snoopy.ServiceStatus
+	3,  // 23: snoopy.SnoopyStateBackendService.SetStatus:output_type -> snoopy.ServiceStatus
+	3,  // 24: snoopy.SnoopyStateBackendService.WatchStatus:output_type -> snoopy.ServiceStatus
+	5,  // 25: snoopy.SnoopyStateBackendService.OfferToTaskQueue:output_type -> snoopy.QueueReceipt
+	1,  // 26: snoopy.SnoopyStateBackendService.ConsumeFromTaskQueue:output_type -> snoopy.TaskItem
+	1,  // 27: snoopy.SnoopyStateBackendService.PeekTaskQueue:output_type -> snoopy.TaskItem
+	6,  // 28: snoopy.SnoopyStateBackendService.SizeTaskQueue:output_type -> snoopy.QueueSizeResponse
+	7,  // 29: snoopy.SnoopyStateBackendService.PublishToEventStream:output_type -> snoopy.TopicPublishReceipt
+	2,  // 30: snoopy.SnoopyStateBackendService.SubscribeToEventStream:output_type -> snoopy.EventData
+	8,  // 31: snoopy.SnoopyStateBackendService.ElectTaskQueueLeader:output_type -> snoopy.LeaderRecord
+	8,  // 32: snoopy.SnoopyStateBackendService.ResignTaskQueueLeader:output_type -> snoopy.LeaderRecord
+	8,  // 33: snoopy.SnoopyStateBackendService.GetLeaderTaskQueue:output_type -> snoopy.LeaderRecord
+	8,  // 34: snoopy.SnoopyStateBackendService.WatchLeaderTaskQueue:output_type -> snoopy.LeaderRecord
+	8,  // 35: snoopy.SnoopyStateBackendService.RenewLeaseTaskQueue:output_type -> snoopy.LeaderRecord
+	8,  // 36: snoopy.SnoopyStateBackendService.ElectEventStreamLeader:output_type -> snoopy.LeaderRecord
+	8,  // 37: snoopy.SnoopyStateBackendService.ResignEventStreamLeader:output_type -> snoopy.LeaderRecord
+	8,  // 38: snoopy.SnoopyStateBackendService.GetLeaderEventStream:output_type -> snoopy.LeaderRecord
+	8,  // 39: snoopy.SnoopyStateBackendService.WatchLeaderEventStream:output_type -> snoopy.LeaderRecord
+	8,  // 40: snoopy.SnoopyStateBackendService.RenewLeaseEventStream:output_type -> snoopy.LeaderRecord
+	22, // [22:41] is the sub-list for method output_type
+	3,  // [3:22] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_services_snoopy_proto_init() }
@@ -925,7 +858,7 @@ func file_services_snoopy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_services_snoopy_proto_rawDesc), len(file_services_snoopy_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

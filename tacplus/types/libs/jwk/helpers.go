@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
@@ -1056,6 +1057,17 @@ func ValidateJwk(m *Jwk) error {
 	if m.Y != "" {
 		if err := utils.ValidateAssertBase64(m.Y); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Y base64 validation failed")
+		}
+	}
+
+	// Validate Exp (epoch_expiration)
+	if m.Exp != 0 {
+		now := time.Now().Unix()
+		if m.Exp <= now {
+			return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be a future epoch timestamp, got: %d (now: %d)", m.Exp, now)
+		}
+		if m.Exp > now+31536000 {
+			return protoerrors.NewErrMissingInvalidData(nil, "field Exp must be within 1 year from now, got: %d (max: %d)", m.Exp, now+31536000)
 		}
 	}
 

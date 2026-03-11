@@ -3147,14 +3147,13 @@ const file_services_identity_proto_rawDesc = "" +
 	" \x03(\tR\x06scopes\x12 \n" +
 	"\baudience\x18\v \x01(\tB\x04\x88\xa7\x1d\x01R\baudience\"^\n" +
 	"\x11EntitlementConfig\x12I\n" +
-	"\x11identity_profiles\x18\x02 \x03(\v2\x1c.servicename.IdentityProfileR\x10identityProfiles\"\x92\x02\n" +
-	"\rIdentityState\x12Q\n" +
-	"\x0everifying_keys\x18\x01 \x03(\v2\b.jwk.JwkB \xe0\xb5\x18\x02\xe0\xb6\x18\x01\x9a\xb7\x18\x14JwkVerifyingKeysViewR\rverifyingKeys\x12E\n" +
-	"\x13entitlements_policy\x18\x02 \x01(\v2\x0e.opa.OpaPolicyB\x04\xe0\xb5\x18\x02R\x12entitlementsPolicy\x12P\n" +
-	"\x12entitlement_config\x18\x04 \x01(\v2\x1b.identity.EntitlementConfigB\x04\xe0\xb5\x18\x02R\x11entitlementConfig:\x15\x9a\xa8\x1d\rIdentityState\xa0\xa8\x1d\x02\"\x82\x01\n" +
-	"\x15IdentityStateInternal\x12F\n" +
-	"\rexternal_jwks\x18\x01 \x03(\v2\x15.identity.ExternalJwkB\n" +
-	"\xe0\xb5\x18\x02ȶ\x18\x80\xa3\x05R\fexternalJwks:!\x9a\xa8\x1d\x15IdentityStateInternal\xa0\xa8\x1d\x02ب\x1d\x01\"\x96\x01\n" +
+	"\x11identity_profiles\x18\x02 \x03(\v2\x1c.servicename.IdentityProfileR\x10identityProfiles\"\xfe\x01\n" +
+	"\rIdentityState\x12M\n" +
+	"\x0everifying_keys\x18\x01 \x03(\v2\b.jwk.JwkB\x1c\xe0\xb6\x18\x01\x9a\xb7\x18\x14JwkVerifyingKeysViewR\rverifyingKeys\x12?\n" +
+	"\x13entitlements_policy\x18\x02 \x01(\v2\x0e.opa.OpaPolicyR\x12entitlementsPolicy\x12J\n" +
+	"\x12entitlement_config\x18\x04 \x01(\v2\x1b.identity.EntitlementConfigR\x11entitlementConfig:\x11\x9a\xa8\x1d\rIdentityState\"z\n" +
+	"\x15IdentityStateInternal\x12B\n" +
+	"\rexternal_jwks\x18\x01 \x03(\v2\x15.identity.ExternalJwkB\x06ȶ\x18\x80\xa3\x05R\fexternalJwks:\x1d\x9a\xa8\x1d\x15IdentityStateInternalب\x1d\x01\"\x96\x01\n" +
 	"\vExternalJwk\x12\x1e\n" +
 	"\x03kid\x18\x01 \x01(\tB\fе\x18\x01\x88\xa6\x1d\x01\x88\xa7\x1d\x01R\x03kid\x12 \n" +
 	"\x03key\x18\x02 \x01(\v2\b.jwk.JwkB\x04\x88\xa6\x1d\x01R\x03key\x12 \n" +

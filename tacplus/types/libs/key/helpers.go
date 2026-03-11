@@ -608,6 +608,11 @@ func ValidatePublicKey(m *PublicKey) error {
 		}
 	}
 
+	// Validate Created (assert_required: must be > 0)
+	if m.Created <= 0 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Created is required and must be greater than zero")
+	}
+
 	// Validate Created (assert_ge: 1735689600)
 	if m.Created < 1735689600 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be >= 1735689600, got: %v", m.Created)
@@ -616,11 +621,6 @@ func ValidatePublicKey(m *PublicKey) error {
 	if m.Created > 8045740800 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be <= 8045740800, got: %v", m.Created)
 	}
-	// Validate Created (assert_required: must be > 0)
-	if m.Created <= 0 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Created is required and must be greater than zero")
-	}
-
 	// Validate Id (default max size: 32768 bytes)
 	if len(m.Id) > 32768 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id exceeds max size of 32768 bytes, got: %d", len(m.Id))
@@ -641,14 +641,21 @@ func ValidateKey(m *Key) error {
 		return nil
 	}
 
+	// Validate Id (assert_required)
+	if m.Id == "" {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Id is required")
+	}
+
 	// Validate Id (assert_min_length: 1)
 	if len(m.Id) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Id must be at least 1 characters, got: %d", len(m.Id))
 	}
 
-	// Validate Id (assert_required)
-	if m.Id == "" {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Id is required")
+	// Validate Base64 (assert_enc_type: ENC_TYPE_KEY_PRIVATE_ANY)
+	if m.Base64 != "" {
+		if err := validateENC_TYPE_KEY_PRIVATE_ANY(m.Base64); err != nil {
+			return protoerrors.NewErrMissingInvalidData(err, "field Base64 validation failed")
+		}
 	}
 
 	// Validate Base64 (assert_required)
@@ -660,13 +667,6 @@ func ValidateKey(m *Key) error {
 	if m.Base64 != "" {
 		if err := utils.ValidateAssertBase64(m.Base64); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Base64 base64 validation failed")
-		}
-	}
-
-	// Validate Base64 (assert_enc_type: ENC_TYPE_KEY_PRIVATE_ANY)
-	if m.Base64 != "" {
-		if err := validateENC_TYPE_KEY_PRIVATE_ANY(m.Base64); err != nil {
-			return protoerrors.NewErrMissingInvalidData(err, "field Base64 validation failed")
 		}
 	}
 

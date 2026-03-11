@@ -27,25 +27,6 @@ package hazelcast;
 option go_package = "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast";
 
 // ============================================================================
-// Node Mode
-// ============================================================================
-
-// NodeMode determines which capabilities are active on a Hazelcast node.
-enum NodeMode {
-  // Core+Edge (default): full member with data partitions, persistence, Raft,
-  // AND serves gRPC for microservices.
-  NODE_MODE_CORE_EDGE = 0;
-
-  // Core only: owns data partitions, writes persistence, participates in Raft,
-  // counts toward quorum. Does NOT accept gRPC from microservices.
-  NODE_MODE_CORE = 1;
-
-  // Edge only: Hazelcast lite member (no data partitions), no persistence,
-  // no Raft. Accepts all gRPC from microservices. Scalable 0-N.
-  NODE_MODE_EDGE = 2;
-}
-
-// ============================================================================
 // Network Configuration
 // ============================================================================
 

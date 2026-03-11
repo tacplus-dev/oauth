@@ -34,10 +34,16 @@ type Config struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// How often to refresh health state (seconds). Default 5.
 	HealthPollIntervalSeconds int64 `protobuf:"varint,1,opt,name=health_poll_interval_seconds,json=healthPollIntervalSeconds,proto3" json:"health_poll_interval_seconds,omitempty"`
-	// Enable TCP listener for HTTP/1.1, HTTP/2, and gRPC. Default true.
-	EnableTcp bool `protobuf:"varint,2,opt,name=enable_tcp,json=enableTcp,proto3" json:"enable_tcp,omitempty"`
-	// Enable QUIC/UDP listener for HTTP/3. Default true.
-	EnableQuic    bool `protobuf:"varint,3,opt,name=enable_quic,json=enableQuic,proto3" json:"enable_quic,omitempty"`
+	// Enable HTTP/1.1 and HTTP/2 listener (TCP). Default true.
+	EnableHttp bool `protobuf:"varint,2,opt,name=enable_http,json=enableHttp,proto3" json:"enable_http,omitempty"`
+	// Enable HTTP/3 listener (QUIC/UDP). Default true.
+	EnableHttp3 bool `protobuf:"varint,3,opt,name=enable_http3,json=enableHttp3,proto3" json:"enable_http3,omitempty"`
+	// Enable gRPC listener (TCP). Default true.
+	EnableGrpc bool `protobuf:"varint,4,opt,name=enable_grpc,json=enableGrpc,proto3" json:"enable_grpc,omitempty"`
+	// TCP port for HTTP/1.1, HTTP/2, and gRPC. Default DEFAULT_PORT.
+	TcpPort int32 `protobuf:"varint,5,opt,name=tcp_port,json=tcpPort,proto3" json:"tcp_port,omitempty"`
+	// UDP port for HTTP/3 (QUIC). Default DEFAULT_PORT.
+	UdpPort       int32 `protobuf:"varint,6,opt,name=udp_port,json=udpPort,proto3" json:"udp_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,18 +85,39 @@ func (x *Config) GetHealthPollIntervalSeconds() int64 {
 	return 0
 }
 
-func (x *Config) GetEnableTcp() bool {
+func (x *Config) GetEnableHttp() bool {
 	if x != nil {
-		return x.EnableTcp
+		return x.EnableHttp
 	}
 	return false
 }
 
-func (x *Config) GetEnableQuic() bool {
+func (x *Config) GetEnableHttp3() bool {
 	if x != nil {
-		return x.EnableQuic
+		return x.EnableHttp3
 	}
 	return false
+}
+
+func (x *Config) GetEnableGrpc() bool {
+	if x != nil {
+		return x.EnableGrpc
+	}
+	return false
+}
+
+func (x *Config) GetTcpPort() int32 {
+	if x != nil {
+		return x.TcpPort
+	}
+	return 0
+}
+
+func (x *Config) GetUdpPort() int32 {
+	if x != nil {
+		return x.UdpPort
+	}
+	return 0
 }
 
 // GatewayConfigState is the backend state boundary for gateway service configuration.
@@ -179,13 +206,16 @@ var File_services_gateway_proto protoreflect.FileDescriptor
 
 const file_services_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x16services/gateway.proto\x12\agateway\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb0\x01\n" +
+	"\x16services/gateway.proto\x12\agateway\x1a\x0flibs/spec.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb5\x02\n" +
 	"\x06Config\x12E\n" +
-	"\x1chealth_poll_interval_seconds\x18\x01 \x01(\x03B\x04\x90\xa8\x1d\x05R\x19healthPollIntervalSeconds\x12#\n" +
-	"\n" +
-	"enable_tcp\x18\x02 \x01(\bB\x04\xa0\xa8\x1d\x01R\tenableTcp\x12%\n" +
-	"\venable_quic\x18\x03 \x01(\bB\x04\xa0\xa8\x1d\x01R\n" +
-	"enableQuic:\x13Ҩ\x1d\v\n" +
+	"\x1chealth_poll_interval_seconds\x18\x01 \x01(\x03B\x04\x90\xa8\x1d\x05R\x19healthPollIntervalSeconds\x12%\n" +
+	"\venable_http\x18\x02 \x01(\bB\x04\xa0\xa8\x1d\x01R\n" +
+	"enableHttp\x12'\n" +
+	"\fenable_http3\x18\x03 \x01(\bB\x04\xa0\xa8\x1d\x01R\venableHttp3\x12%\n" +
+	"\venable_grpc\x18\x04 \x01(\bB\x04\xa0\xa8\x1d\x01R\n" +
+	"enableGrpc\x12+\n" +
+	"\btcp_port\x18\x05 \x01(\x05B\x10\xfa\xa8\x1d\fDEFAULT_PORTR\atcpPort\x12+\n" +
+	"\budp_port\x18\x06 \x01(\x05B\x10\xfa\xa8\x1d\fDEFAULT_PORTR\audpPort:\x13Ҩ\x1d\v\n" +
 	"\agateway\x10\a\xe8\xa8\x1d\x01\"c\n" +
 	"\x12GatewayConfigState\x121\n" +
 	"\x06config\x18\x01 \x01(\v2\x0f.gateway.ConfigB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\x06config:\x1a\x9a\xa8\x1d\x12GatewayConfigState\xa0\xa8\x1d\x02\"\n" +
@@ -194,7 +224,8 @@ const file_services_gateway_proto_rawDesc = "" +
 	" GatewayConfigStateBackendService\x124\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x0f.gateway.Config\x12-\n" +
 	"\tSetConfig\x12\x0f.gateway.Config\x1a\x0f.gateway.Config\x128\n" +
-	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\x0f.gateway.Config0\x01BYZWgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gatewayb\x06proto3"
+	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\x0f.gateway.Config0\x01Bn\x92\xb5\x18\x11\n" +
+	"\fDEFAULT_PORT\x10\xfbAZWgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gatewayb\x06proto3"
 
 var (
 	file_services_gateway_proto_rawDescOnce sync.Once

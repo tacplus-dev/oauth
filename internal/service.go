@@ -6,11 +6,10 @@ import (
 	"sync"
 	"time"
 
-	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/service-manager"
+	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/sm"
 	hz "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	kernel_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
-	"gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/wrappers/backends"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -22,24 +21,24 @@ type Service struct {
 
 // NewHandler creates a new Handler.
 // This is the entry-point factory called by the generated ServiceManager.
-func NewHandler(bc *backends.Backends) (servicemanager.Handler, error) {
+func NewHandler(sm *servicemanager.ServiceManager) (servicemanager.Handler, error) {
 	s := &Service{}
-	if err := s.Init(bc); err != nil {
+	if err := s.Init(sm); err != nil {
 		return nil, err
 	}
 	return s, nil
 }
 
-func (s *Service) GetGrpcImpl() pb.SentinelServiceServer {
+func (s *Service) SentinelGrpcImpl() pb.SentinelServiceServer {
 	return s
 }
 
-func (s *Service) Init(bc *backends.Backends) error {
-	s.admin = bc.Services().ClusterState().BackendStub()
+func (s *Service) Init(sm *servicemanager.ServiceManager) error {
+	s.admin = sm.BackendClients().Services().ClusterState().BackendStub()
 	return nil
 }
 
-func (s *Service) HandleConfig(_ *pb.Config) error {
+func (s *Service) SentinelConfig(_ *pb.Config) error {
 	return nil
 }
 

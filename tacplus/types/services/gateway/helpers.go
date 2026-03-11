@@ -33,8 +33,11 @@ import (
 // MARKER: JSON helper struct generated from serial.go
 type configJSON struct {
 	HealthPollIntervalSeconds int64 `json:"health_poll_interval_seconds,omitempty"`
-	EnableTcp                 bool  `json:"enable_tcp,omitempty"`
-	EnableQuic                bool  `json:"enable_quic,omitempty"`
+	EnableHttp                bool  `json:"enable_http,omitempty"`
+	EnableHttp3               bool  `json:"enable_http3,omitempty"`
+	EnableGrpc                bool  `json:"enable_grpc,omitempty"`
+	TcpPort                   int32 `json:"tcp_port,omitempty"`
+	UdpPort                   int32 `json:"udp_port,omitempty"`
 }
 
 // ConfigToJSON converts Config to JSON bytes.
@@ -46,8 +49,11 @@ func ConfigToJSON(v *Config) ([]byte, error) {
 	// Convert to JSON helper struct with string enums
 	helper := configJSON{
 		HealthPollIntervalSeconds: v.HealthPollIntervalSeconds,
-		EnableTcp:                 v.EnableTcp,
-		EnableQuic:                v.EnableQuic,
+		EnableHttp:                v.EnableHttp,
+		EnableHttp3:               v.EnableHttp3,
+		EnableGrpc:                v.EnableGrpc,
+		TcpPort:                   v.TcpPort,
+		UdpPort:                   v.UdpPort,
 	}
 	return json.Marshal(helper)
 }
@@ -113,8 +119,11 @@ func ConfigFromJSON(data []byte) (*Config, error) {
 	// Build result with parsed enums
 	result := &Config{}
 	result.HealthPollIntervalSeconds = raw.HealthPollIntervalSeconds
-	result.EnableTcp = raw.EnableTcp
-	result.EnableQuic = raw.EnableQuic
+	result.EnableHttp = raw.EnableHttp
+	result.EnableHttp3 = raw.EnableHttp3
+	result.EnableGrpc = raw.EnableGrpc
+	result.TcpPort = raw.TcpPort
+	result.UdpPort = raw.UdpPort
 	return result, nil
 }
 
@@ -417,8 +426,11 @@ func ConfigToEnvVar(v *Config) map[string]string {
 	}
 	result := make(map[string]string)
 	result["PROTO_SERVICES_GATEWAY_CONFIG_HEALTH_POLL_INTERVAL_SECONDS"] = strconv.FormatInt(v.HealthPollIntervalSeconds, 10)
-	result["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_TCP"] = strconv.FormatBool(v.EnableTcp)
-	result["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_QUIC"] = strconv.FormatBool(v.EnableQuic)
+	result["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_HTTP"] = strconv.FormatBool(v.EnableHttp)
+	result["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_HTTP3"] = strconv.FormatBool(v.EnableHttp3)
+	result["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_GRPC"] = strconv.FormatBool(v.EnableGrpc)
+	result["PROTO_SERVICES_GATEWAY_CONFIG_TCP_PORT"] = strconv.FormatInt(int64(v.TcpPort), 10)
+	result["PROTO_SERVICES_GATEWAY_CONFIG_UDP_PORT"] = strconv.FormatInt(int64(v.UdpPort), 10)
 	return result
 }
 
@@ -432,19 +444,40 @@ func ConfigFromEnvVar(env map[string]string) (*Config, error) {
 		}
 		result.HealthPollIntervalSeconds = parsed
 	}
-	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_TCP"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_HTTP"]; ok && val != "" {
 		parsed, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, err
 		}
-		result.EnableTcp = parsed
+		result.EnableHttp = parsed
 	}
-	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_QUIC"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_HTTP3"]; ok && val != "" {
 		parsed, err := strconv.ParseBool(val)
 		if err != nil {
 			return nil, err
 		}
-		result.EnableQuic = parsed
+		result.EnableHttp3 = parsed
+	}
+	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_ENABLE_GRPC"]; ok && val != "" {
+		parsed, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		result.EnableGrpc = parsed
+	}
+	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_TCP_PORT"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		result.TcpPort = int32(parsed)
+	}
+	if val, ok := env["PROTO_SERVICES_GATEWAY_CONFIG_UDP_PORT"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		result.UdpPort = int32(parsed)
 	}
 	return result, nil
 }
@@ -527,9 +560,11 @@ func ValidateMapEmpty(m *MapEmpty) error {
 // Constants
 // ============================================================
 const (
+	DefaultPort                      int64 = 8443
 	DefaultHealthPollIntervalSeconds int64 = 5
-	DefaultEnableTcp                 bool  = true
-	DefaultEnableQuic                bool  = true
+	DefaultEnableHttp                bool  = true
+	DefaultEnableHttp3               bool  = true
+	DefaultEnableGrpc                bool  = true
 )
 
 // ============================================================
@@ -542,6 +577,12 @@ func ConfigDefaults(v *Config) {
 	}
 	if v.HealthPollIntervalSeconds == 0 {
 		v.HealthPollIntervalSeconds = DefaultHealthPollIntervalSeconds
+	}
+	if v.TcpPort == 0 {
+		v.TcpPort = int32(DefaultPort)
+	}
+	if v.UdpPort == 0 {
+		v.UdpPort = int32(DefaultPort)
 	}
 }
 
@@ -580,11 +621,20 @@ func ConfigUndefaults(v *Config) {
 	if v.HealthPollIntervalSeconds == DefaultHealthPollIntervalSeconds {
 		v.HealthPollIntervalSeconds = 0
 	}
-	if v.EnableTcp == DefaultEnableTcp {
-		v.EnableTcp = false
+	if v.EnableHttp == DefaultEnableHttp {
+		v.EnableHttp = false
 	}
-	if v.EnableQuic == DefaultEnableQuic {
-		v.EnableQuic = false
+	if v.EnableHttp3 == DefaultEnableHttp3 {
+		v.EnableHttp3 = false
+	}
+	if v.EnableGrpc == DefaultEnableGrpc {
+		v.EnableGrpc = false
+	}
+	if v.TcpPort == int32(DefaultPort) {
+		v.TcpPort = 0
+	}
+	if v.UdpPort == int32(DefaultPort) {
+		v.UdpPort = 0
 	}
 }
 
@@ -621,11 +671,20 @@ func MergeConfig(dst, src *Config) {
 	if dst.HealthPollIntervalSeconds == 0 {
 		dst.HealthPollIntervalSeconds = src.HealthPollIntervalSeconds
 	}
-	if !dst.EnableTcp {
-		dst.EnableTcp = src.EnableTcp
+	if !dst.EnableHttp {
+		dst.EnableHttp = src.EnableHttp
 	}
-	if !dst.EnableQuic {
-		dst.EnableQuic = src.EnableQuic
+	if !dst.EnableHttp3 {
+		dst.EnableHttp3 = src.EnableHttp3
+	}
+	if !dst.EnableGrpc {
+		dst.EnableGrpc = src.EnableGrpc
+	}
+	if dst.TcpPort == 0 {
+		dst.TcpPort = src.TcpPort
+	}
+	if dst.UdpPort == 0 {
+		dst.UdpPort = src.UdpPort
 	}
 }
 
@@ -657,16 +716,32 @@ func ConfigLlmTypeDescriptor() string {
       "default": 5
     },
     {
-      "name": "enable_tcp",
+      "name": "enable_http",
       "type": "bool",
-      "description": "Enable TCP listener for HTTP/1.1, HTTP/2, and gRPC. Default true.",
+      "description": "Enable HTTP/1.1 and HTTP/2 listener (TCP). Default true.",
       "default": true
     },
     {
-      "name": "enable_quic",
+      "name": "enable_http3",
       "type": "bool",
-      "description": "Enable QUIC/UDP listener for HTTP/3. Default true.",
+      "description": "Enable HTTP/3 listener (QUIC/UDP). Default true.",
       "default": true
+    },
+    {
+      "name": "enable_grpc",
+      "type": "bool",
+      "description": "Enable gRPC listener (TCP). Default true.",
+      "default": true
+    },
+    {
+      "name": "tcp_port",
+      "type": "int32",
+      "description": "TCP port for HTTP/1.1, HTTP/2, and gRPC. Default DEFAULT_PORT."
+    },
+    {
+      "name": "udp_port",
+      "type": "int32",
+      "description": "UDP port for HTTP/3 (QUIC). Default DEFAULT_PORT."
     }
   ]
 }`

@@ -5,4 +5,3 @@ backends:
   - services/kernel.ServiceHealthState:rw
 frontends:
   - services/sentinel.SentinelService
-entry-point: internal.NewHandler

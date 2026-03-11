@@ -456,11 +456,10 @@ func EventDataToTOML(v *EventData) ([]byte, error) {
 // ServiceStatusJSON represents ServiceStatus in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type servicestatusJSON struct {
-	NodeId      string          `json:"node_id,omitempty"`
-	StartedAt   int64           `json:"started_at,omitempty"`
-	ActiveTasks int32           `json:"active_tasks,omitempty"`
-	Version     string          `json:"version,omitempty"`
-	Lock        json.RawMessage `json:"lock,omitempty"`
+	NodeId      string `json:"node_id,omitempty"`
+	StartedAt   int64  `json:"started_at,omitempty"`
+	ActiveTasks int32  `json:"active_tasks,omitempty"`
+	Version     string `json:"version,omitempty"`
 }
 
 // ServiceStatusToJSON converts ServiceStatus to JSON bytes.
@@ -475,13 +474,6 @@ func ServiceStatusToJSON(v *ServiceStatus) ([]byte, error) {
 		StartedAt:   v.StartedAt,
 		ActiveTasks: v.ActiveTasks,
 		Version:     v.Version,
-		Lock: func() json.RawMessage {
-			if v.Lock == nil {
-				return nil
-			}
-			data, _ := LockToJSON(v.Lock)
-			return data
-		}(),
 	}
 	return json.Marshal(helper)
 }
@@ -550,13 +542,6 @@ func ServiceStatusFromJSON(data []byte) (*ServiceStatus, error) {
 	result.StartedAt = raw.StartedAt
 	result.ActiveTasks = raw.ActiveTasks
 	result.Version = raw.Version
-	// Parse message field: Lock
-	if len(raw.Lock) > 0 {
-		parsed, err := LockFromJSON(raw.Lock)
-		if err == nil {
-			result.Lock = parsed
-		}
-	}
 	return result, nil
 }
 
@@ -587,130 +572,6 @@ func ServiceStatusToTOML(v *ServiceStatus) ([]byte, error) {
 	}
 	// Convert to JSON first
 	jsonData, err := ServiceStatusToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to TOML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return toml.Marshal(obj)
-}
-
-// LockJSON represents Lock in external JSON format (with string enums)
-// MARKER: JSON helper struct generated from serial.go
-type lockJSON struct {
-	Id      string `json:"id,omitempty"`
-	Counter int64  `json:"counter,omitempty"`
-}
-
-// LockToJSON converts Lock to JSON bytes.
-// Uses custom JSON helper for friendly enum strings and proper int64 handling.
-func LockToJSON(v *Lock) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "lock is nil")
-	}
-	// Convert to JSON helper struct with string enums
-	helper := lockJSON{
-		Id:      v.Id,
-		Counter: v.Counter,
-	}
-	return json.Marshal(helper)
-}
-
-// LockFromBytes creates Lock from bytes, auto-detecting the format.
-// Supports JSON, YAML, TOML, and binary protobuf formats.
-func LockFromBytes(data []byte) (*Lock, error) {
-	// Trim leading whitespace to check format
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) == 0 {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "empty data")
-	}
-	// Try JSON first (most common, starts with { or [)
-	if trimmed[0] == '{' || trimmed[0] == '[' {
-		if result, err := LockFromJSON(data); err == nil {
-			return result, nil
-		}
-	}
-	// Try TOML (try before YAML since YAML is more permissive)
-	var tomlObj any
-	if err := toml.Unmarshal(data, &tomlObj); err == nil {
-		// Convert TOML to JSON, then parse
-		jsonData, err := json.Marshal(tomlObj)
-		if err == nil {
-			if result, err := LockFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try YAML
-	var yamlObj any
-	if err := yaml.Unmarshal(data, &yamlObj); err == nil {
-		// Convert YAML to JSON, then parse
-		jsonData, err := json.Marshal(yamlObj)
-		if err == nil {
-			if result, err := LockFromJSON(jsonData); err == nil {
-				return result, nil
-			}
-		}
-	}
-	// Try binary protobuf
-	v := &Lock{}
-	if err := proto.Unmarshal(data, v); err == nil {
-		return v, nil
-	}
-	return nil, protoerrors.NewErrMissingInvalidData(nil, "failed to parse Lock: unsupported format or invalid data")
-}
-
-// LockFromJSON creates Lock from JSON bytes.
-// Uses standard encoding/json and custom enum parsers for external JSON compatibility.
-func LockFromJSON(data []byte) (*Lock, error) {
-	// Unmarshal into helper struct with string enums
-	var raw lockJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
-		// Fall back to protojson which handles proto3 JSON conventions
-		// (string-encoded int64/uint64, standard enum names, etc.)
-		v := &Lock{}
-		if pErr := protojson.Unmarshal(data, v); pErr != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// Build result with parsed enums
-	result := &Lock{}
-	result.Id = raw.Id
-	result.Counter = raw.Counter
-	return result, nil
-}
-
-// LockToYAML converts Lock to YAML bytes.
-// Converts to JSON first, then to YAML for proper protobuf handling.
-func LockToYAML(v *Lock) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "lock is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := LockToJSON(v)
-	if err != nil {
-		return nil, err
-	}
-	// Convert JSON to YAML
-	var obj any
-	if err := json.Unmarshal(jsonData, &obj); err != nil {
-		return nil, err
-	}
-	return yaml.Marshal(obj)
-}
-
-// LockToTOML converts Lock to TOML bytes.
-// Converts to JSON first, then to TOML for proper protobuf handling.
-func LockToTOML(v *Lock) ([]byte, error) {
-	if v == nil {
-		return nil, protoerrors.NewErrMissingInvalidData(nil, "lock is nil")
-	}
-	// Convert to JSON first
-	jsonData, err := LockToJSON(v)
 	if err != nil {
 		return nil, err
 	}
@@ -1841,11 +1702,6 @@ func ServiceStatusToEnvVar(v *ServiceStatus) map[string]string {
 	result["PROTO_SERVICES_WOODSTOCK_SERVICE_STATUS_STARTED_AT"] = strconv.FormatInt(v.StartedAt, 10)
 	result["PROTO_SERVICES_WOODSTOCK_SERVICE_STATUS_ACTIVE_TASKS"] = strconv.FormatInt(int64(v.ActiveTasks), 10)
 	result["PROTO_SERVICES_WOODSTOCK_SERVICE_STATUS_VERSION"] = v.Version
-	if v.Lock != nil {
-		for k, val := range LockToEnvVar(v.Lock) {
-			result[k] = val
-		}
-	}
 	return result
 }
 
@@ -1871,38 +1727,6 @@ func ServiceStatusFromEnvVar(env map[string]string) (*ServiceStatus, error) {
 	}
 	if val, ok := env["PROTO_SERVICES_WOODSTOCK_SERVICE_STATUS_VERSION"]; ok && val != "" {
 		result.Version = val
-	}
-	if sub, err := LockFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.Lock = sub
-	}
-	return result, nil
-}
-
-// LockToEnvVar converts Lock to environment variable key-value pairs.
-func LockToEnvVar(v *Lock) map[string]string {
-	if v == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	result["PROTO_SERVICES_WOODSTOCK_LOCK_ID"] = v.Id
-	result["PROTO_SERVICES_WOODSTOCK_LOCK_COUNTER"] = strconv.FormatInt(v.Counter, 10)
-	return result
-}
-
-// LockFromEnvVar creates Lock from environment variable key-value pairs.
-func LockFromEnvVar(env map[string]string) (*Lock, error) {
-	result := &Lock{}
-	if val, ok := env["PROTO_SERVICES_WOODSTOCK_LOCK_ID"]; ok && val != "" {
-		result.Id = val
-	}
-	if val, ok := env["PROTO_SERVICES_WOODSTOCK_LOCK_COUNTER"]; ok && val != "" {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result.Counter = parsed
 	}
 	return result, nil
 }
@@ -2198,21 +2022,6 @@ func ValidateServiceStatus(m *ServiceStatus) error {
 	return nil
 }
 
-// ValidateLock validates all fields in Lock according to their annotations.
-// Returns a BlueErr if validation fails, or nil if all validations pass.
-func ValidateLock(m *Lock) error {
-	if m == nil {
-		return nil
-	}
-
-	// Validate Id (default max size: 32768 bytes)
-	if len(m.Id) > 32768 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Id exceeds max size of 32768 bytes, got: %d", len(m.Id))
-	}
-
-	return nil
-}
-
 // ValidateMapEmpty validates all fields in MapEmpty according to their annotations.
 // Returns a BlueErr if validation fails, or nil if all validations pass.
 func ValidateMapEmpty(m *MapEmpty) error {
@@ -2329,7 +2138,6 @@ const (
 	MaxSizeEventdataPayload              int = 32768
 	MaxSizeServicestatusNodeId           int = 32768
 	MaxSizeServicestatusVersion          int = 32768
-	MaxSizeLockId                        int = 32768
 	MaxSizeLeaderrecordLeaderId          int = 32768
 	MaxSizeLeaderelectrequestCandidateId int = 32768
 	MaxSizeLeaderresignrequestLeaderId   int = 32768
@@ -2371,16 +2179,6 @@ func EventDataDefaults(v *EventData) {
 // ============================================================
 // ServiceStatusDefaults applies field-level default values to zero-valued fields.
 func ServiceStatusDefaults(v *ServiceStatus) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
-// TypeDefaults: Lock
-// ============================================================
-// LockDefaults applies field-level default values to zero-valued fields.
-func LockDefaults(v *Lock) {
 	if v == nil {
 		return
 	}
@@ -2505,17 +2303,6 @@ func EventDataUndefaults(v *EventData) {
 // ServiceStatusUndefaults resets fields that match their default values back to zero.
 // Use before persisting to store only explicit user overrides.
 func ServiceStatusUndefaults(v *ServiceStatus) {
-	if v == nil {
-		return
-	}
-}
-
-// ============================================================
-// TypeUndefaults: Lock
-// ============================================================
-// LockUndefaults resets fields that match their default values back to zero.
-// Use before persisting to store only explicit user overrides.
-func LockUndefaults(v *Lock) {
 	if v == nil {
 		return
 	}
@@ -2685,24 +2472,6 @@ func MergeServiceStatus(dst, src *ServiceStatus) {
 	}
 	if dst.Version == "" {
 		dst.Version = src.Version
-	}
-	if dst.Lock == nil {
-		dst.Lock = src.Lock
-	} else if src.Lock != nil {
-		MergeLock(dst.Lock, src.Lock)
-	}
-}
-
-// ============================================================
-// Merge: Lock
-// ============================================================
-// MergeLock fills zero-valued fields in dst from src.
-func MergeLock(dst, src *Lock) {
-	if dst.Id == "" {
-		dst.Id = src.Id
-	}
-	if dst.Counter == 0 {
-		dst.Counter = src.Counter
 	}
 }
 

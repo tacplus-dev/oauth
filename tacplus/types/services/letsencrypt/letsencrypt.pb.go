@@ -35,14 +35,17 @@ type Config struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// fqdn is the fully qualified domain name to obtain a Let's Encrypt
 	// certificate for (e.g., "api.example.com").
+	// NOTES: needs FQDN assertion
 	Fqdn string `protobuf:"bytes,1,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
 	// lets_encrypt_email is the email address for Let's Encrypt account
 	// registration and certificate expiration notifications.
 	// If empty, letsencrypt will use "admin@<fqdn>".
+	// NOTES: needs email assertion
 	LetsEncryptEmail string `protobuf:"bytes,2,opt,name=lets_encrypt_email,json=letsEncryptEmail,proto3" json:"lets_encrypt_email,omitempty"`
 	// http_listen is the address to bind the HTTP server for ACME HTTP-01
 	// challenge responses. Must be reachable on port 80 from the internet.
 	// Default: ":80".
+	// NOTES: should use host.Host format
 	HttpListen string `protobuf:"bytes,3,opt,name=http_listen,json=httpListen,proto3" json:"http_listen,omitempty"`
 	// renewal_check_interval_seconds is how often to check if the certificate
 	// needs renewal (seconds). Default: 3600 (1 hour).
@@ -401,9 +404,9 @@ const file_services_letsencrypt_proto_rawDesc = "" +
 	"\vhttp_listen\x18\x03 \x01(\tB\a\x8a\xa8\x1d\x03:80R\n" +
 	"httpListen\x12J\n" +
 	"\x1erenewal_check_interval_seconds\x18\x04 \x01(\x03B\x05\x90\xa8\x1d\x90\x1cR\x1brenewalCheckIntervalSeconds:\x17Ҩ\x1d\x0f\n" +
-	"\vletsencrypt\x10\t\xe8\xa8\x1d\x01\"q\n" +
-	"\x10LetsEncryptState\x12C\n" +
-	"\tcert_data\x18\x01 \x01(\v2 .letsencrypt.LetsEncryptCertDataB\x04\xe0\xb5\x18\x02R\bcertData:\x18\x9a\xa8\x1d\x10LetsEncryptState\xa0\xa8\x1d\x02\"\xcd\x01\n" +
+	"\vletsencrypt\x10\t\xe8\xa8\x1d\x01\"g\n" +
+	"\x10LetsEncryptState\x12=\n" +
+	"\tcert_data\x18\x01 \x01(\v2 .letsencrypt.LetsEncryptCertDataR\bcertData:\x14\x9a\xa8\x1d\x10LetsEncryptState\"\xcd\x01\n" +
 	"\x13LetsEncryptCertData\x123\n" +
 	"\btls_cert\x18\x01 \x01(\v2\x12.x509.X509CertPairB\x04\x88\xa6\x1d\x01R\atlsCert\x12J\n" +
 	"\x0fcertmagic_state\x18\x02 \x01(\v2\x1b.letsencrypt.CertMagicStateB\x04\x88\xa6\x1d\x01R\x0ecertmagicState\x12!\n" +

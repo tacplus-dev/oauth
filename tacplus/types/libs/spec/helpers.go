@@ -3032,6 +3032,10 @@ func BackendPermsToTOML(v *BackendPerms) ([]byte, error) {
 // QueryValueJSON represents QueryValue in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type queryvalueJSON struct {
+	StringValue *string  `json:"string_value,omitempty"`
+	IntValue    *int64   `json:"int_value,omitempty"`
+	DoubleValue *float64 `json:"double_value,omitempty"`
+	BoolValue   *bool    `json:"bool_value,omitempty"`
 }
 
 // QueryValueToJSON converts QueryValue to JSON bytes.
@@ -3041,7 +3045,24 @@ func QueryValueToJSON(v *QueryValue) ([]byte, error) {
 		return nil, protoerrors.NewErrMissingInvalidData(nil, "queryvalue is nil")
 	}
 	// Convert to JSON helper struct with string enums
-	helper := queryvalueJSON{}
+	helper := queryvalueJSON{
+		StringValue: func() *string {
+			val := v.GetStringValue()
+			return &val
+		}(),
+		IntValue: func() *int64 {
+			val := v.GetIntValue()
+			return &val
+		}(),
+		DoubleValue: func() *float64 {
+			val := v.GetDoubleValue()
+			return &val
+		}(),
+		BoolValue: func() *bool {
+			val := v.GetBoolValue()
+			return &val
+		}(),
+	}
 	return json.Marshal(helper)
 }
 
@@ -3105,6 +3126,22 @@ func QueryValueFromJSON(data []byte) (*QueryValue, error) {
 	}
 	// Build result with parsed enums
 	result := &QueryValue{}
+	// Parse oneof scalar field: StringValue
+	if raw.StringValue != nil {
+		result.Value = &QueryValue_StringValue{StringValue: *raw.StringValue}
+	}
+	// Parse oneof scalar field: IntValue
+	if raw.IntValue != nil {
+		result.Value = &QueryValue_IntValue{IntValue: *raw.IntValue}
+	}
+	// Parse oneof scalar field: DoubleValue
+	if raw.DoubleValue != nil {
+		result.Value = &QueryValue_DoubleValue{DoubleValue: *raw.DoubleValue}
+	}
+	// Parse oneof scalar field: BoolValue
+	if raw.BoolValue != nil {
+		result.Value = &QueryValue_BoolValue{BoolValue: *raw.BoolValue}
+	}
 	return result, nil
 }
 

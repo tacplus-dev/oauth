@@ -248,9 +248,6 @@ type BootstrapConfig struct {
 	Network *hazelcast.NetworkConfig `protobuf:"bytes,6,opt,name=network,proto3" json:"network,omitempty"`
 	// logger configures logging for the Kernel server.
 	Logger *logger.LoggerConfig `protobuf:"bytes,7,opt,name=logger,proto3" json:"logger,omitempty"`
-	// cp_subsystem configures the CP (consensus protocol) subsystem for strong consistency.
-	// Required for distributed locks (FencedLock) used by ATOMIC boundaries.
-	CpSubsystem *hazelcast.CPSubsystemConfig `protobuf:"bytes,8,opt,name=cp_subsystem,json=cpSubsystem,proto3" json:"cp_subsystem,omitempty"`
 	// persistence_dir is the directory where DB dumps and redo logs are stored.
 	// Default: "data/kernel".
 	PersistenceDir string `protobuf:"bytes,9,opt,name=persistence_dir,json=persistenceDir,proto3" json:"persistence_dir,omitempty"`
@@ -268,15 +265,14 @@ type BootstrapConfig struct {
 	// fetching Config via url_loader.
 	LoaderCa []*x509.X509Cert `protobuf:"bytes,13,rep,name=loader_ca,json=loaderCa,proto3" json:"loader_ca,omitempty"`
 	// tls is the node's X.509 certificate and private key, used for
-	// gRPC server TLS and Hazelcast mTLS and Ratis mTLS.
+	// gRPC server TLS and Hazelcast mTLS.
 	Tls *x509.X509CertPair `protobuf:"bytes,14,opt,name=tls,proto3" json:"tls,omitempty"`
-	// raft_port is the port for the Ratis (Raft consensus) server used by
-	// distributed locks. All nodes use the same raft_port (each node has a
-	// unique hostname). Default: 5002.
-	RaftPort int32 `protobuf:"varint,15,opt,name=raft_port,json=raftPort,proto3" json:"raft_port,omitempty"`
-	// mode determines whether this node runs as core (quorum/persistence)
-	// or edge (gRPC serving).
-	Mode          hazelcast.NodeMode `protobuf:"varint,16,opt,name=mode,proto3,enum=hazelcast.NodeMode" json:"mode,omitempty"`
+	// grpc_port is the port the gRPC server binds to.
+	// Default: 5000.
+	GrpcPort int32 `protobuf:"varint,15,opt,name=grpc_port,json=grpcPort,proto3" json:"grpc_port,omitempty"`
+	// hazelcast_port is the port Hazelcast binds to for cluster communication.
+	// Default: 5001.
+	HazelcastPort int32 `protobuf:"varint,16,opt,name=hazelcast_port,json=hazelcastPort,proto3" json:"hazelcast_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -360,13 +356,6 @@ func (x *BootstrapConfig) GetLogger() *logger.LoggerConfig {
 	return nil
 }
 
-func (x *BootstrapConfig) GetCpSubsystem() *hazelcast.CPSubsystemConfig {
-	if x != nil {
-		return x.CpSubsystem
-	}
-	return nil
-}
-
 func (x *BootstrapConfig) GetPersistenceDir() string {
 	if x != nil {
 		return x.PersistenceDir
@@ -420,18 +409,18 @@ func (x *BootstrapConfig) GetTls() *x509.X509CertPair {
 	return nil
 }
 
-func (x *BootstrapConfig) GetRaftPort() int32 {
+func (x *BootstrapConfig) GetGrpcPort() int32 {
 	if x != nil {
-		return x.RaftPort
+		return x.GrpcPort
 	}
 	return 0
 }
 
-func (x *BootstrapConfig) GetMode() hazelcast.NodeMode {
+func (x *BootstrapConfig) GetHazelcastPort() int32 {
 	if x != nil {
-		return x.Mode
+		return x.HazelcastPort
 	}
-	return hazelcast.NodeMode(0)
+	return 0
 }
 
 type isBootstrapConfig_Config interface {
@@ -10710,7 +10699,7 @@ var File_services_kernel_proto protoreflect.FileDescriptor
 
 const file_services_kernel_proto_rawDesc = "" +
 	"\n" +
-	"\x15services/kernel.proto\x12\x06kernel\x1a\x0flibs/spec.proto\x1a\x0flibs/host.proto\x1a\x11libs/logger.proto\x1a\x17libs/outputformat.proto\x1a\x0elibs/jwk.proto\x1a\x0flibs/x509.proto\x1a\x10libs/token.proto\x1a\x18libs/cloudidentity.proto\x1a\x16libs/cloudvendor.proto\x1a\x19common/tokenrequest.proto\x1a\x16common/hazelcast.proto\x1a\x17libs/healthreport.proto\x1a\x14libs/generated.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xcc\x06\n" +
+	"\x15services/kernel.proto\x12\x06kernel\x1a\x0flibs/spec.proto\x1a\x0flibs/host.proto\x1a\x11libs/logger.proto\x1a\x17libs/outputformat.proto\x1a\x0elibs/jwk.proto\x1a\x0flibs/x509.proto\x1a\x10libs/token.proto\x1a\x18libs/cloudidentity.proto\x1a\x16libs/cloudvendor.proto\x1a\x19common/tokenrequest.proto\x1a\x16common/hazelcast.proto\x1a\x17libs/healthreport.proto\x1a\x14libs/generated.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x98\x06\n" +
 	"\x0fBootstrapConfig\x12'\n" +
 	"\fcluster_name\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\vclusterName\x12,\n" +
 	"\blistener\x18\x02 \x01(\v2\n" +
@@ -10721,8 +10710,7 @@ const file_services_kernel_proto_rawDesc = "" +
 	"node_count\x18\x04 \x01(\x05B\x04\xa8\xa7\x1d\x00R\tnodeCount\x122\n" +
 	"\x0fpartition_count\x18\x05 \x01(\x05B\t\xa8\xa7\x1d\x00\x90\xa8\x1d\x8f\x02R\x0epartitionCount\x128\n" +
 	"\anetwork\x18\x06 \x01(\v2\x18.hazelcast.NetworkConfigB\x04\x88\xa6\x1d\x01R\anetwork\x122\n" +
-	"\x06logger\x18\a \x01(\v2\x14.logger.LoggerConfigB\x04\x88\xa6\x1d\x01R\x06logger\x12E\n" +
-	"\fcp_subsystem\x18\b \x01(\v2\x1c.hazelcast.CPSubsystemConfigB\x04\x88\xa6\x1d\x01R\vcpSubsystem\x128\n" +
+	"\x06logger\x18\a \x01(\v2\x14.logger.LoggerConfigB\x04\x88\xa6\x1d\x01R\x06logger\x128\n" +
 	"\x0fpersistence_dir\x18\t \x01(\tB\x0f\x8a\xa8\x1d\vdata/kernelR\x0epersistenceDir\x12I\n" +
 	"\x12persistence_format\x18\n" +
 	" \x01(\x0e2\x1a.outputformat.OutputFormatR\x11persistenceFormat\x122\n" +
@@ -10731,15 +10719,15 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\vfile_loader\x18\f \x01(\v2\x12.kernel.FileLoaderH\x00R\n" +
 	"fileLoader\x121\n" +
 	"\tloader_ca\x18\r \x03(\v2\x0e.x509.X509CertB\x04\xc0\xa8\x1d\x10R\bloaderCa\x12*\n" +
-	"\x03tls\x18\x0e \x01(\v2\x12.x509.X509CertPairB\x04\x88\xa6\x1d\x01R\x03tls\x12\"\n" +
-	"\traft_port\x18\x0f \x01(\x05B\x05\x90\xa8\x1d\x8a'R\braftPort\x12'\n" +
-	"\x04mode\x18\x10 \x01(\x0e2\x13.hazelcast.NodeModeR\x04modeB\b\n" +
-	"\x06config\"\x89\x01\n" +
-	"\x13TokenExchangerState\x12Q\n" +
-	"\x0everifying_keys\x18\x01 \x03(\v2\b.jwk.JwkB \xe0\xb5\x18\x02\xe0\xb6\x18\x01\x9a\xb7\x18\x14JwkVerifyingKeysViewR\rverifyingKeys:\x1f\x9a\xa8\x1d\x13TokenExchangerState\xa0\xa8\x1d\x02\xe0\xa8\x1d\x01\"c\n" +
-	"\x0eTrustedCaState\x125\n" +
-	"\vtrusted_cas\x18\x01 \x03(\v2\x0e.x509.X509CertB\x04\xe0\xb5\x18\x02R\n" +
-	"trustedCas:\x1a\x9a\xa8\x1d\x0eTrustedCaState\xa0\xa8\x1d\x02\xe0\xa8\x1d\x01\"\x81\x01\n" +
+	"\x03tls\x18\x0e \x01(\v2\x12.x509.X509CertPairB\x04\x88\xa6\x1d\x01R\x03tls\x12&\n" +
+	"\tgrpc_port\x18\x0f \x01(\x05B\t\xa0\xa6\x1d\x01\x90\xa8\x1d\x88'R\bgrpcPort\x120\n" +
+	"\x0ehazelcast_port\x18\x10 \x01(\x05B\t\xa0\xa6\x1d\x01\x90\xa8\x1d\x89'R\rhazelcastPortB\b\n" +
+	"\x06configJ\x04\b\b\x10\t\"\x81\x01\n" +
+	"\x13TokenExchangerState\x12M\n" +
+	"\x0everifying_keys\x18\x01 \x03(\v2\b.jwk.JwkB\x1c\xe0\xb6\x18\x01\x9a\xb7\x18\x14JwkVerifyingKeysViewR\rverifyingKeys:\x1b\x9a\xa8\x1d\x13TokenExchangerState\xe0\xa8\x1d\x01\"Y\n" +
+	"\x0eTrustedCaState\x12/\n" +
+	"\vtrusted_cas\x18\x01 \x03(\v2\x0e.x509.X509CertR\n" +
+	"trustedCas:\x16\x9a\xa8\x1d\x0eTrustedCaState\xe0\xa8\x1d\x01\"\x81\x01\n" +
 	"\x14CloudIdentityMatcher\x126\n" +
 	"\x06vendor\x18\x01 \x01(\x0e2\x18.cloudvendor.CloudVendorB\x04\x98\xa7\x1d\x01R\x06vendor\x121\n" +
 	"\x11expected_identity\x18\x02 \x01(\tB\x04\x88\xa6\x1d\x01R\x10expectedIdentity\"\xd9\x01\n" +
@@ -10765,34 +10753,34 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"&\n" +
 	"\n" +
 	"FileLoader\x12\x18\n" +
-	"\x04path\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\x04path\"\x92\f\n" +
-	"\fClusterState\x12D\n" +
-	"\fcluster_info\x18\x01 \x01(\v2\x1b.hazelcast.AdminClusterInfoB\x04\xe0\xb5\x18\x02R\vclusterInfo\x12J\n" +
-	"\x0ecluster_health\x18\x02 \x01(\v2\x1d.hazelcast.AdminClusterHealthB\x04\xe0\xb5\x18\x02R\rclusterHealth\x12H\n" +
-	"\fnode_metrics\x18\x03 \x03(\v2\x1b.hazelcast.AdminNodeMetricsB\b\xe0\xb5\x18\x02ȶ\x18xR\vnodeMetrics\x12B\n" +
+	"\x04path\x18\x01 \x01(\tB\x04\x88\xa6\x1d\x01R\x04path\"\xbe\v\n" +
+	"\fClusterState\x12>\n" +
+	"\fcluster_info\x18\x01 \x01(\v2\x1b.hazelcast.AdminClusterInfoR\vclusterInfo\x12D\n" +
+	"\x0ecluster_health\x18\x02 \x01(\v2\x1d.hazelcast.AdminClusterHealthR\rclusterHealth\x12D\n" +
+	"\fnode_metrics\x18\x03 \x03(\v2\x1b.hazelcast.AdminNodeMetricsB\x04ȶ\x18xR\vnodeMetrics\x12>\n" +
 	"\n" +
-	"grpc_stats\x18\x04 \x03(\v2\x19.hazelcast.AdminGrpcStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\tgrpcStats\x12Z\n" +
-	"\x12persistence_status\x18\x05 \x03(\v2!.hazelcast.AdminPersistenceStatusB\b\xe0\xb5\x18\x02ȶ\x18xR\x11persistenceStatus\x12K\n" +
-	"\rnetwork_stats\x18\x06 \x03(\v2\x1c.hazelcast.AdminNetworkStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\fnetworkStats\x12E\n" +
-	"\vthread_info\x18\a \x03(\v2\x1a.hazelcast.AdminThreadInfoB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
-	"threadInfo\x12U\n" +
-	"\x11token_cache_stats\x18\b \x03(\v2\x1f.hazelcast.AdminTokenCacheStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\x0ftokenCacheStats\x12?\n" +
-	"\tmap_stats\x18\t \x03(\v2\x18.hazelcast.AdminMapStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\bmapStats\x12L\n" +
-	"\x10bootstrap_config\x18\r \x01(\v2\x17.kernel.BootstrapConfigB\b\xe0\xb5\x18\x02\xe8\xb5\x18\x01R\x0fbootstrapConfig\x12=\n" +
-	"\x0ffrontend_config\x18\x0e \x01(\v2\x0e.kernel.ConfigB\x04\xe0\xb5\x18\x02R\x0efrontendConfig\x12F\n" +
-	"\x0egraph_registry\x18\x11 \x03(\v2\x19.hazelcast.AdminGraphInfoB\x04\xe0\xb5\x18\x02R\rgraphRegistry\x12\\\n" +
-	"\x13service_connections\x18\x12 \x03(\v2!.hazelcast.AdminServiceConnectionB\b\xe0\xb5\x18\x02ȶ\x18xR\x12serviceConnections\x12E\n" +
-	"\vqueue_stats\x18\x13 \x03(\v2\x1a.hazelcast.AdminQueueStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
-	"queueStats\x12E\n" +
-	"\vtopic_stats\x18\x14 \x03(\v2\x1a.hazelcast.AdminTopicStatsB\b\xe0\xb5\x18\x02ȶ\x18xR\n" +
-	"topicStats\x12H\n" +
-	"\fwatch_health\x18\x15 \x03(\v2\x1b.hazelcast.AdminWatchHealthB\b\xe0\xb5\x18\x02ȶ\x18<R\vwatchHealth\x12M\n" +
-	"\x0emutation_rates\x18\x16 \x03(\v2\x1c.hazelcast.AdminMutationRateB\b\xe0\xb5\x18\x02ȶ\x18xR\rmutationRates\x12I\n" +
+	"grpc_stats\x18\x04 \x03(\v2\x19.hazelcast.AdminGrpcStatsB\x04ȶ\x18xR\tgrpcStats\x12V\n" +
+	"\x12persistence_status\x18\x05 \x03(\v2!.hazelcast.AdminPersistenceStatusB\x04ȶ\x18xR\x11persistenceStatus\x12G\n" +
+	"\rnetwork_stats\x18\x06 \x03(\v2\x1c.hazelcast.AdminNetworkStatsB\x04ȶ\x18xR\fnetworkStats\x12A\n" +
+	"\vthread_info\x18\a \x03(\v2\x1a.hazelcast.AdminThreadInfoB\x04ȶ\x18xR\n" +
+	"threadInfo\x12Q\n" +
+	"\x11token_cache_stats\x18\b \x03(\v2\x1f.hazelcast.AdminTokenCacheStatsB\x04ȶ\x18xR\x0ftokenCacheStats\x12;\n" +
+	"\tmap_stats\x18\t \x03(\v2\x18.hazelcast.AdminMapStatsB\x04ȶ\x18xR\bmapStats\x12H\n" +
+	"\x10bootstrap_config\x18\r \x01(\v2\x17.kernel.BootstrapConfigB\x04\xe8\xb5\x18\x01R\x0fbootstrapConfig\x127\n" +
+	"\x0ffrontend_config\x18\x0e \x01(\v2\x0e.kernel.ConfigR\x0efrontendConfig\x12@\n" +
+	"\x0egraph_registry\x18\x11 \x03(\v2\x19.hazelcast.AdminGraphInfoR\rgraphRegistry\x12X\n" +
+	"\x13service_connections\x18\x12 \x03(\v2!.hazelcast.AdminServiceConnectionB\x04ȶ\x18xR\x12serviceConnections\x12A\n" +
+	"\vqueue_stats\x18\x13 \x03(\v2\x1a.hazelcast.AdminQueueStatsB\x04ȶ\x18xR\n" +
+	"queueStats\x12A\n" +
+	"\vtopic_stats\x18\x14 \x03(\v2\x1a.hazelcast.AdminTopicStatsB\x04ȶ\x18xR\n" +
+	"topicStats\x12D\n" +
+	"\fwatch_health\x18\x15 \x03(\v2\x1b.hazelcast.AdminWatchHealthB\x04ȶ\x18<R\vwatchHealth\x12I\n" +
+	"\x0emutation_rates\x18\x16 \x03(\v2\x1c.hazelcast.AdminMutationRateB\x04ȶ\x18xR\rmutationRates\x12I\n" +
 	"\rset_log_level\x18\n" +
 	" \x01(\v2\x1f.kernel.AdminSetLogLevelRequestB\x04\x80\xb7\x18\x01R\vsetLogLevel\x12[\n" +
-	"\rreload_config\x18\f \x01(\v2 .kernel.AdminReloadConfigRequestB\x14\x80\xb7\x18\x01\xa2\xb7\x18\forchestratorR\freloadConfig\x12B\n" +
-	"\vconfig_dump\x18\v \x01(\v2\x17.kernel.AdminConfigDumpB\b\xe0\xb5\x18\x02\xe8\xb5\x18\x01R\n" +
-	"configDump:\x14\x9a\xa8\x1d\fClusterState\xa0\xa8\x1d\x02\"V\n" +
+	"\rreload_config\x18\f \x01(\v2 .kernel.AdminReloadConfigRequestB\x14\x80\xb7\x18\x01\xa2\xb7\x18\forchestratorR\freloadConfig\x12>\n" +
+	"\vconfig_dump\x18\v \x01(\v2\x17.kernel.AdminConfigDumpB\x04\xe8\xb5\x18\x01R\n" +
+	"configDump:\x10\x9a\xa8\x1d\fClusterState\"V\n" +
 	"\x17AdminSetLogLevelRequest\x12\x1f\n" +
 	"\vlogger_name\x18\x01 \x01(\tR\n" +
 	"loggerName\x12\x1a\n" +
@@ -10800,11 +10788,11 @@ const file_services_kernel_proto_rawDesc = "" +
 	"\x18AdminReloadConfigRequest\x12!\n" +
 	"\fforce_reload\x18\x01 \x01(\bR\vforceReload\"C\n" +
 	"\x0fAdminConfigDump\x120\n" +
-	"\x14hazelcast_config_xml\x18\x03 \x01(\tR\x12hazelcastConfigXml\"\x81\x01\n" +
-	"\x12ServiceHealthState\x12O\n" +
-	"\tinstances\x18\x01 \x03(\v2#.healthreport.ServiceInstanceHealthB\f\xe0\xb5\x18\x02ȶ\x18\x1e\x90\xb7\x18\x01R\tinstances:\x1a\x9a\xa8\x1d\x12ServiceHealthState\xa0\xa8\x1d\x02\"S\n" +
-	"\aCaState\x123\n" +
-	"\bca_certs\x18\x01 \x03(\v2\x0e.x509.X509CertB\b\xe0\xb5\x18\x02\xe0\xb6\x18\x01R\acaCerts:\x13\x9a\xa8\x1d\aCaState\xa0\xa8\x1d\x02\xe0\xa8\x1d\x01\"\x9f\x01\n" +
+	"\x14hazelcast_config_xml\x18\x03 \x01(\tR\x12hazelcastConfigXml\"y\n" +
+	"\x12ServiceHealthState\x12K\n" +
+	"\tinstances\x18\x01 \x03(\v2#.healthreport.ServiceInstanceHealthB\bȶ\x18\x1e\x90\xb7\x18\x01R\tinstances:\x16\x9a\xa8\x1d\x12ServiceHealthState\"K\n" +
+	"\aCaState\x12/\n" +
+	"\bca_certs\x18\x01 \x03(\v2\x0e.x509.X509CertB\x04\xe0\xb6\x18\x01R\acaCerts:\x0f\x9a\xa8\x1d\aCaState\xe0\xa8\x1d\x01\"\x9f\x01\n" +
 	"\n" +
 	"QueryValue\x12#\n" +
 	"\fstring_value\x18\x01 \x01(\tH\x00R\vstringValue\x12\x1d\n" +
@@ -11847,686 +11835,682 @@ var file_services_kernel_proto_goTypes = []any{
 	(*host.Host)(nil),                          // 242: host.Host
 	(*hazelcast.NetworkConfig)(nil),            // 243: hazelcast.NetworkConfig
 	(*logger.LoggerConfig)(nil),                // 244: logger.LoggerConfig
-	(*hazelcast.CPSubsystemConfig)(nil),        // 245: hazelcast.CPSubsystemConfig
-	(outputformat.OutputFormat)(0),             // 246: outputformat.OutputFormat
-	(*x509.X509Cert)(nil),                      // 247: x509.X509Cert
-	(*x509.X509CertPair)(nil),                  // 248: x509.X509CertPair
-	(hazelcast.NodeMode)(0),                    // 249: hazelcast.NodeMode
-	(*jwk.Jwk)(nil),                            // 250: jwk.Jwk
-	(cloudvendor.CloudVendor)(0),               // 251: cloudvendor.CloudVendor
-	(*hazelcast.RateLimitConfig)(nil),          // 252: hazelcast.RateLimitConfig
-	(*generated.Services)(nil),                 // 253: generated.Services
-	(*hazelcast.AdminClusterInfo)(nil),         // 254: hazelcast.AdminClusterInfo
-	(*hazelcast.AdminClusterHealth)(nil),       // 255: hazelcast.AdminClusterHealth
-	(*hazelcast.AdminNodeMetrics)(nil),         // 256: hazelcast.AdminNodeMetrics
-	(*hazelcast.AdminGrpcStats)(nil),           // 257: hazelcast.AdminGrpcStats
-	(*hazelcast.AdminPersistenceStatus)(nil),   // 258: hazelcast.AdminPersistenceStatus
-	(*hazelcast.AdminNetworkStats)(nil),        // 259: hazelcast.AdminNetworkStats
-	(*hazelcast.AdminThreadInfo)(nil),          // 260: hazelcast.AdminThreadInfo
-	(*hazelcast.AdminTokenCacheStats)(nil),     // 261: hazelcast.AdminTokenCacheStats
-	(*hazelcast.AdminMapStats)(nil),            // 262: hazelcast.AdminMapStats
-	(*hazelcast.AdminGraphInfo)(nil),           // 263: hazelcast.AdminGraphInfo
-	(*hazelcast.AdminServiceConnection)(nil),   // 264: hazelcast.AdminServiceConnection
-	(*hazelcast.AdminQueueStats)(nil),          // 265: hazelcast.AdminQueueStats
-	(*hazelcast.AdminTopicStats)(nil),          // 266: hazelcast.AdminTopicStats
-	(*hazelcast.AdminWatchHealth)(nil),         // 267: hazelcast.AdminWatchHealth
-	(*hazelcast.AdminMutationRate)(nil),        // 268: hazelcast.AdminMutationRate
-	(*healthreport.ServiceInstanceHealth)(nil), // 269: healthreport.ServiceInstanceHealth
-	(*tokenrequest.TokenRequest)(nil),          // 270: tokenrequest.TokenRequest
-	(*x509.X509CertRequest)(nil),               // 271: x509.X509CertRequest
-	(*emptypb.Empty)(nil),                      // 272: google.protobuf.Empty
-	(*token.Token)(nil),                        // 273: token.Token
+	(outputformat.OutputFormat)(0),             // 245: outputformat.OutputFormat
+	(*x509.X509Cert)(nil),                      // 246: x509.X509Cert
+	(*x509.X509CertPair)(nil),                  // 247: x509.X509CertPair
+	(*jwk.Jwk)(nil),                            // 248: jwk.Jwk
+	(cloudvendor.CloudVendor)(0),               // 249: cloudvendor.CloudVendor
+	(*hazelcast.RateLimitConfig)(nil),          // 250: hazelcast.RateLimitConfig
+	(*generated.Services)(nil),                 // 251: generated.Services
+	(*hazelcast.AdminClusterInfo)(nil),         // 252: hazelcast.AdminClusterInfo
+	(*hazelcast.AdminClusterHealth)(nil),       // 253: hazelcast.AdminClusterHealth
+	(*hazelcast.AdminNodeMetrics)(nil),         // 254: hazelcast.AdminNodeMetrics
+	(*hazelcast.AdminGrpcStats)(nil),           // 255: hazelcast.AdminGrpcStats
+	(*hazelcast.AdminPersistenceStatus)(nil),   // 256: hazelcast.AdminPersistenceStatus
+	(*hazelcast.AdminNetworkStats)(nil),        // 257: hazelcast.AdminNetworkStats
+	(*hazelcast.AdminThreadInfo)(nil),          // 258: hazelcast.AdminThreadInfo
+	(*hazelcast.AdminTokenCacheStats)(nil),     // 259: hazelcast.AdminTokenCacheStats
+	(*hazelcast.AdminMapStats)(nil),            // 260: hazelcast.AdminMapStats
+	(*hazelcast.AdminGraphInfo)(nil),           // 261: hazelcast.AdminGraphInfo
+	(*hazelcast.AdminServiceConnection)(nil),   // 262: hazelcast.AdminServiceConnection
+	(*hazelcast.AdminQueueStats)(nil),          // 263: hazelcast.AdminQueueStats
+	(*hazelcast.AdminTopicStats)(nil),          // 264: hazelcast.AdminTopicStats
+	(*hazelcast.AdminWatchHealth)(nil),         // 265: hazelcast.AdminWatchHealth
+	(*hazelcast.AdminMutationRate)(nil),        // 266: hazelcast.AdminMutationRate
+	(*healthreport.ServiceInstanceHealth)(nil), // 267: healthreport.ServiceInstanceHealth
+	(*tokenrequest.TokenRequest)(nil),          // 268: tokenrequest.TokenRequest
+	(*x509.X509CertRequest)(nil),               // 269: x509.X509CertRequest
+	(*emptypb.Empty)(nil),                      // 270: google.protobuf.Empty
+	(*token.Token)(nil),                        // 271: token.Token
 }
 var file_services_kernel_proto_depIdxs = []int32{
 	242, // 0: kernel.BootstrapConfig.listener:type_name -> host.Host
 	242, // 1: kernel.BootstrapConfig.members:type_name -> host.Host
 	243, // 2: kernel.BootstrapConfig.network:type_name -> hazelcast.NetworkConfig
 	244, // 3: kernel.BootstrapConfig.logger:type_name -> logger.LoggerConfig
-	245, // 4: kernel.BootstrapConfig.cp_subsystem:type_name -> hazelcast.CPSubsystemConfig
-	246, // 5: kernel.BootstrapConfig.persistence_format:type_name -> outputformat.OutputFormat
-	9,   // 6: kernel.BootstrapConfig.url_loader:type_name -> kernel.UrlLoader
-	10,  // 7: kernel.BootstrapConfig.file_loader:type_name -> kernel.FileLoader
-	247, // 8: kernel.BootstrapConfig.loader_ca:type_name -> x509.X509Cert
-	248, // 9: kernel.BootstrapConfig.tls:type_name -> x509.X509CertPair
-	249, // 10: kernel.BootstrapConfig.mode:type_name -> hazelcast.NodeMode
-	250, // 11: kernel.TokenExchangerState.verifying_keys:type_name -> jwk.Jwk
-	247, // 12: kernel.TrustedCaState.trusted_cas:type_name -> x509.X509Cert
-	251, // 13: kernel.CloudIdentityMatcher.vendor:type_name -> cloudvendor.CloudVendor
-	250, // 14: kernel.Delegate.cred_pairs:type_name -> jwk.Jwk
-	6,   // 15: kernel.Delegate.cloud_identities:type_name -> kernel.CloudIdentityMatcher
-	247, // 16: kernel.Config.trusted_cas:type_name -> x509.X509Cert
-	252, // 17: kernel.Config.rate_limit:type_name -> hazelcast.RateLimitConfig
-	253, // 18: kernel.Config.configs:type_name -> generated.Services
-	7,   // 19: kernel.Config.delegates:type_name -> kernel.Delegate
-	254, // 20: kernel.ClusterState.cluster_info:type_name -> hazelcast.AdminClusterInfo
-	255, // 21: kernel.ClusterState.cluster_health:type_name -> hazelcast.AdminClusterHealth
-	256, // 22: kernel.ClusterState.node_metrics:type_name -> hazelcast.AdminNodeMetrics
-	257, // 23: kernel.ClusterState.grpc_stats:type_name -> hazelcast.AdminGrpcStats
-	258, // 24: kernel.ClusterState.persistence_status:type_name -> hazelcast.AdminPersistenceStatus
-	259, // 25: kernel.ClusterState.network_stats:type_name -> hazelcast.AdminNetworkStats
-	260, // 26: kernel.ClusterState.thread_info:type_name -> hazelcast.AdminThreadInfo
-	261, // 27: kernel.ClusterState.token_cache_stats:type_name -> hazelcast.AdminTokenCacheStats
-	262, // 28: kernel.ClusterState.map_stats:type_name -> hazelcast.AdminMapStats
-	3,   // 29: kernel.ClusterState.bootstrap_config:type_name -> kernel.BootstrapConfig
-	8,   // 30: kernel.ClusterState.frontend_config:type_name -> kernel.Config
-	263, // 31: kernel.ClusterState.graph_registry:type_name -> hazelcast.AdminGraphInfo
-	264, // 32: kernel.ClusterState.service_connections:type_name -> hazelcast.AdminServiceConnection
-	265, // 33: kernel.ClusterState.queue_stats:type_name -> hazelcast.AdminQueueStats
-	266, // 34: kernel.ClusterState.topic_stats:type_name -> hazelcast.AdminTopicStats
-	267, // 35: kernel.ClusterState.watch_health:type_name -> hazelcast.AdminWatchHealth
-	268, // 36: kernel.ClusterState.mutation_rates:type_name -> hazelcast.AdminMutationRate
-	12,  // 37: kernel.ClusterState.set_log_level:type_name -> kernel.AdminSetLogLevelRequest
-	13,  // 38: kernel.ClusterState.reload_config:type_name -> kernel.AdminReloadConfigRequest
-	14,  // 39: kernel.ClusterState.config_dump:type_name -> kernel.AdminConfigDump
-	269, // 40: kernel.ServiceHealthState.instances:type_name -> healthreport.ServiceInstanceHealth
-	247, // 41: kernel.CaState.ca_certs:type_name -> x509.X509Cert
-	0,   // 42: kernel.Predicate.op:type_name -> kernel.ComparisonOp
-	17,  // 43: kernel.Predicate.value:type_name -> kernel.QueryValue
-	17,  // 44: kernel.Predicate.values:type_name -> kernel.QueryValue
-	2,   // 45: kernel.PredicateGroup.op:type_name -> kernel.LogicalOp
-	18,  // 46: kernel.PredicateGroup.predicates:type_name -> kernel.Predicate
-	19,  // 47: kernel.PredicateGroup.groups:type_name -> kernel.PredicateGroup
-	1,   // 48: kernel.SortField.direction:type_name -> kernel.SortDirection
-	19,  // 49: kernel.CollectionQuery.where:type_name -> kernel.PredicateGroup
-	20,  // 50: kernel.CollectionQuery.order_by:type_name -> kernel.SortField
-	250, // 51: kernel.VerifyingKeysPutRequest.value:type_name -> jwk.Jwk
-	250, // 52: kernel.VerifyingKeysValueResponse.value:type_name -> jwk.Jwk
-	225, // 53: kernel.VerifyingKeysEntriesResponse.entries:type_name -> kernel.VerifyingKeysEntriesResponse.EntriesEntry
-	21,  // 54: kernel.VerifyingKeysQueryRequest.query:type_name -> kernel.CollectionQuery
-	250, // 55: kernel.VerifyingKeysQueryResponse.results:type_name -> jwk.Jwk
-	247, // 56: kernel.TrustedCasPutRequest.value:type_name -> x509.X509Cert
-	247, // 57: kernel.TrustedCasValueResponse.value:type_name -> x509.X509Cert
-	226, // 58: kernel.TrustedCasEntriesResponse.entries:type_name -> kernel.TrustedCasEntriesResponse.EntriesEntry
-	21,  // 59: kernel.TrustedCasQueryRequest.query:type_name -> kernel.CollectionQuery
-	247, // 60: kernel.TrustedCasQueryResponse.results:type_name -> x509.X509Cert
-	256, // 61: kernel.NodeMetricsPutRequest.value:type_name -> hazelcast.AdminNodeMetrics
-	256, // 62: kernel.NodeMetricsValueResponse.value:type_name -> hazelcast.AdminNodeMetrics
-	227, // 63: kernel.NodeMetricsEntriesResponse.entries:type_name -> kernel.NodeMetricsEntriesResponse.EntriesEntry
-	21,  // 64: kernel.NodeMetricsQueryRequest.query:type_name -> kernel.CollectionQuery
-	256, // 65: kernel.NodeMetricsQueryResponse.results:type_name -> hazelcast.AdminNodeMetrics
-	257, // 66: kernel.GrpcStatsPutRequest.value:type_name -> hazelcast.AdminGrpcStats
-	257, // 67: kernel.GrpcStatsValueResponse.value:type_name -> hazelcast.AdminGrpcStats
-	228, // 68: kernel.GrpcStatsEntriesResponse.entries:type_name -> kernel.GrpcStatsEntriesResponse.EntriesEntry
-	21,  // 69: kernel.GrpcStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	257, // 70: kernel.GrpcStatsQueryResponse.results:type_name -> hazelcast.AdminGrpcStats
-	258, // 71: kernel.PersistenceStatusPutRequest.value:type_name -> hazelcast.AdminPersistenceStatus
-	258, // 72: kernel.PersistenceStatusValueResponse.value:type_name -> hazelcast.AdminPersistenceStatus
-	229, // 73: kernel.PersistenceStatusEntriesResponse.entries:type_name -> kernel.PersistenceStatusEntriesResponse.EntriesEntry
-	21,  // 74: kernel.PersistenceStatusQueryRequest.query:type_name -> kernel.CollectionQuery
-	258, // 75: kernel.PersistenceStatusQueryResponse.results:type_name -> hazelcast.AdminPersistenceStatus
-	259, // 76: kernel.NetworkStatsPutRequest.value:type_name -> hazelcast.AdminNetworkStats
-	259, // 77: kernel.NetworkStatsValueResponse.value:type_name -> hazelcast.AdminNetworkStats
-	230, // 78: kernel.NetworkStatsEntriesResponse.entries:type_name -> kernel.NetworkStatsEntriesResponse.EntriesEntry
-	21,  // 79: kernel.NetworkStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	259, // 80: kernel.NetworkStatsQueryResponse.results:type_name -> hazelcast.AdminNetworkStats
-	260, // 81: kernel.ThreadInfoPutRequest.value:type_name -> hazelcast.AdminThreadInfo
-	260, // 82: kernel.ThreadInfoValueResponse.value:type_name -> hazelcast.AdminThreadInfo
-	231, // 83: kernel.ThreadInfoEntriesResponse.entries:type_name -> kernel.ThreadInfoEntriesResponse.EntriesEntry
-	21,  // 84: kernel.ThreadInfoQueryRequest.query:type_name -> kernel.CollectionQuery
-	260, // 85: kernel.ThreadInfoQueryResponse.results:type_name -> hazelcast.AdminThreadInfo
-	261, // 86: kernel.TokenCacheStatsPutRequest.value:type_name -> hazelcast.AdminTokenCacheStats
-	261, // 87: kernel.TokenCacheStatsValueResponse.value:type_name -> hazelcast.AdminTokenCacheStats
-	232, // 88: kernel.TokenCacheStatsEntriesResponse.entries:type_name -> kernel.TokenCacheStatsEntriesResponse.EntriesEntry
-	21,  // 89: kernel.TokenCacheStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	261, // 90: kernel.TokenCacheStatsQueryResponse.results:type_name -> hazelcast.AdminTokenCacheStats
-	262, // 91: kernel.MapStatsPutRequest.value:type_name -> hazelcast.AdminMapStats
-	262, // 92: kernel.MapStatsValueResponse.value:type_name -> hazelcast.AdminMapStats
-	233, // 93: kernel.MapStatsEntriesResponse.entries:type_name -> kernel.MapStatsEntriesResponse.EntriesEntry
-	21,  // 94: kernel.MapStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	262, // 95: kernel.MapStatsQueryResponse.results:type_name -> hazelcast.AdminMapStats
-	263, // 96: kernel.GraphRegistryPutRequest.value:type_name -> hazelcast.AdminGraphInfo
-	263, // 97: kernel.GraphRegistryValueResponse.value:type_name -> hazelcast.AdminGraphInfo
-	234, // 98: kernel.GraphRegistryEntriesResponse.entries:type_name -> kernel.GraphRegistryEntriesResponse.EntriesEntry
-	21,  // 99: kernel.GraphRegistryQueryRequest.query:type_name -> kernel.CollectionQuery
-	263, // 100: kernel.GraphRegistryQueryResponse.results:type_name -> hazelcast.AdminGraphInfo
-	264, // 101: kernel.ServiceConnectionsPutRequest.value:type_name -> hazelcast.AdminServiceConnection
-	264, // 102: kernel.ServiceConnectionsValueResponse.value:type_name -> hazelcast.AdminServiceConnection
-	235, // 103: kernel.ServiceConnectionsEntriesResponse.entries:type_name -> kernel.ServiceConnectionsEntriesResponse.EntriesEntry
-	21,  // 104: kernel.ServiceConnectionsQueryRequest.query:type_name -> kernel.CollectionQuery
-	264, // 105: kernel.ServiceConnectionsQueryResponse.results:type_name -> hazelcast.AdminServiceConnection
-	265, // 106: kernel.QueueStatsPutRequest.value:type_name -> hazelcast.AdminQueueStats
-	265, // 107: kernel.QueueStatsValueResponse.value:type_name -> hazelcast.AdminQueueStats
-	236, // 108: kernel.QueueStatsEntriesResponse.entries:type_name -> kernel.QueueStatsEntriesResponse.EntriesEntry
-	21,  // 109: kernel.QueueStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	265, // 110: kernel.QueueStatsQueryResponse.results:type_name -> hazelcast.AdminQueueStats
-	266, // 111: kernel.TopicStatsPutRequest.value:type_name -> hazelcast.AdminTopicStats
-	266, // 112: kernel.TopicStatsValueResponse.value:type_name -> hazelcast.AdminTopicStats
-	237, // 113: kernel.TopicStatsEntriesResponse.entries:type_name -> kernel.TopicStatsEntriesResponse.EntriesEntry
-	21,  // 114: kernel.TopicStatsQueryRequest.query:type_name -> kernel.CollectionQuery
-	266, // 115: kernel.TopicStatsQueryResponse.results:type_name -> hazelcast.AdminTopicStats
-	267, // 116: kernel.WatchHealthPutRequest.value:type_name -> hazelcast.AdminWatchHealth
-	267, // 117: kernel.WatchHealthValueResponse.value:type_name -> hazelcast.AdminWatchHealth
-	238, // 118: kernel.WatchHealthEntriesResponse.entries:type_name -> kernel.WatchHealthEntriesResponse.EntriesEntry
-	21,  // 119: kernel.WatchHealthQueryRequest.query:type_name -> kernel.CollectionQuery
-	267, // 120: kernel.WatchHealthQueryResponse.results:type_name -> hazelcast.AdminWatchHealth
-	268, // 121: kernel.MutationRatesPutRequest.value:type_name -> hazelcast.AdminMutationRate
-	268, // 122: kernel.MutationRatesValueResponse.value:type_name -> hazelcast.AdminMutationRate
-	239, // 123: kernel.MutationRatesEntriesResponse.entries:type_name -> kernel.MutationRatesEntriesResponse.EntriesEntry
-	21,  // 124: kernel.MutationRatesQueryRequest.query:type_name -> kernel.CollectionQuery
-	268, // 125: kernel.MutationRatesQueryResponse.results:type_name -> hazelcast.AdminMutationRate
-	269, // 126: kernel.InstancesValueResponse.value:type_name -> healthreport.ServiceInstanceHealth
-	240, // 127: kernel.InstancesEntriesResponse.entries:type_name -> kernel.InstancesEntriesResponse.EntriesEntry
-	21,  // 128: kernel.InstancesQueryRequest.query:type_name -> kernel.CollectionQuery
-	269, // 129: kernel.InstancesQueryResponse.results:type_name -> healthreport.ServiceInstanceHealth
-	247, // 130: kernel.CaCertsPutRequest.value:type_name -> x509.X509Cert
-	247, // 131: kernel.CaCertsValueResponse.value:type_name -> x509.X509Cert
-	241, // 132: kernel.CaCertsEntriesResponse.entries:type_name -> kernel.CaCertsEntriesResponse.EntriesEntry
-	21,  // 133: kernel.CaCertsQueryRequest.query:type_name -> kernel.CollectionQuery
-	247, // 134: kernel.CaCertsQueryResponse.results:type_name -> x509.X509Cert
-	250, // 135: kernel.VerifyingKeysEntriesResponse.EntriesEntry.value:type_name -> jwk.Jwk
-	247, // 136: kernel.TrustedCasEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
-	256, // 137: kernel.NodeMetricsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminNodeMetrics
-	257, // 138: kernel.GrpcStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminGrpcStats
-	258, // 139: kernel.PersistenceStatusEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminPersistenceStatus
-	259, // 140: kernel.NetworkStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminNetworkStats
-	260, // 141: kernel.ThreadInfoEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminThreadInfo
-	261, // 142: kernel.TokenCacheStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminTokenCacheStats
-	262, // 143: kernel.MapStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminMapStats
-	263, // 144: kernel.GraphRegistryEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminGraphInfo
-	264, // 145: kernel.ServiceConnectionsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminServiceConnection
-	265, // 146: kernel.QueueStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminQueueStats
-	266, // 147: kernel.TopicStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminTopicStats
-	267, // 148: kernel.WatchHealthEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminWatchHealth
-	268, // 149: kernel.MutationRatesEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminMutationRate
-	269, // 150: kernel.InstancesEntriesResponse.EntriesEntry.value:type_name -> healthreport.ServiceInstanceHealth
-	247, // 151: kernel.CaCertsEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
-	270, // 152: kernel.TokenExchangerService.ExchangeToken:input_type -> tokenrequest.TokenRequest
-	271, // 153: kernel.X509CertExchangerService.SignCert:input_type -> x509.X509CertRequest
-	22,  // 154: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	23,  // 155: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
-	23,  // 156: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
-	22,  // 157: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	22,  // 158: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	22,  // 159: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
-	24,  // 160: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:input_type -> kernel.VerifyingKeysGetAllRequest
-	25,  // 161: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:input_type -> kernel.VerifyingKeysKeysRequest
-	26,  // 162: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:input_type -> kernel.VerifyingKeysSizeRequest
-	27,  // 163: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:input_type -> kernel.VerifyingKeysClearRequest
-	23,  // 164: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
-	272, // 165: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:input_type -> google.protobuf.Empty
-	32,  // 166: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
-	32,  // 167: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
-	34,  // 168: kernel.TrustedCaStateBackendService.GetTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	35,  // 169: kernel.TrustedCaStateBackendService.PutTrustedCas:input_type -> kernel.TrustedCasPutRequest
-	35,  // 170: kernel.TrustedCaStateBackendService.SetTrustedCas:input_type -> kernel.TrustedCasPutRequest
-	34,  // 171: kernel.TrustedCaStateBackendService.RemoveTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	34,  // 172: kernel.TrustedCaStateBackendService.DeleteTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	34,  // 173: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:input_type -> kernel.TrustedCasGetRequest
-	36,  // 174: kernel.TrustedCaStateBackendService.GetAllTrustedCas:input_type -> kernel.TrustedCasGetAllRequest
-	37,  // 175: kernel.TrustedCaStateBackendService.KeySetTrustedCas:input_type -> kernel.TrustedCasKeysRequest
-	38,  // 176: kernel.TrustedCaStateBackendService.SizeTrustedCas:input_type -> kernel.TrustedCasSizeRequest
-	39,  // 177: kernel.TrustedCaStateBackendService.ClearTrustedCas:input_type -> kernel.TrustedCasClearRequest
-	35,  // 178: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:input_type -> kernel.TrustedCasPutRequest
-	272, // 179: kernel.TrustedCaStateBackendService.WatchTrustedCas:input_type -> google.protobuf.Empty
-	44,  // 180: kernel.TrustedCaStateBackendService.QueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
-	44,  // 181: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
-	272, // 182: kernel.ClusterStateBackendService.GetClusterInfo:input_type -> google.protobuf.Empty
-	254, // 183: kernel.ClusterStateBackendService.SetClusterInfo:input_type -> hazelcast.AdminClusterInfo
-	272, // 184: kernel.ClusterStateBackendService.WatchClusterInfo:input_type -> google.protobuf.Empty
-	272, // 185: kernel.ClusterStateBackendService.GetClusterHealth:input_type -> google.protobuf.Empty
-	255, // 186: kernel.ClusterStateBackendService.SetClusterHealth:input_type -> hazelcast.AdminClusterHealth
-	272, // 187: kernel.ClusterStateBackendService.WatchClusterHealth:input_type -> google.protobuf.Empty
-	272, // 188: kernel.ClusterStateBackendService.GetFrontendConfig:input_type -> google.protobuf.Empty
-	8,   // 189: kernel.ClusterStateBackendService.SetFrontendConfig:input_type -> kernel.Config
-	272, // 190: kernel.ClusterStateBackendService.WatchFrontendConfig:input_type -> google.protobuf.Empty
-	46,  // 191: kernel.ClusterStateBackendService.GetNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	47,  // 192: kernel.ClusterStateBackendService.PutNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
-	47,  // 193: kernel.ClusterStateBackendService.SetNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
-	46,  // 194: kernel.ClusterStateBackendService.RemoveNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	46,  // 195: kernel.ClusterStateBackendService.DeleteNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	46,  // 196: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
-	48,  // 197: kernel.ClusterStateBackendService.GetAllNodeMetrics:input_type -> kernel.NodeMetricsGetAllRequest
-	49,  // 198: kernel.ClusterStateBackendService.KeySetNodeMetrics:input_type -> kernel.NodeMetricsKeysRequest
-	50,  // 199: kernel.ClusterStateBackendService.SizeNodeMetrics:input_type -> kernel.NodeMetricsSizeRequest
-	51,  // 200: kernel.ClusterStateBackendService.ClearNodeMetrics:input_type -> kernel.NodeMetricsClearRequest
-	47,  // 201: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
-	272, // 202: kernel.ClusterStateBackendService.WatchNodeMetrics:input_type -> google.protobuf.Empty
-	56,  // 203: kernel.ClusterStateBackendService.QueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
-	56,  // 204: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
-	58,  // 205: kernel.ClusterStateBackendService.GetGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	59,  // 206: kernel.ClusterStateBackendService.PutGrpcStats:input_type -> kernel.GrpcStatsPutRequest
-	59,  // 207: kernel.ClusterStateBackendService.SetGrpcStats:input_type -> kernel.GrpcStatsPutRequest
-	58,  // 208: kernel.ClusterStateBackendService.RemoveGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	58,  // 209: kernel.ClusterStateBackendService.DeleteGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	58,  // 210: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:input_type -> kernel.GrpcStatsGetRequest
-	60,  // 211: kernel.ClusterStateBackendService.GetAllGrpcStats:input_type -> kernel.GrpcStatsGetAllRequest
-	61,  // 212: kernel.ClusterStateBackendService.KeySetGrpcStats:input_type -> kernel.GrpcStatsKeysRequest
-	62,  // 213: kernel.ClusterStateBackendService.SizeGrpcStats:input_type -> kernel.GrpcStatsSizeRequest
-	63,  // 214: kernel.ClusterStateBackendService.ClearGrpcStats:input_type -> kernel.GrpcStatsClearRequest
-	59,  // 215: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:input_type -> kernel.GrpcStatsPutRequest
-	272, // 216: kernel.ClusterStateBackendService.WatchGrpcStats:input_type -> google.protobuf.Empty
-	68,  // 217: kernel.ClusterStateBackendService.QueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
-	68,  // 218: kernel.ClusterStateBackendService.WatchQueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
-	70,  // 219: kernel.ClusterStateBackendService.GetPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	71,  // 220: kernel.ClusterStateBackendService.PutPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
-	71,  // 221: kernel.ClusterStateBackendService.SetPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
-	70,  // 222: kernel.ClusterStateBackendService.RemovePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	70,  // 223: kernel.ClusterStateBackendService.DeletePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	70,  // 224: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
-	72,  // 225: kernel.ClusterStateBackendService.GetAllPersistenceStatus:input_type -> kernel.PersistenceStatusGetAllRequest
-	73,  // 226: kernel.ClusterStateBackendService.KeySetPersistenceStatus:input_type -> kernel.PersistenceStatusKeysRequest
-	74,  // 227: kernel.ClusterStateBackendService.SizePersistenceStatus:input_type -> kernel.PersistenceStatusSizeRequest
-	75,  // 228: kernel.ClusterStateBackendService.ClearPersistenceStatus:input_type -> kernel.PersistenceStatusClearRequest
-	71,  // 229: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
-	272, // 230: kernel.ClusterStateBackendService.WatchPersistenceStatus:input_type -> google.protobuf.Empty
-	80,  // 231: kernel.ClusterStateBackendService.QueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
-	80,  // 232: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
-	82,  // 233: kernel.ClusterStateBackendService.GetNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	83,  // 234: kernel.ClusterStateBackendService.PutNetworkStats:input_type -> kernel.NetworkStatsPutRequest
-	83,  // 235: kernel.ClusterStateBackendService.SetNetworkStats:input_type -> kernel.NetworkStatsPutRequest
-	82,  // 236: kernel.ClusterStateBackendService.RemoveNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	82,  // 237: kernel.ClusterStateBackendService.DeleteNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	82,  // 238: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:input_type -> kernel.NetworkStatsGetRequest
-	84,  // 239: kernel.ClusterStateBackendService.GetAllNetworkStats:input_type -> kernel.NetworkStatsGetAllRequest
-	85,  // 240: kernel.ClusterStateBackendService.KeySetNetworkStats:input_type -> kernel.NetworkStatsKeysRequest
-	86,  // 241: kernel.ClusterStateBackendService.SizeNetworkStats:input_type -> kernel.NetworkStatsSizeRequest
-	87,  // 242: kernel.ClusterStateBackendService.ClearNetworkStats:input_type -> kernel.NetworkStatsClearRequest
-	83,  // 243: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:input_type -> kernel.NetworkStatsPutRequest
-	272, // 244: kernel.ClusterStateBackendService.WatchNetworkStats:input_type -> google.protobuf.Empty
-	92,  // 245: kernel.ClusterStateBackendService.QueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
-	92,  // 246: kernel.ClusterStateBackendService.WatchQueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
-	94,  // 247: kernel.ClusterStateBackendService.GetThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	95,  // 248: kernel.ClusterStateBackendService.PutThreadInfo:input_type -> kernel.ThreadInfoPutRequest
-	95,  // 249: kernel.ClusterStateBackendService.SetThreadInfo:input_type -> kernel.ThreadInfoPutRequest
-	94,  // 250: kernel.ClusterStateBackendService.RemoveThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	94,  // 251: kernel.ClusterStateBackendService.DeleteThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	94,  // 252: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:input_type -> kernel.ThreadInfoGetRequest
-	96,  // 253: kernel.ClusterStateBackendService.GetAllThreadInfo:input_type -> kernel.ThreadInfoGetAllRequest
-	97,  // 254: kernel.ClusterStateBackendService.KeySetThreadInfo:input_type -> kernel.ThreadInfoKeysRequest
-	98,  // 255: kernel.ClusterStateBackendService.SizeThreadInfo:input_type -> kernel.ThreadInfoSizeRequest
-	99,  // 256: kernel.ClusterStateBackendService.ClearThreadInfo:input_type -> kernel.ThreadInfoClearRequest
-	95,  // 257: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:input_type -> kernel.ThreadInfoPutRequest
-	272, // 258: kernel.ClusterStateBackendService.WatchThreadInfo:input_type -> google.protobuf.Empty
-	104, // 259: kernel.ClusterStateBackendService.QueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
-	104, // 260: kernel.ClusterStateBackendService.WatchQueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
-	106, // 261: kernel.ClusterStateBackendService.GetTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	107, // 262: kernel.ClusterStateBackendService.PutTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
-	107, // 263: kernel.ClusterStateBackendService.SetTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
-	106, // 264: kernel.ClusterStateBackendService.RemoveTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	106, // 265: kernel.ClusterStateBackendService.DeleteTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	106, // 266: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
-	108, // 267: kernel.ClusterStateBackendService.GetAllTokenCacheStats:input_type -> kernel.TokenCacheStatsGetAllRequest
-	109, // 268: kernel.ClusterStateBackendService.KeySetTokenCacheStats:input_type -> kernel.TokenCacheStatsKeysRequest
-	110, // 269: kernel.ClusterStateBackendService.SizeTokenCacheStats:input_type -> kernel.TokenCacheStatsSizeRequest
-	111, // 270: kernel.ClusterStateBackendService.ClearTokenCacheStats:input_type -> kernel.TokenCacheStatsClearRequest
-	107, // 271: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
-	272, // 272: kernel.ClusterStateBackendService.WatchTokenCacheStats:input_type -> google.protobuf.Empty
-	116, // 273: kernel.ClusterStateBackendService.QueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
-	116, // 274: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
-	118, // 275: kernel.ClusterStateBackendService.GetMapStats:input_type -> kernel.MapStatsGetRequest
-	119, // 276: kernel.ClusterStateBackendService.PutMapStats:input_type -> kernel.MapStatsPutRequest
-	119, // 277: kernel.ClusterStateBackendService.SetMapStats:input_type -> kernel.MapStatsPutRequest
-	118, // 278: kernel.ClusterStateBackendService.RemoveMapStats:input_type -> kernel.MapStatsGetRequest
-	118, // 279: kernel.ClusterStateBackendService.DeleteMapStats:input_type -> kernel.MapStatsGetRequest
-	118, // 280: kernel.ClusterStateBackendService.ContainsKeyMapStats:input_type -> kernel.MapStatsGetRequest
-	120, // 281: kernel.ClusterStateBackendService.GetAllMapStats:input_type -> kernel.MapStatsGetAllRequest
-	121, // 282: kernel.ClusterStateBackendService.KeySetMapStats:input_type -> kernel.MapStatsKeysRequest
-	122, // 283: kernel.ClusterStateBackendService.SizeMapStats:input_type -> kernel.MapStatsSizeRequest
-	123, // 284: kernel.ClusterStateBackendService.ClearMapStats:input_type -> kernel.MapStatsClearRequest
-	119, // 285: kernel.ClusterStateBackendService.PutIfAbsentMapStats:input_type -> kernel.MapStatsPutRequest
-	272, // 286: kernel.ClusterStateBackendService.WatchMapStats:input_type -> google.protobuf.Empty
-	128, // 287: kernel.ClusterStateBackendService.QueryMapStats:input_type -> kernel.MapStatsQueryRequest
-	128, // 288: kernel.ClusterStateBackendService.WatchQueryMapStats:input_type -> kernel.MapStatsQueryRequest
-	130, // 289: kernel.ClusterStateBackendService.GetGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	131, // 290: kernel.ClusterStateBackendService.PutGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
-	131, // 291: kernel.ClusterStateBackendService.SetGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
-	130, // 292: kernel.ClusterStateBackendService.RemoveGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	130, // 293: kernel.ClusterStateBackendService.DeleteGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	130, // 294: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
-	132, // 295: kernel.ClusterStateBackendService.GetAllGraphRegistry:input_type -> kernel.GraphRegistryGetAllRequest
-	133, // 296: kernel.ClusterStateBackendService.KeySetGraphRegistry:input_type -> kernel.GraphRegistryKeysRequest
-	134, // 297: kernel.ClusterStateBackendService.SizeGraphRegistry:input_type -> kernel.GraphRegistrySizeRequest
-	135, // 298: kernel.ClusterStateBackendService.ClearGraphRegistry:input_type -> kernel.GraphRegistryClearRequest
-	131, // 299: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
-	272, // 300: kernel.ClusterStateBackendService.WatchGraphRegistry:input_type -> google.protobuf.Empty
-	140, // 301: kernel.ClusterStateBackendService.QueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
-	140, // 302: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
-	142, // 303: kernel.ClusterStateBackendService.GetServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	143, // 304: kernel.ClusterStateBackendService.PutServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
-	143, // 305: kernel.ClusterStateBackendService.SetServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
-	142, // 306: kernel.ClusterStateBackendService.RemoveServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	142, // 307: kernel.ClusterStateBackendService.DeleteServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	142, // 308: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
-	144, // 309: kernel.ClusterStateBackendService.GetAllServiceConnections:input_type -> kernel.ServiceConnectionsGetAllRequest
-	145, // 310: kernel.ClusterStateBackendService.KeySetServiceConnections:input_type -> kernel.ServiceConnectionsKeysRequest
-	146, // 311: kernel.ClusterStateBackendService.SizeServiceConnections:input_type -> kernel.ServiceConnectionsSizeRequest
-	147, // 312: kernel.ClusterStateBackendService.ClearServiceConnections:input_type -> kernel.ServiceConnectionsClearRequest
-	143, // 313: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
-	272, // 314: kernel.ClusterStateBackendService.WatchServiceConnections:input_type -> google.protobuf.Empty
-	152, // 315: kernel.ClusterStateBackendService.QueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
-	152, // 316: kernel.ClusterStateBackendService.WatchQueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
-	154, // 317: kernel.ClusterStateBackendService.GetQueueStats:input_type -> kernel.QueueStatsGetRequest
-	155, // 318: kernel.ClusterStateBackendService.PutQueueStats:input_type -> kernel.QueueStatsPutRequest
-	155, // 319: kernel.ClusterStateBackendService.SetQueueStats:input_type -> kernel.QueueStatsPutRequest
-	154, // 320: kernel.ClusterStateBackendService.RemoveQueueStats:input_type -> kernel.QueueStatsGetRequest
-	154, // 321: kernel.ClusterStateBackendService.DeleteQueueStats:input_type -> kernel.QueueStatsGetRequest
-	154, // 322: kernel.ClusterStateBackendService.ContainsKeyQueueStats:input_type -> kernel.QueueStatsGetRequest
-	156, // 323: kernel.ClusterStateBackendService.GetAllQueueStats:input_type -> kernel.QueueStatsGetAllRequest
-	157, // 324: kernel.ClusterStateBackendService.KeySetQueueStats:input_type -> kernel.QueueStatsKeysRequest
-	158, // 325: kernel.ClusterStateBackendService.SizeQueueStats:input_type -> kernel.QueueStatsSizeRequest
-	159, // 326: kernel.ClusterStateBackendService.ClearQueueStats:input_type -> kernel.QueueStatsClearRequest
-	155, // 327: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:input_type -> kernel.QueueStatsPutRequest
-	272, // 328: kernel.ClusterStateBackendService.WatchQueueStats:input_type -> google.protobuf.Empty
-	164, // 329: kernel.ClusterStateBackendService.QueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
-	164, // 330: kernel.ClusterStateBackendService.WatchQueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
-	166, // 331: kernel.ClusterStateBackendService.GetTopicStats:input_type -> kernel.TopicStatsGetRequest
-	167, // 332: kernel.ClusterStateBackendService.PutTopicStats:input_type -> kernel.TopicStatsPutRequest
-	167, // 333: kernel.ClusterStateBackendService.SetTopicStats:input_type -> kernel.TopicStatsPutRequest
-	166, // 334: kernel.ClusterStateBackendService.RemoveTopicStats:input_type -> kernel.TopicStatsGetRequest
-	166, // 335: kernel.ClusterStateBackendService.DeleteTopicStats:input_type -> kernel.TopicStatsGetRequest
-	166, // 336: kernel.ClusterStateBackendService.ContainsKeyTopicStats:input_type -> kernel.TopicStatsGetRequest
-	168, // 337: kernel.ClusterStateBackendService.GetAllTopicStats:input_type -> kernel.TopicStatsGetAllRequest
-	169, // 338: kernel.ClusterStateBackendService.KeySetTopicStats:input_type -> kernel.TopicStatsKeysRequest
-	170, // 339: kernel.ClusterStateBackendService.SizeTopicStats:input_type -> kernel.TopicStatsSizeRequest
-	171, // 340: kernel.ClusterStateBackendService.ClearTopicStats:input_type -> kernel.TopicStatsClearRequest
-	167, // 341: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:input_type -> kernel.TopicStatsPutRequest
-	272, // 342: kernel.ClusterStateBackendService.WatchTopicStats:input_type -> google.protobuf.Empty
-	176, // 343: kernel.ClusterStateBackendService.QueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
-	176, // 344: kernel.ClusterStateBackendService.WatchQueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
-	178, // 345: kernel.ClusterStateBackendService.GetWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	179, // 346: kernel.ClusterStateBackendService.PutWatchHealth:input_type -> kernel.WatchHealthPutRequest
-	179, // 347: kernel.ClusterStateBackendService.SetWatchHealth:input_type -> kernel.WatchHealthPutRequest
-	178, // 348: kernel.ClusterStateBackendService.RemoveWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	178, // 349: kernel.ClusterStateBackendService.DeleteWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	178, // 350: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:input_type -> kernel.WatchHealthGetRequest
-	180, // 351: kernel.ClusterStateBackendService.GetAllWatchHealth:input_type -> kernel.WatchHealthGetAllRequest
-	181, // 352: kernel.ClusterStateBackendService.KeySetWatchHealth:input_type -> kernel.WatchHealthKeysRequest
-	182, // 353: kernel.ClusterStateBackendService.SizeWatchHealth:input_type -> kernel.WatchHealthSizeRequest
-	183, // 354: kernel.ClusterStateBackendService.ClearWatchHealth:input_type -> kernel.WatchHealthClearRequest
-	179, // 355: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:input_type -> kernel.WatchHealthPutRequest
-	272, // 356: kernel.ClusterStateBackendService.WatchWatchHealth:input_type -> google.protobuf.Empty
-	188, // 357: kernel.ClusterStateBackendService.QueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
-	188, // 358: kernel.ClusterStateBackendService.WatchQueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
-	190, // 359: kernel.ClusterStateBackendService.GetMutationRates:input_type -> kernel.MutationRatesGetRequest
-	191, // 360: kernel.ClusterStateBackendService.PutMutationRates:input_type -> kernel.MutationRatesPutRequest
-	191, // 361: kernel.ClusterStateBackendService.SetMutationRates:input_type -> kernel.MutationRatesPutRequest
-	190, // 362: kernel.ClusterStateBackendService.RemoveMutationRates:input_type -> kernel.MutationRatesGetRequest
-	190, // 363: kernel.ClusterStateBackendService.DeleteMutationRates:input_type -> kernel.MutationRatesGetRequest
-	190, // 364: kernel.ClusterStateBackendService.ContainsKeyMutationRates:input_type -> kernel.MutationRatesGetRequest
-	192, // 365: kernel.ClusterStateBackendService.GetAllMutationRates:input_type -> kernel.MutationRatesGetAllRequest
-	193, // 366: kernel.ClusterStateBackendService.KeySetMutationRates:input_type -> kernel.MutationRatesKeysRequest
-	194, // 367: kernel.ClusterStateBackendService.SizeMutationRates:input_type -> kernel.MutationRatesSizeRequest
-	195, // 368: kernel.ClusterStateBackendService.ClearMutationRates:input_type -> kernel.MutationRatesClearRequest
-	191, // 369: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:input_type -> kernel.MutationRatesPutRequest
-	272, // 370: kernel.ClusterStateBackendService.WatchMutationRates:input_type -> google.protobuf.Empty
-	200, // 371: kernel.ClusterStateBackendService.QueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
-	200, // 372: kernel.ClusterStateBackendService.WatchQueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
-	12,  // 373: kernel.ClusterStateBackendService.SetLogLevel:input_type -> kernel.AdminSetLogLevelRequest
-	13,  // 374: kernel.ClusterStateBackendService.ReloadConfig:input_type -> kernel.AdminReloadConfigRequest
-	269, // 375: kernel.ServiceHealthStateBackendService.SetInstances:input_type -> healthreport.ServiceInstanceHealth
-	202, // 376: kernel.ServiceHealthStateBackendService.GetInstances:input_type -> kernel.InstancesGetRequest
-	203, // 377: kernel.ServiceHealthStateBackendService.GetAllInstances:input_type -> kernel.InstancesGetAllRequest
-	202, // 378: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:input_type -> kernel.InstancesGetRequest
-	204, // 379: kernel.ServiceHealthStateBackendService.KeySetInstances:input_type -> kernel.InstancesKeysRequest
-	205, // 380: kernel.ServiceHealthStateBackendService.SizeInstances:input_type -> kernel.InstancesSizeRequest
-	272, // 381: kernel.ServiceHealthStateBackendService.WatchInstances:input_type -> google.protobuf.Empty
-	210, // 382: kernel.ServiceHealthStateBackendService.QueryInstances:input_type -> kernel.InstancesQueryRequest
-	210, // 383: kernel.ServiceHealthStateBackendService.WatchQueryInstances:input_type -> kernel.InstancesQueryRequest
-	212, // 384: kernel.CaStateBackendService.GetCaCerts:input_type -> kernel.CaCertsGetRequest
-	213, // 385: kernel.CaStateBackendService.PutCaCerts:input_type -> kernel.CaCertsPutRequest
-	213, // 386: kernel.CaStateBackendService.SetCaCerts:input_type -> kernel.CaCertsPutRequest
-	212, // 387: kernel.CaStateBackendService.RemoveCaCerts:input_type -> kernel.CaCertsGetRequest
-	212, // 388: kernel.CaStateBackendService.DeleteCaCerts:input_type -> kernel.CaCertsGetRequest
-	212, // 389: kernel.CaStateBackendService.ContainsKeyCaCerts:input_type -> kernel.CaCertsGetRequest
-	214, // 390: kernel.CaStateBackendService.GetAllCaCerts:input_type -> kernel.CaCertsGetAllRequest
-	215, // 391: kernel.CaStateBackendService.KeySetCaCerts:input_type -> kernel.CaCertsKeysRequest
-	216, // 392: kernel.CaStateBackendService.SizeCaCerts:input_type -> kernel.CaCertsSizeRequest
-	217, // 393: kernel.CaStateBackendService.ClearCaCerts:input_type -> kernel.CaCertsClearRequest
-	213, // 394: kernel.CaStateBackendService.PutIfAbsentCaCerts:input_type -> kernel.CaCertsPutRequest
-	272, // 395: kernel.CaStateBackendService.WatchCaCerts:input_type -> google.protobuf.Empty
-	222, // 396: kernel.CaStateBackendService.QueryCaCerts:input_type -> kernel.CaCertsQueryRequest
-	222, // 397: kernel.CaStateBackendService.WatchQueryCaCerts:input_type -> kernel.CaCertsQueryRequest
-	273, // 398: kernel.TokenExchangerService.ExchangeToken:output_type -> token.Token
-	247, // 399: kernel.X509CertExchangerService.SignCert:output_type -> x509.X509Cert
-	28,  // 400: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	28,  // 401: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	224, // 402: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:output_type -> kernel.MapEmpty
-	28,  // 403: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	224, // 404: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:output_type -> kernel.MapEmpty
-	28,  // 405: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	29,  // 406: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
-	30,  // 407: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:output_type -> kernel.VerifyingKeysKeysResponse
-	31,  // 408: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:output_type -> kernel.VerifyingKeysSizeResponse
-	224, // 409: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:output_type -> kernel.MapEmpty
-	28,  // 410: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
-	29,  // 411: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
-	33,  // 412: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
-	33,  // 413: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
-	40,  // 414: kernel.TrustedCaStateBackendService.GetTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	40,  // 415: kernel.TrustedCaStateBackendService.PutTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	224, // 416: kernel.TrustedCaStateBackendService.SetTrustedCas:output_type -> kernel.MapEmpty
-	40,  // 417: kernel.TrustedCaStateBackendService.RemoveTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	224, // 418: kernel.TrustedCaStateBackendService.DeleteTrustedCas:output_type -> kernel.MapEmpty
-	40,  // 419: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	41,  // 420: kernel.TrustedCaStateBackendService.GetAllTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
-	42,  // 421: kernel.TrustedCaStateBackendService.KeySetTrustedCas:output_type -> kernel.TrustedCasKeysResponse
-	43,  // 422: kernel.TrustedCaStateBackendService.SizeTrustedCas:output_type -> kernel.TrustedCasSizeResponse
-	224, // 423: kernel.TrustedCaStateBackendService.ClearTrustedCas:output_type -> kernel.MapEmpty
-	40,  // 424: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:output_type -> kernel.TrustedCasValueResponse
-	41,  // 425: kernel.TrustedCaStateBackendService.WatchTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
-	45,  // 426: kernel.TrustedCaStateBackendService.QueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
-	45,  // 427: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
-	254, // 428: kernel.ClusterStateBackendService.GetClusterInfo:output_type -> hazelcast.AdminClusterInfo
-	254, // 429: kernel.ClusterStateBackendService.SetClusterInfo:output_type -> hazelcast.AdminClusterInfo
-	254, // 430: kernel.ClusterStateBackendService.WatchClusterInfo:output_type -> hazelcast.AdminClusterInfo
-	255, // 431: kernel.ClusterStateBackendService.GetClusterHealth:output_type -> hazelcast.AdminClusterHealth
-	255, // 432: kernel.ClusterStateBackendService.SetClusterHealth:output_type -> hazelcast.AdminClusterHealth
-	255, // 433: kernel.ClusterStateBackendService.WatchClusterHealth:output_type -> hazelcast.AdminClusterHealth
-	8,   // 434: kernel.ClusterStateBackendService.GetFrontendConfig:output_type -> kernel.Config
-	8,   // 435: kernel.ClusterStateBackendService.SetFrontendConfig:output_type -> kernel.Config
-	8,   // 436: kernel.ClusterStateBackendService.WatchFrontendConfig:output_type -> kernel.Config
-	52,  // 437: kernel.ClusterStateBackendService.GetNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	52,  // 438: kernel.ClusterStateBackendService.PutNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	224, // 439: kernel.ClusterStateBackendService.SetNodeMetrics:output_type -> kernel.MapEmpty
-	52,  // 440: kernel.ClusterStateBackendService.RemoveNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	224, // 441: kernel.ClusterStateBackendService.DeleteNodeMetrics:output_type -> kernel.MapEmpty
-	52,  // 442: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	53,  // 443: kernel.ClusterStateBackendService.GetAllNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
-	54,  // 444: kernel.ClusterStateBackendService.KeySetNodeMetrics:output_type -> kernel.NodeMetricsKeysResponse
-	55,  // 445: kernel.ClusterStateBackendService.SizeNodeMetrics:output_type -> kernel.NodeMetricsSizeResponse
-	224, // 446: kernel.ClusterStateBackendService.ClearNodeMetrics:output_type -> kernel.MapEmpty
-	52,  // 447: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
-	53,  // 448: kernel.ClusterStateBackendService.WatchNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
-	57,  // 449: kernel.ClusterStateBackendService.QueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
-	57,  // 450: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
-	64,  // 451: kernel.ClusterStateBackendService.GetGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	64,  // 452: kernel.ClusterStateBackendService.PutGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	224, // 453: kernel.ClusterStateBackendService.SetGrpcStats:output_type -> kernel.MapEmpty
-	64,  // 454: kernel.ClusterStateBackendService.RemoveGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	224, // 455: kernel.ClusterStateBackendService.DeleteGrpcStats:output_type -> kernel.MapEmpty
-	64,  // 456: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	65,  // 457: kernel.ClusterStateBackendService.GetAllGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
-	66,  // 458: kernel.ClusterStateBackendService.KeySetGrpcStats:output_type -> kernel.GrpcStatsKeysResponse
-	67,  // 459: kernel.ClusterStateBackendService.SizeGrpcStats:output_type -> kernel.GrpcStatsSizeResponse
-	224, // 460: kernel.ClusterStateBackendService.ClearGrpcStats:output_type -> kernel.MapEmpty
-	64,  // 461: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:output_type -> kernel.GrpcStatsValueResponse
-	65,  // 462: kernel.ClusterStateBackendService.WatchGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
-	69,  // 463: kernel.ClusterStateBackendService.QueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
-	69,  // 464: kernel.ClusterStateBackendService.WatchQueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
-	76,  // 465: kernel.ClusterStateBackendService.GetPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	76,  // 466: kernel.ClusterStateBackendService.PutPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	224, // 467: kernel.ClusterStateBackendService.SetPersistenceStatus:output_type -> kernel.MapEmpty
-	76,  // 468: kernel.ClusterStateBackendService.RemovePersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	224, // 469: kernel.ClusterStateBackendService.DeletePersistenceStatus:output_type -> kernel.MapEmpty
-	76,  // 470: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	77,  // 471: kernel.ClusterStateBackendService.GetAllPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
-	78,  // 472: kernel.ClusterStateBackendService.KeySetPersistenceStatus:output_type -> kernel.PersistenceStatusKeysResponse
-	79,  // 473: kernel.ClusterStateBackendService.SizePersistenceStatus:output_type -> kernel.PersistenceStatusSizeResponse
-	224, // 474: kernel.ClusterStateBackendService.ClearPersistenceStatus:output_type -> kernel.MapEmpty
-	76,  // 475: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
-	77,  // 476: kernel.ClusterStateBackendService.WatchPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
-	81,  // 477: kernel.ClusterStateBackendService.QueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
-	81,  // 478: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
-	88,  // 479: kernel.ClusterStateBackendService.GetNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	88,  // 480: kernel.ClusterStateBackendService.PutNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	224, // 481: kernel.ClusterStateBackendService.SetNetworkStats:output_type -> kernel.MapEmpty
-	88,  // 482: kernel.ClusterStateBackendService.RemoveNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	224, // 483: kernel.ClusterStateBackendService.DeleteNetworkStats:output_type -> kernel.MapEmpty
-	88,  // 484: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	89,  // 485: kernel.ClusterStateBackendService.GetAllNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
-	90,  // 486: kernel.ClusterStateBackendService.KeySetNetworkStats:output_type -> kernel.NetworkStatsKeysResponse
-	91,  // 487: kernel.ClusterStateBackendService.SizeNetworkStats:output_type -> kernel.NetworkStatsSizeResponse
-	224, // 488: kernel.ClusterStateBackendService.ClearNetworkStats:output_type -> kernel.MapEmpty
-	88,  // 489: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:output_type -> kernel.NetworkStatsValueResponse
-	89,  // 490: kernel.ClusterStateBackendService.WatchNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
-	93,  // 491: kernel.ClusterStateBackendService.QueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
-	93,  // 492: kernel.ClusterStateBackendService.WatchQueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
-	100, // 493: kernel.ClusterStateBackendService.GetThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	100, // 494: kernel.ClusterStateBackendService.PutThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	224, // 495: kernel.ClusterStateBackendService.SetThreadInfo:output_type -> kernel.MapEmpty
-	100, // 496: kernel.ClusterStateBackendService.RemoveThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	224, // 497: kernel.ClusterStateBackendService.DeleteThreadInfo:output_type -> kernel.MapEmpty
-	100, // 498: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	101, // 499: kernel.ClusterStateBackendService.GetAllThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
-	102, // 500: kernel.ClusterStateBackendService.KeySetThreadInfo:output_type -> kernel.ThreadInfoKeysResponse
-	103, // 501: kernel.ClusterStateBackendService.SizeThreadInfo:output_type -> kernel.ThreadInfoSizeResponse
-	224, // 502: kernel.ClusterStateBackendService.ClearThreadInfo:output_type -> kernel.MapEmpty
-	100, // 503: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:output_type -> kernel.ThreadInfoValueResponse
-	101, // 504: kernel.ClusterStateBackendService.WatchThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
-	105, // 505: kernel.ClusterStateBackendService.QueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
-	105, // 506: kernel.ClusterStateBackendService.WatchQueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
-	112, // 507: kernel.ClusterStateBackendService.GetTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	112, // 508: kernel.ClusterStateBackendService.PutTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	224, // 509: kernel.ClusterStateBackendService.SetTokenCacheStats:output_type -> kernel.MapEmpty
-	112, // 510: kernel.ClusterStateBackendService.RemoveTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	224, // 511: kernel.ClusterStateBackendService.DeleteTokenCacheStats:output_type -> kernel.MapEmpty
-	112, // 512: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	113, // 513: kernel.ClusterStateBackendService.GetAllTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
-	114, // 514: kernel.ClusterStateBackendService.KeySetTokenCacheStats:output_type -> kernel.TokenCacheStatsKeysResponse
-	115, // 515: kernel.ClusterStateBackendService.SizeTokenCacheStats:output_type -> kernel.TokenCacheStatsSizeResponse
-	224, // 516: kernel.ClusterStateBackendService.ClearTokenCacheStats:output_type -> kernel.MapEmpty
-	112, // 517: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
-	113, // 518: kernel.ClusterStateBackendService.WatchTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
-	117, // 519: kernel.ClusterStateBackendService.QueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
-	117, // 520: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
-	124, // 521: kernel.ClusterStateBackendService.GetMapStats:output_type -> kernel.MapStatsValueResponse
-	124, // 522: kernel.ClusterStateBackendService.PutMapStats:output_type -> kernel.MapStatsValueResponse
-	224, // 523: kernel.ClusterStateBackendService.SetMapStats:output_type -> kernel.MapEmpty
-	124, // 524: kernel.ClusterStateBackendService.RemoveMapStats:output_type -> kernel.MapStatsValueResponse
-	224, // 525: kernel.ClusterStateBackendService.DeleteMapStats:output_type -> kernel.MapEmpty
-	124, // 526: kernel.ClusterStateBackendService.ContainsKeyMapStats:output_type -> kernel.MapStatsValueResponse
-	125, // 527: kernel.ClusterStateBackendService.GetAllMapStats:output_type -> kernel.MapStatsEntriesResponse
-	126, // 528: kernel.ClusterStateBackendService.KeySetMapStats:output_type -> kernel.MapStatsKeysResponse
-	127, // 529: kernel.ClusterStateBackendService.SizeMapStats:output_type -> kernel.MapStatsSizeResponse
-	224, // 530: kernel.ClusterStateBackendService.ClearMapStats:output_type -> kernel.MapEmpty
-	124, // 531: kernel.ClusterStateBackendService.PutIfAbsentMapStats:output_type -> kernel.MapStatsValueResponse
-	125, // 532: kernel.ClusterStateBackendService.WatchMapStats:output_type -> kernel.MapStatsEntriesResponse
-	129, // 533: kernel.ClusterStateBackendService.QueryMapStats:output_type -> kernel.MapStatsQueryResponse
-	129, // 534: kernel.ClusterStateBackendService.WatchQueryMapStats:output_type -> kernel.MapStatsQueryResponse
-	136, // 535: kernel.ClusterStateBackendService.GetGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	136, // 536: kernel.ClusterStateBackendService.PutGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	224, // 537: kernel.ClusterStateBackendService.SetGraphRegistry:output_type -> kernel.MapEmpty
-	136, // 538: kernel.ClusterStateBackendService.RemoveGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	224, // 539: kernel.ClusterStateBackendService.DeleteGraphRegistry:output_type -> kernel.MapEmpty
-	136, // 540: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	137, // 541: kernel.ClusterStateBackendService.GetAllGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
-	138, // 542: kernel.ClusterStateBackendService.KeySetGraphRegistry:output_type -> kernel.GraphRegistryKeysResponse
-	139, // 543: kernel.ClusterStateBackendService.SizeGraphRegistry:output_type -> kernel.GraphRegistrySizeResponse
-	224, // 544: kernel.ClusterStateBackendService.ClearGraphRegistry:output_type -> kernel.MapEmpty
-	136, // 545: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
-	137, // 546: kernel.ClusterStateBackendService.WatchGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
-	141, // 547: kernel.ClusterStateBackendService.QueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
-	141, // 548: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
-	148, // 549: kernel.ClusterStateBackendService.GetServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	148, // 550: kernel.ClusterStateBackendService.PutServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	224, // 551: kernel.ClusterStateBackendService.SetServiceConnections:output_type -> kernel.MapEmpty
-	148, // 552: kernel.ClusterStateBackendService.RemoveServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	224, // 553: kernel.ClusterStateBackendService.DeleteServiceConnections:output_type -> kernel.MapEmpty
-	148, // 554: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	149, // 555: kernel.ClusterStateBackendService.GetAllServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
-	150, // 556: kernel.ClusterStateBackendService.KeySetServiceConnections:output_type -> kernel.ServiceConnectionsKeysResponse
-	151, // 557: kernel.ClusterStateBackendService.SizeServiceConnections:output_type -> kernel.ServiceConnectionsSizeResponse
-	224, // 558: kernel.ClusterStateBackendService.ClearServiceConnections:output_type -> kernel.MapEmpty
-	148, // 559: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
-	149, // 560: kernel.ClusterStateBackendService.WatchServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
-	153, // 561: kernel.ClusterStateBackendService.QueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
-	153, // 562: kernel.ClusterStateBackendService.WatchQueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
-	160, // 563: kernel.ClusterStateBackendService.GetQueueStats:output_type -> kernel.QueueStatsValueResponse
-	160, // 564: kernel.ClusterStateBackendService.PutQueueStats:output_type -> kernel.QueueStatsValueResponse
-	224, // 565: kernel.ClusterStateBackendService.SetQueueStats:output_type -> kernel.MapEmpty
-	160, // 566: kernel.ClusterStateBackendService.RemoveQueueStats:output_type -> kernel.QueueStatsValueResponse
-	224, // 567: kernel.ClusterStateBackendService.DeleteQueueStats:output_type -> kernel.MapEmpty
-	160, // 568: kernel.ClusterStateBackendService.ContainsKeyQueueStats:output_type -> kernel.QueueStatsValueResponse
-	161, // 569: kernel.ClusterStateBackendService.GetAllQueueStats:output_type -> kernel.QueueStatsEntriesResponse
-	162, // 570: kernel.ClusterStateBackendService.KeySetQueueStats:output_type -> kernel.QueueStatsKeysResponse
-	163, // 571: kernel.ClusterStateBackendService.SizeQueueStats:output_type -> kernel.QueueStatsSizeResponse
-	224, // 572: kernel.ClusterStateBackendService.ClearQueueStats:output_type -> kernel.MapEmpty
-	160, // 573: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:output_type -> kernel.QueueStatsValueResponse
-	161, // 574: kernel.ClusterStateBackendService.WatchQueueStats:output_type -> kernel.QueueStatsEntriesResponse
-	165, // 575: kernel.ClusterStateBackendService.QueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
-	165, // 576: kernel.ClusterStateBackendService.WatchQueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
-	172, // 577: kernel.ClusterStateBackendService.GetTopicStats:output_type -> kernel.TopicStatsValueResponse
-	172, // 578: kernel.ClusterStateBackendService.PutTopicStats:output_type -> kernel.TopicStatsValueResponse
-	224, // 579: kernel.ClusterStateBackendService.SetTopicStats:output_type -> kernel.MapEmpty
-	172, // 580: kernel.ClusterStateBackendService.RemoveTopicStats:output_type -> kernel.TopicStatsValueResponse
-	224, // 581: kernel.ClusterStateBackendService.DeleteTopicStats:output_type -> kernel.MapEmpty
-	172, // 582: kernel.ClusterStateBackendService.ContainsKeyTopicStats:output_type -> kernel.TopicStatsValueResponse
-	173, // 583: kernel.ClusterStateBackendService.GetAllTopicStats:output_type -> kernel.TopicStatsEntriesResponse
-	174, // 584: kernel.ClusterStateBackendService.KeySetTopicStats:output_type -> kernel.TopicStatsKeysResponse
-	175, // 585: kernel.ClusterStateBackendService.SizeTopicStats:output_type -> kernel.TopicStatsSizeResponse
-	224, // 586: kernel.ClusterStateBackendService.ClearTopicStats:output_type -> kernel.MapEmpty
-	172, // 587: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:output_type -> kernel.TopicStatsValueResponse
-	173, // 588: kernel.ClusterStateBackendService.WatchTopicStats:output_type -> kernel.TopicStatsEntriesResponse
-	177, // 589: kernel.ClusterStateBackendService.QueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
-	177, // 590: kernel.ClusterStateBackendService.WatchQueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
-	184, // 591: kernel.ClusterStateBackendService.GetWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	184, // 592: kernel.ClusterStateBackendService.PutWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	224, // 593: kernel.ClusterStateBackendService.SetWatchHealth:output_type -> kernel.MapEmpty
-	184, // 594: kernel.ClusterStateBackendService.RemoveWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	224, // 595: kernel.ClusterStateBackendService.DeleteWatchHealth:output_type -> kernel.MapEmpty
-	184, // 596: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	185, // 597: kernel.ClusterStateBackendService.GetAllWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
-	186, // 598: kernel.ClusterStateBackendService.KeySetWatchHealth:output_type -> kernel.WatchHealthKeysResponse
-	187, // 599: kernel.ClusterStateBackendService.SizeWatchHealth:output_type -> kernel.WatchHealthSizeResponse
-	224, // 600: kernel.ClusterStateBackendService.ClearWatchHealth:output_type -> kernel.MapEmpty
-	184, // 601: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:output_type -> kernel.WatchHealthValueResponse
-	185, // 602: kernel.ClusterStateBackendService.WatchWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
-	189, // 603: kernel.ClusterStateBackendService.QueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
-	189, // 604: kernel.ClusterStateBackendService.WatchQueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
-	196, // 605: kernel.ClusterStateBackendService.GetMutationRates:output_type -> kernel.MutationRatesValueResponse
-	196, // 606: kernel.ClusterStateBackendService.PutMutationRates:output_type -> kernel.MutationRatesValueResponse
-	224, // 607: kernel.ClusterStateBackendService.SetMutationRates:output_type -> kernel.MapEmpty
-	196, // 608: kernel.ClusterStateBackendService.RemoveMutationRates:output_type -> kernel.MutationRatesValueResponse
-	224, // 609: kernel.ClusterStateBackendService.DeleteMutationRates:output_type -> kernel.MapEmpty
-	196, // 610: kernel.ClusterStateBackendService.ContainsKeyMutationRates:output_type -> kernel.MutationRatesValueResponse
-	197, // 611: kernel.ClusterStateBackendService.GetAllMutationRates:output_type -> kernel.MutationRatesEntriesResponse
-	198, // 612: kernel.ClusterStateBackendService.KeySetMutationRates:output_type -> kernel.MutationRatesKeysResponse
-	199, // 613: kernel.ClusterStateBackendService.SizeMutationRates:output_type -> kernel.MutationRatesSizeResponse
-	224, // 614: kernel.ClusterStateBackendService.ClearMutationRates:output_type -> kernel.MapEmpty
-	196, // 615: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:output_type -> kernel.MutationRatesValueResponse
-	197, // 616: kernel.ClusterStateBackendService.WatchMutationRates:output_type -> kernel.MutationRatesEntriesResponse
-	201, // 617: kernel.ClusterStateBackendService.QueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
-	201, // 618: kernel.ClusterStateBackendService.WatchQueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
-	272, // 619: kernel.ClusterStateBackendService.SetLogLevel:output_type -> google.protobuf.Empty
-	272, // 620: kernel.ClusterStateBackendService.ReloadConfig:output_type -> google.protobuf.Empty
-	224, // 621: kernel.ServiceHealthStateBackendService.SetInstances:output_type -> kernel.MapEmpty
-	206, // 622: kernel.ServiceHealthStateBackendService.GetInstances:output_type -> kernel.InstancesValueResponse
-	207, // 623: kernel.ServiceHealthStateBackendService.GetAllInstances:output_type -> kernel.InstancesEntriesResponse
-	206, // 624: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:output_type -> kernel.InstancesValueResponse
-	208, // 625: kernel.ServiceHealthStateBackendService.KeySetInstances:output_type -> kernel.InstancesKeysResponse
-	209, // 626: kernel.ServiceHealthStateBackendService.SizeInstances:output_type -> kernel.InstancesSizeResponse
-	207, // 627: kernel.ServiceHealthStateBackendService.WatchInstances:output_type -> kernel.InstancesEntriesResponse
-	211, // 628: kernel.ServiceHealthStateBackendService.QueryInstances:output_type -> kernel.InstancesQueryResponse
-	211, // 629: kernel.ServiceHealthStateBackendService.WatchQueryInstances:output_type -> kernel.InstancesQueryResponse
-	218, // 630: kernel.CaStateBackendService.GetCaCerts:output_type -> kernel.CaCertsValueResponse
-	218, // 631: kernel.CaStateBackendService.PutCaCerts:output_type -> kernel.CaCertsValueResponse
-	224, // 632: kernel.CaStateBackendService.SetCaCerts:output_type -> kernel.MapEmpty
-	218, // 633: kernel.CaStateBackendService.RemoveCaCerts:output_type -> kernel.CaCertsValueResponse
-	224, // 634: kernel.CaStateBackendService.DeleteCaCerts:output_type -> kernel.MapEmpty
-	218, // 635: kernel.CaStateBackendService.ContainsKeyCaCerts:output_type -> kernel.CaCertsValueResponse
-	219, // 636: kernel.CaStateBackendService.GetAllCaCerts:output_type -> kernel.CaCertsEntriesResponse
-	220, // 637: kernel.CaStateBackendService.KeySetCaCerts:output_type -> kernel.CaCertsKeysResponse
-	221, // 638: kernel.CaStateBackendService.SizeCaCerts:output_type -> kernel.CaCertsSizeResponse
-	224, // 639: kernel.CaStateBackendService.ClearCaCerts:output_type -> kernel.MapEmpty
-	218, // 640: kernel.CaStateBackendService.PutIfAbsentCaCerts:output_type -> kernel.CaCertsValueResponse
-	219, // 641: kernel.CaStateBackendService.WatchCaCerts:output_type -> kernel.CaCertsEntriesResponse
-	223, // 642: kernel.CaStateBackendService.QueryCaCerts:output_type -> kernel.CaCertsQueryResponse
-	223, // 643: kernel.CaStateBackendService.WatchQueryCaCerts:output_type -> kernel.CaCertsQueryResponse
-	398, // [398:644] is the sub-list for method output_type
-	152, // [152:398] is the sub-list for method input_type
-	152, // [152:152] is the sub-list for extension type_name
-	152, // [152:152] is the sub-list for extension extendee
-	0,   // [0:152] is the sub-list for field type_name
+	245, // 4: kernel.BootstrapConfig.persistence_format:type_name -> outputformat.OutputFormat
+	9,   // 5: kernel.BootstrapConfig.url_loader:type_name -> kernel.UrlLoader
+	10,  // 6: kernel.BootstrapConfig.file_loader:type_name -> kernel.FileLoader
+	246, // 7: kernel.BootstrapConfig.loader_ca:type_name -> x509.X509Cert
+	247, // 8: kernel.BootstrapConfig.tls:type_name -> x509.X509CertPair
+	248, // 9: kernel.TokenExchangerState.verifying_keys:type_name -> jwk.Jwk
+	246, // 10: kernel.TrustedCaState.trusted_cas:type_name -> x509.X509Cert
+	249, // 11: kernel.CloudIdentityMatcher.vendor:type_name -> cloudvendor.CloudVendor
+	248, // 12: kernel.Delegate.cred_pairs:type_name -> jwk.Jwk
+	6,   // 13: kernel.Delegate.cloud_identities:type_name -> kernel.CloudIdentityMatcher
+	246, // 14: kernel.Config.trusted_cas:type_name -> x509.X509Cert
+	250, // 15: kernel.Config.rate_limit:type_name -> hazelcast.RateLimitConfig
+	251, // 16: kernel.Config.configs:type_name -> generated.Services
+	7,   // 17: kernel.Config.delegates:type_name -> kernel.Delegate
+	252, // 18: kernel.ClusterState.cluster_info:type_name -> hazelcast.AdminClusterInfo
+	253, // 19: kernel.ClusterState.cluster_health:type_name -> hazelcast.AdminClusterHealth
+	254, // 20: kernel.ClusterState.node_metrics:type_name -> hazelcast.AdminNodeMetrics
+	255, // 21: kernel.ClusterState.grpc_stats:type_name -> hazelcast.AdminGrpcStats
+	256, // 22: kernel.ClusterState.persistence_status:type_name -> hazelcast.AdminPersistenceStatus
+	257, // 23: kernel.ClusterState.network_stats:type_name -> hazelcast.AdminNetworkStats
+	258, // 24: kernel.ClusterState.thread_info:type_name -> hazelcast.AdminThreadInfo
+	259, // 25: kernel.ClusterState.token_cache_stats:type_name -> hazelcast.AdminTokenCacheStats
+	260, // 26: kernel.ClusterState.map_stats:type_name -> hazelcast.AdminMapStats
+	3,   // 27: kernel.ClusterState.bootstrap_config:type_name -> kernel.BootstrapConfig
+	8,   // 28: kernel.ClusterState.frontend_config:type_name -> kernel.Config
+	261, // 29: kernel.ClusterState.graph_registry:type_name -> hazelcast.AdminGraphInfo
+	262, // 30: kernel.ClusterState.service_connections:type_name -> hazelcast.AdminServiceConnection
+	263, // 31: kernel.ClusterState.queue_stats:type_name -> hazelcast.AdminQueueStats
+	264, // 32: kernel.ClusterState.topic_stats:type_name -> hazelcast.AdminTopicStats
+	265, // 33: kernel.ClusterState.watch_health:type_name -> hazelcast.AdminWatchHealth
+	266, // 34: kernel.ClusterState.mutation_rates:type_name -> hazelcast.AdminMutationRate
+	12,  // 35: kernel.ClusterState.set_log_level:type_name -> kernel.AdminSetLogLevelRequest
+	13,  // 36: kernel.ClusterState.reload_config:type_name -> kernel.AdminReloadConfigRequest
+	14,  // 37: kernel.ClusterState.config_dump:type_name -> kernel.AdminConfigDump
+	267, // 38: kernel.ServiceHealthState.instances:type_name -> healthreport.ServiceInstanceHealth
+	246, // 39: kernel.CaState.ca_certs:type_name -> x509.X509Cert
+	0,   // 40: kernel.Predicate.op:type_name -> kernel.ComparisonOp
+	17,  // 41: kernel.Predicate.value:type_name -> kernel.QueryValue
+	17,  // 42: kernel.Predicate.values:type_name -> kernel.QueryValue
+	2,   // 43: kernel.PredicateGroup.op:type_name -> kernel.LogicalOp
+	18,  // 44: kernel.PredicateGroup.predicates:type_name -> kernel.Predicate
+	19,  // 45: kernel.PredicateGroup.groups:type_name -> kernel.PredicateGroup
+	1,   // 46: kernel.SortField.direction:type_name -> kernel.SortDirection
+	19,  // 47: kernel.CollectionQuery.where:type_name -> kernel.PredicateGroup
+	20,  // 48: kernel.CollectionQuery.order_by:type_name -> kernel.SortField
+	248, // 49: kernel.VerifyingKeysPutRequest.value:type_name -> jwk.Jwk
+	248, // 50: kernel.VerifyingKeysValueResponse.value:type_name -> jwk.Jwk
+	225, // 51: kernel.VerifyingKeysEntriesResponse.entries:type_name -> kernel.VerifyingKeysEntriesResponse.EntriesEntry
+	21,  // 52: kernel.VerifyingKeysQueryRequest.query:type_name -> kernel.CollectionQuery
+	248, // 53: kernel.VerifyingKeysQueryResponse.results:type_name -> jwk.Jwk
+	246, // 54: kernel.TrustedCasPutRequest.value:type_name -> x509.X509Cert
+	246, // 55: kernel.TrustedCasValueResponse.value:type_name -> x509.X509Cert
+	226, // 56: kernel.TrustedCasEntriesResponse.entries:type_name -> kernel.TrustedCasEntriesResponse.EntriesEntry
+	21,  // 57: kernel.TrustedCasQueryRequest.query:type_name -> kernel.CollectionQuery
+	246, // 58: kernel.TrustedCasQueryResponse.results:type_name -> x509.X509Cert
+	254, // 59: kernel.NodeMetricsPutRequest.value:type_name -> hazelcast.AdminNodeMetrics
+	254, // 60: kernel.NodeMetricsValueResponse.value:type_name -> hazelcast.AdminNodeMetrics
+	227, // 61: kernel.NodeMetricsEntriesResponse.entries:type_name -> kernel.NodeMetricsEntriesResponse.EntriesEntry
+	21,  // 62: kernel.NodeMetricsQueryRequest.query:type_name -> kernel.CollectionQuery
+	254, // 63: kernel.NodeMetricsQueryResponse.results:type_name -> hazelcast.AdminNodeMetrics
+	255, // 64: kernel.GrpcStatsPutRequest.value:type_name -> hazelcast.AdminGrpcStats
+	255, // 65: kernel.GrpcStatsValueResponse.value:type_name -> hazelcast.AdminGrpcStats
+	228, // 66: kernel.GrpcStatsEntriesResponse.entries:type_name -> kernel.GrpcStatsEntriesResponse.EntriesEntry
+	21,  // 67: kernel.GrpcStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	255, // 68: kernel.GrpcStatsQueryResponse.results:type_name -> hazelcast.AdminGrpcStats
+	256, // 69: kernel.PersistenceStatusPutRequest.value:type_name -> hazelcast.AdminPersistenceStatus
+	256, // 70: kernel.PersistenceStatusValueResponse.value:type_name -> hazelcast.AdminPersistenceStatus
+	229, // 71: kernel.PersistenceStatusEntriesResponse.entries:type_name -> kernel.PersistenceStatusEntriesResponse.EntriesEntry
+	21,  // 72: kernel.PersistenceStatusQueryRequest.query:type_name -> kernel.CollectionQuery
+	256, // 73: kernel.PersistenceStatusQueryResponse.results:type_name -> hazelcast.AdminPersistenceStatus
+	257, // 74: kernel.NetworkStatsPutRequest.value:type_name -> hazelcast.AdminNetworkStats
+	257, // 75: kernel.NetworkStatsValueResponse.value:type_name -> hazelcast.AdminNetworkStats
+	230, // 76: kernel.NetworkStatsEntriesResponse.entries:type_name -> kernel.NetworkStatsEntriesResponse.EntriesEntry
+	21,  // 77: kernel.NetworkStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	257, // 78: kernel.NetworkStatsQueryResponse.results:type_name -> hazelcast.AdminNetworkStats
+	258, // 79: kernel.ThreadInfoPutRequest.value:type_name -> hazelcast.AdminThreadInfo
+	258, // 80: kernel.ThreadInfoValueResponse.value:type_name -> hazelcast.AdminThreadInfo
+	231, // 81: kernel.ThreadInfoEntriesResponse.entries:type_name -> kernel.ThreadInfoEntriesResponse.EntriesEntry
+	21,  // 82: kernel.ThreadInfoQueryRequest.query:type_name -> kernel.CollectionQuery
+	258, // 83: kernel.ThreadInfoQueryResponse.results:type_name -> hazelcast.AdminThreadInfo
+	259, // 84: kernel.TokenCacheStatsPutRequest.value:type_name -> hazelcast.AdminTokenCacheStats
+	259, // 85: kernel.TokenCacheStatsValueResponse.value:type_name -> hazelcast.AdminTokenCacheStats
+	232, // 86: kernel.TokenCacheStatsEntriesResponse.entries:type_name -> kernel.TokenCacheStatsEntriesResponse.EntriesEntry
+	21,  // 87: kernel.TokenCacheStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	259, // 88: kernel.TokenCacheStatsQueryResponse.results:type_name -> hazelcast.AdminTokenCacheStats
+	260, // 89: kernel.MapStatsPutRequest.value:type_name -> hazelcast.AdminMapStats
+	260, // 90: kernel.MapStatsValueResponse.value:type_name -> hazelcast.AdminMapStats
+	233, // 91: kernel.MapStatsEntriesResponse.entries:type_name -> kernel.MapStatsEntriesResponse.EntriesEntry
+	21,  // 92: kernel.MapStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	260, // 93: kernel.MapStatsQueryResponse.results:type_name -> hazelcast.AdminMapStats
+	261, // 94: kernel.GraphRegistryPutRequest.value:type_name -> hazelcast.AdminGraphInfo
+	261, // 95: kernel.GraphRegistryValueResponse.value:type_name -> hazelcast.AdminGraphInfo
+	234, // 96: kernel.GraphRegistryEntriesResponse.entries:type_name -> kernel.GraphRegistryEntriesResponse.EntriesEntry
+	21,  // 97: kernel.GraphRegistryQueryRequest.query:type_name -> kernel.CollectionQuery
+	261, // 98: kernel.GraphRegistryQueryResponse.results:type_name -> hazelcast.AdminGraphInfo
+	262, // 99: kernel.ServiceConnectionsPutRequest.value:type_name -> hazelcast.AdminServiceConnection
+	262, // 100: kernel.ServiceConnectionsValueResponse.value:type_name -> hazelcast.AdminServiceConnection
+	235, // 101: kernel.ServiceConnectionsEntriesResponse.entries:type_name -> kernel.ServiceConnectionsEntriesResponse.EntriesEntry
+	21,  // 102: kernel.ServiceConnectionsQueryRequest.query:type_name -> kernel.CollectionQuery
+	262, // 103: kernel.ServiceConnectionsQueryResponse.results:type_name -> hazelcast.AdminServiceConnection
+	263, // 104: kernel.QueueStatsPutRequest.value:type_name -> hazelcast.AdminQueueStats
+	263, // 105: kernel.QueueStatsValueResponse.value:type_name -> hazelcast.AdminQueueStats
+	236, // 106: kernel.QueueStatsEntriesResponse.entries:type_name -> kernel.QueueStatsEntriesResponse.EntriesEntry
+	21,  // 107: kernel.QueueStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	263, // 108: kernel.QueueStatsQueryResponse.results:type_name -> hazelcast.AdminQueueStats
+	264, // 109: kernel.TopicStatsPutRequest.value:type_name -> hazelcast.AdminTopicStats
+	264, // 110: kernel.TopicStatsValueResponse.value:type_name -> hazelcast.AdminTopicStats
+	237, // 111: kernel.TopicStatsEntriesResponse.entries:type_name -> kernel.TopicStatsEntriesResponse.EntriesEntry
+	21,  // 112: kernel.TopicStatsQueryRequest.query:type_name -> kernel.CollectionQuery
+	264, // 113: kernel.TopicStatsQueryResponse.results:type_name -> hazelcast.AdminTopicStats
+	265, // 114: kernel.WatchHealthPutRequest.value:type_name -> hazelcast.AdminWatchHealth
+	265, // 115: kernel.WatchHealthValueResponse.value:type_name -> hazelcast.AdminWatchHealth
+	238, // 116: kernel.WatchHealthEntriesResponse.entries:type_name -> kernel.WatchHealthEntriesResponse.EntriesEntry
+	21,  // 117: kernel.WatchHealthQueryRequest.query:type_name -> kernel.CollectionQuery
+	265, // 118: kernel.WatchHealthQueryResponse.results:type_name -> hazelcast.AdminWatchHealth
+	266, // 119: kernel.MutationRatesPutRequest.value:type_name -> hazelcast.AdminMutationRate
+	266, // 120: kernel.MutationRatesValueResponse.value:type_name -> hazelcast.AdminMutationRate
+	239, // 121: kernel.MutationRatesEntriesResponse.entries:type_name -> kernel.MutationRatesEntriesResponse.EntriesEntry
+	21,  // 122: kernel.MutationRatesQueryRequest.query:type_name -> kernel.CollectionQuery
+	266, // 123: kernel.MutationRatesQueryResponse.results:type_name -> hazelcast.AdminMutationRate
+	267, // 124: kernel.InstancesValueResponse.value:type_name -> healthreport.ServiceInstanceHealth
+	240, // 125: kernel.InstancesEntriesResponse.entries:type_name -> kernel.InstancesEntriesResponse.EntriesEntry
+	21,  // 126: kernel.InstancesQueryRequest.query:type_name -> kernel.CollectionQuery
+	267, // 127: kernel.InstancesQueryResponse.results:type_name -> healthreport.ServiceInstanceHealth
+	246, // 128: kernel.CaCertsPutRequest.value:type_name -> x509.X509Cert
+	246, // 129: kernel.CaCertsValueResponse.value:type_name -> x509.X509Cert
+	241, // 130: kernel.CaCertsEntriesResponse.entries:type_name -> kernel.CaCertsEntriesResponse.EntriesEntry
+	21,  // 131: kernel.CaCertsQueryRequest.query:type_name -> kernel.CollectionQuery
+	246, // 132: kernel.CaCertsQueryResponse.results:type_name -> x509.X509Cert
+	248, // 133: kernel.VerifyingKeysEntriesResponse.EntriesEntry.value:type_name -> jwk.Jwk
+	246, // 134: kernel.TrustedCasEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
+	254, // 135: kernel.NodeMetricsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminNodeMetrics
+	255, // 136: kernel.GrpcStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminGrpcStats
+	256, // 137: kernel.PersistenceStatusEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminPersistenceStatus
+	257, // 138: kernel.NetworkStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminNetworkStats
+	258, // 139: kernel.ThreadInfoEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminThreadInfo
+	259, // 140: kernel.TokenCacheStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminTokenCacheStats
+	260, // 141: kernel.MapStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminMapStats
+	261, // 142: kernel.GraphRegistryEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminGraphInfo
+	262, // 143: kernel.ServiceConnectionsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminServiceConnection
+	263, // 144: kernel.QueueStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminQueueStats
+	264, // 145: kernel.TopicStatsEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminTopicStats
+	265, // 146: kernel.WatchHealthEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminWatchHealth
+	266, // 147: kernel.MutationRatesEntriesResponse.EntriesEntry.value:type_name -> hazelcast.AdminMutationRate
+	267, // 148: kernel.InstancesEntriesResponse.EntriesEntry.value:type_name -> healthreport.ServiceInstanceHealth
+	246, // 149: kernel.CaCertsEntriesResponse.EntriesEntry.value:type_name -> x509.X509Cert
+	268, // 150: kernel.TokenExchangerService.ExchangeToken:input_type -> tokenrequest.TokenRequest
+	269, // 151: kernel.X509CertExchangerService.SignCert:input_type -> x509.X509CertRequest
+	22,  // 152: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	23,  // 153: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
+	23,  // 154: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
+	22,  // 155: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	22,  // 156: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	22,  // 157: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:input_type -> kernel.VerifyingKeysGetRequest
+	24,  // 158: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:input_type -> kernel.VerifyingKeysGetAllRequest
+	25,  // 159: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:input_type -> kernel.VerifyingKeysKeysRequest
+	26,  // 160: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:input_type -> kernel.VerifyingKeysSizeRequest
+	27,  // 161: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:input_type -> kernel.VerifyingKeysClearRequest
+	23,  // 162: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:input_type -> kernel.VerifyingKeysPutRequest
+	270, // 163: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:input_type -> google.protobuf.Empty
+	32,  // 164: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
+	32,  // 165: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:input_type -> kernel.VerifyingKeysQueryRequest
+	34,  // 166: kernel.TrustedCaStateBackendService.GetTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	35,  // 167: kernel.TrustedCaStateBackendService.PutTrustedCas:input_type -> kernel.TrustedCasPutRequest
+	35,  // 168: kernel.TrustedCaStateBackendService.SetTrustedCas:input_type -> kernel.TrustedCasPutRequest
+	34,  // 169: kernel.TrustedCaStateBackendService.RemoveTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	34,  // 170: kernel.TrustedCaStateBackendService.DeleteTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	34,  // 171: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:input_type -> kernel.TrustedCasGetRequest
+	36,  // 172: kernel.TrustedCaStateBackendService.GetAllTrustedCas:input_type -> kernel.TrustedCasGetAllRequest
+	37,  // 173: kernel.TrustedCaStateBackendService.KeySetTrustedCas:input_type -> kernel.TrustedCasKeysRequest
+	38,  // 174: kernel.TrustedCaStateBackendService.SizeTrustedCas:input_type -> kernel.TrustedCasSizeRequest
+	39,  // 175: kernel.TrustedCaStateBackendService.ClearTrustedCas:input_type -> kernel.TrustedCasClearRequest
+	35,  // 176: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:input_type -> kernel.TrustedCasPutRequest
+	270, // 177: kernel.TrustedCaStateBackendService.WatchTrustedCas:input_type -> google.protobuf.Empty
+	44,  // 178: kernel.TrustedCaStateBackendService.QueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
+	44,  // 179: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:input_type -> kernel.TrustedCasQueryRequest
+	270, // 180: kernel.ClusterStateBackendService.GetClusterInfo:input_type -> google.protobuf.Empty
+	252, // 181: kernel.ClusterStateBackendService.SetClusterInfo:input_type -> hazelcast.AdminClusterInfo
+	270, // 182: kernel.ClusterStateBackendService.WatchClusterInfo:input_type -> google.protobuf.Empty
+	270, // 183: kernel.ClusterStateBackendService.GetClusterHealth:input_type -> google.protobuf.Empty
+	253, // 184: kernel.ClusterStateBackendService.SetClusterHealth:input_type -> hazelcast.AdminClusterHealth
+	270, // 185: kernel.ClusterStateBackendService.WatchClusterHealth:input_type -> google.protobuf.Empty
+	270, // 186: kernel.ClusterStateBackendService.GetFrontendConfig:input_type -> google.protobuf.Empty
+	8,   // 187: kernel.ClusterStateBackendService.SetFrontendConfig:input_type -> kernel.Config
+	270, // 188: kernel.ClusterStateBackendService.WatchFrontendConfig:input_type -> google.protobuf.Empty
+	46,  // 189: kernel.ClusterStateBackendService.GetNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	47,  // 190: kernel.ClusterStateBackendService.PutNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
+	47,  // 191: kernel.ClusterStateBackendService.SetNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
+	46,  // 192: kernel.ClusterStateBackendService.RemoveNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	46,  // 193: kernel.ClusterStateBackendService.DeleteNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	46,  // 194: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:input_type -> kernel.NodeMetricsGetRequest
+	48,  // 195: kernel.ClusterStateBackendService.GetAllNodeMetrics:input_type -> kernel.NodeMetricsGetAllRequest
+	49,  // 196: kernel.ClusterStateBackendService.KeySetNodeMetrics:input_type -> kernel.NodeMetricsKeysRequest
+	50,  // 197: kernel.ClusterStateBackendService.SizeNodeMetrics:input_type -> kernel.NodeMetricsSizeRequest
+	51,  // 198: kernel.ClusterStateBackendService.ClearNodeMetrics:input_type -> kernel.NodeMetricsClearRequest
+	47,  // 199: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:input_type -> kernel.NodeMetricsPutRequest
+	270, // 200: kernel.ClusterStateBackendService.WatchNodeMetrics:input_type -> google.protobuf.Empty
+	56,  // 201: kernel.ClusterStateBackendService.QueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
+	56,  // 202: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:input_type -> kernel.NodeMetricsQueryRequest
+	58,  // 203: kernel.ClusterStateBackendService.GetGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	59,  // 204: kernel.ClusterStateBackendService.PutGrpcStats:input_type -> kernel.GrpcStatsPutRequest
+	59,  // 205: kernel.ClusterStateBackendService.SetGrpcStats:input_type -> kernel.GrpcStatsPutRequest
+	58,  // 206: kernel.ClusterStateBackendService.RemoveGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	58,  // 207: kernel.ClusterStateBackendService.DeleteGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	58,  // 208: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:input_type -> kernel.GrpcStatsGetRequest
+	60,  // 209: kernel.ClusterStateBackendService.GetAllGrpcStats:input_type -> kernel.GrpcStatsGetAllRequest
+	61,  // 210: kernel.ClusterStateBackendService.KeySetGrpcStats:input_type -> kernel.GrpcStatsKeysRequest
+	62,  // 211: kernel.ClusterStateBackendService.SizeGrpcStats:input_type -> kernel.GrpcStatsSizeRequest
+	63,  // 212: kernel.ClusterStateBackendService.ClearGrpcStats:input_type -> kernel.GrpcStatsClearRequest
+	59,  // 213: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:input_type -> kernel.GrpcStatsPutRequest
+	270, // 214: kernel.ClusterStateBackendService.WatchGrpcStats:input_type -> google.protobuf.Empty
+	68,  // 215: kernel.ClusterStateBackendService.QueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
+	68,  // 216: kernel.ClusterStateBackendService.WatchQueryGrpcStats:input_type -> kernel.GrpcStatsQueryRequest
+	70,  // 217: kernel.ClusterStateBackendService.GetPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	71,  // 218: kernel.ClusterStateBackendService.PutPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
+	71,  // 219: kernel.ClusterStateBackendService.SetPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
+	70,  // 220: kernel.ClusterStateBackendService.RemovePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	70,  // 221: kernel.ClusterStateBackendService.DeletePersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	70,  // 222: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:input_type -> kernel.PersistenceStatusGetRequest
+	72,  // 223: kernel.ClusterStateBackendService.GetAllPersistenceStatus:input_type -> kernel.PersistenceStatusGetAllRequest
+	73,  // 224: kernel.ClusterStateBackendService.KeySetPersistenceStatus:input_type -> kernel.PersistenceStatusKeysRequest
+	74,  // 225: kernel.ClusterStateBackendService.SizePersistenceStatus:input_type -> kernel.PersistenceStatusSizeRequest
+	75,  // 226: kernel.ClusterStateBackendService.ClearPersistenceStatus:input_type -> kernel.PersistenceStatusClearRequest
+	71,  // 227: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:input_type -> kernel.PersistenceStatusPutRequest
+	270, // 228: kernel.ClusterStateBackendService.WatchPersistenceStatus:input_type -> google.protobuf.Empty
+	80,  // 229: kernel.ClusterStateBackendService.QueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
+	80,  // 230: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:input_type -> kernel.PersistenceStatusQueryRequest
+	82,  // 231: kernel.ClusterStateBackendService.GetNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	83,  // 232: kernel.ClusterStateBackendService.PutNetworkStats:input_type -> kernel.NetworkStatsPutRequest
+	83,  // 233: kernel.ClusterStateBackendService.SetNetworkStats:input_type -> kernel.NetworkStatsPutRequest
+	82,  // 234: kernel.ClusterStateBackendService.RemoveNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	82,  // 235: kernel.ClusterStateBackendService.DeleteNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	82,  // 236: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:input_type -> kernel.NetworkStatsGetRequest
+	84,  // 237: kernel.ClusterStateBackendService.GetAllNetworkStats:input_type -> kernel.NetworkStatsGetAllRequest
+	85,  // 238: kernel.ClusterStateBackendService.KeySetNetworkStats:input_type -> kernel.NetworkStatsKeysRequest
+	86,  // 239: kernel.ClusterStateBackendService.SizeNetworkStats:input_type -> kernel.NetworkStatsSizeRequest
+	87,  // 240: kernel.ClusterStateBackendService.ClearNetworkStats:input_type -> kernel.NetworkStatsClearRequest
+	83,  // 241: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:input_type -> kernel.NetworkStatsPutRequest
+	270, // 242: kernel.ClusterStateBackendService.WatchNetworkStats:input_type -> google.protobuf.Empty
+	92,  // 243: kernel.ClusterStateBackendService.QueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
+	92,  // 244: kernel.ClusterStateBackendService.WatchQueryNetworkStats:input_type -> kernel.NetworkStatsQueryRequest
+	94,  // 245: kernel.ClusterStateBackendService.GetThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	95,  // 246: kernel.ClusterStateBackendService.PutThreadInfo:input_type -> kernel.ThreadInfoPutRequest
+	95,  // 247: kernel.ClusterStateBackendService.SetThreadInfo:input_type -> kernel.ThreadInfoPutRequest
+	94,  // 248: kernel.ClusterStateBackendService.RemoveThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	94,  // 249: kernel.ClusterStateBackendService.DeleteThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	94,  // 250: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:input_type -> kernel.ThreadInfoGetRequest
+	96,  // 251: kernel.ClusterStateBackendService.GetAllThreadInfo:input_type -> kernel.ThreadInfoGetAllRequest
+	97,  // 252: kernel.ClusterStateBackendService.KeySetThreadInfo:input_type -> kernel.ThreadInfoKeysRequest
+	98,  // 253: kernel.ClusterStateBackendService.SizeThreadInfo:input_type -> kernel.ThreadInfoSizeRequest
+	99,  // 254: kernel.ClusterStateBackendService.ClearThreadInfo:input_type -> kernel.ThreadInfoClearRequest
+	95,  // 255: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:input_type -> kernel.ThreadInfoPutRequest
+	270, // 256: kernel.ClusterStateBackendService.WatchThreadInfo:input_type -> google.protobuf.Empty
+	104, // 257: kernel.ClusterStateBackendService.QueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
+	104, // 258: kernel.ClusterStateBackendService.WatchQueryThreadInfo:input_type -> kernel.ThreadInfoQueryRequest
+	106, // 259: kernel.ClusterStateBackendService.GetTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	107, // 260: kernel.ClusterStateBackendService.PutTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
+	107, // 261: kernel.ClusterStateBackendService.SetTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
+	106, // 262: kernel.ClusterStateBackendService.RemoveTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	106, // 263: kernel.ClusterStateBackendService.DeleteTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	106, // 264: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:input_type -> kernel.TokenCacheStatsGetRequest
+	108, // 265: kernel.ClusterStateBackendService.GetAllTokenCacheStats:input_type -> kernel.TokenCacheStatsGetAllRequest
+	109, // 266: kernel.ClusterStateBackendService.KeySetTokenCacheStats:input_type -> kernel.TokenCacheStatsKeysRequest
+	110, // 267: kernel.ClusterStateBackendService.SizeTokenCacheStats:input_type -> kernel.TokenCacheStatsSizeRequest
+	111, // 268: kernel.ClusterStateBackendService.ClearTokenCacheStats:input_type -> kernel.TokenCacheStatsClearRequest
+	107, // 269: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:input_type -> kernel.TokenCacheStatsPutRequest
+	270, // 270: kernel.ClusterStateBackendService.WatchTokenCacheStats:input_type -> google.protobuf.Empty
+	116, // 271: kernel.ClusterStateBackendService.QueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
+	116, // 272: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:input_type -> kernel.TokenCacheStatsQueryRequest
+	118, // 273: kernel.ClusterStateBackendService.GetMapStats:input_type -> kernel.MapStatsGetRequest
+	119, // 274: kernel.ClusterStateBackendService.PutMapStats:input_type -> kernel.MapStatsPutRequest
+	119, // 275: kernel.ClusterStateBackendService.SetMapStats:input_type -> kernel.MapStatsPutRequest
+	118, // 276: kernel.ClusterStateBackendService.RemoveMapStats:input_type -> kernel.MapStatsGetRequest
+	118, // 277: kernel.ClusterStateBackendService.DeleteMapStats:input_type -> kernel.MapStatsGetRequest
+	118, // 278: kernel.ClusterStateBackendService.ContainsKeyMapStats:input_type -> kernel.MapStatsGetRequest
+	120, // 279: kernel.ClusterStateBackendService.GetAllMapStats:input_type -> kernel.MapStatsGetAllRequest
+	121, // 280: kernel.ClusterStateBackendService.KeySetMapStats:input_type -> kernel.MapStatsKeysRequest
+	122, // 281: kernel.ClusterStateBackendService.SizeMapStats:input_type -> kernel.MapStatsSizeRequest
+	123, // 282: kernel.ClusterStateBackendService.ClearMapStats:input_type -> kernel.MapStatsClearRequest
+	119, // 283: kernel.ClusterStateBackendService.PutIfAbsentMapStats:input_type -> kernel.MapStatsPutRequest
+	270, // 284: kernel.ClusterStateBackendService.WatchMapStats:input_type -> google.protobuf.Empty
+	128, // 285: kernel.ClusterStateBackendService.QueryMapStats:input_type -> kernel.MapStatsQueryRequest
+	128, // 286: kernel.ClusterStateBackendService.WatchQueryMapStats:input_type -> kernel.MapStatsQueryRequest
+	130, // 287: kernel.ClusterStateBackendService.GetGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	131, // 288: kernel.ClusterStateBackendService.PutGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
+	131, // 289: kernel.ClusterStateBackendService.SetGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
+	130, // 290: kernel.ClusterStateBackendService.RemoveGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	130, // 291: kernel.ClusterStateBackendService.DeleteGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	130, // 292: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:input_type -> kernel.GraphRegistryGetRequest
+	132, // 293: kernel.ClusterStateBackendService.GetAllGraphRegistry:input_type -> kernel.GraphRegistryGetAllRequest
+	133, // 294: kernel.ClusterStateBackendService.KeySetGraphRegistry:input_type -> kernel.GraphRegistryKeysRequest
+	134, // 295: kernel.ClusterStateBackendService.SizeGraphRegistry:input_type -> kernel.GraphRegistrySizeRequest
+	135, // 296: kernel.ClusterStateBackendService.ClearGraphRegistry:input_type -> kernel.GraphRegistryClearRequest
+	131, // 297: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:input_type -> kernel.GraphRegistryPutRequest
+	270, // 298: kernel.ClusterStateBackendService.WatchGraphRegistry:input_type -> google.protobuf.Empty
+	140, // 299: kernel.ClusterStateBackendService.QueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
+	140, // 300: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:input_type -> kernel.GraphRegistryQueryRequest
+	142, // 301: kernel.ClusterStateBackendService.GetServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	143, // 302: kernel.ClusterStateBackendService.PutServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
+	143, // 303: kernel.ClusterStateBackendService.SetServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
+	142, // 304: kernel.ClusterStateBackendService.RemoveServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	142, // 305: kernel.ClusterStateBackendService.DeleteServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	142, // 306: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:input_type -> kernel.ServiceConnectionsGetRequest
+	144, // 307: kernel.ClusterStateBackendService.GetAllServiceConnections:input_type -> kernel.ServiceConnectionsGetAllRequest
+	145, // 308: kernel.ClusterStateBackendService.KeySetServiceConnections:input_type -> kernel.ServiceConnectionsKeysRequest
+	146, // 309: kernel.ClusterStateBackendService.SizeServiceConnections:input_type -> kernel.ServiceConnectionsSizeRequest
+	147, // 310: kernel.ClusterStateBackendService.ClearServiceConnections:input_type -> kernel.ServiceConnectionsClearRequest
+	143, // 311: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:input_type -> kernel.ServiceConnectionsPutRequest
+	270, // 312: kernel.ClusterStateBackendService.WatchServiceConnections:input_type -> google.protobuf.Empty
+	152, // 313: kernel.ClusterStateBackendService.QueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
+	152, // 314: kernel.ClusterStateBackendService.WatchQueryServiceConnections:input_type -> kernel.ServiceConnectionsQueryRequest
+	154, // 315: kernel.ClusterStateBackendService.GetQueueStats:input_type -> kernel.QueueStatsGetRequest
+	155, // 316: kernel.ClusterStateBackendService.PutQueueStats:input_type -> kernel.QueueStatsPutRequest
+	155, // 317: kernel.ClusterStateBackendService.SetQueueStats:input_type -> kernel.QueueStatsPutRequest
+	154, // 318: kernel.ClusterStateBackendService.RemoveQueueStats:input_type -> kernel.QueueStatsGetRequest
+	154, // 319: kernel.ClusterStateBackendService.DeleteQueueStats:input_type -> kernel.QueueStatsGetRequest
+	154, // 320: kernel.ClusterStateBackendService.ContainsKeyQueueStats:input_type -> kernel.QueueStatsGetRequest
+	156, // 321: kernel.ClusterStateBackendService.GetAllQueueStats:input_type -> kernel.QueueStatsGetAllRequest
+	157, // 322: kernel.ClusterStateBackendService.KeySetQueueStats:input_type -> kernel.QueueStatsKeysRequest
+	158, // 323: kernel.ClusterStateBackendService.SizeQueueStats:input_type -> kernel.QueueStatsSizeRequest
+	159, // 324: kernel.ClusterStateBackendService.ClearQueueStats:input_type -> kernel.QueueStatsClearRequest
+	155, // 325: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:input_type -> kernel.QueueStatsPutRequest
+	270, // 326: kernel.ClusterStateBackendService.WatchQueueStats:input_type -> google.protobuf.Empty
+	164, // 327: kernel.ClusterStateBackendService.QueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
+	164, // 328: kernel.ClusterStateBackendService.WatchQueryQueueStats:input_type -> kernel.QueueStatsQueryRequest
+	166, // 329: kernel.ClusterStateBackendService.GetTopicStats:input_type -> kernel.TopicStatsGetRequest
+	167, // 330: kernel.ClusterStateBackendService.PutTopicStats:input_type -> kernel.TopicStatsPutRequest
+	167, // 331: kernel.ClusterStateBackendService.SetTopicStats:input_type -> kernel.TopicStatsPutRequest
+	166, // 332: kernel.ClusterStateBackendService.RemoveTopicStats:input_type -> kernel.TopicStatsGetRequest
+	166, // 333: kernel.ClusterStateBackendService.DeleteTopicStats:input_type -> kernel.TopicStatsGetRequest
+	166, // 334: kernel.ClusterStateBackendService.ContainsKeyTopicStats:input_type -> kernel.TopicStatsGetRequest
+	168, // 335: kernel.ClusterStateBackendService.GetAllTopicStats:input_type -> kernel.TopicStatsGetAllRequest
+	169, // 336: kernel.ClusterStateBackendService.KeySetTopicStats:input_type -> kernel.TopicStatsKeysRequest
+	170, // 337: kernel.ClusterStateBackendService.SizeTopicStats:input_type -> kernel.TopicStatsSizeRequest
+	171, // 338: kernel.ClusterStateBackendService.ClearTopicStats:input_type -> kernel.TopicStatsClearRequest
+	167, // 339: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:input_type -> kernel.TopicStatsPutRequest
+	270, // 340: kernel.ClusterStateBackendService.WatchTopicStats:input_type -> google.protobuf.Empty
+	176, // 341: kernel.ClusterStateBackendService.QueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
+	176, // 342: kernel.ClusterStateBackendService.WatchQueryTopicStats:input_type -> kernel.TopicStatsQueryRequest
+	178, // 343: kernel.ClusterStateBackendService.GetWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	179, // 344: kernel.ClusterStateBackendService.PutWatchHealth:input_type -> kernel.WatchHealthPutRequest
+	179, // 345: kernel.ClusterStateBackendService.SetWatchHealth:input_type -> kernel.WatchHealthPutRequest
+	178, // 346: kernel.ClusterStateBackendService.RemoveWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	178, // 347: kernel.ClusterStateBackendService.DeleteWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	178, // 348: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:input_type -> kernel.WatchHealthGetRequest
+	180, // 349: kernel.ClusterStateBackendService.GetAllWatchHealth:input_type -> kernel.WatchHealthGetAllRequest
+	181, // 350: kernel.ClusterStateBackendService.KeySetWatchHealth:input_type -> kernel.WatchHealthKeysRequest
+	182, // 351: kernel.ClusterStateBackendService.SizeWatchHealth:input_type -> kernel.WatchHealthSizeRequest
+	183, // 352: kernel.ClusterStateBackendService.ClearWatchHealth:input_type -> kernel.WatchHealthClearRequest
+	179, // 353: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:input_type -> kernel.WatchHealthPutRequest
+	270, // 354: kernel.ClusterStateBackendService.WatchWatchHealth:input_type -> google.protobuf.Empty
+	188, // 355: kernel.ClusterStateBackendService.QueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
+	188, // 356: kernel.ClusterStateBackendService.WatchQueryWatchHealth:input_type -> kernel.WatchHealthQueryRequest
+	190, // 357: kernel.ClusterStateBackendService.GetMutationRates:input_type -> kernel.MutationRatesGetRequest
+	191, // 358: kernel.ClusterStateBackendService.PutMutationRates:input_type -> kernel.MutationRatesPutRequest
+	191, // 359: kernel.ClusterStateBackendService.SetMutationRates:input_type -> kernel.MutationRatesPutRequest
+	190, // 360: kernel.ClusterStateBackendService.RemoveMutationRates:input_type -> kernel.MutationRatesGetRequest
+	190, // 361: kernel.ClusterStateBackendService.DeleteMutationRates:input_type -> kernel.MutationRatesGetRequest
+	190, // 362: kernel.ClusterStateBackendService.ContainsKeyMutationRates:input_type -> kernel.MutationRatesGetRequest
+	192, // 363: kernel.ClusterStateBackendService.GetAllMutationRates:input_type -> kernel.MutationRatesGetAllRequest
+	193, // 364: kernel.ClusterStateBackendService.KeySetMutationRates:input_type -> kernel.MutationRatesKeysRequest
+	194, // 365: kernel.ClusterStateBackendService.SizeMutationRates:input_type -> kernel.MutationRatesSizeRequest
+	195, // 366: kernel.ClusterStateBackendService.ClearMutationRates:input_type -> kernel.MutationRatesClearRequest
+	191, // 367: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:input_type -> kernel.MutationRatesPutRequest
+	270, // 368: kernel.ClusterStateBackendService.WatchMutationRates:input_type -> google.protobuf.Empty
+	200, // 369: kernel.ClusterStateBackendService.QueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
+	200, // 370: kernel.ClusterStateBackendService.WatchQueryMutationRates:input_type -> kernel.MutationRatesQueryRequest
+	12,  // 371: kernel.ClusterStateBackendService.SetLogLevel:input_type -> kernel.AdminSetLogLevelRequest
+	13,  // 372: kernel.ClusterStateBackendService.ReloadConfig:input_type -> kernel.AdminReloadConfigRequest
+	267, // 373: kernel.ServiceHealthStateBackendService.SetInstances:input_type -> healthreport.ServiceInstanceHealth
+	202, // 374: kernel.ServiceHealthStateBackendService.GetInstances:input_type -> kernel.InstancesGetRequest
+	203, // 375: kernel.ServiceHealthStateBackendService.GetAllInstances:input_type -> kernel.InstancesGetAllRequest
+	202, // 376: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:input_type -> kernel.InstancesGetRequest
+	204, // 377: kernel.ServiceHealthStateBackendService.KeySetInstances:input_type -> kernel.InstancesKeysRequest
+	205, // 378: kernel.ServiceHealthStateBackendService.SizeInstances:input_type -> kernel.InstancesSizeRequest
+	270, // 379: kernel.ServiceHealthStateBackendService.WatchInstances:input_type -> google.protobuf.Empty
+	210, // 380: kernel.ServiceHealthStateBackendService.QueryInstances:input_type -> kernel.InstancesQueryRequest
+	210, // 381: kernel.ServiceHealthStateBackendService.WatchQueryInstances:input_type -> kernel.InstancesQueryRequest
+	212, // 382: kernel.CaStateBackendService.GetCaCerts:input_type -> kernel.CaCertsGetRequest
+	213, // 383: kernel.CaStateBackendService.PutCaCerts:input_type -> kernel.CaCertsPutRequest
+	213, // 384: kernel.CaStateBackendService.SetCaCerts:input_type -> kernel.CaCertsPutRequest
+	212, // 385: kernel.CaStateBackendService.RemoveCaCerts:input_type -> kernel.CaCertsGetRequest
+	212, // 386: kernel.CaStateBackendService.DeleteCaCerts:input_type -> kernel.CaCertsGetRequest
+	212, // 387: kernel.CaStateBackendService.ContainsKeyCaCerts:input_type -> kernel.CaCertsGetRequest
+	214, // 388: kernel.CaStateBackendService.GetAllCaCerts:input_type -> kernel.CaCertsGetAllRequest
+	215, // 389: kernel.CaStateBackendService.KeySetCaCerts:input_type -> kernel.CaCertsKeysRequest
+	216, // 390: kernel.CaStateBackendService.SizeCaCerts:input_type -> kernel.CaCertsSizeRequest
+	217, // 391: kernel.CaStateBackendService.ClearCaCerts:input_type -> kernel.CaCertsClearRequest
+	213, // 392: kernel.CaStateBackendService.PutIfAbsentCaCerts:input_type -> kernel.CaCertsPutRequest
+	270, // 393: kernel.CaStateBackendService.WatchCaCerts:input_type -> google.protobuf.Empty
+	222, // 394: kernel.CaStateBackendService.QueryCaCerts:input_type -> kernel.CaCertsQueryRequest
+	222, // 395: kernel.CaStateBackendService.WatchQueryCaCerts:input_type -> kernel.CaCertsQueryRequest
+	271, // 396: kernel.TokenExchangerService.ExchangeToken:output_type -> token.Token
+	246, // 397: kernel.X509CertExchangerService.SignCert:output_type -> x509.X509Cert
+	28,  // 398: kernel.TokenExchangerStateBackendService.GetVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	28,  // 399: kernel.TokenExchangerStateBackendService.PutVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	224, // 400: kernel.TokenExchangerStateBackendService.SetVerifyingKeys:output_type -> kernel.MapEmpty
+	28,  // 401: kernel.TokenExchangerStateBackendService.RemoveVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	224, // 402: kernel.TokenExchangerStateBackendService.DeleteVerifyingKeys:output_type -> kernel.MapEmpty
+	28,  // 403: kernel.TokenExchangerStateBackendService.ContainsKeyVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	29,  // 404: kernel.TokenExchangerStateBackendService.GetAllVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
+	30,  // 405: kernel.TokenExchangerStateBackendService.KeySetVerifyingKeys:output_type -> kernel.VerifyingKeysKeysResponse
+	31,  // 406: kernel.TokenExchangerStateBackendService.SizeVerifyingKeys:output_type -> kernel.VerifyingKeysSizeResponse
+	224, // 407: kernel.TokenExchangerStateBackendService.ClearVerifyingKeys:output_type -> kernel.MapEmpty
+	28,  // 408: kernel.TokenExchangerStateBackendService.PutIfAbsentVerifyingKeys:output_type -> kernel.VerifyingKeysValueResponse
+	29,  // 409: kernel.TokenExchangerStateBackendService.WatchVerifyingKeys:output_type -> kernel.VerifyingKeysEntriesResponse
+	33,  // 410: kernel.TokenExchangerStateBackendService.QueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
+	33,  // 411: kernel.TokenExchangerStateBackendService.WatchQueryVerifyingKeys:output_type -> kernel.VerifyingKeysQueryResponse
+	40,  // 412: kernel.TrustedCaStateBackendService.GetTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	40,  // 413: kernel.TrustedCaStateBackendService.PutTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	224, // 414: kernel.TrustedCaStateBackendService.SetTrustedCas:output_type -> kernel.MapEmpty
+	40,  // 415: kernel.TrustedCaStateBackendService.RemoveTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	224, // 416: kernel.TrustedCaStateBackendService.DeleteTrustedCas:output_type -> kernel.MapEmpty
+	40,  // 417: kernel.TrustedCaStateBackendService.ContainsKeyTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	41,  // 418: kernel.TrustedCaStateBackendService.GetAllTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
+	42,  // 419: kernel.TrustedCaStateBackendService.KeySetTrustedCas:output_type -> kernel.TrustedCasKeysResponse
+	43,  // 420: kernel.TrustedCaStateBackendService.SizeTrustedCas:output_type -> kernel.TrustedCasSizeResponse
+	224, // 421: kernel.TrustedCaStateBackendService.ClearTrustedCas:output_type -> kernel.MapEmpty
+	40,  // 422: kernel.TrustedCaStateBackendService.PutIfAbsentTrustedCas:output_type -> kernel.TrustedCasValueResponse
+	41,  // 423: kernel.TrustedCaStateBackendService.WatchTrustedCas:output_type -> kernel.TrustedCasEntriesResponse
+	45,  // 424: kernel.TrustedCaStateBackendService.QueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
+	45,  // 425: kernel.TrustedCaStateBackendService.WatchQueryTrustedCas:output_type -> kernel.TrustedCasQueryResponse
+	252, // 426: kernel.ClusterStateBackendService.GetClusterInfo:output_type -> hazelcast.AdminClusterInfo
+	252, // 427: kernel.ClusterStateBackendService.SetClusterInfo:output_type -> hazelcast.AdminClusterInfo
+	252, // 428: kernel.ClusterStateBackendService.WatchClusterInfo:output_type -> hazelcast.AdminClusterInfo
+	253, // 429: kernel.ClusterStateBackendService.GetClusterHealth:output_type -> hazelcast.AdminClusterHealth
+	253, // 430: kernel.ClusterStateBackendService.SetClusterHealth:output_type -> hazelcast.AdminClusterHealth
+	253, // 431: kernel.ClusterStateBackendService.WatchClusterHealth:output_type -> hazelcast.AdminClusterHealth
+	8,   // 432: kernel.ClusterStateBackendService.GetFrontendConfig:output_type -> kernel.Config
+	8,   // 433: kernel.ClusterStateBackendService.SetFrontendConfig:output_type -> kernel.Config
+	8,   // 434: kernel.ClusterStateBackendService.WatchFrontendConfig:output_type -> kernel.Config
+	52,  // 435: kernel.ClusterStateBackendService.GetNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	52,  // 436: kernel.ClusterStateBackendService.PutNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	224, // 437: kernel.ClusterStateBackendService.SetNodeMetrics:output_type -> kernel.MapEmpty
+	52,  // 438: kernel.ClusterStateBackendService.RemoveNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	224, // 439: kernel.ClusterStateBackendService.DeleteNodeMetrics:output_type -> kernel.MapEmpty
+	52,  // 440: kernel.ClusterStateBackendService.ContainsKeyNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	53,  // 441: kernel.ClusterStateBackendService.GetAllNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
+	54,  // 442: kernel.ClusterStateBackendService.KeySetNodeMetrics:output_type -> kernel.NodeMetricsKeysResponse
+	55,  // 443: kernel.ClusterStateBackendService.SizeNodeMetrics:output_type -> kernel.NodeMetricsSizeResponse
+	224, // 444: kernel.ClusterStateBackendService.ClearNodeMetrics:output_type -> kernel.MapEmpty
+	52,  // 445: kernel.ClusterStateBackendService.PutIfAbsentNodeMetrics:output_type -> kernel.NodeMetricsValueResponse
+	53,  // 446: kernel.ClusterStateBackendService.WatchNodeMetrics:output_type -> kernel.NodeMetricsEntriesResponse
+	57,  // 447: kernel.ClusterStateBackendService.QueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
+	57,  // 448: kernel.ClusterStateBackendService.WatchQueryNodeMetrics:output_type -> kernel.NodeMetricsQueryResponse
+	64,  // 449: kernel.ClusterStateBackendService.GetGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	64,  // 450: kernel.ClusterStateBackendService.PutGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	224, // 451: kernel.ClusterStateBackendService.SetGrpcStats:output_type -> kernel.MapEmpty
+	64,  // 452: kernel.ClusterStateBackendService.RemoveGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	224, // 453: kernel.ClusterStateBackendService.DeleteGrpcStats:output_type -> kernel.MapEmpty
+	64,  // 454: kernel.ClusterStateBackendService.ContainsKeyGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	65,  // 455: kernel.ClusterStateBackendService.GetAllGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
+	66,  // 456: kernel.ClusterStateBackendService.KeySetGrpcStats:output_type -> kernel.GrpcStatsKeysResponse
+	67,  // 457: kernel.ClusterStateBackendService.SizeGrpcStats:output_type -> kernel.GrpcStatsSizeResponse
+	224, // 458: kernel.ClusterStateBackendService.ClearGrpcStats:output_type -> kernel.MapEmpty
+	64,  // 459: kernel.ClusterStateBackendService.PutIfAbsentGrpcStats:output_type -> kernel.GrpcStatsValueResponse
+	65,  // 460: kernel.ClusterStateBackendService.WatchGrpcStats:output_type -> kernel.GrpcStatsEntriesResponse
+	69,  // 461: kernel.ClusterStateBackendService.QueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
+	69,  // 462: kernel.ClusterStateBackendService.WatchQueryGrpcStats:output_type -> kernel.GrpcStatsQueryResponse
+	76,  // 463: kernel.ClusterStateBackendService.GetPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	76,  // 464: kernel.ClusterStateBackendService.PutPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	224, // 465: kernel.ClusterStateBackendService.SetPersistenceStatus:output_type -> kernel.MapEmpty
+	76,  // 466: kernel.ClusterStateBackendService.RemovePersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	224, // 467: kernel.ClusterStateBackendService.DeletePersistenceStatus:output_type -> kernel.MapEmpty
+	76,  // 468: kernel.ClusterStateBackendService.ContainsKeyPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	77,  // 469: kernel.ClusterStateBackendService.GetAllPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
+	78,  // 470: kernel.ClusterStateBackendService.KeySetPersistenceStatus:output_type -> kernel.PersistenceStatusKeysResponse
+	79,  // 471: kernel.ClusterStateBackendService.SizePersistenceStatus:output_type -> kernel.PersistenceStatusSizeResponse
+	224, // 472: kernel.ClusterStateBackendService.ClearPersistenceStatus:output_type -> kernel.MapEmpty
+	76,  // 473: kernel.ClusterStateBackendService.PutIfAbsentPersistenceStatus:output_type -> kernel.PersistenceStatusValueResponse
+	77,  // 474: kernel.ClusterStateBackendService.WatchPersistenceStatus:output_type -> kernel.PersistenceStatusEntriesResponse
+	81,  // 475: kernel.ClusterStateBackendService.QueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
+	81,  // 476: kernel.ClusterStateBackendService.WatchQueryPersistenceStatus:output_type -> kernel.PersistenceStatusQueryResponse
+	88,  // 477: kernel.ClusterStateBackendService.GetNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	88,  // 478: kernel.ClusterStateBackendService.PutNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	224, // 479: kernel.ClusterStateBackendService.SetNetworkStats:output_type -> kernel.MapEmpty
+	88,  // 480: kernel.ClusterStateBackendService.RemoveNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	224, // 481: kernel.ClusterStateBackendService.DeleteNetworkStats:output_type -> kernel.MapEmpty
+	88,  // 482: kernel.ClusterStateBackendService.ContainsKeyNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	89,  // 483: kernel.ClusterStateBackendService.GetAllNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
+	90,  // 484: kernel.ClusterStateBackendService.KeySetNetworkStats:output_type -> kernel.NetworkStatsKeysResponse
+	91,  // 485: kernel.ClusterStateBackendService.SizeNetworkStats:output_type -> kernel.NetworkStatsSizeResponse
+	224, // 486: kernel.ClusterStateBackendService.ClearNetworkStats:output_type -> kernel.MapEmpty
+	88,  // 487: kernel.ClusterStateBackendService.PutIfAbsentNetworkStats:output_type -> kernel.NetworkStatsValueResponse
+	89,  // 488: kernel.ClusterStateBackendService.WatchNetworkStats:output_type -> kernel.NetworkStatsEntriesResponse
+	93,  // 489: kernel.ClusterStateBackendService.QueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
+	93,  // 490: kernel.ClusterStateBackendService.WatchQueryNetworkStats:output_type -> kernel.NetworkStatsQueryResponse
+	100, // 491: kernel.ClusterStateBackendService.GetThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	100, // 492: kernel.ClusterStateBackendService.PutThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	224, // 493: kernel.ClusterStateBackendService.SetThreadInfo:output_type -> kernel.MapEmpty
+	100, // 494: kernel.ClusterStateBackendService.RemoveThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	224, // 495: kernel.ClusterStateBackendService.DeleteThreadInfo:output_type -> kernel.MapEmpty
+	100, // 496: kernel.ClusterStateBackendService.ContainsKeyThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	101, // 497: kernel.ClusterStateBackendService.GetAllThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
+	102, // 498: kernel.ClusterStateBackendService.KeySetThreadInfo:output_type -> kernel.ThreadInfoKeysResponse
+	103, // 499: kernel.ClusterStateBackendService.SizeThreadInfo:output_type -> kernel.ThreadInfoSizeResponse
+	224, // 500: kernel.ClusterStateBackendService.ClearThreadInfo:output_type -> kernel.MapEmpty
+	100, // 501: kernel.ClusterStateBackendService.PutIfAbsentThreadInfo:output_type -> kernel.ThreadInfoValueResponse
+	101, // 502: kernel.ClusterStateBackendService.WatchThreadInfo:output_type -> kernel.ThreadInfoEntriesResponse
+	105, // 503: kernel.ClusterStateBackendService.QueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
+	105, // 504: kernel.ClusterStateBackendService.WatchQueryThreadInfo:output_type -> kernel.ThreadInfoQueryResponse
+	112, // 505: kernel.ClusterStateBackendService.GetTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	112, // 506: kernel.ClusterStateBackendService.PutTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	224, // 507: kernel.ClusterStateBackendService.SetTokenCacheStats:output_type -> kernel.MapEmpty
+	112, // 508: kernel.ClusterStateBackendService.RemoveTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	224, // 509: kernel.ClusterStateBackendService.DeleteTokenCacheStats:output_type -> kernel.MapEmpty
+	112, // 510: kernel.ClusterStateBackendService.ContainsKeyTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	113, // 511: kernel.ClusterStateBackendService.GetAllTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
+	114, // 512: kernel.ClusterStateBackendService.KeySetTokenCacheStats:output_type -> kernel.TokenCacheStatsKeysResponse
+	115, // 513: kernel.ClusterStateBackendService.SizeTokenCacheStats:output_type -> kernel.TokenCacheStatsSizeResponse
+	224, // 514: kernel.ClusterStateBackendService.ClearTokenCacheStats:output_type -> kernel.MapEmpty
+	112, // 515: kernel.ClusterStateBackendService.PutIfAbsentTokenCacheStats:output_type -> kernel.TokenCacheStatsValueResponse
+	113, // 516: kernel.ClusterStateBackendService.WatchTokenCacheStats:output_type -> kernel.TokenCacheStatsEntriesResponse
+	117, // 517: kernel.ClusterStateBackendService.QueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
+	117, // 518: kernel.ClusterStateBackendService.WatchQueryTokenCacheStats:output_type -> kernel.TokenCacheStatsQueryResponse
+	124, // 519: kernel.ClusterStateBackendService.GetMapStats:output_type -> kernel.MapStatsValueResponse
+	124, // 520: kernel.ClusterStateBackendService.PutMapStats:output_type -> kernel.MapStatsValueResponse
+	224, // 521: kernel.ClusterStateBackendService.SetMapStats:output_type -> kernel.MapEmpty
+	124, // 522: kernel.ClusterStateBackendService.RemoveMapStats:output_type -> kernel.MapStatsValueResponse
+	224, // 523: kernel.ClusterStateBackendService.DeleteMapStats:output_type -> kernel.MapEmpty
+	124, // 524: kernel.ClusterStateBackendService.ContainsKeyMapStats:output_type -> kernel.MapStatsValueResponse
+	125, // 525: kernel.ClusterStateBackendService.GetAllMapStats:output_type -> kernel.MapStatsEntriesResponse
+	126, // 526: kernel.ClusterStateBackendService.KeySetMapStats:output_type -> kernel.MapStatsKeysResponse
+	127, // 527: kernel.ClusterStateBackendService.SizeMapStats:output_type -> kernel.MapStatsSizeResponse
+	224, // 528: kernel.ClusterStateBackendService.ClearMapStats:output_type -> kernel.MapEmpty
+	124, // 529: kernel.ClusterStateBackendService.PutIfAbsentMapStats:output_type -> kernel.MapStatsValueResponse
+	125, // 530: kernel.ClusterStateBackendService.WatchMapStats:output_type -> kernel.MapStatsEntriesResponse
+	129, // 531: kernel.ClusterStateBackendService.QueryMapStats:output_type -> kernel.MapStatsQueryResponse
+	129, // 532: kernel.ClusterStateBackendService.WatchQueryMapStats:output_type -> kernel.MapStatsQueryResponse
+	136, // 533: kernel.ClusterStateBackendService.GetGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	136, // 534: kernel.ClusterStateBackendService.PutGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	224, // 535: kernel.ClusterStateBackendService.SetGraphRegistry:output_type -> kernel.MapEmpty
+	136, // 536: kernel.ClusterStateBackendService.RemoveGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	224, // 537: kernel.ClusterStateBackendService.DeleteGraphRegistry:output_type -> kernel.MapEmpty
+	136, // 538: kernel.ClusterStateBackendService.ContainsKeyGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	137, // 539: kernel.ClusterStateBackendService.GetAllGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
+	138, // 540: kernel.ClusterStateBackendService.KeySetGraphRegistry:output_type -> kernel.GraphRegistryKeysResponse
+	139, // 541: kernel.ClusterStateBackendService.SizeGraphRegistry:output_type -> kernel.GraphRegistrySizeResponse
+	224, // 542: kernel.ClusterStateBackendService.ClearGraphRegistry:output_type -> kernel.MapEmpty
+	136, // 543: kernel.ClusterStateBackendService.PutIfAbsentGraphRegistry:output_type -> kernel.GraphRegistryValueResponse
+	137, // 544: kernel.ClusterStateBackendService.WatchGraphRegistry:output_type -> kernel.GraphRegistryEntriesResponse
+	141, // 545: kernel.ClusterStateBackendService.QueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
+	141, // 546: kernel.ClusterStateBackendService.WatchQueryGraphRegistry:output_type -> kernel.GraphRegistryQueryResponse
+	148, // 547: kernel.ClusterStateBackendService.GetServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	148, // 548: kernel.ClusterStateBackendService.PutServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	224, // 549: kernel.ClusterStateBackendService.SetServiceConnections:output_type -> kernel.MapEmpty
+	148, // 550: kernel.ClusterStateBackendService.RemoveServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	224, // 551: kernel.ClusterStateBackendService.DeleteServiceConnections:output_type -> kernel.MapEmpty
+	148, // 552: kernel.ClusterStateBackendService.ContainsKeyServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	149, // 553: kernel.ClusterStateBackendService.GetAllServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
+	150, // 554: kernel.ClusterStateBackendService.KeySetServiceConnections:output_type -> kernel.ServiceConnectionsKeysResponse
+	151, // 555: kernel.ClusterStateBackendService.SizeServiceConnections:output_type -> kernel.ServiceConnectionsSizeResponse
+	224, // 556: kernel.ClusterStateBackendService.ClearServiceConnections:output_type -> kernel.MapEmpty
+	148, // 557: kernel.ClusterStateBackendService.PutIfAbsentServiceConnections:output_type -> kernel.ServiceConnectionsValueResponse
+	149, // 558: kernel.ClusterStateBackendService.WatchServiceConnections:output_type -> kernel.ServiceConnectionsEntriesResponse
+	153, // 559: kernel.ClusterStateBackendService.QueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
+	153, // 560: kernel.ClusterStateBackendService.WatchQueryServiceConnections:output_type -> kernel.ServiceConnectionsQueryResponse
+	160, // 561: kernel.ClusterStateBackendService.GetQueueStats:output_type -> kernel.QueueStatsValueResponse
+	160, // 562: kernel.ClusterStateBackendService.PutQueueStats:output_type -> kernel.QueueStatsValueResponse
+	224, // 563: kernel.ClusterStateBackendService.SetQueueStats:output_type -> kernel.MapEmpty
+	160, // 564: kernel.ClusterStateBackendService.RemoveQueueStats:output_type -> kernel.QueueStatsValueResponse
+	224, // 565: kernel.ClusterStateBackendService.DeleteQueueStats:output_type -> kernel.MapEmpty
+	160, // 566: kernel.ClusterStateBackendService.ContainsKeyQueueStats:output_type -> kernel.QueueStatsValueResponse
+	161, // 567: kernel.ClusterStateBackendService.GetAllQueueStats:output_type -> kernel.QueueStatsEntriesResponse
+	162, // 568: kernel.ClusterStateBackendService.KeySetQueueStats:output_type -> kernel.QueueStatsKeysResponse
+	163, // 569: kernel.ClusterStateBackendService.SizeQueueStats:output_type -> kernel.QueueStatsSizeResponse
+	224, // 570: kernel.ClusterStateBackendService.ClearQueueStats:output_type -> kernel.MapEmpty
+	160, // 571: kernel.ClusterStateBackendService.PutIfAbsentQueueStats:output_type -> kernel.QueueStatsValueResponse
+	161, // 572: kernel.ClusterStateBackendService.WatchQueueStats:output_type -> kernel.QueueStatsEntriesResponse
+	165, // 573: kernel.ClusterStateBackendService.QueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
+	165, // 574: kernel.ClusterStateBackendService.WatchQueryQueueStats:output_type -> kernel.QueueStatsQueryResponse
+	172, // 575: kernel.ClusterStateBackendService.GetTopicStats:output_type -> kernel.TopicStatsValueResponse
+	172, // 576: kernel.ClusterStateBackendService.PutTopicStats:output_type -> kernel.TopicStatsValueResponse
+	224, // 577: kernel.ClusterStateBackendService.SetTopicStats:output_type -> kernel.MapEmpty
+	172, // 578: kernel.ClusterStateBackendService.RemoveTopicStats:output_type -> kernel.TopicStatsValueResponse
+	224, // 579: kernel.ClusterStateBackendService.DeleteTopicStats:output_type -> kernel.MapEmpty
+	172, // 580: kernel.ClusterStateBackendService.ContainsKeyTopicStats:output_type -> kernel.TopicStatsValueResponse
+	173, // 581: kernel.ClusterStateBackendService.GetAllTopicStats:output_type -> kernel.TopicStatsEntriesResponse
+	174, // 582: kernel.ClusterStateBackendService.KeySetTopicStats:output_type -> kernel.TopicStatsKeysResponse
+	175, // 583: kernel.ClusterStateBackendService.SizeTopicStats:output_type -> kernel.TopicStatsSizeResponse
+	224, // 584: kernel.ClusterStateBackendService.ClearTopicStats:output_type -> kernel.MapEmpty
+	172, // 585: kernel.ClusterStateBackendService.PutIfAbsentTopicStats:output_type -> kernel.TopicStatsValueResponse
+	173, // 586: kernel.ClusterStateBackendService.WatchTopicStats:output_type -> kernel.TopicStatsEntriesResponse
+	177, // 587: kernel.ClusterStateBackendService.QueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
+	177, // 588: kernel.ClusterStateBackendService.WatchQueryTopicStats:output_type -> kernel.TopicStatsQueryResponse
+	184, // 589: kernel.ClusterStateBackendService.GetWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	184, // 590: kernel.ClusterStateBackendService.PutWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	224, // 591: kernel.ClusterStateBackendService.SetWatchHealth:output_type -> kernel.MapEmpty
+	184, // 592: kernel.ClusterStateBackendService.RemoveWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	224, // 593: kernel.ClusterStateBackendService.DeleteWatchHealth:output_type -> kernel.MapEmpty
+	184, // 594: kernel.ClusterStateBackendService.ContainsKeyWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	185, // 595: kernel.ClusterStateBackendService.GetAllWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
+	186, // 596: kernel.ClusterStateBackendService.KeySetWatchHealth:output_type -> kernel.WatchHealthKeysResponse
+	187, // 597: kernel.ClusterStateBackendService.SizeWatchHealth:output_type -> kernel.WatchHealthSizeResponse
+	224, // 598: kernel.ClusterStateBackendService.ClearWatchHealth:output_type -> kernel.MapEmpty
+	184, // 599: kernel.ClusterStateBackendService.PutIfAbsentWatchHealth:output_type -> kernel.WatchHealthValueResponse
+	185, // 600: kernel.ClusterStateBackendService.WatchWatchHealth:output_type -> kernel.WatchHealthEntriesResponse
+	189, // 601: kernel.ClusterStateBackendService.QueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
+	189, // 602: kernel.ClusterStateBackendService.WatchQueryWatchHealth:output_type -> kernel.WatchHealthQueryResponse
+	196, // 603: kernel.ClusterStateBackendService.GetMutationRates:output_type -> kernel.MutationRatesValueResponse
+	196, // 604: kernel.ClusterStateBackendService.PutMutationRates:output_type -> kernel.MutationRatesValueResponse
+	224, // 605: kernel.ClusterStateBackendService.SetMutationRates:output_type -> kernel.MapEmpty
+	196, // 606: kernel.ClusterStateBackendService.RemoveMutationRates:output_type -> kernel.MutationRatesValueResponse
+	224, // 607: kernel.ClusterStateBackendService.DeleteMutationRates:output_type -> kernel.MapEmpty
+	196, // 608: kernel.ClusterStateBackendService.ContainsKeyMutationRates:output_type -> kernel.MutationRatesValueResponse
+	197, // 609: kernel.ClusterStateBackendService.GetAllMutationRates:output_type -> kernel.MutationRatesEntriesResponse
+	198, // 610: kernel.ClusterStateBackendService.KeySetMutationRates:output_type -> kernel.MutationRatesKeysResponse
+	199, // 611: kernel.ClusterStateBackendService.SizeMutationRates:output_type -> kernel.MutationRatesSizeResponse
+	224, // 612: kernel.ClusterStateBackendService.ClearMutationRates:output_type -> kernel.MapEmpty
+	196, // 613: kernel.ClusterStateBackendService.PutIfAbsentMutationRates:output_type -> kernel.MutationRatesValueResponse
+	197, // 614: kernel.ClusterStateBackendService.WatchMutationRates:output_type -> kernel.MutationRatesEntriesResponse
+	201, // 615: kernel.ClusterStateBackendService.QueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
+	201, // 616: kernel.ClusterStateBackendService.WatchQueryMutationRates:output_type -> kernel.MutationRatesQueryResponse
+	270, // 617: kernel.ClusterStateBackendService.SetLogLevel:output_type -> google.protobuf.Empty
+	270, // 618: kernel.ClusterStateBackendService.ReloadConfig:output_type -> google.protobuf.Empty
+	224, // 619: kernel.ServiceHealthStateBackendService.SetInstances:output_type -> kernel.MapEmpty
+	206, // 620: kernel.ServiceHealthStateBackendService.GetInstances:output_type -> kernel.InstancesValueResponse
+	207, // 621: kernel.ServiceHealthStateBackendService.GetAllInstances:output_type -> kernel.InstancesEntriesResponse
+	206, // 622: kernel.ServiceHealthStateBackendService.ContainsKeyInstances:output_type -> kernel.InstancesValueResponse
+	208, // 623: kernel.ServiceHealthStateBackendService.KeySetInstances:output_type -> kernel.InstancesKeysResponse
+	209, // 624: kernel.ServiceHealthStateBackendService.SizeInstances:output_type -> kernel.InstancesSizeResponse
+	207, // 625: kernel.ServiceHealthStateBackendService.WatchInstances:output_type -> kernel.InstancesEntriesResponse
+	211, // 626: kernel.ServiceHealthStateBackendService.QueryInstances:output_type -> kernel.InstancesQueryResponse
+	211, // 627: kernel.ServiceHealthStateBackendService.WatchQueryInstances:output_type -> kernel.InstancesQueryResponse
+	218, // 628: kernel.CaStateBackendService.GetCaCerts:output_type -> kernel.CaCertsValueResponse
+	218, // 629: kernel.CaStateBackendService.PutCaCerts:output_type -> kernel.CaCertsValueResponse
+	224, // 630: kernel.CaStateBackendService.SetCaCerts:output_type -> kernel.MapEmpty
+	218, // 631: kernel.CaStateBackendService.RemoveCaCerts:output_type -> kernel.CaCertsValueResponse
+	224, // 632: kernel.CaStateBackendService.DeleteCaCerts:output_type -> kernel.MapEmpty
+	218, // 633: kernel.CaStateBackendService.ContainsKeyCaCerts:output_type -> kernel.CaCertsValueResponse
+	219, // 634: kernel.CaStateBackendService.GetAllCaCerts:output_type -> kernel.CaCertsEntriesResponse
+	220, // 635: kernel.CaStateBackendService.KeySetCaCerts:output_type -> kernel.CaCertsKeysResponse
+	221, // 636: kernel.CaStateBackendService.SizeCaCerts:output_type -> kernel.CaCertsSizeResponse
+	224, // 637: kernel.CaStateBackendService.ClearCaCerts:output_type -> kernel.MapEmpty
+	218, // 638: kernel.CaStateBackendService.PutIfAbsentCaCerts:output_type -> kernel.CaCertsValueResponse
+	219, // 639: kernel.CaStateBackendService.WatchCaCerts:output_type -> kernel.CaCertsEntriesResponse
+	223, // 640: kernel.CaStateBackendService.QueryCaCerts:output_type -> kernel.CaCertsQueryResponse
+	223, // 641: kernel.CaStateBackendService.WatchQueryCaCerts:output_type -> kernel.CaCertsQueryResponse
+	396, // [396:642] is the sub-list for method output_type
+	150, // [150:396] is the sub-list for method input_type
+	150, // [150:150] is the sub-list for extension type_name
+	150, // [150:150] is the sub-list for extension extendee
+	0,   // [0:150] is the sub-list for field type_name
 }
 
 func init() { file_services_kernel_proto_init() }

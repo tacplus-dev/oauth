@@ -21,6 +21,16 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	protoerrors "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/errors"
+	dgraph "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/dgraph"
+	gateway "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/gateway"
+	identity "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/identity"
+	letsencrypt "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/letsencrypt"
+	mcp "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/mcp"
+	policy "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policy"
+	policysim "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/policysim"
+	sentinel "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"
+	snoopy "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/snoopy"
+	woodstock "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/woodstock"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -226,11 +236,23 @@ func ConsistencyTypeToSpecName(v ConsistencyType) string {
 // KitchenSinkJSON represents KitchenSink in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type kitchensinkJSON struct {
-	MapName     string `json:"map_name,omitempty"`
-	Key         string `json:"key,omitempty"`
-	Op          string `json:"op,omitempty"`
-	Consistency string `json:"consistency,omitempty"`
-	TimestampMs int64  `json:"timestamp_ms,omitempty"`
+	MapName            string          `json:"map_name,omitempty"`
+	Key                string          `json:"key,omitempty"`
+	Op                 string          `json:"op,omitempty"`
+	Consistency        string          `json:"consistency,omitempty"`
+	TimestampMs        int64           `json:"timestamp_ms,omitempty"`
+	DgraphConfig       json.RawMessage `json:"dgraph_config,omitempty"`
+	GatewayConfig      json.RawMessage `json:"gateway_config,omitempty"`
+	IdentityConfig     json.RawMessage `json:"identity_config,omitempty"`
+	LetsencryptConfig  json.RawMessage `json:"letsencrypt_config,omitempty"`
+	McpConfig          json.RawMessage `json:"mcp_config,omitempty"`
+	PolicyConfig       json.RawMessage `json:"policy_config,omitempty"`
+	PolicysimConfig    json.RawMessage `json:"policysim_config,omitempty"`
+	SentinelConfig     json.RawMessage `json:"sentinel_config,omitempty"`
+	SnoopyEventData    json.RawMessage `json:"snoopy_event_data,omitempty"`
+	SnoopyTaskItem     json.RawMessage `json:"snoopy_task_item,omitempty"`
+	WoodstockEventData json.RawMessage `json:"woodstock_event_data,omitempty"`
+	WoodstockTaskItem  json.RawMessage `json:"woodstock_task_item,omitempty"`
 }
 
 // KitchenSinkToJSON converts KitchenSink to JSON bytes.
@@ -246,6 +268,90 @@ func KitchenSinkToJSON(v *KitchenSink) ([]byte, error) {
 		Op:          OpTypeToString(v.Op),
 		Consistency: ConsistencyTypeToString(v.Consistency),
 		TimestampMs: v.TimestampMs,
+		DgraphConfig: func() json.RawMessage {
+			if v.GetDgraphConfig() == nil {
+				return nil
+			}
+			data, _ := dgraph.ConfigToJSON(v.GetDgraphConfig())
+			return data
+		}(),
+		GatewayConfig: func() json.RawMessage {
+			if v.GetGatewayConfig() == nil {
+				return nil
+			}
+			data, _ := gateway.ConfigToJSON(v.GetGatewayConfig())
+			return data
+		}(),
+		IdentityConfig: func() json.RawMessage {
+			if v.GetIdentityConfig() == nil {
+				return nil
+			}
+			data, _ := identity.ConfigToJSON(v.GetIdentityConfig())
+			return data
+		}(),
+		LetsencryptConfig: func() json.RawMessage {
+			if v.GetLetsencryptConfig() == nil {
+				return nil
+			}
+			data, _ := letsencrypt.ConfigToJSON(v.GetLetsencryptConfig())
+			return data
+		}(),
+		McpConfig: func() json.RawMessage {
+			if v.GetMcpConfig() == nil {
+				return nil
+			}
+			data, _ := mcp.ConfigToJSON(v.GetMcpConfig())
+			return data
+		}(),
+		PolicyConfig: func() json.RawMessage {
+			if v.GetPolicyConfig() == nil {
+				return nil
+			}
+			data, _ := policy.ConfigToJSON(v.GetPolicyConfig())
+			return data
+		}(),
+		PolicysimConfig: func() json.RawMessage {
+			if v.GetPolicysimConfig() == nil {
+				return nil
+			}
+			data, _ := policysim.ConfigToJSON(v.GetPolicysimConfig())
+			return data
+		}(),
+		SentinelConfig: func() json.RawMessage {
+			if v.GetSentinelConfig() == nil {
+				return nil
+			}
+			data, _ := sentinel.ConfigToJSON(v.GetSentinelConfig())
+			return data
+		}(),
+		SnoopyEventData: func() json.RawMessage {
+			if v.GetSnoopyEventData() == nil {
+				return nil
+			}
+			data, _ := snoopy.EventDataToJSON(v.GetSnoopyEventData())
+			return data
+		}(),
+		SnoopyTaskItem: func() json.RawMessage {
+			if v.GetSnoopyTaskItem() == nil {
+				return nil
+			}
+			data, _ := snoopy.TaskItemToJSON(v.GetSnoopyTaskItem())
+			return data
+		}(),
+		WoodstockEventData: func() json.RawMessage {
+			if v.GetWoodstockEventData() == nil {
+				return nil
+			}
+			data, _ := woodstock.EventDataToJSON(v.GetWoodstockEventData())
+			return data
+		}(),
+		WoodstockTaskItem: func() json.RawMessage {
+			if v.GetWoodstockTaskItem() == nil {
+				return nil
+			}
+			data, _ := woodstock.TaskItemToJSON(v.GetWoodstockTaskItem())
+			return data
+		}(),
 	}
 	return json.Marshal(helper)
 }
@@ -325,6 +431,90 @@ func KitchenSinkFromJSON(data []byte) (*KitchenSink, error) {
 		}
 	}
 	result.TimestampMs = raw.TimestampMs
+	// Parse oneof field: DgraphConfig
+	if len(raw.DgraphConfig) > 0 {
+		parsed, err := dgraph.ConfigFromJSON(raw.DgraphConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_DgraphConfig{DgraphConfig: parsed}
+		}
+	}
+	// Parse oneof field: GatewayConfig
+	if len(raw.GatewayConfig) > 0 {
+		parsed, err := gateway.ConfigFromJSON(raw.GatewayConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_GatewayConfig{GatewayConfig: parsed}
+		}
+	}
+	// Parse oneof field: IdentityConfig
+	if len(raw.IdentityConfig) > 0 {
+		parsed, err := identity.ConfigFromJSON(raw.IdentityConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_IdentityConfig{IdentityConfig: parsed}
+		}
+	}
+	// Parse oneof field: LetsencryptConfig
+	if len(raw.LetsencryptConfig) > 0 {
+		parsed, err := letsencrypt.ConfigFromJSON(raw.LetsencryptConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_LetsencryptConfig{LetsencryptConfig: parsed}
+		}
+	}
+	// Parse oneof field: McpConfig
+	if len(raw.McpConfig) > 0 {
+		parsed, err := mcp.ConfigFromJSON(raw.McpConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_McpConfig{McpConfig: parsed}
+		}
+	}
+	// Parse oneof field: PolicyConfig
+	if len(raw.PolicyConfig) > 0 {
+		parsed, err := policy.ConfigFromJSON(raw.PolicyConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_PolicyConfig{PolicyConfig: parsed}
+		}
+	}
+	// Parse oneof field: PolicysimConfig
+	if len(raw.PolicysimConfig) > 0 {
+		parsed, err := policysim.ConfigFromJSON(raw.PolicysimConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_PolicysimConfig{PolicysimConfig: parsed}
+		}
+	}
+	// Parse oneof field: SentinelConfig
+	if len(raw.SentinelConfig) > 0 {
+		parsed, err := sentinel.ConfigFromJSON(raw.SentinelConfig)
+		if err == nil {
+			result.Payload = &KitchenSink_SentinelConfig{SentinelConfig: parsed}
+		}
+	}
+	// Parse oneof field: SnoopyEventData
+	if len(raw.SnoopyEventData) > 0 {
+		parsed, err := snoopy.EventDataFromJSON(raw.SnoopyEventData)
+		if err == nil {
+			result.Payload = &KitchenSink_SnoopyEventData{SnoopyEventData: parsed}
+		}
+	}
+	// Parse oneof field: SnoopyTaskItem
+	if len(raw.SnoopyTaskItem) > 0 {
+		parsed, err := snoopy.TaskItemFromJSON(raw.SnoopyTaskItem)
+		if err == nil {
+			result.Payload = &KitchenSink_SnoopyTaskItem{SnoopyTaskItem: parsed}
+		}
+	}
+	// Parse oneof field: WoodstockEventData
+	if len(raw.WoodstockEventData) > 0 {
+		parsed, err := woodstock.EventDataFromJSON(raw.WoodstockEventData)
+		if err == nil {
+			result.Payload = &KitchenSink_WoodstockEventData{WoodstockEventData: parsed}
+		}
+	}
+	// Parse oneof field: WoodstockTaskItem
+	if len(raw.WoodstockTaskItem) > 0 {
+		parsed, err := woodstock.TaskItemFromJSON(raw.WoodstockTaskItem)
+		if err == nil {
+			result.Payload = &KitchenSink_WoodstockTaskItem{WoodstockTaskItem: parsed}
+		}
+	}
 	return result, nil
 }
 

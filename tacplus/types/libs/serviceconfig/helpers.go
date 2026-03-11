@@ -1822,6 +1822,16 @@ func ValidateConfig(m *Config) error {
 		return nil
 	}
 
+	// Validate ListenAddress (assert_required)
+	if m.ListenAddress == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field ListenAddress is required")
+	}
+
+	// Validate TlsCert (assert_required)
+	if m.TlsCert == nil {
+		return protoerrors.NewErrMissingInvalidData(nil, "field TlsCert is required")
+	}
+
 	// Validate MaxRequestSize (assert_gt: 0)
 	if m.MaxRequestSize <= 0 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field MaxRequestSize must be > 0, got: %v", m.MaxRequestSize)
@@ -1996,7 +2006,6 @@ func ValidateMapEmpty(m *MapEmpty) error {
 // ============================================================
 const (
 	BootstrapConfigEnv                  = "BOOTSTRAP_CONFIG"
-	AuthIssuer                          = "backend"
 	DefaultPingIntervalMs         int64 = 5000
 	DefaultRebalanceIntervalMs    int64 = 10000
 	DefaultMaxRequestSize         int64 = 10485760

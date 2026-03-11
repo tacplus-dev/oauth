@@ -676,13 +676,13 @@ const file_libs_serviceconfig_proto_rawDesc = "" +
 	"\vprivate_key\x18\x03 \x01(\v2\b.key.KeyR\n" +
 	"privateKey\x125\n" +
 	"\vtrusted_cas\x18\x06 \x03(\v2\x0e.x509.X509CertB\x04\xc0\xa8\x1d R\n" +
-	"trustedCas\"\xc1\x03\n" +
+	"trustedCas\"\xcd\x03\n" +
 	"\x06Config\x12/\n" +
 	"\x10ping_interval_ms\x18\x04 \x01(\x05B\x05\x90\xa8\x1d\x88'R\x0epingIntervalMs\x129\n" +
-	"\x15rebalance_interval_ms\x18\x05 \x01(\x05B\x05\x90\xa8\x1d\x90NR\x13rebalanceIntervalMs\x121\n" +
+	"\x15rebalance_interval_ms\x18\x05 \x01(\x05B\x05\x90\xa8\x1d\x90NR\x13rebalanceIntervalMs\x127\n" +
 	"\x0elisten_address\x18\a \x01(\v2\n" +
-	".host.HostR\rlistenAddress\x12-\n" +
-	"\btls_cert\x18\b \x01(\v2\x12.x509.X509CertPairR\atlsCert\x125\n" +
+	".host.HostB\x04\x88\xa6\x1d\x01R\rlistenAddress\x123\n" +
+	"\btls_cert\x18\b \x01(\v2\x12.x509.X509CertPairB\x04\x88\xa6\x1d\x01R\atlsCert\x125\n" +
 	"\x10max_request_size\x18\t \x01(\x03B\v\xa8\xa7\x1d\x00\x90\xa8\x1d\x80\x80\x80\x05R\x0emaxRequestSize\x12@\n" +
 	"\x17request_timeout_seconds\x18\n" +
 	" \x01(\x03B\b\xc0\xa6\x1d\x01\x90\xa8\x1d\x1eR\x15requestTimeoutSeconds\x12,\n" +
@@ -726,9 +726,8 @@ const file_libs_serviceconfig_proto_rawDesc = "" +
 	" ServiceConfigStateBackendService\x12:\n" +
 	"\tGetConfig\x12\x16.google.protobuf.Empty\x1a\x15.serviceconfig.Config\x129\n" +
 	"\tSetConfig\x12\x15.serviceconfig.Config\x1a\x15.serviceconfig.Config\x12>\n" +
-	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\x15.serviceconfig.Config0\x01B\xa1\x01\x8a\xb5\x18(\n" +
-	"\x14BOOTSTRAP_CONFIG_ENV\x12\x10BOOTSTRAP_CONFIG\x8a\xb5\x18\x16\n" +
-	"\vAUTH_ISSUER\x12\abackendZYgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfigb\x06proto3"
+	"\vWatchConfig\x12\x16.google.protobuf.Empty\x1a\x15.serviceconfig.Config0\x01B\x87\x01\x8a\xb5\x18(\n" +
+	"\x14BOOTSTRAP_CONFIG_ENV\x12\x10BOOTSTRAP_CONFIGZYgitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/libs/serviceconfigb\x06proto3"
 
 var (
 	file_libs_serviceconfig_proto_rawDescOnce sync.Once

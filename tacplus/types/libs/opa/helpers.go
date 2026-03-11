@@ -228,14 +228,14 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 		return nil
 	}
 
-	// Validate EntryPoint (assert_max_length: 256)
-	if len(m.EntryPoint) > 256 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at most 256 characters, got: %d", len(m.EntryPoint))
-	}
-
 	// Validate EntryPoint (assert_min_length: 1)
 	if len(m.EntryPoint) < 1 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at least 1 characters, got: %d", len(m.EntryPoint))
+	}
+
+	// Validate EntryPoint (assert_max_length: 256)
+	if len(m.EntryPoint) > 256 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field EntryPoint must be at most 256 characters, got: %d", len(m.EntryPoint))
 	}
 
 	// Validate Created (assert_ge: 1735689600)
@@ -246,16 +246,16 @@ func ValidateOpaPolicy(m *OpaPolicy) error {
 	if m.Created > 8045740800 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Created must be <= 8045740800, got: %v", m.Created)
 	}
+	// Validate Version (assert_max_length: 64)
+	if len(m.Version) > 64 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field Version must be at most 64 characters, got: %d", len(m.Version))
+	}
+
 	// Validate Version (assert_semver)
 	if m.Version != "" {
 		if err := utils.ValidateAssertSemver(m.Version); err != nil {
 			return protoerrors.NewErrMissingInvalidData(err, "field Version must be a valid semantic version (e.g., '1.0.0' or 'v2.3.4')")
 		}
-	}
-
-	// Validate Version (assert_max_length: 64)
-	if len(m.Version) > 64 {
-		return protoerrors.NewErrMissingInvalidData(nil, "field Version must be at most 64 characters, got: %d", len(m.Version))
 	}
 
 	// Validate EntryPoint (default max size: 32768 bytes)
@@ -370,8 +370,8 @@ func OpaPolicyLlmTypeDescriptor() string {
                   "type": "uint32",
                   "description": "owner permission bits (0-7)",
                   "constraints": [
-                    "must be \u003e= 0",
-                    "must be \u003c= 7"
+                    "must be \u003c= 7",
+                    "must be \u003e= 0"
                   ]
                 },
                 {
@@ -441,8 +441,8 @@ func OpaPolicyLlmTypeDescriptor() string {
       "type": "int64",
       "description": "created is the Unix epoch timestamp (seconds) when the policy was created.",
       "constraints": [
-        "must be \u003c= 8045740800",
-        "must be \u003e= 1735689600"
+        "must be \u003e= 1735689600",
+        "must be \u003c= 8045740800"
       ]
     },
     {
@@ -450,8 +450,8 @@ func OpaPolicyLlmTypeDescriptor() string {
       "type": "string",
       "description": "version is an optional version string for this policy (e.g., \"1.0.0\").",
       "constraints": [
-        "must be a valid semantic version",
-        "maximum length: 64"
+        "maximum length: 64",
+        "must be a valid semantic version"
       ]
     }
   ]

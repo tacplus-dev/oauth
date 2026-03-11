@@ -445,13 +445,14 @@ type bootstrapconfigJSON struct {
 	PartitionCount    int32             `json:"partition_count,omitempty"`
 	Network           json.RawMessage   `json:"network,omitempty"`
 	Logger            json.RawMessage   `json:"logger,omitempty"`
-	CpSubsystem       json.RawMessage   `json:"cp_subsystem,omitempty"`
 	PersistenceDir    string            `json:"persistence_dir,omitempty"`
 	PersistenceFormat string            `json:"persistence_format,omitempty"`
+	UrlLoader         json.RawMessage   `json:"url_loader,omitempty"`
+	FileLoader        json.RawMessage   `json:"file_loader,omitempty"`
 	LoaderCa          []json.RawMessage `json:"loader_ca,omitempty"`
 	Tls               json.RawMessage   `json:"tls,omitempty"`
-	RaftPort          int32             `json:"raft_port,omitempty"`
-	Mode              string            `json:"mode,omitempty"`
+	GrpcPort          int32             `json:"grpc_port,omitempty"`
+	HazelcastPort     int32             `json:"hazelcast_port,omitempty"`
 }
 
 // BootstrapConfigToJSON converts BootstrapConfig to JSON bytes.
@@ -500,15 +501,22 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			data, _ := logger.LoggerConfigToJSON(v.Logger)
 			return data
 		}(),
-		CpSubsystem: func() json.RawMessage {
-			if v.CpSubsystem == nil {
-				return nil
-			}
-			data, _ := hazelcast.CPSubsystemConfigToJSON(v.CpSubsystem)
-			return data
-		}(),
 		PersistenceDir:    v.PersistenceDir,
 		PersistenceFormat: outputformat.OutputFormatToString(v.PersistenceFormat),
+		UrlLoader: func() json.RawMessage {
+			if v.GetUrlLoader() == nil {
+				return nil
+			}
+			data, _ := UrlLoaderToJSON(v.GetUrlLoader())
+			return data
+		}(),
+		FileLoader: func() json.RawMessage {
+			if v.GetFileLoader() == nil {
+				return nil
+			}
+			data, _ := FileLoaderToJSON(v.GetFileLoader())
+			return data
+		}(),
 		LoaderCa: func() []json.RawMessage {
 			if len(v.LoaderCa) == 0 {
 				return nil
@@ -530,8 +538,8 @@ func BootstrapConfigToJSON(v *BootstrapConfig) ([]byte, error) {
 			data, _ := x509.X509CertPairToJSON(v.Tls)
 			return data
 		}(),
-		RaftPort: v.RaftPort,
-		Mode:     hazelcast.NodeModeToString(v.Mode),
+		GrpcPort:      v.GrpcPort,
+		HazelcastPort: v.HazelcastPort,
 	}
 	return json.Marshal(helper)
 }
@@ -632,18 +640,25 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 			result.Logger = parsed
 		}
 	}
-	// Parse message field: CpSubsystem
-	if len(raw.CpSubsystem) > 0 {
-		parsed, err := hazelcast.CPSubsystemConfigFromJSON(raw.CpSubsystem)
-		if err == nil {
-			result.CpSubsystem = parsed
-		}
-	}
 	result.PersistenceDir = raw.PersistenceDir
 	// Parse enum field: PersistenceFormat
 	if raw.PersistenceFormat != "" {
 		if parsed, err := outputformat.ParseOutputFormat(raw.PersistenceFormat); err == nil {
 			result.PersistenceFormat = parsed
+		}
+	}
+	// Parse oneof field: UrlLoader
+	if len(raw.UrlLoader) > 0 {
+		parsed, err := UrlLoaderFromJSON(raw.UrlLoader)
+		if err == nil {
+			result.Config = &BootstrapConfig_UrlLoader{UrlLoader: parsed}
+		}
+	}
+	// Parse oneof field: FileLoader
+	if len(raw.FileLoader) > 0 {
+		parsed, err := FileLoaderFromJSON(raw.FileLoader)
+		if err == nil {
+			result.Config = &BootstrapConfig_FileLoader{FileLoader: parsed}
 		}
 	}
 	// Parse repeated message field: LoaderCa
@@ -665,13 +680,8 @@ func BootstrapConfigFromJSON(data []byte) (*BootstrapConfig, error) {
 			result.Tls = parsed
 		}
 	}
-	result.RaftPort = raw.RaftPort
-	// Parse enum field: Mode
-	if raw.Mode != "" {
-		if parsed, err := hazelcast.ParseNodeMode(raw.Mode); err == nil {
-			result.Mode = parsed
-		}
-	}
+	result.GrpcPort = raw.GrpcPort
+	result.HazelcastPort = raw.HazelcastPort
 	return result, nil
 }
 
@@ -2999,6 +3009,10 @@ func CaStateToTOML(v *CaState) ([]byte, error) {
 // QueryValueJSON represents QueryValue in external JSON format (with string enums)
 // MARKER: JSON helper struct generated from serial.go
 type queryvalueJSON struct {
+	StringValue *string  `json:"string_value,omitempty"`
+	IntValue    *int64   `json:"int_value,omitempty"`
+	DoubleValue *float64 `json:"double_value,omitempty"`
+	BoolValue   *bool    `json:"bool_value,omitempty"`
 }
 
 // QueryValueToJSON converts QueryValue to JSON bytes.
@@ -3008,7 +3022,24 @@ func QueryValueToJSON(v *QueryValue) ([]byte, error) {
 		return nil, protoerrors.NewErrMissingInvalidData(nil, "queryvalue is nil")
 	}
 	// Convert to JSON helper struct with string enums
-	helper := queryvalueJSON{}
+	helper := queryvalueJSON{
+		StringValue: func() *string {
+			val := v.GetStringValue()
+			return &val
+		}(),
+		IntValue: func() *int64 {
+			val := v.GetIntValue()
+			return &val
+		}(),
+		DoubleValue: func() *float64 {
+			val := v.GetDoubleValue()
+			return &val
+		}(),
+		BoolValue: func() *bool {
+			val := v.GetBoolValue()
+			return &val
+		}(),
+	}
 	return json.Marshal(helper)
 }
 
@@ -3072,6 +3103,22 @@ func QueryValueFromJSON(data []byte) (*QueryValue, error) {
 	}
 	// Build result with parsed enums
 	result := &QueryValue{}
+	// Parse oneof scalar field: StringValue
+	if raw.StringValue != nil {
+		result.Value = &QueryValue_StringValue{StringValue: *raw.StringValue}
+	}
+	// Parse oneof scalar field: IntValue
+	if raw.IntValue != nil {
+		result.Value = &QueryValue_IntValue{IntValue: *raw.IntValue}
+	}
+	// Parse oneof scalar field: DoubleValue
+	if raw.DoubleValue != nil {
+		result.Value = &QueryValue_DoubleValue{DoubleValue: *raw.DoubleValue}
+	}
+	// Parse oneof scalar field: BoolValue
+	if raw.BoolValue != nil {
+		result.Value = &QueryValue_BoolValue{BoolValue: *raw.BoolValue}
+	}
 	return result, nil
 }
 
@@ -29216,11 +29263,6 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 			result[k] = val
 		}
 	}
-	if v.CpSubsystem != nil {
-		for k, val := range hazelcast.CPSubsystemConfigToEnvVar(v.CpSubsystem) {
-			result[k] = val
-		}
-	}
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_PERSISTENCE_DIR"] = v.PersistenceDir
 	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_PERSISTENCE_FORMAT"] = outputformat.OutputFormatToString(v.PersistenceFormat)
 	if v.Tls != nil {
@@ -29228,8 +29270,8 @@ func BootstrapConfigToEnvVar(v *BootstrapConfig) map[string]string {
 			result[k] = val
 		}
 	}
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_RAFT_PORT"] = strconv.FormatInt(int64(v.RaftPort), 10)
-	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"] = hazelcast.NodeModeToString(v.Mode)
+	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_GRPC_PORT"] = strconv.FormatInt(int64(v.GrpcPort), 10)
+	result["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_HAZELCAST_PORT"] = strconv.FormatInt(int64(v.HazelcastPort), 10)
 	return result
 }
 
@@ -29268,11 +29310,6 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 	} else if sub != nil {
 		result.Logger = sub
 	}
-	if sub, err := hazelcast.CPSubsystemConfigFromEnvVar(env); err != nil {
-		return nil, err
-	} else if sub != nil {
-		result.CpSubsystem = sub
-	}
 	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_PERSISTENCE_DIR"]; ok && val != "" {
 		result.PersistenceDir = val
 	}
@@ -29288,19 +29325,19 @@ func BootstrapConfigFromEnvVar(env map[string]string) (*BootstrapConfig, error) 
 	} else if sub != nil {
 		result.Tls = sub
 	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_RAFT_PORT"]; ok && val != "" {
+	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_GRPC_PORT"]; ok && val != "" {
 		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, err
 		}
-		result.RaftPort = int32(parsed)
+		result.GrpcPort = int32(parsed)
 	}
-	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_MODE"]; ok && val != "" {
-		parsed, err := hazelcast.ParseNodeMode(val)
+	if val, ok := env["PROTO_SERVICES_KERNEL_BOOTSTRAP_CONFIG_HAZELCAST_PORT"]; ok && val != "" {
+		parsed, err := strconv.ParseInt(val, 10, 32)
 		if err != nil {
 			return nil, err
 		}
-		result.Mode = parsed
+		result.HazelcastPort = int32(parsed)
 	}
 	return result, nil
 }
@@ -34174,11 +34211,6 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Logger is required")
 	}
 
-	// Validate CpSubsystem (assert_required)
-	if m.CpSubsystem == nil {
-		return protoerrors.NewErrMissingInvalidData(nil, "field CpSubsystem is required")
-	}
-
 	// Validate LoaderCa (assert_max_items: 16)
 	if len(m.LoaderCa) > 16 {
 		return protoerrors.NewErrMissingInvalidData(nil, "field LoaderCa exceeds max items of 16, got: %d", len(m.LoaderCa))
@@ -34187,6 +34219,16 @@ func ValidateBootstrapConfig(m *BootstrapConfig) error {
 	// Validate Tls (assert_required)
 	if m.Tls == nil {
 		return protoerrors.NewErrMissingInvalidData(nil, "field Tls is required")
+	}
+
+	// Validate GrpcPort (assert_net_port)
+	if m.GrpcPort < 0 || m.GrpcPort > 65535 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field GrpcPort must be a valid port number (0-65535), got: %d", m.GrpcPort)
+	}
+
+	// Validate HazelcastPort (assert_net_port)
+	if m.HazelcastPort < 0 || m.HazelcastPort > 65535 {
+		return protoerrors.NewErrMissingInvalidData(nil, "field HazelcastPort must be a valid port number (0-65535), got: %d", m.HazelcastPort)
 	}
 
 	// Validate ClusterName (default max size: 32768 bytes)
@@ -34219,6 +34261,7 @@ func ValidateTrustedCaState(m *TrustedCaState) error {
 		return nil
 	}
 
+	// No field validations defined
 	return nil
 }
 
@@ -36873,7 +36916,8 @@ const (
 	MinDataCopies                     int64  = 3
 	DefaultPartitionCount             int64  = 271
 	DefaultPersistenceDir             string = "data/kernel"
-	DefaultRaftPort                   int64  = 5002
+	DefaultGrpcPort                   int64  = 5000
+	DefaultHazelcastPort              int64  = 5001
 	DefaultKeyRotationIntervalSeconds int64  = 86400
 	DefaultDefaultTokenExpirySeconds  int64  = 3600
 	DefaultCaCertLifetimeSeconds      int64  = 31536000
@@ -36952,8 +36996,11 @@ func BootstrapConfigDefaults(v *BootstrapConfig) {
 	if v.PersistenceDir == "" {
 		v.PersistenceDir = DefaultPersistenceDir
 	}
-	if v.RaftPort == 0 {
-		v.RaftPort = int32(DefaultRaftPort)
+	if v.GrpcPort == 0 {
+		v.GrpcPort = int32(DefaultGrpcPort)
+	}
+	if v.HazelcastPort == 0 {
+		v.HazelcastPort = int32(DefaultHazelcastPort)
 	}
 }
 
@@ -39197,8 +39244,11 @@ func BootstrapConfigUndefaults(v *BootstrapConfig) {
 	if v.PersistenceDir == DefaultPersistenceDir {
 		v.PersistenceDir = ""
 	}
-	if v.RaftPort == int32(DefaultRaftPort) {
-		v.RaftPort = 0
+	if v.GrpcPort == int32(DefaultGrpcPort) {
+		v.GrpcPort = 0
+	}
+	if v.HazelcastPort == int32(DefaultHazelcastPort) {
+		v.HazelcastPort = 0
 	}
 }
 
@@ -41674,9 +41724,6 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	if dst.Logger == nil {
 		dst.Logger = src.Logger
 	}
-	if dst.CpSubsystem == nil {
-		dst.CpSubsystem = src.CpSubsystem
-	}
 	if dst.PersistenceDir == "" {
 		dst.PersistenceDir = src.PersistenceDir
 	}
@@ -41689,11 +41736,11 @@ func MergeBootstrapConfig(dst, src *BootstrapConfig) {
 	if dst.Tls == nil {
 		dst.Tls = src.Tls
 	}
-	if dst.RaftPort == 0 {
-		dst.RaftPort = src.RaftPort
+	if dst.GrpcPort == 0 {
+		dst.GrpcPort = src.GrpcPort
 	}
-	if dst.Mode == 0 {
-		dst.Mode = src.Mode
+	if dst.HazelcastPort == 0 {
+		dst.HazelcastPort = src.HazelcastPort
 	}
 	if dst.Config == nil {
 		dst.Config = src.Config
@@ -43829,8 +43876,8 @@ func ConfigLlmTypeDescriptor() string {
                         "type": "string",
                         "description": "version is an optional version string for this policy (e.g., \"1.0.0\").",
                         "constraints": [
-                          "maximum length: 64",
-                          "must be a valid semantic version"
+                          "must be a valid semantic version",
+                          "maximum length: 64"
                         ]
                       }
                     ]
@@ -44131,7 +44178,7 @@ func ConfigLlmTypeDescriptor() string {
                             {
                               "name": "exp",
                               "type": "int64",
-                              "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration."
+                              "description": "Exp is the expiration in epoch seconds. This is not part of the JWK spec as the spec does\n not specify how to handle public key expiration.\n When stored in a collection with epoch_expiration, Hazelcast computes TTL = exp - now\n and auto-evicts the entry on expiry."
                             },
                             {
                               "name": "created",
@@ -44183,16 +44230,32 @@ func ConfigLlmTypeDescriptor() string {
                   "default": 5
                 },
                 {
-                  "name": "enable_tcp",
+                  "name": "enable_http",
                   "type": "bool",
-                  "description": "Enable TCP listener for HTTP/1.1, HTTP/2, and gRPC. Default true.",
+                  "description": "Enable HTTP/1.1 and HTTP/2 listener (TCP). Default true.",
                   "default": true
                 },
                 {
-                  "name": "enable_quic",
+                  "name": "enable_http3",
                   "type": "bool",
-                  "description": "Enable QUIC/UDP listener for HTTP/3. Default true.",
+                  "description": "Enable HTTP/3 listener (QUIC/UDP). Default true.",
                   "default": true
+                },
+                {
+                  "name": "enable_grpc",
+                  "type": "bool",
+                  "description": "Enable gRPC listener (TCP). Default true.",
+                  "default": true
+                },
+                {
+                  "name": "tcp_port",
+                  "type": "int32",
+                  "description": "TCP port for HTTP/1.1, HTTP/2, and gRPC. Default DEFAULT_PORT."
+                },
+                {
+                  "name": "udp_port",
+                  "type": "int32",
+                  "description": "UDP port for HTTP/3 (QUIC). Default DEFAULT_PORT."
                 }
               ]
             }
@@ -44207,18 +44270,18 @@ func ConfigLlmTypeDescriptor() string {
                 {
                   "name": "fqdn",
                   "type": "string",
-                  "description": "fqdn is the fully qualified domain name to obtain a Let's Encrypt\n certificate for (e.g., \"api.example.com\").",
+                  "description": "fqdn is the fully qualified domain name to obtain a Let's Encrypt\n certificate for (e.g., \"api.example.com\").\n NOTES: needs FQDN assertion",
                   "required": true
                 },
                 {
                   "name": "lets_encrypt_email",
                   "type": "string",
-                  "description": "lets_encrypt_email is the email address for Let's Encrypt account\n registration and certificate expiration notifications.\n If empty, letsencrypt will use \"admin@\u003cfqdn\u003e\"."
+                  "description": "lets_encrypt_email is the email address for Let's Encrypt account\n registration and certificate expiration notifications.\n If empty, letsencrypt will use \"admin@\u003cfqdn\u003e\".\n NOTES: needs email assertion"
                 },
                 {
                   "name": "http_listen",
                   "type": "string",
-                  "description": "http_listen is the address to bind the HTTP server for ACME HTTP-01\n challenge responses. Must be reachable on port 80 from the internet.\n Default: \":80\".",
+                  "description": "http_listen is the address to bind the HTTP server for ACME HTTP-01\n challenge responses. Must be reachable on port 80 from the internet.\n Default: \":80\".\n NOTES: should use host.Host format",
                   "default": ":80"
                 },
                 {
