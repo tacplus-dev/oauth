@@ -3,5 +3,5 @@ pkg: gitlab.com/secondstarcavalier/controlplane/services/sentinel
 backends:
   - services/kernel.ClusterState:ro
   - services/kernel.ServiceHealthState:rw
-frontends:
+grpc-servers:
   - services/sentinel.SentinelService

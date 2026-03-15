@@ -16,7 +16,7 @@ import (
 // Service implements SentinelServiceServer and the service-manager Handler interface.
 type Service struct {
 	pb.UnimplementedSentinelServiceServer
-	admin kernel_pb.ClusterStateBackendServiceClient
+	admin kernel_pb.ClusterStateStateServiceClient
 }
 
 // NewHandler creates a new Handler.
@@ -34,7 +34,7 @@ func (s *Service) SentinelGrpcImpl() pb.SentinelServiceServer {
 }
 
 func (s *Service) Init(sm *servicemanager.ServiceManager) error {
-	s.admin = sm.BackendClients().Services().ClusterState().BackendStub()
+	s.admin = sm.StateClients().Services().ClusterState().StateStub()
 	return nil
 }
 
