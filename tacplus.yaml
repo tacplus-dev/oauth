@@ -1,6 +1,6 @@
 language: go
 pkg: gitlab.com/secondstarcavalier/controlplane/services/sentinel
-backends:
+states:
   - services/kernel.ClusterState:ro
   - services/kernel.ServiceHealthState:rw
 grpc-servers:
