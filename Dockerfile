@@ -6,8 +6,8 @@ RUN apk add --no-cache ca-certificates tzdata && \
 WORKDIR /app
 
 ARG TARGETARCH
-COPY bin/sentinel-${TARGETARCH} /app/sentinel
+COPY bin/sentinel-${TARGETARCH} /usr/bin/sentinel
 
 USER sentinel
 
-ENTRYPOINT ["/app/sentinel"]
+ENTRYPOINT ["sentinel"]
