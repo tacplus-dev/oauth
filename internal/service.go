@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/sm"
+	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/s2sm"
 	hz "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/common/hazelcast"
 	kernel_pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/kernel"
 	pb "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/types/services/sentinel"

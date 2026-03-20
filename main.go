@@ -4,7 +4,7 @@ import (
 	"log"
 
 	handler "gitlab.com/secondstarcavalier/controlplane/services/sentinel/internal"
-	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/sm"
+	servicemanager "gitlab.com/secondstarcavalier/controlplane/services/sentinel/tacplus/s2sm"
 )
 
 func main() {
