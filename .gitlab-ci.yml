@@ -3,9 +3,6 @@ stages:
   - package
 
 variables:
-  GOPRIVATE: "gitlab.com/secondstarcavalier/*"
-  GONOSUMCHECK: "gitlab.com/secondstarcavalier/*"
-  CGO_ENABLED: "0"
   TACPLUS_IMAGE: "${CI_REGISTRY}/secondstarcavalier/controlplane/services/tacplus/tacplus-1-1:latest"
 
 .parse-version: &parse-version
@@ -27,16 +24,10 @@ build:
     - *setup-netrc
     - tacplus build --no-container
   script:
-    - |
-      for target in linux/amd64 linux/arm64; do
-        GOOS="${target%/*}"
-        GOARCH="${target#*/}"
-        echo "Building sentinel for ${GOOS}/${GOARCH}..."
-        GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags="-s -w" -o "bin/sentinel-${GOARCH}" .
-      done
+    - cargo build --release
   artifacts:
     paths:
-      - bin/sentinel-*
+      - target/release/fleetwood
     expire_in: 1 hour
 
 package:
@@ -51,12 +42,12 @@ package:
   before_script:
     - *parse-version
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    - docker buildx create --use --name multiarch --driver docker-container
   script:
     - |
-      IMAGE="$CI_REGISTRY_IMAGE/sentinel-${MAJOR}-${MINOR}"
-      docker buildx build \
-        --platform linux/amd64,linux/arm64 \
+      IMAGE="$CI_REGISTRY_IMAGE/fleetwood-${MAJOR}-${MINOR}"
+      docker build \
         -t "${IMAGE}:${PATCH}" \
         -t "${IMAGE}:latest" \
-        --push .
+        .
+      docker push "${IMAGE}:${PATCH}"
+      docker push "${IMAGE}:latest"
