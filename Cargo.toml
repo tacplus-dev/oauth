@@ -1,0 +1,20 @@
+[package]
+name = "fleetwood"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dashmap = "6"
+futures = "0.3"
+prost = "0.14"
+prost-types = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+tonic = { version = "0.14", features = ["transport", "tls-ring"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+fleetwood-tacplus = { path = "target/generated-sources/tacplus" }
+servicemanager = { path = "target/generated-sources/tacplus/libs/servicemanager" }
+token = { path = "target/generated-sources/tacplus/libs/token" }

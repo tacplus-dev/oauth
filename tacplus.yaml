@@ -1,7 +1,11 @@
-language: go
-pkg: gitlab.com/secondstarcavalier/controlplane/services/sentinel
-states:
-  - services/kernel.Cluster:ro
-  - services/kernel.ServiceHealth:rw
+language: rust
+pkg: fleetwood
+all-grpc: true
 grpc-servers:
-  - services/sentinel.SentinelService
+  - services/fleetwood.FleetwoodSessionService
+  - services/fleetwood.FleetwoodTokenService
+post-gen:
+  - cmd: cargo
+    args: [build, --release]
+container:
+  image: registry.gitlab.com/secondstarcavalier/controlplane/services/fleetwood/fleetwood
