@@ -23,6 +23,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "am"
+version = "0.1.0"
+dependencies = [
+ "fleetwood-tacplus-types",
+ "tonic",
+ "tracing",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -545,6 +554,7 @@ dependencies = [
 name = "fleetwood-tacplus"
 version = "1.0.0"
 dependencies = [
+ "am",
  "async-trait",
  "axum",
  "base64 0.21.7",
@@ -780,6 +790,7 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.22.1",
+ "fleetwood-tacplus-types",
  "futures",
  "hyper",
  "hyper-util",
@@ -788,6 +799,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "servicemanager",
  "thiserror 1.0.69",
  "token",
  "tokio",

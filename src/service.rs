@@ -40,23 +40,27 @@ impl FleetwoodImpl {
     }
 }
 
-/// Exchange a short-lived token for a long-lived one via gateway MintService.
+/// Exchange a short-lived token for a long-lived one via kernel KernelMintService.
 /// Shared by install_token and the daemon refresh loop.
 async fn exchange_token(
     sm: &ServiceManager,
     input_token: &str,
     refresh_lifetime_secs: i64,
 ) -> Result<String, tonic::Status> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
     let request = TokenMintRequest {
         input_token: input_token.to_string(),
-        exp: refresh_lifetime_secs,
+        exp: now + refresh_lifetime_secs,
         ..Default::default()
     };
 
     let resp = sm
         .grpc_clients()
         .services()
-        .mint_service_client()
+        .kernel_mint_service_client()
         .token_mint(request)
         .await
         .map_err(|e| {

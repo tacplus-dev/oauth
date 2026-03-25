@@ -104,11 +104,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // sm.run() handles TLS setup, service registration, and graceful shutdown.
-    // We need to move sm out of the Arc since run() takes self by value.
-    Arc::try_unwrap(sm)
-        .map_err(|_| "ServiceManager still has outstanding references")?
-        .run(handler)
-        .await
+    sm.run(handler).await
 }
 
 /// Load fleetwood-specific config from FLEETWOOD_CONFIG env var, or use defaults.
