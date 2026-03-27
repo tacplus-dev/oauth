@@ -11,6 +11,7 @@ use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::sessi
 use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token_service::FleetwoodTokenServiceHandler;
 use fleetwood_tacplus::s2sm::ServiceManager;
 use fleetwood_tacplus::types::common::tokenrequest::TokenMintRequest;
+use fleetwood_tacplus::types::services::kernel::kernel::kernel_mint_service_client::KernelMintServiceClient;
 use fleetwood_tacplus::types::services::fleetwood::fleetwood::{
     session_request, session_response, InstallTokenRequest, SessionRequest, SessionResponse,
 };
@@ -57,10 +58,11 @@ async fn exchange_token(
         ..Default::default()
     };
 
-    let resp = sm
-        .grpc_clients()
-        .services()
-        .kernel_mint_service_client()
+    let channel = sm.conn().await.ok_or_else(|| {
+        tonic::Status::unavailable("no connection to kernel")
+    })?;
+    let mut client = KernelMintServiceClient::new(channel);
+    let resp = client
         .token_mint(request)
         .await
         .map_err(|e| {
@@ -73,13 +75,13 @@ async fn exchange_token(
         .refresh_token
         .as_ref()
         .map(|t| &t.base64)
-        .filter(|b| !b.is_empty())
+        .filter(|b: &&String| !b.is_empty())
         .or_else(|| {
             mint_resp
                 .access_token
                 .as_ref()
                 .map(|t| &t.base64)
-                .filter(|b| !b.is_empty())
+                .filter(|b: &&String| !b.is_empty())
         })
         .cloned()
         .ok_or_else(|| tonic::Status::internal("MintService returned empty token"))
