@@ -17,9 +17,9 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 
 ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && \
-    GRPCURL_VERSION=1.9.3 && \
-    curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v${GRPCURL_VERSION}/grpcurl_${GRPCURL_VERSION}_linux_${TARGETARCH}.tar.gz" \
-      | tar -xz -C /usr/local/bin grpcurl && \
+    PROBE_VERSION=0.4.35 && \
+    curl -sSL "https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v${PROBE_VERSION}/grpc_health_probe-linux-${TARGETARCH}" \
+      -o /usr/local/bin/grpc_health_probe && chmod +x /usr/local/bin/grpc_health_probe && \
     apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 COPY target/release/fleetwood /usr/local/bin/fleetwood
 RUN chmod +x /usr/local/bin/fleetwood
