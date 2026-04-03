@@ -1,4 +1,8 @@
+# Build artifacts
 target/
+dist/
+
+# Generated code
 tacplus/
 
 # macOS
@@ -13,3 +17,7 @@ tacplus/
 
 # Windows
 Thumbs.db
+
+# Environment
+.env
+.env.*
