@@ -7,8 +7,8 @@ use tokio::time::{interval, Duration};
 use tracing_subscriber::EnvFilter;
 
 use fleetwood_tacplus::s2sm::handler::Handler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session_service::FleetwoodSessionServiceHandler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token_service::FleetwoodTokenServiceHandler;
+use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session::SessionHandler;
+use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token::TokenHandler;
 use fleetwood_tacplus::s2sm::ServiceManager;
 use fleetwood_tacplus::types::services::fleetwood::fleetwood::Config as FleetwoodConfig;
 use fleetwood_tacplus::types::services::fleetwood::helpers::{config_defaults, config_from_bytes};
@@ -24,22 +24,22 @@ struct FleetwoodHandler {
 
 #[tonic::async_trait]
 impl Handler for FleetwoodHandler {
-    fn fleetwood_session_grpc_impl(&self) -> Arc<dyn FleetwoodSessionServiceHandler> {
-        Arc::clone(&self.fleetwood_impl) as Arc<dyn FleetwoodSessionServiceHandler>
+    fn session_grpc_impl(&self) -> Arc<dyn SessionHandler> {
+        Arc::clone(&self.fleetwood_impl) as Arc<dyn SessionHandler>
     }
 
-    fn fleetwood_token_grpc_impl(&self) -> Arc<dyn FleetwoodTokenServiceHandler> {
-        Arc::clone(&self.fleetwood_impl) as Arc<dyn FleetwoodTokenServiceHandler>
+    fn token_grpc_impl(&self) -> Arc<dyn TokenHandler> {
+        Arc::clone(&self.fleetwood_impl) as Arc<dyn TokenHandler>
     }
 
-    async fn fleetwood_session_config(
+    async fn session_config(
         &self,
         _cfg: &FleetwoodConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
 
-    async fn fleetwood_token_config(
+    async fn token_config(
         &self,
         _cfg: &FleetwoodConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {

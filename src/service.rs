@@ -7,11 +7,11 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tracing::{info, warn};
 
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session_service::FleetwoodSessionServiceHandler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token_service::FleetwoodTokenServiceHandler;
+use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session::SessionHandler;
+use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token::TokenHandler;
 use fleetwood_tacplus::s2sm::ServiceManager;
 use fleetwood_tacplus::types::common::tokenrequest::TokenMintRequest;
-use fleetwood_tacplus::types::services::kernel::kernel::kernel_mint_service_client::KernelMintServiceClient;
+use fleetwood_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 use fleetwood_tacplus::types::services::fleetwood::fleetwood::{
     session_request, session_response, InstallTokenRequest, SessionRequest, SessionResponse,
 };
@@ -41,7 +41,7 @@ impl FleetwoodImpl {
     }
 }
 
-/// Exchange a short-lived token for a long-lived one via kernel KernelMintService.
+/// Exchange a short-lived token for a long-lived one via kernel Mint service.
 /// Shared by install_token and the daemon refresh loop.
 async fn exchange_token(
     sm: &ServiceManager,
@@ -61,7 +61,7 @@ async fn exchange_token(
     let channel = sm.conn().await.ok_or_else(|| {
         tonic::Status::unavailable("no connection to kernel")
     })?;
-    let mut client = KernelMintServiceClient::new(channel);
+    let mut client = MintClient::new(channel);
     let resp = client
         .token_mint(request)
         .await
@@ -106,7 +106,7 @@ async fn recv_session_id(
 }
 
 #[tonic::async_trait]
-impl FleetwoodSessionServiceHandler for FleetwoodImpl {
+impl SessionHandler for FleetwoodImpl {
     async fn session(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
@@ -205,7 +205,7 @@ impl FleetwoodSessionServiceHandler for FleetwoodImpl {
 }
 
 #[tonic::async_trait]
-impl FleetwoodTokenServiceHandler for FleetwoodImpl {
+impl TokenHandler for FleetwoodImpl {
     async fn install_token(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
