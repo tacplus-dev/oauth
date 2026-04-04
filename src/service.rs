@@ -167,6 +167,7 @@ impl SessionHandler for FleetwoodImpl {
                             if tx
                                 .send(Ok(SessionResponse {
                                     msg: Some(session_response::Msg::Token(new_token.clone())),
+                                    ..Default::default()
                                 }))
                                 .await
                                 .is_err()
@@ -183,6 +184,7 @@ impl SessionHandler for FleetwoodImpl {
                                     msg: Some(session_response::Msg::Error(format!(
                                         "refresh failed: {e}"
                                     ))),
+                                    ..Default::default()
                                 }))
                                 .await;
                             break;
@@ -221,6 +223,7 @@ impl TokenHandler for FleetwoodImpl {
 
         let response = SessionResponse {
             msg: Some(session_response::Msg::Token(long_lived_token)),
+            ..Default::default()
         };
 
         self.sessions.deliver(session_id, response).await?;
