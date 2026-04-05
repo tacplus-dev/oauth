@@ -1,3 +1,6 @@
+mod auth;
+mod nonce;
+mod oidc;
 mod service;
 mod session;
 
@@ -7,19 +10,22 @@ use tokio::time::{interval, Duration};
 use tracing_subscriber::EnvFilter;
 
 use fleetwood_tacplus::s2sm::handler::Handler;
+use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::auth::AuthHandler;
 use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session::SessionHandler;
 use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token::TokenHandler;
 use fleetwood_tacplus::s2sm::ServiceManager;
 use fleetwood_tacplus::types::services::fleetwood::fleetwood::Config as FleetwoodConfig;
 use fleetwood_tacplus::types::services::fleetwood::helpers::{config_defaults, config_from_bytes};
 
+use crate::auth::AuthImpl;
 use crate::service::FleetwoodImpl;
 use crate::session::SessionRegistry;
 
 /// FleetwoodHandler implements the generated Handler trait.
-/// It wires the SM lifecycle to the FleetwoodServiceHandler implementation.
+/// It wires the SM lifecycle to the service implementations.
 struct FleetwoodHandler {
     fleetwood_impl: Arc<FleetwoodImpl>,
+    auth_impl: Arc<AuthImpl>,
 }
 
 #[tonic::async_trait]
@@ -30,6 +36,10 @@ impl Handler for FleetwoodHandler {
 
     fn token_grpc_impl(&self) -> Arc<dyn TokenHandler> {
         Arc::clone(&self.fleetwood_impl) as Arc<dyn TokenHandler>
+    }
+
+    fn auth_grpc_impl(&self) -> Arc<dyn AuthHandler> {
+        Arc::clone(&self.auth_impl) as Arc<dyn AuthHandler>
     }
 
     async fn session_config(
@@ -44,6 +54,13 @@ impl Handler for FleetwoodHandler {
         _cfg: &FleetwoodConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
+    }
+
+    async fn auth_config(
+        &self,
+        cfg: &FleetwoodConfig,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.auth_impl.apply_config(cfg).await
     }
 
     async fn shutdown(&self) {
@@ -72,6 +89,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         session_timeout = cfg.session_timeout_seconds,
         refresh_lifetime = cfg.refresh_token_lifetime_seconds,
         auto_refresh_before = cfg.auto_refresh_before_seconds,
+        oauth_enabled = cfg.enable,
         "starting fleetwood"
     );
 
@@ -90,7 +108,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Create the FleetwoodServiceHandler implementation.
+    // Create the session/token handler.
     let fleetwood_impl = Arc::new(FleetwoodImpl::new(
         Arc::clone(&sessions),
         Arc::clone(&sm),
@@ -98,9 +116,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         cfg.auto_refresh_before_seconds,
     ));
 
+    // Create the auth handler (OAuth2/OIDC browser flows).
+    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm)));
+
     // Build the Handler and run through the generated ServiceManager lifecycle.
     let handler: Arc<dyn Handler> = Arc::new(FleetwoodHandler {
         fleetwood_impl,
+        auth_impl,
     });
 
     // sm.run() handles TLS setup, service registration, and graceful shutdown.

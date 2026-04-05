@@ -4,6 +4,7 @@ output-dir: target/generated-sources
 grpc-servers:
   - services/fleetwood.Session
   - services/fleetwood.Token
+  - services/fleetwood.Auth
 grpc-clients:
   - services/kernel.Mint
 post-gen:
