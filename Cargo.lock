@@ -850,6 +850,7 @@ dependencies = [
  "hyper-util",
  "jwk",
  "prost",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",
