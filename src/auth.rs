@@ -299,14 +299,25 @@ impl AuthHandler for AuthImpl {
         let channel = self.sm.conn().await.ok_or_else(|| {
             tonic::Status::unavailable("no connection to kernel")
         })?;
+        let token = self.sm.get_token().await.map_err(|e| {
+            tonic::Status::internal(format!("failed to get service token: {e}"))
+        })?;
         let mut mint_client = MintClient::new(channel);
 
+        let mut mint_req = tonic::Request::new(MintUserTokenRequest {
+            subject: subject.clone(),
+            claims: Some(claims),
+            ..Default::default()
+        });
+        mint_req.metadata_mut().insert(
+            "authorization",
+            format!("Bearer {}", token).parse().map_err(|_| {
+                tonic::Status::internal("invalid token metadata")
+            })?,
+        );
+
         let mint_resp = mint_client
-            .mint_user_token(MintUserTokenRequest {
-                subject: subject.clone(),
-                claims: Some(claims),
-                ..Default::default()
-            })
+            .mint_user_token(mint_req)
             .await
             .map_err(|e| {
                 warn!(error = %e, "kernel MintUserToken failed");
