@@ -24,6 +24,7 @@ struct OidcProvider {
     config: RwLock<OidcConfig>,
     jwks: RwLock<CachedJwks>,
     provider_cfg: ProviderConfig,
+    http_client: Client,
 }
 
 #[derive(Default)]
@@ -55,7 +56,6 @@ pub struct TokenResponse {
 /// OIDC client handles discovery, authorization URL construction, and token exchange.
 pub struct OidcClient {
     providers: HashMap<i32, Arc<OidcProvider>>,
-    http_client: Client,
     refetch_interval: Duration,
     default_scopes: Vec<String>,
 }
@@ -67,11 +67,6 @@ impl OidcClient {
         default_scopes: &[String],
         refetch_interval_secs: i64,
     ) -> Result<Self, String> {
-        let http_client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .map_err(|e| format!("creating HTTP client: {e}"))?;
-
         let scopes = if default_scopes.is_empty() {
             vec![
                 "openid".to_string(),
@@ -84,7 +79,6 @@ impl OidcClient {
 
         let mut oc = OidcClient {
             providers: HashMap::new(),
-            http_client,
             refetch_interval: Duration::from_secs(refetch_interval_secs as u64),
             default_scopes: scopes,
         };
@@ -93,10 +87,27 @@ impl OidcClient {
             if !p.enable {
                 continue;
             }
+
+            let http_client = if !p.ca_pem.is_empty() {
+                let cert = reqwest::Certificate::from_pem(p.ca_pem.as_bytes())
+                    .map_err(|e| format!("parsing CA PEM for provider {}: {e}", p.name))?;
+                Client::builder()
+                    .timeout(Duration::from_secs(10))
+                    .add_root_certificate(cert)
+                    .build()
+                    .map_err(|e| format!("creating HTTP client for provider {}: {e}", p.name))?
+            } else {
+                Client::builder()
+                    .timeout(Duration::from_secs(10))
+                    .build()
+                    .map_err(|e| format!("creating HTTP client: {e}"))?
+            };
+
             let prov = Arc::new(OidcProvider {
                 config: RwLock::new(OidcConfig::default()),
                 jwks: RwLock::new(CachedJwks::default()),
                 provider_cfg: p.clone(),
+                http_client,
             });
             if let Err(e) = oc.discover(&prov).await {
                 warn!(provider = %p.name, error = %e, "OIDC discovery failed");
@@ -112,7 +123,7 @@ impl OidcClient {
         let issuer = prov.provider_cfg.issuer.trim_end_matches('/');
         let well_known = format!("{issuer}/.well-known/openid-configuration");
 
-        let resp = self
+        let resp = prov
             .http_client
             .get(&well_known)
             .send()
@@ -233,7 +244,7 @@ impl OidcClient {
             ("code_verifier", code_verifier),
         ];
 
-        let resp = self
+        let resp = prov
             .http_client
             .post(&token_endpoint)
             .form(&params)
@@ -280,7 +291,7 @@ impl OidcClient {
                 .to_string()
         };
 
-        let resp = self
+        let resp = prov
             .http_client
             .get(&jwks_uri)
             .send()
