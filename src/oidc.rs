@@ -111,6 +111,18 @@ impl OidcClient {
             });
             if let Err(e) = oc.discover(&prov).await {
                 warn!(provider = %p.name, error = %e, "OIDC discovery failed");
+                // Apply explicit endpoint overrides from config as fallback when
+                // discovery fails (e.g. self-signed CA, network unreachable).
+                let mut cfg = prov.config.write().await;
+                if !p.authorization_endpoint.is_empty() {
+                    cfg.authorization_endpoint = Some(p.authorization_endpoint.clone());
+                }
+                if !p.token_endpoint.is_empty() {
+                    cfg.token_endpoint = Some(p.token_endpoint.clone());
+                }
+                if !p.end_session_endpoint.is_empty() {
+                    cfg.end_session_endpoint = Some(p.end_session_endpoint.clone());
+                }
             }
             oc.providers.insert(i as i32, prov);
         }
