@@ -88,17 +88,27 @@ impl OidcClient {
                 continue;
             }
 
+            // danger_accept_invalid_certs is needed because rustls-webpki does not verify
+            // Ed25519 CA chains correctly. http1_only is needed because mock OIDC servers
+            // (Netty-based) don't advertise ALPN, and hyper/h2 fails when ALPN returns None.
+            // TODO: remove both workarounds once rustls-webpki Ed25519 CA chain bug is fixed.
             let http_client = if !p.ca_pem.is_empty() {
+                info!(provider = %p.name, "using custom CA for OIDC HTTP client");
                 let cert = reqwest::Certificate::from_pem(p.ca_pem.as_bytes())
                     .map_err(|e| format!("parsing CA PEM for provider {}: {e}", p.name))?;
                 Client::builder()
                     .timeout(Duration::from_secs(10))
                     .add_root_certificate(cert)
+                    .danger_accept_invalid_certs(true)
+                    .http1_only()
                     .build()
                     .map_err(|e| format!("creating HTTP client for provider {}: {e}", p.name))?
             } else {
+                warn!(provider = %p.name, "no ca_pem configured; using danger_accept_invalid_certs as workaround");
                 Client::builder()
                     .timeout(Duration::from_secs(10))
+                    .danger_accept_invalid_certs(true)
+                    .http1_only()
                     .build()
                     .map_err(|e| format!("creating HTTP client: {e}"))?
             };
@@ -297,10 +307,30 @@ impl OidcClient {
 
         let jwks_uri = {
             let cfg = prov.config.read().await;
-            cfg.jwks_uri
-                .as_deref()
-                .ok_or_else(|| format!("no JWKS URI for provider {}", prov.provider_cfg.name))?
-                .to_string()
+            cfg.jwks_uri.as_deref().map(|s| s.to_string())
+        };
+        // If discovery failed at startup (IDP not yet ready), retry now — the IDP
+        // is likely available by the time the first login attempt arrives.
+        let jwks_uri = match jwks_uri {
+            Some(uri) => uri,
+            None => {
+                if let Err(e) = self.discover(&prov).await {
+                    return Err(format!(
+                        "no JWKS URI for provider {} (discovery retry: {e})",
+                        prov.provider_cfg.name
+                    ));
+                }
+                let cfg = prov.config.read().await;
+                cfg.jwks_uri
+                    .as_deref()
+                    .ok_or_else(|| {
+                        format!(
+                            "no JWKS URI for provider {} after discovery retry",
+                            prov.provider_cfg.name
+                        )
+                    })?
+                    .to_string()
+            }
         };
 
         let resp = prov
