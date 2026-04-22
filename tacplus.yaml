@@ -1,12 +1,6 @@
 language: rust
 pkg: com.gitlab.secondstarcavalier.controlplane.services.fleetwood
 output-dir: target/generated-sources
-grpc-servers:
-  - services/fleetwood.Session
-  - services/fleetwood.Token
-  - services/fleetwood.Auth
-grpc-clients:
-  - services/kernel.Mint
 post-gen:
   - cmd: cargo
     args: [build, --release]
