@@ -11,7 +11,6 @@ use tracing_subscriber::EnvFilter;
 
 use fleetwood_tacplus::s2sm::handler::Handler;
 use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::auth::AuthHandler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::config_state_service::FleetwoodConfigStateServiceHandler;
 use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session::SessionHandler;
 use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token::TokenHandler;
 use fleetwood_tacplus::s2sm::ServiceManager;
@@ -21,34 +20,6 @@ use fleetwood_tacplus::types::services::fleetwood::helpers::{config_defaults, co
 use crate::auth::AuthImpl;
 use crate::service::FleetwoodImpl;
 use crate::session::SessionRegistry;
-
-/// Stub for FleetwoodConfigStateService — config is kernel-managed, not set locally.
-struct FleetwoodConfigStateStub;
-
-#[tonic::async_trait]
-impl FleetwoodConfigStateServiceHandler for FleetwoodConfigStateStub {
-    async fn get_config(
-        &self,
-        _caller: Option<&servicemanager::auth::Caller>,
-    ) -> Result<FleetwoodConfig, tonic::Status> {
-        Err(tonic::Status::unimplemented("config is kernel-managed"))
-    }
-
-    async fn set_config(
-        &self,
-        _caller: Option<&servicemanager::auth::Caller>,
-        _req: FleetwoodConfig,
-    ) -> Result<FleetwoodConfig, tonic::Status> {
-        Err(tonic::Status::unimplemented("config is kernel-managed"))
-    }
-
-    async fn watch_config(
-        &self,
-        _caller: Option<&servicemanager::auth::Caller>,
-    ) -> Result<tonic::Response<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<FleetwoodConfig, tonic::Status>> + Send>>>, tonic::Status> {
-        Err(tonic::Status::unimplemented("config is kernel-managed"))
-    }
-}
 
 /// FleetwoodHandler implements the generated Handler trait.
 /// It wires the SM lifecycle to the service implementations.
@@ -90,17 +61,6 @@ impl Handler for FleetwoodHandler {
         cfg: &FleetwoodConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.auth_impl.apply_config(cfg).await
-    }
-
-    fn fleetwood_config_state_grpc_impl(&self) -> Arc<dyn FleetwoodConfigStateServiceHandler> {
-        Arc::new(FleetwoodConfigStateStub)
-    }
-
-    async fn fleetwood_config_state_config(
-        &self,
-        _cfg: &FleetwoodConfig,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
     }
 
     async fn shutdown(&self) {
