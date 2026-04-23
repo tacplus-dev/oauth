@@ -1,6 +1,6 @@
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
-    Aes256Gcm, Nonce,
+    Aes256Gcm,
 };
 use base64::Engine;
 use rand::RngCore;
@@ -69,9 +69,7 @@ impl StateCodec {
 
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
-
-        let ciphertext = self.cipher.encrypt(nonce, plaintext.as_ref()).unwrap();
+        let ciphertext = self.cipher.encrypt(&nonce_bytes.into(), plaintext.as_ref()).unwrap();
 
         // Prepend nonce to ciphertext
         let mut out = nonce_bytes.to_vec();
@@ -92,10 +90,10 @@ impl StateCodec {
             return Err("state too short".to_string());
         }
 
-        let nonce = Nonce::from_slice(&data[..12]);
+        let nonce_buf: [u8; 12] = data[..12].try_into().unwrap();
         let plaintext = self
             .cipher
-            .decrypt(nonce, &data[12..])
+            .decrypt(&nonce_buf.into(), &data[12..])
             .map_err(|_| "state decryption failed (tampered or wrong key)".to_string())?;
 
         let payload: StatePayload =

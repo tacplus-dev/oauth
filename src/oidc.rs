@@ -34,6 +34,7 @@ struct CachedJwks {
 }
 
 /// A single JWK entry from the IDP's JWKS endpoint.
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct JwkEntry {
     pub kid: Option<String>,
@@ -45,6 +46,7 @@ pub struct JwkEntry {
 }
 
 /// Token response from the IDP's token endpoint.
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 pub struct TokenResponse {
     pub id_token: Option<String>,

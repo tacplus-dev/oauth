@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use base64::Engine;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -81,28 +80,52 @@ impl AuthImpl {
 /// external IDP token to avoid collision with Cavalier claims.
 const WELL_KNOWN_JWT_CLAIMS: &[&str] = &["iss", "sub", "aud", "exp", "nbf", "iat", "jti"];
 
+/// Recursively convert a serde_json::Value to a prost_wkt_types::Value.
+/// Empty strings are dropped (return None). All other types are supported:
+/// booleans, numbers, strings, arrays, objects, and null.
+fn json_to_proto_value(val: &serde_json::Value) -> Option<prost_wkt_types::Value> {
+    use prost_wkt_types::value::Kind;
+    let kind = match val {
+        serde_json::Value::Null => Kind::NullValue(0),
+        serde_json::Value::Bool(b) => Kind::BoolValue(*b),
+        serde_json::Value::Number(n) => Kind::NumberValue(n.as_f64()?),
+        serde_json::Value::String(s) => {
+            if s.is_empty() {
+                return None;
+            }
+            Kind::StringValue(s.clone())
+        }
+        serde_json::Value::Array(arr) => {
+            let values: Vec<prost_wkt_types::Value> =
+                arr.iter().filter_map(json_to_proto_value).collect();
+            if values.is_empty() {
+                return None;
+            }
+            Kind::ListValue(prost_wkt_types::ListValue { values })
+        }
+        serde_json::Value::Object(_) => {
+            // Objects are JSON-serialized; kernel can only store strings.
+            Kind::StringValue(serde_json::to_string(val).ok()?)
+        }
+    };
+    Some(prost_wkt_types::Value { kind: Some(kind) })
+}
+
 /// Build a prost_wkt_types::Struct from IDP token claims.
 /// Well-known JWT claims are prefixed with `origin_` to preserve the IDP's
 /// values without colliding with Cavalier's own standard claims.
+/// All JSON value types are supported (strings, numbers, booleans, arrays, objects).
 fn build_claims_struct(payload: &HashMap<String, serde_json::Value>) -> Option<prost_wkt_types::Struct> {
     let mut fields = HashMap::new();
 
     for (key, val) in payload {
-        if let Some(s) = val.as_str() {
-            if s.is_empty() {
-                continue;
-            }
-            let output_key = if WELL_KNOWN_JWT_CLAIMS.contains(&key.as_str()) {
-                format!("origin_{key}")
-            } else {
-                key.clone()
-            };
-            fields.insert(
-                output_key,
-                prost_wkt_types::Value {
-                    kind: Some(prost_wkt_types::value::Kind::StringValue(s.to_string())),
-                },
-            );
+        let output_key = if WELL_KNOWN_JWT_CLAIMS.contains(&key.as_str()) {
+            format!("origin_{key}")
+        } else {
+            key.clone()
+        };
+        if let Some(proto_val) = json_to_proto_value(val) {
+            fields.insert(output_key, proto_val);
         }
     }
 
