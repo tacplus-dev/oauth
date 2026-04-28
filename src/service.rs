@@ -43,10 +43,12 @@ impl FleetwoodImpl {
 
 /// Exchange a short-lived token for a long-lived one via kernel Mint service.
 /// Shared by install_token and the daemon refresh loop.
+/// `trace_id` is forwarded to kernel so the mint hop appears in `cavalierctl trace tail`.
 async fn exchange_token(
     sm: &ServiceManager,
     input_token: &str,
     refresh_lifetime_secs: i64,
+    trace_id: &str,
 ) -> Result<String, tonic::Status> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -55,6 +57,7 @@ async fn exchange_token(
     let request = TokenMintRequest {
         input_token: input_token.to_string(),
         exp: now + refresh_lifetime_secs,
+        trace_id: trace_id.to_string(),
         ..Default::default()
     };
 
@@ -87,18 +90,19 @@ async fn exchange_token(
         .ok_or_else(|| tonic::Status::internal("MintService returned empty token"))
 }
 
-/// Extract session_id from the first streaming message.
+/// Extract session_id and trace_id from the first streaming message.
 async fn recv_session_id(
     inbound: &mut tonic::Streaming<SessionRequest>,
-) -> Result<String, tonic::Status> {
+) -> Result<(String, String), tonic::Status> {
     let first = inbound
         .next()
         .await
         .ok_or_else(|| tonic::Status::invalid_argument("empty stream"))?
         .map_err(|e| tonic::Status::invalid_argument(format!("bad first message: {e}")))?;
 
+    let trace_id = first.trace_id.clone();
     match first.msg {
-        Some(session_request::Msg::SessionId(id)) => Ok(id),
+        Some(session_request::Msg::SessionId(id)) => Ok((id, trace_id)),
         _ => Err(tonic::Status::invalid_argument(
             "first message must contain session_id",
         )),
@@ -126,7 +130,7 @@ impl SessionHandler for FleetwoodImpl {
             .map(|s| s.to_string());
 
         let mut inbound = request.into_inner();
-        let session_id = recv_session_id(&mut inbound).await?;
+        let (session_id, _session_trace_id) = recv_session_id(&mut inbound).await?;
 
         if let Some(bearer_str) = bearer_owned {
             // Authenticated session (daemon mode): verify token, then
@@ -155,7 +159,7 @@ impl SessionHandler for FleetwoodImpl {
 
                     tokio::time::sleep(Duration::from_secs(sleep_secs)).await;
 
-                    match exchange_token(&sm, &current_token, refresh_lifetime).await {
+            match exchange_token(&sm, &current_token, refresh_lifetime, "").await {
                         Ok(new_token) => {
                             info!(session_id = %session_id, "daemon: refreshed token");
 
@@ -219,7 +223,7 @@ impl TokenHandler for FleetwoodImpl {
         info!(session_id = %session_id, "InstallToken called, exchanging token");
 
         let long_lived_token =
-            exchange_token(&self.sm, short_lived_token, self.refresh_lifetime_secs).await?;
+            exchange_token(&self.sm, short_lived_token, self.refresh_lifetime_secs, &req.trace_id).await?;
 
         let response = SessionResponse {
             msg: Some(session_response::Msg::Token(long_lived_token)),
