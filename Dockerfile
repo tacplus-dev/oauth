@@ -1,7 +1,7 @@
 # Fleetwood Release Image
 # Layers the pre-built fleetwood binary onto a minimal runtime image.
 
-FROM debian:trixie-slim
+FROM registry.gitlab.com/secondstarcavalier/controlplane/containers/cavalier-debian:latest
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -15,13 +15,6 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.title="Fleetwood" \
       org.opencontainers.image.description="Session management service for Cavalier control plane"
 
-ARG GRPC_HEALTH_PROBE_VERSION=0.4.48
-ARG TARGETARCH
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && \
-    curl -fsSL -o /usr/local/bin/grpc_health_probe \
-      "https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-${TARGETARCH}" && \
-    chmod +x /usr/local/bin/grpc_health_probe && \
-    apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 COPY target/release/fleetwood /usr/local/bin/fleetwood
 RUN chmod +x /usr/local/bin/fleetwood
 
