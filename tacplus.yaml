@@ -5,4 +5,4 @@ post-gen:
   - cmd: cargo
     args: [build, --release]
 container:
-  image: registry.gitlab.com/secondstarcavalier/controlplane/services/fleetwood/fleetwood
+  image: registry.gitlab.com/secondstarcavalier/schematic/platform/services/fleetwood/fleetwood
