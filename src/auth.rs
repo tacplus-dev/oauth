@@ -5,14 +5,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::auth::AuthHandler;
-use fleetwood_tacplus::s2sm::ServiceManager;
-use fleetwood_tacplus::types::common::tokenrequest::tokenrequest::MintUserTokenRequest;
-use fleetwood_tacplus::types::services::fleetwood::fleetwood::{
+use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
+use oauth_tacplus::s2sm::ServiceManager;
+use oauth_tacplus::types::common::tokenrequest::tokenrequest::MintUserTokenRequest;
+use oauth_tacplus::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse, Config,
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
-use fleetwood_tacplus::types::services::kernel::kernel::mint_client::MintClient;
+use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 
 use crate::nonce::{generate_code_verifier, StateCodec};
 use crate::oidc::OidcClient;
@@ -166,7 +166,7 @@ fn jwt_kid(token: &str) -> Option<String> {
 }
 
 /// Extract `exp` from a token's payload and compute remaining seconds.
-fn expires_in_from_token(token_proto: &fleetwood_tacplus::types::libs::token::token::Token, now: i64) -> i64 {
+fn expires_in_from_token(token_proto: &oauth_tacplus::types::libs::token::token::Token, now: i64) -> i64 {
     for (k, v) in &token_proto.payload {
         if k == "exp" {
             if let Ok(exp) = v.parse::<i64>() {

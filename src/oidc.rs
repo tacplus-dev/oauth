@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
-use fleetwood_tacplus::types::services::fleetwood::fleetwood::ProviderConfig;
+use oauth_tacplus::types::services::oauth::oauth::ProviderConfig;
 
 /// Subset of .well-known/openid-configuration that we need.
 #[derive(Debug, Clone, Default, serde::Deserialize)]

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use dashmap::DashMap;
 use tokio::sync::mpsc;
 
-use fleetwood_tacplus::types::services::fleetwood::fleetwood::SessionResponse;
+use oauth_tacplus::types::services::oauth::oauth::SessionResponse;
 
 /// Pending session entry: a channel sender and creation time.
 struct PendingSession {

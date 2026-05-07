@@ -9,13 +9,13 @@ use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use tracing_subscriber::EnvFilter;
 
-use fleetwood_tacplus::s2sm::handler::Handler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::auth::AuthHandler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session::SessionHandler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token::TokenHandler;
-use fleetwood_tacplus::s2sm::ServiceManager;
-use fleetwood_tacplus::types::services::fleetwood::fleetwood::Config as FleetwoodConfig;
-use fleetwood_tacplus::types::services::fleetwood::helpers::{config_defaults, config_from_bytes};
+use oauth_tacplus::s2sm::handler::Handler;
+use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
+use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
+use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::token::TokenHandler;
+use oauth_tacplus::s2sm::ServiceManager;
+use oauth_tacplus::types::services::oauth::oauth::Config as FleetwoodConfig;
+use oauth_tacplus::types::services::oauth::helpers::{config_defaults, config_from_bytes};
 
 use crate::auth::AuthImpl;
 use crate::service::FleetwoodImpl;

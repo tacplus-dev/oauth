@@ -7,7 +7,7 @@ use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use fleetwood_tacplus::types::services::fleetwood::fleetwood::ProviderConfig;
+use oauth_tacplus::types::services::oauth::oauth::ProviderConfig;
 
 /// Encrypted payload inside the OAuth2 state parameter.
 #[derive(serde::Serialize, serde::Deserialize)]

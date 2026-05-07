@@ -7,12 +7,12 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tracing::{info, warn};
 
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::session::SessionHandler;
-use fleetwood_tacplus::s2sm::internal::grpc::servers::services::fleetwood::token::TokenHandler;
-use fleetwood_tacplus::s2sm::ServiceManager;
-use fleetwood_tacplus::types::common::tokenrequest::TokenMintRequest;
-use fleetwood_tacplus::types::services::kernel::kernel::mint_client::MintClient;
-use fleetwood_tacplus::types::services::fleetwood::fleetwood::{
+use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
+use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::token::TokenHandler;
+use oauth_tacplus::s2sm::ServiceManager;
+use oauth_tacplus::types::common::tokenrequest::TokenMintRequest;
+use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
+use oauth_tacplus::types::services::oauth::oauth::{
     session_request, session_response, InstallTokenRequest, SessionRequest, SessionResponse,
 };
 use crate::session::SessionRegistry;
