@@ -1,7 +1,7 @@
 # Fleetwood Release Image
 # Layers the pre-built fleetwood binary onto a minimal runtime image.
 
-FROM registry.gitlab.com/secondstarcavalier/controlplane/containers/cavalier-debian-1-1:latest
+FROM registry.gitlab.com/secondstarcavalier/schematic/containers/cavalier-debian:latest
 
 ARG BUILD_DATE
 ARG VCS_REF
