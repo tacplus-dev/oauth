@@ -40,7 +40,7 @@ compute-image:
     - cargo build --release
   artifacts:
     paths:
-      - target/release/fleetwood
+      - target/release/oauth
     expire_in: 1 hour
 
 build-amd64:
@@ -63,7 +63,7 @@ build-arm64:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - |
-      IMAGE="$CI_REGISTRY_IMAGE/fleetwood-${MAJOR}-${MINOR}"
+      IMAGE="$CI_REGISTRY_IMAGE/oauth-${MAJOR}-${MINOR}"
       docker build \
         -t "${IMAGE}:${PATCH}-${ARCH}" \
         .
@@ -100,7 +100,7 @@ manifest:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - |
-      IMAGE="$CI_REGISTRY_IMAGE/fleetwood-${MAJOR}-${MINOR}"
+      IMAGE="$CI_REGISTRY_IMAGE/oauth-${MAJOR}-${MINOR}"
       docker manifest create "${IMAGE}:${PATCH}" \
         "${IMAGE}:${PATCH}-amd64" \
         "${IMAGE}:${PATCH}-arm64"

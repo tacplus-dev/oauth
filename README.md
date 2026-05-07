@@ -1,6 +1,6 @@
-# Fleetwood
+# OAuth
 
-Fleetwood is the unified authentication and token broker for the control plane.
+OAuth is the unified authentication and token broker for the control plane.
 It handles OAuth2/OIDC browser flows (provider discovery, authorization code
 exchange with PKCE, IDP token verification, kernel token minting delegation)
 and CLI/device token brokering via bidirectional streaming.
@@ -13,12 +13,12 @@ and CLI/device token brokering via bidirectional streaming.
     │  1. redirect to /authorize       │  1. open bidi stream
     │  2. IDP login + callback         │  2. receive auth URL
     │  3. exchange code → IDP token    │  3. user authenticates in browser
-    │  4. verify IDP token (JWKS)      │  4. Fleetwood relays token
+    │  4. verify IDP token (JWKS)      │  4. OAuth relays token
     │  5. kernel.MintUserToken         │  5. kernel.MintUserToken
     │  6. redirect with token          │  6. stream delivers token
     ▼                                  ▼
               ┌──────────────┐
-              │  Fleetwood   │
+              │    OAuth     │
               │              │
               │  OIDC flows  │──► kernel.Mint (token delegation)
               │  Session mgmt│
@@ -28,7 +28,7 @@ and CLI/device token brokering via bidirectional streaming.
 
 ## RPCs
 
-### fleetwood.Auth
+### oauth.Auth
 
 | RPC | Description |
 |-----|-------------|
@@ -37,13 +37,13 @@ and CLI/device token brokering via bidirectional streaming.
 | `Callback` | Handles IDP callback — exchanges code, verifies token, mints |
 | `Logout` | Invalidates session |
 
-### fleetwood.Session
+### oauth.Session
 
 | RPC | Description |
 |-----|-------------|
 | `Session` | Bidirectional stream for CLI/device token brokering |
 
-### fleetwood.Token
+### oauth.Token
 
 | RPC | Description |
 |-----|-------------|
@@ -56,7 +56,7 @@ and CLI/device token brokering via bidirectional streaming.
 | `session_timeout_seconds` | 300 | Session timeout (30s–600s) |
 | `refresh_token_lifetime_seconds` | 604800 | Refresh token lifetime (1h–30d) |
 | `auto_refresh_before_seconds` | 3600 | Auto-refresh window (60s–24h) |
-| `enable` | false | Enable Fleetwood auth flows |
+| `enable` | false | Enable OAuth auth flows |
 | `providers` | — | List of OAuth/OIDC provider configurations |
 | `nonce_expire_seconds` | 300 | CSRF nonce expiry |
 | `jwk_refetch_interval_seconds` | 300 | IDP JWKS refresh interval |
@@ -78,4 +78,4 @@ just        # generate + compile
 
 ## Proto
 
-[`services/fleetwood.proto`](../../proto/services/fleetwood.proto)
+[`services/oauth.proto`](../../proto/services/oauth.proto)

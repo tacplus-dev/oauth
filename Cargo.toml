@@ -1,5 +1,5 @@
 [package]
-name = "fleetwood"
+name = "oauth"
 version = "0.1.0"
 edition = "2021"
 
@@ -22,6 +22,6 @@ tokio-stream = "0.1"
 tonic = { version = "0.14", features = ["transport", "tls-ring"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-fleetwood-tacplus = { path = "target/generated-sources/tacplus" }
+oauth-tacplus = { path = "target/generated-sources/tacplus" }
 servicemanager = { path = "target/generated-sources/tacplus/libs/servicemanager" }
 token = { path = "target/generated-sources/tacplus/libs/token" }

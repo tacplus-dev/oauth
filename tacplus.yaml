@@ -1,8 +1,8 @@
 language: rust
-pkg: com.gitlab.secondstarcavalier.controlplane.cavalier.services.fleetwood
+pkg: com.gitlab.secondstarcavalier.controlplane.cavalier.services.oauth
 output-dir: target/generated-sources
 post-gen:
   - cmd: cargo
     args: [build, --release]
 container:
-  image: registry.gitlab.com/secondstarcavalier/schematic/platform/services/fleetwood/fleetwood
+  image: registry.gitlab.com/secondstarcavalier/schematic/platform/services/oauth/oauth
