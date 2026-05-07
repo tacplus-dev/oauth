@@ -1,7 +1,7 @@
 # OAuth Release Image
 # Layers the pre-built oauth binary onto a minimal runtime image.
 
-FROM registry.gitlab.com/secondstarcavalier/schematic/containers/cavalier-debian:latest
+FROM registry.gitlab.com/secondstarcavalier/schematic/containers/debian/schematic-debian-1-2:latest
 
 ARG BUILD_DATE
 ARG VCS_REF
