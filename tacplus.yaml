@@ -1,5 +1,5 @@
 language: rust
-pkg: com.gitlab.secondstarcavalier.controlplane.services.fleetwood
+pkg: com.gitlab.secondstarcavalier.controlplane.cavalier.services.fleetwood
 output-dir: target/generated-sources
 post-gen:
   - cmd: cargo
