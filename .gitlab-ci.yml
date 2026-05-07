@@ -41,7 +41,7 @@ compute-image:
   artifacts:
     paths:
       - target/release/oauth
-    expire_in: 1 hour
+    expire_in: 1 day
 
 build-amd64:
   extends: .build-arch
