@@ -7,12 +7,14 @@ compute-image:
   stage: .pre
   image: alpine:latest
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-dev)?$/
   script:
     - V="${CI_COMMIT_TAG#v}"
+    - if [[ "$V" == *-dev ]]; then DEV_SUFFIX="-dev"; V="${V%-dev}"; else DEV_SUFFIX=""; fi
     - MAJOR="$(echo "$V" | cut -d. -f1)"
     - MINOR="$(echo "$V" | cut -d. -f2)"
     - echo "TACPLUS_IMAGE=${CI_REGISTRY}/secondstarcavalier/schematic/tacplus/tacplus-${MAJOR}-${MINOR}:latest" > tacplus.env
+    - echo "DEV_SUFFIX=${DEV_SUFFIX}" >> tacplus.env
   artifacts:
     reports:
       dotenv: tacplus.env
@@ -23,6 +25,7 @@ variables:
 .parse-version: &parse-version
   - |
     V="${CI_COMMIT_TAG#v}"
+    if [[ "$V" == *-dev ]]; then DEV_SUFFIX="-dev"; V="${V%-dev}"; else DEV_SUFFIX=""; fi
     MAJOR="$(echo "$V" | cut -d. -f1)"
     MINOR="$(echo "$V" | cut -d. -f2)"
     PATCH="$(echo "$V" | cut -d. -f3)"
@@ -35,7 +38,7 @@ variables:
   image: $TACPLUS_IMAGE
   needs: [compute-image]
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-dev)?$/
   cache:
     - key: tacplus
       paths:
@@ -72,21 +75,21 @@ build-arm64:
   services:
     - docker:dind
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-dev)?$/
   before_script:
     - *parse-version
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - |
       IMAGE="$CI_REGISTRY_IMAGE/oauth-${MAJOR}-${MINOR}"
-      docker pull "${IMAGE}:latest-${ARCH}" || true
+      docker pull "${IMAGE}:latest${DEV_SUFFIX}-${ARCH}" || true
       docker build \
-        --cache-from "${IMAGE}:latest-${ARCH}" \
-        -t "${IMAGE}:${PATCH}-${ARCH}" \
-        -t "${IMAGE}:latest-${ARCH}" \
+        --cache-from "${IMAGE}:latest${DEV_SUFFIX}-${ARCH}" \
+        -t "${IMAGE}:${PATCH}${DEV_SUFFIX}-${ARCH}" \
+        -t "${IMAGE}:latest${DEV_SUFFIX}-${ARCH}" \
         .
-      docker push "${IMAGE}:${PATCH}-${ARCH}"
-      docker push "${IMAGE}:latest-${ARCH}"
+      docker push "${IMAGE}:${PATCH}${DEV_SUFFIX}-${ARCH}"
+      docker push "${IMAGE}:latest${DEV_SUFFIX}-${ARCH}"
 
 package-amd64:
   extends: .package-arch
@@ -113,18 +116,46 @@ manifest:
     - package-amd64
     - package-arm64
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-dev)?$/
   before_script:
     - *parse-version
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - |
       IMAGE="$CI_REGISTRY_IMAGE/oauth-${MAJOR}-${MINOR}"
-      docker manifest create "${IMAGE}:${PATCH}" \
-        "${IMAGE}:${PATCH}-amd64" \
-        "${IMAGE}:${PATCH}-arm64"
-      docker manifest push "${IMAGE}:${PATCH}"
-      docker manifest create "${IMAGE}:latest" \
-        "${IMAGE}:${PATCH}-amd64" \
-        "${IMAGE}:${PATCH}-arm64"
-      docker manifest push "${IMAGE}:latest"
+      docker manifest create "${IMAGE}:${PATCH}${DEV_SUFFIX}" \
+        "${IMAGE}:${PATCH}${DEV_SUFFIX}-amd64" \
+        "${IMAGE}:${PATCH}${DEV_SUFFIX}-arm64"
+      docker manifest push "${IMAGE}:${PATCH}${DEV_SUFFIX}"
+      docker manifest create "${IMAGE}:latest${DEV_SUFFIX}" \
+        "${IMAGE}:${PATCH}${DEV_SUFFIX}-amd64" \
+        "${IMAGE}:${PATCH}${DEV_SUFFIX}-arm64"
+      docker manifest push "${IMAGE}:latest${DEV_SUFFIX}"
+
+# ---------------------------------------------------------------------------
+# Proto validation: fires when proto CI fans out on new proto tag.
+# ---------------------------------------------------------------------------
+compute-validate-image:
+  stage: .pre
+  image: alpine:latest
+  rules:
+    - if: $PROTO_VALIDATE == "true"
+  script:
+    - V="${PROTO_VERSION#v}"
+    - MAJOR="$(echo "$V" | cut -d. -f1)"
+    - MINOR="$(echo "$V" | cut -d. -f2)"
+    - echo "TACPLUS_IMAGE=${CI_REGISTRY}/secondstarcavalier/schematic/tacplus/tacplus-${MAJOR}-${MINOR}:latest" > tacplus.env
+  artifacts:
+    reports:
+      dotenv: tacplus.env
+
+proto-validate:
+  stage: build
+  image: $TACPLUS_IMAGE
+  needs: [compute-validate-image]
+  rules:
+    - if: $PROTO_VALIDATE == "true"
+  before_script:
+    - *setup-netrc
+  script:
+    - tacplus build --skip-post --tag $PROTO_VERSION
