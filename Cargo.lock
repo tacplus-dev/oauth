@@ -50,7 +50,7 @@ dependencies = [
 name = "am"
 version = "0.1.0"
 dependencies = [
- "fleetwood-tacplus-types",
+ "oauth-tacplus-types",
  "tonic",
  "tracing",
 ]
@@ -575,91 +575,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7ac824320a75a52197e8f2d787f6a38b6718bb6897a35142d749af3c0e8f4fe"
 
 [[package]]
-name = "fleetwood"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "base64 0.22.1",
- "dashmap",
- "fleetwood-tacplus",
- "futures",
- "prost",
- "prost-types",
- "prost-wkt-types",
- "rand 0.8.5",
- "reqwest",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "servicemanager",
- "sha2",
- "token",
- "tokio",
- "tokio-stream",
- "tonic",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "fleetwood-tacplus"
-version = "1.0.0"
-dependencies = [
- "am",
- "async-trait",
- "axum",
- "base64 0.21.7",
- "fleetwood-tacplus-types",
- "futures",
- "grpcconfig",
- "grpcserver",
- "healthreporter",
- "httpclient",
- "im",
- "ip",
- "jwk",
- "key",
- "logger",
- "prost",
- "regex",
- "reqwest",
- "rustls",
- "serde",
- "serde_json",
- "servicemanager",
- "servicemesh",
- "token",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tonic",
- "tonic-health",
- "tonic-prost",
- "tracing",
- "x509",
-]
-
-[[package]]
-name = "fleetwood-tacplus-types"
-version = "1.0.0"
-dependencies = [
- "base64 0.21.7",
- "bytes",
- "pbjson",
- "pbjson-types",
- "prost",
- "prost-types",
- "prost-wkt-types",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "toml",
- "tonic",
- "tonic-prost",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -844,7 +759,7 @@ dependencies = [
 name = "grpcconfig"
 version = "0.1.0"
 dependencies = [
- "fleetwood-tacplus-types",
+ "oauth-tacplus-types",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -857,11 +772,11 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.22.1",
- "fleetwood-tacplus-types",
  "futures",
  "hyper",
  "hyper-util",
  "jwk",
+ "oauth-tacplus-types",
  "prost",
  "regex",
  "serde",
@@ -924,7 +839,7 @@ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 name = "healthreporter"
 version = "0.1.0"
 dependencies = [
- "fleetwood-tacplus-types",
+ "oauth-tacplus-types",
  "tokio",
  "tonic",
  "tracing",
@@ -1005,8 +920,8 @@ version = "1.0.0"
 dependencies = [
  "backoff",
  "base64 0.21.7",
- "fleetwood-tacplus-types",
  "log",
+ "oauth-tacplus-types",
  "reqwest",
  "rustls",
  "rustls-pemfile",
@@ -1242,11 +1157,11 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "ed25519-dalek",
- "fleetwood-tacplus-types",
  "grpcconfig",
  "hex",
  "hmac",
  "key",
+ "oauth-tacplus-types",
  "prost",
  "prost-wkt-types",
  "rand 0.8.5",
@@ -1439,7 +1354,7 @@ name = "logger"
 version = "1.0.0"
 dependencies = [
  "chrono",
- "fleetwood-tacplus-types",
+ "oauth-tacplus-types",
  "once_cell",
  "serde",
  "tracing",
@@ -1549,6 +1464,92 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
+]
+
+[[package]]
+name = "oauth"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "dashmap",
+ "futures",
+ "oauth-tacplus",
+ "prost",
+ "prost-types",
+ "prost-wkt-types",
+ "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "servicemanager",
+ "sha2",
+ "token",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "oauth-tacplus"
+version = "1.0.0"
+dependencies = [
+ "am",
+ "async-trait",
+ "axum",
+ "base64 0.21.7",
+ "futures",
+ "grpcconfig",
+ "grpcserver",
+ "healthreporter",
+ "httpclient",
+ "im",
+ "ip",
+ "jwk",
+ "key",
+ "logger",
+ "oauth-tacplus-types",
+ "prost",
+ "regex",
+ "reqwest",
+ "rustls",
+ "saml",
+ "serde",
+ "serde_json",
+ "servicemanager",
+ "servicemesh",
+ "token",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+ "tonic-health",
+ "tonic-prost",
+ "tracing",
+ "x509",
+]
+
+[[package]]
+name = "oauth-tacplus-types"
+version = "1.0.0"
+dependencies = [
+ "base64 0.21.7",
+ "bytes",
+ "pbjson",
+ "pbjson-types",
+ "prost",
+ "prost-types",
+ "prost-wkt-types",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "toml",
+ "tonic",
+ "tonic-prost",
 ]
 
 [[package]]
@@ -1925,6 +1926,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.36.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2291,6 +2302,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "saml"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "ecdsa",
+ "key",
+ "oauth-tacplus-types",
+ "p256",
+ "quick-xml",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "signature",
+ "tokio",
+ "uuid",
+ "x509",
+ "x509-cert",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2453,10 +2486,10 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
- "fleetwood-tacplus-types",
  "grpcconfig",
  "im",
  "jwk",
+ "oauth-tacplus-types",
  "prost",
  "rand 0.8.5",
  "token",
@@ -2471,7 +2504,7 @@ dependencies = [
 name = "servicemesh"
 version = "0.1.0"
 dependencies = [
- "fleetwood-tacplus-types",
+ "oauth-tacplus-types",
  "tokio",
  "tonic",
  "tracing",
@@ -2741,9 +2774,9 @@ dependencies = [
  "chrono",
  "ecdsa",
  "ed25519-dalek",
- "fleetwood-tacplus-types",
  "jwk",
  "key",
+ "oauth-tacplus-types",
  "p256",
  "p384",
  "rsa",

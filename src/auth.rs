@@ -330,7 +330,7 @@ impl AuthHandler for AuthImpl {
         let mut mint_req = tonic::Request::new(MintUserTokenRequest {
             subject: subject.clone(),
             claims: Some(claims),
-            // Propagate trace_id so kernel and uncleopa appear in the trace.
+            // Propagate trace_id so kernel and opa appear in the trace.
             trace_id: req.trace_id.clone(),
             ..Default::default()
         });
