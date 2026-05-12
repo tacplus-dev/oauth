@@ -55,15 +55,8 @@ variables:
       - target/release/oauth
     expire_in: 1 day
 
-build-amd64:
-  extends: .build-arch
-  variables:
-    ARCH: amd64
-
 build-arm64:
   extends: .build-arch
-  tags:
-    - saas-linux-large-arm64
   variables:
     ARCH: arm64
 
@@ -87,19 +80,10 @@ build-arm64:
         .
       docker push "${IMAGE}:${CI_COMMIT_TAG}-${ARCH}"
 
-package-amd64:
-  extends: .package-arch
-  needs:
-    - build-amd64
-  variables:
-    ARCH: amd64
-
 package-arm64:
   extends: .package-arch
   needs:
     - build-arm64
-  tags:
-    - saas-linux-large-arm64
   variables:
     ARCH: arm64
 
@@ -109,7 +93,6 @@ manifest:
   services:
     - docker:dind
   needs:
-    - package-amd64
     - package-arm64
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+-[a-zA-Z0-9_][a-zA-Z0-9_.-]*\.\d+$/
@@ -119,11 +102,8 @@ manifest:
   script:
     - |
       IMAGE="$CI_REGISTRY_IMAGE/oauth-${MAJOR}-${MINOR}"
-      docker manifest create "${IMAGE}:${CI_COMMIT_TAG}" \
-        "${IMAGE}:${CI_COMMIT_TAG}-amd64" \
-        "${IMAGE}:${CI_COMMIT_TAG}-arm64"
-      docker manifest push "${IMAGE}:${CI_COMMIT_TAG}"
-
+      docker tag "${IMAGE}:${CI_COMMIT_TAG}-arm64" "${IMAGE}:${CI_COMMIT_TAG}"
+      docker push "${IMAGE}:${CI_COMMIT_TAG}"
 # ---------------------------------------------------------------------------
 # Proto validation: fires when proto CI fans out on new proto tag.
 # ---------------------------------------------------------------------------
