@@ -72,7 +72,7 @@ impl Handler for FleetwoodHandler {
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::from_default_env().add_directive("fleetwood=info".parse().unwrap()),
+            EnvFilter::from_default_env().add_directive("oauth=info".parse().unwrap()),
         )
         .init();
 
