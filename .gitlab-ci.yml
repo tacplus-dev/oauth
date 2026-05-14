@@ -58,7 +58,7 @@ variables:
 build-arm64:
   extends: .build-arch
   tags:
-    - br.aarch64
+    - saas-linux-large-arm64
   variables:
     ARCH: arm64
 
