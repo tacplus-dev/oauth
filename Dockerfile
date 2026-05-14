@@ -16,6 +16,5 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.description="Session management service for Cavalier control plane"
 
 COPY target/release/oauth /usr/local/bin/oauth
-RUN chmod +x /usr/local/bin/oauth
 
 ENTRYPOINT ["oauth"]
