@@ -265,7 +265,10 @@ impl AuthHandler for AuthImpl {
                 &payload.callback_url,
             )
             .await
-            .map_err(|e| tonic::Status::internal(format!("token exchange failed: {e}")))?;
+            .map_err(|e| {
+                warn!(error = %e, "token exchange failed");
+                tonic::Status::internal(format!("token exchange failed: {e}"))
+            })?;
 
         let id_token_str = token_resp
             .id_token
@@ -314,6 +317,17 @@ impl AuthHandler for AuthImpl {
             prost_wkt_types::Value {
                 kind: Some(prost_wkt_types::value::Kind::StringValue(
                     "fleetwood".to_string(),
+                )),
+            },
+        );
+        // Set sub — OPA trusted_caller check requires input.claims.sub.
+        // build_claims_struct renames "sub" → "origin_sub" to avoid collisions,
+        // so we re-inject the resolved subject (email or opaque sub) as "sub".
+        claims.fields.insert(
+            "sub".to_string(),
+            prost_wkt_types::Value {
+                kind: Some(prost_wkt_types::value::Kind::StringValue(
+                    subject.clone(),
                 )),
             },
         );
