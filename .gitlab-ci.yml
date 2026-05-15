@@ -76,10 +76,11 @@ build-arm64:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+-[a-zA-Z0-9_][a-zA-Z0-9_.-]*\.\d+$/
   before_script:
     - *parse-version
-    # Pre-pull the Dockerfile base image using group credentials (DOCKER_AUTH_CONFIG
-    # has an oauth2 token with cross-project read access). After pulling it into
-    # the local daemon cache, we switch to the CI job token (write access) for push.
-    - docker pull "$(head -20 Dockerfile | grep '^FROM' | head -1 | awk '{print $2}')" || true
+    # Merge group credentials (DOCKER_AUTH_CONFIG, cross-project read) with the CI
+    # job token (push access) into ~/.docker/config.json so docker build can pull
+    # schematic base images and docker push can write to the project registry.
+    - mkdir -p ~/.docker
+    - '[ -n "$DOCKER_AUTH_CONFIG" ] && echo "$DOCKER_AUTH_CONFIG" > ~/.docker/config.json || true'
     - unset DOCKER_AUTH_CONFIG
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
@@ -119,10 +120,11 @@ manifest:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+-[a-zA-Z0-9_][a-zA-Z0-9_.-]*\.\d+$/
   before_script:
     - *parse-version
-    # Pre-pull the Dockerfile base image using group credentials (DOCKER_AUTH_CONFIG
-    # has an oauth2 token with cross-project read access). After pulling it into
-    # the local daemon cache, we switch to the CI job token (write access) for push.
-    - docker pull "$(head -20 Dockerfile | grep '^FROM' | head -1 | awk '{print $2}')" || true
+    # Merge group credentials (DOCKER_AUTH_CONFIG, cross-project read) with the CI
+    # job token (push access) into ~/.docker/config.json so docker build can pull
+    # schematic base images and docker push can write to the project registry.
+    - mkdir -p ~/.docker
+    - '[ -n "$DOCKER_AUTH_CONFIG" ] && echo "$DOCKER_AUTH_CONFIG" > ~/.docker/config.json || true'
     - unset DOCKER_AUTH_CONFIG
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
