@@ -96,7 +96,7 @@ build-arm64:
 package-arm64:
   extends: .package-arch
   tags:
-    - cavalier-arm64
+    - br.aarch64
   needs:
     - build-arm64
   variables:
