@@ -94,7 +94,7 @@ build-arm64:
 package-arm64:
   extends: .package-arch
   tags:
-    - br.aarch64
+    - cavalier-arm64
   needs:
     - build-arm64
   variables:
@@ -105,6 +105,8 @@ manifest:
   image: docker:latest
   services:
     - docker:dind
+  tags:
+    - br.aarch64
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
