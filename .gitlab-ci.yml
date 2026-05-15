@@ -59,7 +59,7 @@ variables:
 build-arm64:
   extends: .build-arch
   tags:
-    - br.aarch64
+    - schematic-aarch64
   variables:
     ARCH: arm64
 
@@ -93,7 +93,7 @@ build-arm64:
 package-arm64:
   extends: .package-arch
   tags:
-    - saas-linux-large-arm64
+    - schematic-aarch64
   needs:
     - build-arm64
   variables:
@@ -106,7 +106,7 @@ manifest:
   services:
     - docker:dind
   tags:
-    - saas-linux-large-arm64
+    - schematic-aarch64
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
