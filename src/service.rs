@@ -8,33 +8,32 @@ use tokio_stream::StreamExt;
 use tracing::{info, warn};
 
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
-use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::token::TokenHandler;
 use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::common::tokenrequest::TokenMintRequest;
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 use oauth_tacplus::types::services::oauth::oauth::{
-    session_request, session_response, InstallTokenRequest, SessionRequest, SessionResponse,
+    session_request, session_response, PendingTokensDeleteRequest, SessionRequest, SessionResponse,
 };
-use crate::session::SessionRegistry;
+use oauth_tacplus::types::services::oauth::oauth_state_service_client::OauthStateServiceClient;
 
 /// FleetwoodImpl implements the FleetwoodServiceHandler trait.
 pub struct FleetwoodImpl {
-    sessions: Arc<SessionRegistry>,
     sm: Arc<ServiceManager>,
+    session_timeout_secs: u64,
     refresh_lifetime_secs: i64,
     auto_refresh_before_secs: i64,
 }
 
 impl FleetwoodImpl {
     pub fn new(
-        sessions: Arc<SessionRegistry>,
         sm: Arc<ServiceManager>,
+        session_timeout_secs: u64,
         refresh_lifetime_secs: i64,
         auto_refresh_before_secs: i64,
     ) -> Self {
         Self {
-            sessions,
             sm,
+            session_timeout_secs,
             refresh_lifetime_secs,
             auto_refresh_before_secs,
         }
@@ -42,7 +41,7 @@ impl FleetwoodImpl {
 }
 
 /// Exchange a short-lived token for a long-lived one via kernel Mint service.
-/// Shared by install_token and the daemon refresh loop.
+/// Used by the daemon refresh loop.
 /// `trace_id` is forwarded to kernel so the mint hop appears in `cavalierctl trace tail`.
 async fn exchange_token(
     sm: &ServiceManager,
@@ -199,41 +198,188 @@ impl SessionHandler for FleetwoodImpl {
 
             Ok(tonic::Response::new(Box::pin(ReceiverStream::new(rx))))
         } else {
-            // Unauthenticated session (initial auth flow): register and
-            // wait for install_token to deliver the token.
-            info!(session_id = %session_id, "unauthenticated session opened, waiting for token");
+            // Unauthenticated session (initial auth flow): watch kernel state
+            // for a PendingSessionToken written by the Callback handler.
+            info!(session_id = %session_id, "unauthenticated session opened, watching kernel state for token");
 
-            let rx = self.sessions.register(session_id)?;
+            let (tx, rx) = mpsc::channel(4);
+            let sm = Arc::clone(&self.sm);
+            let timeout = Duration::from_secs(self.session_timeout_secs);
+
+            tokio::spawn(async move {
+                match watch_pending_token(&sm, &session_id, timeout).await {
+                    Ok(token) => {
+                        info!(session_id = %session_id, "token received from kernel state, delivering to CLI");
+                        let _ = tx
+                            .send(Ok(SessionResponse {
+                                msg: Some(session_response::Msg::Token(token)),
+                                ..Default::default()
+                            }))
+                            .await;
+                    }
+                    Err(e) => {
+                        warn!(session_id = %session_id, error = %e, "session watch failed");
+                        let _ = tx
+                            .send(Ok(SessionResponse {
+                                msg: Some(session_response::Msg::Error(e.to_string())),
+                                ..Default::default()
+                            }))
+                            .await;
+                    }
+                }
+            });
+
             Ok(tonic::Response::new(Box::pin(ReceiverStream::new(rx))))
         }
     }
 
 }
 
-#[tonic::async_trait]
-impl TokenHandler for FleetwoodImpl {
-    async fn install_token(
-        &self,
-        _caller: Option<&servicemanager::auth::Caller>,
-        req: InstallTokenRequest,
-    ) -> Result<(), tonic::Status> {
-        let session_id = &req.session_id;
-        let short_lived_token = &req.token;
+/// Watch OAuthState.pending_tokens for a token matching `session_id`.
+/// Returns the token string on success, or an error if the session times out.
+/// Deletes the consumed entry from kernel state after delivery.
+async fn watch_pending_token(
+    sm: &ServiceManager,
+    session_id: &str,
+    timeout: Duration,
+) -> Result<String, tonic::Status> {
+    let channel = sm.conn().await.ok_or_else(|| {
+        tonic::Status::unavailable("no connection to kernel")
+    })?;
+    let svc_token = sm.get_token().await.map_err(|e| {
+        tonic::Status::internal(format!("failed to get service token: {e}"))
+    })?;
 
-        info!(session_id = %session_id, "InstallToken called, exchanging token");
+    let mut client = OauthStateServiceClient::new(channel);
 
-        let long_lived_token =
-            exchange_token(&self.sm, short_lived_token, self.refresh_lifetime_secs, &req.trace_id).await?;
+    let mut request = tonic::Request::new(Default::default());
+    request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", svc_token).parse().map_err(|_| {
+            tonic::Status::internal("invalid token metadata")
+        })?,
+    );
 
-        let response = SessionResponse {
-            msg: Some(session_response::Msg::Token(long_lived_token)),
-            ..Default::default()
+    let response = client.watch_pending_tokens(request).await.map_err(|e| {
+        tonic::Status::internal(format!("failed to start state watch: {e}"))
+    })?;
+    let mut stream = response.into_inner();
+
+    let result = tokio::time::timeout(timeout, async {
+        while let Some(msg) = stream.next().await {
+            match msg {
+                Ok(entries) => {
+                    if let Some(pending) = entries.entries.get(session_id) {
+                        if !pending.token.is_empty() {
+                            return Ok(pending.token.clone());
+                        }
+                    }
+                }
+                Err(e) => {
+                    return Err(tonic::Status::internal(format!("state watch error: {e}")));
+                }
+            }
+        }
+        Err(tonic::Status::internal("state watch stream ended"))
+    })
+    .await;
+
+    let token = match result {
+        Ok(inner) => inner?,
+        Err(_) => return Err(tonic::Status::deadline_exceeded("session timed out waiting for token")),
+    };
+
+    // Clean up the consumed entry from kernel state.
+    if let Err(e) = delete_pending_token(sm, session_id).await {
+        warn!(session_id = %session_id, error = %e, "failed to delete consumed pending token");
+    }
+
+    Ok(token)
+}
+
+/// Delete a pending token entry from OAuthState.
+async fn delete_pending_token(
+    sm: &ServiceManager,
+    session_id: &str,
+) -> Result<(), tonic::Status> {
+    let channel = sm.conn().await.ok_or_else(|| {
+        tonic::Status::unavailable("no connection to kernel")
+    })?;
+    let svc_token = sm.get_token().await.map_err(|e| {
+        tonic::Status::internal(format!("failed to get service token: {e}"))
+    })?;
+
+    let mut client = OauthStateServiceClient::new(channel);
+    let mut request = tonic::Request::new(PendingTokensDeleteRequest {
+        key: session_id.to_string(),
+        ..Default::default()
+    });
+    request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", svc_token).parse().map_err(|_| {
+            tonic::Status::internal("invalid token metadata")
+        })?,
+    );
+
+    client.delete_pending_tokens(request).await?;
+    Ok(())
+}
+
+/// Periodically reap unclaimed pending tokens from kernel state.
+/// Tokens older than `timeout_secs` are logged and deleted.
+pub async fn reap_expired_tokens(sm: Arc<ServiceManager>, timeout_secs: u64) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let mut tick = tokio::time::interval(Duration::from_secs(30));
+    loop {
+        tick.tick().await;
+
+        let channel = match sm.conn().await {
+            Some(c) => c,
+            None => continue,
+        };
+        let svc_token = match sm.get_token().await {
+            Ok(t) => t,
+            Err(_) => continue,
         };
 
-        self.sessions.deliver(session_id, response).await?;
+        let mut client = OauthStateServiceClient::new(channel);
 
-        info!(session_id = %session_id, "token delivered to CLI session");
+        let mut request = tonic::Request::new(Default::default());
+        if let Ok(val) = format!("Bearer {}", svc_token).parse() {
+            request.metadata_mut().insert("authorization", val);
+        }
 
-        Ok(())
+        // Get current snapshot of pending tokens.
+        let response = match client.watch_pending_tokens(request).await {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        let mut stream = response.into_inner();
+
+        // Read first batch (current state).
+        let entries = match stream.next().await {
+            Some(Ok(e)) => e,
+            _ => continue,
+        };
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+
+        for (key, pending) in &entries.entries {
+            let age = now - pending.created_at;
+            if age > timeout_secs as i64 {
+                warn!(
+                    session_id = %key,
+                    age_secs = age,
+                    "reaping unclaimed pending token"
+                );
+                if let Err(e) = delete_pending_token(&sm, key).await {
+                    warn!(session_id = %key, error = %e, "failed to reap pending token");
+                }
+            }
+        }
     }
 }

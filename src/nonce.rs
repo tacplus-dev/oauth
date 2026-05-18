@@ -24,6 +24,11 @@ pub struct StatePayload {
     /// Unix timestamp when the state was created.
     #[serde(rename = "t")]
     pub created_at: i64,
+    /// CLI session ID, present when the flow was initiated by cavalierctl.
+    /// When set, the Callback handler writes the minted token to OAuthState
+    /// for delivery to the CLI bidi stream.
+    #[serde(rename = "s", default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
 }
 
 /// AES-256-GCM codec for OAuth2 state parameters.
@@ -53,7 +58,14 @@ impl StateCodec {
     }
 
     /// Encrypt state payload into a URL-safe base64 string.
-    pub fn encode(&self, provider_index: i32, callback_url: &str, code_verifier: &str) -> String {
+    /// `session_id` is set when the flow was initiated by a CLI client.
+    pub fn encode(
+        &self,
+        provider_index: i32,
+        callback_url: &str,
+        code_verifier: &str,
+        session_id: Option<&str>,
+    ) -> String {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -64,6 +76,7 @@ impl StateCodec {
             callback_url: callback_url.to_string(),
             code_verifier: code_verifier.to_string(),
             created_at: now,
+            session_id: session_id.map(|s| s.to_string()),
         };
         let plaintext = serde_json::to_vec(&payload).unwrap();
 

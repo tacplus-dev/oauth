@@ -2,24 +2,20 @@ mod auth;
 mod nonce;
 mod oidc;
 mod service;
-mod session;
 
 use std::sync::Arc;
 
-use tokio::time::{interval, Duration};
 use tracing_subscriber::EnvFilter;
 
 use oauth_tacplus::s2sm::handler::Handler;
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
-use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::token::TokenHandler;
 use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::services::oauth::oauth::Config as FleetwoodConfig;
 use oauth_tacplus::types::services::oauth::helpers::{config_defaults, config_from_bytes};
 
 use crate::auth::AuthImpl;
 use crate::service::FleetwoodImpl;
-use crate::session::SessionRegistry;
 
 /// FleetwoodHandler implements the generated Handler trait.
 /// It wires the SM lifecycle to the service implementations.
@@ -34,22 +30,11 @@ impl Handler for FleetwoodHandler {
         Arc::clone(&self.fleetwood_impl) as Arc<dyn SessionHandler>
     }
 
-    fn token_grpc_impl(&self) -> Arc<dyn TokenHandler> {
-        Arc::clone(&self.fleetwood_impl) as Arc<dyn TokenHandler>
-    }
-
     fn auth_grpc_impl(&self) -> Arc<dyn AuthHandler> {
         Arc::clone(&self.auth_impl) as Arc<dyn AuthHandler>
     }
 
     async fn session_config(
-        &self,
-        _cfg: &FleetwoodConfig,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
-    }
-
-    async fn token_config(
         &self,
         _cfg: &FleetwoodConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -95,25 +80,18 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let sm = Arc::new(ServiceManager::new().await?);
 
-    // Create session registry with configured timeout.
-    let sessions = Arc::new(SessionRegistry::new(cfg.session_timeout_seconds as u64));
-
-    // Spawn periodic reaper for expired sessions.
-    let reaper_sessions = Arc::clone(&sessions);
-    tokio::spawn(async move {
-        let mut tick = interval(Duration::from_secs(30));
-        loop {
-            tick.tick().await;
-            reaper_sessions.reap_expired();
-        }
-    });
-
-    // Create the session/token handler.
+    // Create the session handler.
     let fleetwood_impl = Arc::new(FleetwoodImpl::new(
-        Arc::clone(&sessions),
         Arc::clone(&sm),
+        cfg.session_timeout_seconds as u64,
         cfg.refresh_token_lifetime_seconds,
         cfg.auto_refresh_before_seconds,
+    ));
+
+    // Spawn periodic reaper for unclaimed pending tokens in kernel state.
+    tokio::spawn(service::reap_expired_tokens(
+        Arc::clone(&sm),
+        cfg.session_timeout_seconds as u64,
     ));
 
     // Create the auth handler (OAuth2/OIDC browser flows).

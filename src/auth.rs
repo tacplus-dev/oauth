@@ -13,6 +13,10 @@ use oauth_tacplus::types::services::oauth::oauth::{
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
+use oauth_tacplus::types::services::oauth::oauth_state_service_client::OauthStateServiceClient;
+use oauth_tacplus::types::services::oauth::oauth::{
+    PendingSessionToken, PendingTokensPutRequest,
+};
 
 use crate::nonce::{generate_code_verifier, StateCodec};
 use crate::oidc::OidcClient;
@@ -224,10 +228,15 @@ impl AuthHandler for AuthImpl {
         let state = guard.as_ref().unwrap();
 
         let code_verifier = generate_code_verifier();
+        let session_id = if req.session_id.is_empty() {
+            None
+        } else {
+            Some(req.session_id.as_str())
+        };
         let encoded_state =
             state
                 .state_codec
-                .encode(req.provider_index, &req.callback_url, &code_verifier);
+                .encode(req.provider_index, &req.callback_url, &code_verifier, session_id);
 
         let redirect_url = state
             .oidc_client
@@ -391,6 +400,47 @@ impl AuthHandler for AuthImpl {
             .as_ref()
             .map(|t| expires_in_from_token(t, now))
             .unwrap_or(0);
+
+        // 8. If this was a CLI-originated flow, write the token to kernel state
+        // for cross-pod delivery to the bidi stream.
+        if let Some(session_id) = &payload.session_id {
+            let now_secs = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64;
+
+            let channel = self.sm.conn().await.ok_or_else(|| {
+                tonic::Status::unavailable("no connection to kernel for state write")
+            })?;
+            let state_token = self.sm.get_token().await.map_err(|e| {
+                tonic::Status::internal(format!("failed to get service token: {e}"))
+            })?;
+            let mut state_client = OauthStateServiceClient::new(channel);
+
+            let mut put_req = tonic::Request::new(PendingTokensPutRequest {
+                key: session_id.clone(),
+                value: Some(PendingSessionToken {
+                    session_id: session_id.clone(),
+                    token: refresh_token.clone(),
+                    created_at: now_secs,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            put_req.metadata_mut().insert(
+                "authorization",
+                format!("Bearer {}", state_token).parse().map_err(|_| {
+                    tonic::Status::internal("invalid token metadata")
+                })?,
+            );
+
+            state_client.put_pending_tokens(put_req).await.map_err(|e| {
+                warn!(session_id = %session_id, error = %e, "failed to write pending token to kernel state");
+                tonic::Status::internal(format!("failed to write session token: {e}"))
+            })?;
+
+            info!(sub = %subject, session_id = %session_id, "CLI token written to kernel state for delivery");
+        }
 
         info!(sub = %subject, "OAuth callback completed (delegated to kernel)");
 
