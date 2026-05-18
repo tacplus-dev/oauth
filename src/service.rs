@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,26 +18,65 @@ use oauth_tacplus::types::services::oauth::oauth::{
 use oauth_tacplus::types::services::oauth::oauth_state_service_client::OauthStateServiceClient;
 
 /// FleetwoodImpl implements the FleetwoodServiceHandler trait.
+/// Config values are atomic so they can be updated by SM config delivery
+/// from kernel without restarting the service.
 pub struct FleetwoodImpl {
     sm: Arc<ServiceManager>,
-    session_timeout_secs: u64,
-    refresh_lifetime_secs: i64,
-    auto_refresh_before_secs: i64,
+    session_timeout_secs: AtomicU64,
+    refresh_lifetime_secs: AtomicI64,
+    auto_refresh_before_secs: AtomicI64,
 }
 
 impl FleetwoodImpl {
-    pub fn new(
-        sm: Arc<ServiceManager>,
-        session_timeout_secs: u64,
-        refresh_lifetime_secs: i64,
-        auto_refresh_before_secs: i64,
-    ) -> Self {
+    pub fn new(sm: Arc<ServiceManager>) -> Self {
         Self {
             sm,
-            session_timeout_secs,
-            refresh_lifetime_secs,
-            auto_refresh_before_secs,
+            session_timeout_secs: AtomicU64::new(300),
+            refresh_lifetime_secs: AtomicI64::new(604800),
+            auto_refresh_before_secs: AtomicI64::new(3600),
         }
+    }
+
+    /// Apply config values delivered by kernel via SM.
+    pub fn apply_session_config(&self, cfg: &oauth_tacplus::types::services::oauth::oauth::Config) {
+        let timeout = if cfg.session_timeout_seconds > 0 {
+            cfg.session_timeout_seconds as u64
+        } else {
+            300
+        };
+        let refresh = if cfg.refresh_token_lifetime_seconds > 0 {
+            cfg.refresh_token_lifetime_seconds
+        } else {
+            604800
+        };
+        let auto_refresh = if cfg.auto_refresh_before_seconds > 0 {
+            cfg.auto_refresh_before_seconds
+        } else {
+            3600
+        };
+
+        self.session_timeout_secs.store(timeout, Ordering::Relaxed);
+        self.refresh_lifetime_secs.store(refresh, Ordering::Relaxed);
+        self.auto_refresh_before_secs.store(auto_refresh, Ordering::Relaxed);
+
+        info!(
+            session_timeout = timeout,
+            refresh_lifetime = refresh,
+            auto_refresh_before = auto_refresh,
+            "session config applied from kernel"
+        );
+    }
+
+    fn session_timeout(&self) -> u64 {
+        self.session_timeout_secs.load(Ordering::Relaxed)
+    }
+
+    fn refresh_lifetime(&self) -> i64 {
+        self.refresh_lifetime_secs.load(Ordering::Relaxed)
+    }
+
+    fn auto_refresh_before(&self) -> i64 {
+        self.auto_refresh_before_secs.load(Ordering::Relaxed)
     }
 }
 
@@ -142,8 +182,8 @@ impl SessionHandler for FleetwoodImpl {
 
             let (tx, rx) = mpsc::channel(4);
             let sm = Arc::clone(&self.sm);
-            let refresh_lifetime = self.refresh_lifetime_secs;
-            let auto_refresh_before = self.auto_refresh_before_secs;
+            let refresh_lifetime = self.refresh_lifetime();
+            let auto_refresh_before = self.auto_refresh_before();
             let mut current_token = bearer_str;
 
             tokio::spawn(async move {
@@ -204,7 +244,7 @@ impl SessionHandler for FleetwoodImpl {
 
             let (tx, rx) = mpsc::channel(4);
             let sm = Arc::clone(&self.sm);
-            let timeout = Duration::from_secs(self.session_timeout_secs);
+            let timeout = Duration::from_secs(self.session_timeout());
 
             tokio::spawn(async move {
                 match watch_pending_token(&sm, &session_id, timeout).await {
@@ -326,19 +366,19 @@ async fn delete_pending_token(
 }
 
 /// Periodically reap unclaimed pending tokens from kernel state.
-/// Tokens older than `timeout_secs` are logged and deleted.
-pub async fn reap_expired_tokens(sm: Arc<ServiceManager>, timeout_secs: u64) {
+/// Reads the current session timeout from FleetwoodImpl (updated by kernel config).
+pub async fn reap_expired_tokens(impl_ref: Arc<FleetwoodImpl>) {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     let mut tick = tokio::time::interval(Duration::from_secs(30));
     loop {
         tick.tick().await;
 
-        let channel = match sm.conn().await {
+        let channel = match impl_ref.sm.conn().await {
             Some(c) => c,
             None => continue,
         };
-        let svc_token = match sm.get_token().await {
+        let svc_token = match impl_ref.sm.get_token().await {
             Ok(t) => t,
             Err(_) => continue,
         };
@@ -368,15 +408,16 @@ pub async fn reap_expired_tokens(sm: Arc<ServiceManager>, timeout_secs: u64) {
             .unwrap_or_default()
             .as_secs() as i64;
 
+        let timeout_secs = impl_ref.session_timeout() as i64;
         for (key, pending) in &entries.entries {
             let age = now - pending.created_at;
-            if age > timeout_secs as i64 {
+            if age > timeout_secs {
                 warn!(
                     session_id = %key,
                     age_secs = age,
                     "reaping unclaimed pending token"
                 );
-                if let Err(e) = delete_pending_token(&sm, key).await {
+                if let Err(e) = delete_pending_token(&impl_ref.sm, key).await {
                     warn!(session_id = %key, error = %e, "failed to reap pending token");
                 }
             }

@@ -12,7 +12,6 @@ use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHan
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
 use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::services::oauth::oauth::Config as FleetwoodConfig;
-use oauth_tacplus::types::services::oauth::helpers::{config_defaults, config_from_bytes};
 
 use crate::auth::AuthImpl;
 use crate::service::FleetwoodImpl;
@@ -36,8 +35,9 @@ impl Handler for FleetwoodHandler {
 
     async fn session_config(
         &self,
-        _cfg: &FleetwoodConfig,
+        cfg: &FleetwoodConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        self.fleetwood_impl.apply_session_config(cfg);
         Ok(())
     }
 
@@ -68,31 +68,17 @@ async fn main() {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = load_config();
-
-    tracing::info!(
-        session_timeout = cfg.session_timeout_seconds,
-        refresh_lifetime = cfg.refresh_token_lifetime_seconds,
-        auto_refresh_before = cfg.auto_refresh_before_seconds,
-        oauth_enabled = cfg.enable,
-        "starting fleetwood"
-    );
+    tracing::info!("starting fleetwood");
 
     let sm = Arc::new(ServiceManager::new().await?);
 
-    // Create the session handler.
-    let fleetwood_impl = Arc::new(FleetwoodImpl::new(
-        Arc::clone(&sm),
-        cfg.session_timeout_seconds as u64,
-        cfg.refresh_token_lifetime_seconds,
-        cfg.auto_refresh_before_seconds,
-    ));
+    // Create the session handler. Config values (session_timeout, refresh_lifetime,
+    // auto_refresh_before) use proto defaults until kernel delivers config via
+    // session_config() callback.
+    let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm)));
 
     // Spawn periodic reaper for unclaimed pending tokens in kernel state.
-    tokio::spawn(service::reap_expired_tokens(
-        Arc::clone(&sm),
-        cfg.session_timeout_seconds as u64,
-    ));
+    tokio::spawn(service::reap_expired_tokens(Arc::clone(&fleetwood_impl)));
 
     // Create the auth handler (OAuth2/OIDC browser flows).
     let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm)));
@@ -105,17 +91,4 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // sm.run() handles TLS setup, service registration, and graceful shutdown.
     sm.run(handler).await
-}
-
-/// Load fleetwood-specific config from FLEETWOOD_CONFIG env var, or use defaults.
-fn load_config() -> FleetwoodConfig {
-    let mut cfg = match std::env::var("FLEETWOOD_CONFIG") {
-        Ok(data) => config_from_bytes(data.as_bytes()).unwrap_or_else(|e| {
-            tracing::warn!(error = %e, "failed to parse FLEETWOOD_CONFIG, using defaults");
-            FleetwoodConfig::default()
-        }),
-        Err(_) => FleetwoodConfig::default(),
-    };
-    config_defaults(&mut cfg);
-    cfg
 }
