@@ -1,4 +1,4 @@
-tacplus-version: "1.2.x"
+tacplus-version: "1.2.40"
 language: rust
 pkg: com.gitlab.secondstarcavalier.controlplane.cavalier.services.oauth
 output-dir: target/generated-sources
