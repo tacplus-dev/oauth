@@ -13,9 +13,10 @@ use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::common::tokenrequest::TokenMintRequest;
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 use oauth_tacplus::types::services::oauth::oauth::{
-    session_request, session_response, PendingTokensDeleteRequest, SessionRequest, SessionResponse,
+    session_request, session_response, PendingTokensGetRequest, PendingTokensPutRequest,
+    SessionRequest, SessionResponse,
 };
-use oauth_tacplus::types::services::oauth::oauth_state_service_client::OauthStateServiceClient;
+use oauth_tacplus::types::services::oauth::o_auth_state_service_client::OAuthStateServiceClient;
 
 /// FleetwoodImpl implements the FleetwoodServiceHandler trait.
 /// Config values are atomic so they can be updated by SM config delivery
@@ -290,7 +291,7 @@ async fn watch_pending_token(
         tonic::Status::internal(format!("failed to get service token: {e}"))
     })?;
 
-    let mut client = OauthStateServiceClient::new(channel);
+    let mut client = OAuthStateServiceClient::new(channel);
 
     let mut request = tonic::Request::new(Default::default());
     request.metadata_mut().insert(
@@ -349,8 +350,8 @@ async fn delete_pending_token(
         tonic::Status::internal(format!("failed to get service token: {e}"))
     })?;
 
-    let mut client = OauthStateServiceClient::new(channel);
-    let mut request = tonic::Request::new(PendingTokensDeleteRequest {
+    let mut client = OAuthStateServiceClient::new(channel);
+    let mut request = tonic::Request::new(PendingTokensGetRequest {
         key: session_id.to_string(),
         ..Default::default()
     });
@@ -383,7 +384,7 @@ pub async fn reap_expired_tokens(impl_ref: Arc<FleetwoodImpl>) {
             Err(_) => continue,
         };
 
-        let mut client = OauthStateServiceClient::new(channel);
+        let mut client = OAuthStateServiceClient::new(channel);
 
         let mut request = tonic::Request::new(Default::default());
         if let Ok(val) = format!("Bearer {}", svc_token).parse() {

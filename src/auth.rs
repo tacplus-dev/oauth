@@ -13,7 +13,7 @@ use oauth_tacplus::types::services::oauth::oauth::{
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
-use oauth_tacplus::types::services::oauth::oauth_state_service_client::OauthStateServiceClient;
+use oauth_tacplus::types::services::oauth::o_auth_state_service_client::OAuthStateServiceClient;
 use oauth_tacplus::types::services::oauth::oauth::{
     PendingSessionToken, PendingTokensPutRequest,
 };
@@ -415,7 +415,7 @@ impl AuthHandler for AuthImpl {
             let state_token = self.sm.get_token().await.map_err(|e| {
                 tonic::Status::internal(format!("failed to get service token: {e}"))
             })?;
-            let mut state_client = OauthStateServiceClient::new(channel);
+            let mut state_client = OAuthStateServiceClient::new(channel);
 
             let mut put_req = tonic::Request::new(PendingTokensPutRequest {
                 key: session_id.clone(),
