@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, oneshot, RwLock};
+use tokio_stream::StreamExt;
 use tracing::{info, warn};
 
 use oauth_tacplus::s2sm::ServiceManager;
@@ -31,10 +31,9 @@ impl BrokerHandle {
         let pending_clone = Arc::clone(&pending);
         let instance_id_owned = instance_id.clone();
 
-        // Spawn the broker stream with reconnect loop
+        // Spawn the broker stream
         tokio::spawn(async move {
             let instance_id = instance_id_owned;
-            // Send initial Register as the first message once the stream opens
             let register_msg = CliTokenBrokerRequest {
                 msg: Some(cli_token_broker_request::Msg::Register(
                     CliTokenBrokerRegister {
@@ -45,24 +44,15 @@ impl BrokerHandle {
                 ..Default::default()
             };
 
-            loop {
-                info!(instance_id = %instance_id, "broker: connecting to kernel CliTokenBroker");
+            info!(instance_id = %instance_id, "broker: connecting to kernel CliTokenBroker");
 
-                match Self::run_stream(&sm, register_msg.clone(), &mut rx, &pending_clone).await {
-                    Ok(()) => {
-                        info!("broker: stream closed cleanly");
-                        break;
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "broker: stream failed, reconnecting in 5s");
-                        // Fail all pending nonces
-                        {
-                            let mut map = pending_clone.write().await;
-                            for (_nonce, sender) in map.drain() {
-                                let _ = sender.send(String::new());
-                            }
-                        }
-                        tokio::time::sleep(Duration::from_secs(5)).await;
+            match Self::run_stream(&sm, register_msg, rx, &pending_clone).await {
+                Ok(()) => info!("broker: stream closed cleanly"),
+                Err(e) => {
+                    warn!(error = %e, "broker: stream failed");
+                    let mut map = pending_clone.write().await;
+                    for (_nonce, sender) in map.drain() {
+                        let _ = sender.send(String::new());
                     }
                 }
             }
@@ -76,35 +66,22 @@ impl BrokerHandle {
     async fn run_stream(
         sm: &ServiceManager,
         register_msg: CliTokenBrokerRequest,
-        rx: &mut mpsc::Receiver<CliTokenBrokerRequest>,
+        rx: mpsc::Receiver<CliTokenBrokerRequest>,
         pending: &Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Use the SM's S2S client infrastructure (handles TLS, auth, routing)
         let client = sm.grpc_clients().services().cli_token_broker_client();
 
-        // Build the outbound stream: register first, then forward from the channel
-        let (stream_tx, stream_rx) = mpsc::channel::<CliTokenBrokerRequest>(32);
+        // Build the outbound stream: Register first, then user messages from rx
+        let register_stream = tokio_stream::once(register_msg);
+        let user_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+        let outbound = register_stream.chain(user_stream);
 
-        // Send Register as first message
-        stream_tx.send(register_msg).await?;
-
-        // Spawn a forwarder from the main tx channel to the stream tx
-        let stream_tx_clone = stream_tx.clone();
-        tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                if stream_tx_clone.send(msg).await.is_err() {
-                    break; // stream closed
-                }
-            }
-        });
-
-        let outbound = tokio_stream::wrappers::ReceiverStream::new(stream_rx);
         let response = client.broker_stream(outbound).await?;
         let mut inbound = response.into_inner();
 
         info!("broker: stream opened");
 
-        use tokio_stream::StreamExt;
         while let Some(msg) = inbound.next().await {
             match msg {
                 Ok(resp) => match resp.msg {
