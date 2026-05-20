@@ -27,11 +27,13 @@ impl BrokerHandle {
         let pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>> =
             Arc::new(RwLock::new(HashMap::new()));
 
-        let (tx, rx) = mpsc::channel::<CliTokenBrokerRequest>(32);
+        let (tx, mut rx) = mpsc::channel::<CliTokenBrokerRequest>(32);
         let pending_clone = Arc::clone(&pending);
+        let instance_id_owned = instance_id.clone();
 
         // Spawn the broker stream with reconnect loop
         tokio::spawn(async move {
+            let instance_id = instance_id_owned;
             // Send initial Register as the first message once the stream opens
             let register_msg = CliTokenBrokerRequest {
                 msg: Some(cli_token_broker_request::Msg::Register(
