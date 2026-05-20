@@ -476,7 +476,7 @@ impl AuthHandler for AuthImpl {
 
         // Extract claims from the caller's token for OPA entitlement resolution.
         // Build a prost Struct from the token's custom fields.
-        let mut fields = std::collections::BTreeMap::new();
+        let mut fields = std::collections::HashMap::new();
         fields.insert("sub".to_string(), prost_wkt_types::Value {
             kind: Some(prost_wkt_types::value::Kind::StringValue(subject.clone())),
         });
