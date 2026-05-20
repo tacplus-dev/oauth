@@ -1,5 +1,4 @@
 mod auth;
-mod broker;
 mod nonce;
 mod oidc;
 mod service;
@@ -13,13 +12,15 @@ use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHan
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
 use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::services::oauth::oauth::Config as FleetwoodConfig;
+use oauth_tacplus::types::services::kernel::kernel::{
+    CliTokenBrokerRequest, CliTokenBrokerResponse,
+    cli_token_broker_request, cli_token_broker_response,
+    CliTokenBrokerRegister,
+};
 
 use crate::auth::AuthImpl;
-use crate::broker::BrokerHandle;
 use crate::service::FleetwoodImpl;
 
-/// FleetwoodHandler implements the generated Handler trait.
-/// It wires the SM lifecycle to the service implementations.
 struct FleetwoodHandler {
     fleetwood_impl: Arc<FleetwoodImpl>,
     auth_impl: Arc<AuthImpl>,
@@ -74,22 +75,61 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let sm = Arc::new(ServiceManager::new().await?);
 
-    // Start the broker stream to kernel's CliTokenBroker.
+    // Open the managed bidi stream to kernel's CliTokenBroker.
+    // on_connect sends Register on each (re)connect.
+    // on_message routes token deliveries to pending CLI sessions.
     let instance_id = sm.instance_id().to_string();
-    let broker = BrokerHandle::start(Arc::clone(&sm), instance_id);
+    let pending: Arc<tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::oneshot::Sender<String>>>> =
+        Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
 
-    // Create the session handler with broker for CLI auth nonce registration.
-    let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm), broker.clone()));
+    let pending_for_callback = Arc::clone(&pending);
+    let broker_handle = sm.grpc_clients().services().cli_token_broker_client().broker_stream(
+        move |tx| {
+            let id = instance_id.clone();
+            async move {
+                let _ = tx.send(CliTokenBrokerRequest {
+                    msg: Some(cli_token_broker_request::Msg::Register(
+                        CliTokenBrokerRegister { instance_id: id, ..Default::default() },
+                    )),
+                    ..Default::default()
+                }).await;
+            }
+        },
+        Arc::new(move |resp: CliTokenBrokerResponse| {
+            let pending = Arc::clone(&pending_for_callback);
+            match resp.msg {
+                Some(cli_token_broker_response::Msg::TokenDelivery(delivery)) => {
+                    let nonce = delivery.nonce;
+                    let token = delivery.refresh_token;
+                    tokio::spawn(async move {
+                        let mut map = pending.write().await;
+                        if let Some(sender) = map.remove(&nonce) {
+                            let _ = sender.send(token);
+                        }
+                    });
+                }
+                Some(cli_token_broker_response::Msg::Error(err)) => {
+                    let nonce = err.nonce;
+                    tokio::spawn(async move {
+                        let mut map = pending.write().await;
+                        if let Some(sender) = map.remove(&nonce) {
+                            let _ = sender.send(String::new());
+                        }
+                    });
+                }
+                _ => {}
+            }
+        }),
+    );
 
-    // Create the auth handler with broker for CLI auth nonce completion.
-    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), broker));
+    let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm), broker_handle, Arc::clone(&pending)));
+    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), fleetwood_impl.broker_handle(), Arc::clone(&pending)));
+    // Note: broker_handle was moved into FleetwoodImpl. AuthImpl borrows it via broker_handle().
 
-    // Build the Handler and run through the generated ServiceManager lifecycle.
     let handler: Arc<dyn Handler> = Arc::new(FleetwoodHandler {
         fleetwood_impl,
         auth_impl,
     });
 
-    // sm.run() handles TLS setup, service registration, and graceful shutdown.
     sm.run(handler).await
 }

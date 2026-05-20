@@ -13,11 +13,13 @@ use oauth_tacplus::types::services::oauth::oauth::{
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
+use oauth_tacplus::types::services::kernel::kernel::{
+    CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce,
+    BrokerStreamBidiHandle,
+};
 use oauth_tacplus::types::services::oauth::oauth::{
     CompleteCliAuthRequest, CompleteCliAuthResponse,
 };
-
-use crate::broker::BrokerHandle;
 
 use crate::nonce::{generate_code_verifier, StateCodec};
 use crate::oidc::OidcClient;
@@ -25,7 +27,8 @@ use crate::oidc::OidcClient;
 /// AuthImpl implements the Auth gRPC service (OAuth2/OIDC browser flows).
 pub struct AuthImpl {
     sm: Arc<ServiceManager>,
-    broker: BrokerHandle,
+    broker: BrokerStreamBidiHandle,
+    pending: Arc<RwLock<HashMap<String, tokio::sync::oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
 }
 
@@ -37,10 +40,15 @@ struct AuthState {
 }
 
 impl AuthImpl {
-    pub fn new(sm: Arc<ServiceManager>, broker: BrokerHandle) -> Self {
+    pub fn new(
+        sm: Arc<ServiceManager>,
+        broker: &BrokerStreamBidiHandle,
+        pending: Arc<RwLock<HashMap<String, tokio::sync::oneshot::Sender<String>>>>,
+    ) -> Self {
         Self {
             sm,
-            broker,
+            broker: broker.clone(),
+            pending,
             state: RwLock::new(None),
         }
     }
@@ -408,11 +416,20 @@ impl AuthHandler for AuthImpl {
         // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
         // and delivers it to the oauth instance holding the CLI stream.
         if let Some(session_id) = &payload.session_id {
-            self.broker.complete_nonce(session_id, &subject, Some(claims)).await
-                .map_err(|e| {
-                    warn!(session_id = %session_id, error = %e, "failed to complete CLI nonce via broker");
-                    tonic::Status::internal(format!("failed to complete CLI nonce: {e}"))
-                })?;
+            self.broker.send(CliTokenBrokerRequest {
+                msg: Some(cli_token_broker_request::Msg::CompleteNonce(
+                    CliTokenBrokerCompleteNonce {
+                        nonce: session_id.clone(),
+                        subject: subject.clone(),
+                        claims: Some(claims),
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            }).await.map_err(|e| {
+                warn!(session_id = %session_id, error = %e, "failed to complete CLI nonce via broker");
+                tonic::Status::internal(format!("failed to complete CLI nonce: {e}"))
+            })?;
 
             info!(sub = %subject, session_id = %session_id, "CLI nonce completed via broker");
         }
@@ -502,9 +519,17 @@ impl AuthHandler for AuthImpl {
         }
         let claims = prost_wkt_types::Struct { fields };
 
-        self.broker
-            .complete_nonce(&req.session_id, &subject, Some(claims))
-            .await?;
+        self.broker.send(CliTokenBrokerRequest {
+            msg: Some(cli_token_broker_request::Msg::CompleteNonce(
+                CliTokenBrokerCompleteNonce {
+                    nonce: req.session_id.clone(),
+                    subject: subject.clone(),
+                    claims: Some(claims),
+                    ..Default::default()
+                },
+            )),
+            ..Default::default()
+        }).await?;
 
         info!(sub = %subject, session_id = %req.session_id, "CLI auth completed via broker (already authenticated)");
 
