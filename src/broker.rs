@@ -50,6 +50,7 @@ impl BrokerHandle {
 
         // Spawn the bidi stream handler
         tokio::spawn(async move {
+            eprintln!("BROKER: opening BrokerStream to kernel");
             info!("broker: opening BrokerStream to kernel");
             let outbound = tokio_stream::wrappers::ReceiverStream::new(rx);
 
@@ -59,9 +60,10 @@ impl BrokerHandle {
             }
 
             let mut client = CliTokenBrokerClient::new(channel);
-            info!("broker: calling broker_stream RPC");
+            eprintln!("BROKER: calling broker_stream RPC");
             match client.broker_stream(request).await {
                 Ok(response) => {
+                    eprintln!("BROKER: stream opened OK");
                     let mut inbound = response.into_inner();
                     use tokio_stream::StreamExt;
                     while let Some(msg) = inbound.next().await {
@@ -96,6 +98,7 @@ impl BrokerHandle {
                     info!("broker stream closed");
                 }
                 Err(e) => {
+                    eprintln!("BROKER: stream FAILED: {}", e);
                     warn!(error = %e, "failed to open broker stream");
                 }
             }
@@ -107,6 +110,7 @@ impl BrokerHandle {
             }
         });
 
+        eprintln!("BROKER: BrokerHandle started for instance {}", instance_id);
         info!(instance_id = %instance_id, "BrokerHandle started");
 
         Ok(Self { tx, pending })
