@@ -355,7 +355,7 @@ impl AuthHandler for AuthImpl {
 
         let mut mint_req = tonic::Request::new(MintUserTokenRequest {
             subject: subject.clone(),
-            claims: Some(claims),
+            claims: Some(claims.clone()),
             // Propagate trace_id so kernel and opa appear in the trace.
             trace_id: req.trace_id.clone(),
             ..Default::default()
@@ -474,11 +474,36 @@ impl AuthHandler for AuthImpl {
         let token = caller.token();
         let subject = token.subject().unwrap_or("unknown").to_string();
 
-        // Build a claims struct from the token payload for OPA entitlement resolution.
-        let claims = token.payload_to_struct();
+        // Extract claims from the caller's token for OPA entitlement resolution.
+        // Build a prost Struct from the token's custom fields.
+        let mut fields = std::collections::BTreeMap::new();
+        fields.insert("sub".to_string(), prost_wkt_types::Value {
+            kind: Some(prost_wkt_types::value::Kind::StringValue(subject.clone())),
+        });
+        if let Some(email) = token.custom_field("email").and_then(|v| v.as_str()) {
+            fields.insert("email".to_string(), prost_wkt_types::Value {
+                kind: Some(prost_wkt_types::value::Kind::StringValue(email.to_string())),
+            });
+        }
+        if let Some(groups) = token.custom_field("origin_groups") {
+            if let Some(arr) = groups.as_array() {
+                let values: Vec<prost_wkt_types::Value> = arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| prost_wkt_types::Value {
+                        kind: Some(prost_wkt_types::value::Kind::StringValue(s.to_string())),
+                    })
+                    .collect();
+                fields.insert("groups".to_string(), prost_wkt_types::Value {
+                    kind: Some(prost_wkt_types::value::Kind::ListValue(
+                        prost_wkt_types::ListValue { values },
+                    )),
+                });
+            }
+        }
+        let claims = prost_wkt_types::Struct { fields };
 
         self.broker
-            .complete_nonce(&req.session_id, &subject, claims)
+            .complete_nonce(&req.session_id, &subject, Some(claims))
             .await?;
 
         info!(sub = %subject, session_id = %req.session_id, "CLI auth completed via broker (already authenticated)");
