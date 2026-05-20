@@ -13,10 +13,11 @@ use oauth_tacplus::types::services::oauth::oauth::{
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
-use oauth_tacplus::types::services::oauth::o_auth_state_service_client::OAuthStateServiceClient;
 use oauth_tacplus::types::services::oauth::oauth::{
-    PendingSessionToken, PendingTokensPutRequest,
+    CompleteCliAuthRequest, CompleteCliAuthResponse,
 };
+
+use crate::broker::BrokerHandle;
 
 use crate::nonce::{generate_code_verifier, StateCodec};
 use crate::oidc::OidcClient;
@@ -24,6 +25,7 @@ use crate::oidc::OidcClient;
 /// AuthImpl implements the Auth gRPC service (OAuth2/OIDC browser flows).
 pub struct AuthImpl {
     sm: Arc<ServiceManager>,
+    broker: BrokerHandle,
     state: RwLock<Option<AuthState>>,
 }
 
@@ -35,9 +37,10 @@ struct AuthState {
 }
 
 impl AuthImpl {
-    pub fn new(sm: Arc<ServiceManager>) -> Self {
+    pub fn new(sm: Arc<ServiceManager>, broker: BrokerHandle) -> Self {
         Self {
             sm,
+            broker,
             state: RwLock::new(None),
         }
     }
@@ -401,45 +404,17 @@ impl AuthHandler for AuthImpl {
             .map(|t| expires_in_from_token(t, now))
             .unwrap_or(0);
 
-        // 8. If this was a CLI-originated flow, write the token to kernel state
-        // for cross-pod delivery to the bidi stream.
+        // 8. If this was a CLI-originated flow, complete the nonce via the
+        // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
+        // and delivers it to the oauth instance holding the CLI stream.
         if let Some(session_id) = &payload.session_id {
-            let now_secs = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
+            self.broker.complete_nonce(session_id, &subject, Some(claims.clone())).await
+                .map_err(|e| {
+                    warn!(session_id = %session_id, error = %e, "failed to complete CLI nonce via broker");
+                    tonic::Status::internal(format!("failed to complete CLI nonce: {e}"))
+                })?;
 
-            let channel = self.sm.conn().await.ok_or_else(|| {
-                tonic::Status::unavailable("no connection to kernel for state write")
-            })?;
-            let state_token = self.sm.get_token().await.map_err(|e| {
-                tonic::Status::internal(format!("failed to get service token: {e}"))
-            })?;
-            let mut state_client = OAuthStateServiceClient::new(channel);
-
-            let mut put_req = tonic::Request::new(PendingTokensPutRequest {
-                key: session_id.clone(),
-                value: Some(PendingSessionToken {
-                    session_id: session_id.clone(),
-                    token: refresh_token.clone(),
-                    created_at: now_secs,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            });
-            put_req.metadata_mut().insert(
-                "authorization",
-                format!("Bearer {}", state_token).parse().map_err(|_| {
-                    tonic::Status::internal("invalid token metadata")
-                })?,
-            );
-
-            state_client.put_pending_tokens(put_req).await.map_err(|e| {
-                warn!(session_id = %session_id, error = %e, "failed to write pending token to kernel state");
-                tonic::Status::internal(format!("failed to write session token: {e}"))
-            })?;
-
-            info!(sub = %subject, session_id = %session_id, "CLI token written to kernel state for delivery");
+            info!(sub = %subject, session_id = %session_id, "CLI nonce completed via broker");
         }
 
         info!(sub = %subject, "OAuth callback completed (delegated to kernel)");
@@ -484,6 +459,31 @@ impl AuthHandler for AuthImpl {
 
         Ok(LogoutResponse {
             redirect_url,
+            ..Default::default()
+        })
+    }
+
+    async fn complete_cli_auth(
+        &self,
+        caller: Option<&servicemanager::auth::Caller>,
+        req: CompleteCliAuthRequest,
+    ) -> Result<CompleteCliAuthResponse, tonic::Status> {
+        let caller = caller.ok_or_else(|| {
+            tonic::Status::unauthenticated("CompleteCliAuth requires authentication")
+        })?;
+        let subject = caller.subject().to_string();
+
+        // Build claims struct from the caller's token claims.
+        let claims = caller.claims_struct();
+
+        self.broker
+            .complete_nonce(&req.session_id, &subject, claims)
+            .await?;
+
+        info!(sub = %subject, session_id = %req.session_id, "CLI auth completed via broker (already authenticated)");
+
+        Ok(CompleteCliAuthResponse {
+            success: true,
             ..Default::default()
         })
     }

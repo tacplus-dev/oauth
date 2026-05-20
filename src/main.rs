@@ -1,4 +1,5 @@
 mod auth;
+mod broker;
 mod nonce;
 mod oidc;
 mod service;
@@ -14,6 +15,7 @@ use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::services::oauth::oauth::Config as FleetwoodConfig;
 
 use crate::auth::AuthImpl;
+use crate::broker::BrokerHandle;
 use crate::service::FleetwoodImpl;
 
 /// FleetwoodHandler implements the generated Handler trait.
@@ -72,16 +74,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let sm = Arc::new(ServiceManager::new().await?);
 
-    // Create the session handler. Config values (session_timeout, refresh_lifetime,
-    // auto_refresh_before) use proto defaults until kernel delivers config via
-    // session_config() callback.
-    let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm)));
+    // Start the broker stream to kernel's CliTokenBroker.
+    let instance_id = sm.instance_id().to_string();
+    let channel = sm.conn().await.ok_or("no connection to kernel for broker")?;
+    let sm_for_broker = Arc::clone(&sm);
+    let broker = BrokerHandle::start(channel, instance_id, move || {
+        let sm = Arc::clone(&sm_for_broker);
+        Box::pin(async move {
+            sm.get_token().await
+        })
+    }).await?;
 
-    // Spawn periodic reaper for unclaimed pending tokens in kernel state.
-    tokio::spawn(service::reap_expired_tokens(Arc::clone(&fleetwood_impl)));
+    // Create the session handler with broker for CLI auth nonce registration.
+    let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm), broker.clone()));
 
-    // Create the auth handler (OAuth2/OIDC browser flows).
-    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm)));
+    // Create the auth handler with broker for CLI auth nonce completion.
+    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), broker));
 
     // Build the Handler and run through the generated ServiceManager lifecycle.
     let handler: Arc<dyn Handler> = Arc::new(FleetwoodHandler {
