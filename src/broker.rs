@@ -69,15 +69,26 @@ impl BrokerHandle {
         rx: mpsc::Receiver<CliTokenBrokerRequest>,
         pending: &Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Use the SM's S2S client infrastructure (handles TLS, auth, routing)
-        let client = sm.grpc_clients().services().cli_token_broker_client();
+        // Get auth token and channel via SM
+        let token = sm.get_token().await.map_err(|e| format!("broker auth: {e}"))?;
+        let channel = sm.conn().await.ok_or("no kernel connection for broker")?;
 
         // Build the outbound stream: Register first, then user messages from rx
         let register_stream = tokio_stream::once(register_msg);
         let user_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
         let outbound = register_stream.chain(user_stream);
 
-        let response = client.broker_stream(outbound).await?;
+        // Wrap in a tonic::Request with auth metadata
+        let mut request = tonic::Request::new(outbound);
+        request.metadata_mut().insert(
+            "authorization",
+            format!("Bearer {}", token).parse().map_err(|_| "invalid token".to_string())?,
+        );
+
+        // Use the raw tonic client with the SM's channel (SM handles TLS + routing)
+        use oauth_tacplus::types::services::kernel::kernel::cli_token_broker_client::CliTokenBrokerClient;
+        let mut client = CliTokenBrokerClient::new(channel);
+        let response = client.broker_stream(request).await?;
         let mut inbound = response.into_inner();
 
         info!("broker: stream opened");
