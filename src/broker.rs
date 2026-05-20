@@ -50,6 +50,7 @@ impl BrokerHandle {
 
         // Spawn the bidi stream handler
         tokio::spawn(async move {
+            info!("broker: opening BrokerStream to kernel");
             let outbound = tokio_stream::wrappers::ReceiverStream::new(rx);
 
             let mut request = tonic::Request::new(outbound);
@@ -58,6 +59,7 @@ impl BrokerHandle {
             }
 
             let mut client = CliTokenBrokerClient::new(channel);
+            info!("broker: calling broker_stream RPC");
             match client.broker_stream(request).await {
                 Ok(response) => {
                     let mut inbound = response.into_inner();
