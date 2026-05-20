@@ -15,8 +15,8 @@ use oauth_tacplus::types::common::tokenrequest::TokenMintRequest;
 use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 use oauth_tacplus::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerRegisterNonce,
-    BrokerStreamBidiHandle,
 };
+use oauth_tacplus::s2sm::internal::grpc::clients::services::kernel::cli_token_broker::BrokerStreamBidiHandle;
 use oauth_tacplus::types::services::oauth::oauth::{
     session_request, session_response, SessionRequest, SessionResponse,
 };
