@@ -76,9 +76,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start the broker stream to kernel's CliTokenBroker.
     let instance_id = sm.instance_id().to_string();
-    let channel = sm.conn().await.ok_or("no connection to kernel for broker")?;
-    let service_token = sm.get_token().await?;
-    let broker = BrokerHandle::start(channel, instance_id, service_token).await?;
+    let broker = BrokerHandle::start(Arc::clone(&sm), instance_id);
 
     // Create the session handler with broker for CLI auth nonce registration.
     let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm), broker.clone()));
