@@ -408,7 +408,7 @@ impl AuthHandler for AuthImpl {
         // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
         // and delivers it to the oauth instance holding the CLI stream.
         if let Some(session_id) = &payload.session_id {
-            self.broker.complete_nonce(session_id, &subject, Some(claims.clone())).await
+            self.broker.complete_nonce(session_id, &subject, Some(claims)).await
                 .map_err(|e| {
                     warn!(session_id = %session_id, error = %e, "failed to complete CLI nonce via broker");
                     tonic::Status::internal(format!("failed to complete CLI nonce: {e}"))
@@ -471,10 +471,11 @@ impl AuthHandler for AuthImpl {
         let caller = caller.ok_or_else(|| {
             tonic::Status::unauthenticated("CompleteCliAuth requires authentication")
         })?;
-        let subject = caller.subject().to_string();
+        let token = caller.token();
+        let subject = token.subject().unwrap_or("unknown").to_string();
 
-        // Build claims struct from the caller's token claims.
-        let claims = caller.claims_struct();
+        // Build a claims struct from the token payload for OPA entitlement resolution.
+        let claims = token.payload_to_struct();
 
         self.broker
             .complete_nonce(&req.session_id, &subject, claims)
