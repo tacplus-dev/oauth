@@ -91,7 +91,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     
     
     tracing::info!("initializing CLI token broker stream");
-    let broker_handle = sm.kernel().cli_token_broker_client().broker_stream(
+    let broker_handle = sm.grpc_clients().services().kernel().cli_token_broker_client().broker_stream(
         move |tx| {
             let id = instance_id.clone();
             async move {
