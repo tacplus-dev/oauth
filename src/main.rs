@@ -85,6 +85,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new()));
 
     let pending_for_callback = Arc::clone(&pending);
+    eprintln!("OAUTH: initializing CLI token broker stream");
     tracing::info!("initializing CLI token broker stream");
     let broker_handle = sm.grpc_clients().services().cli_token_broker_client().broker_stream(
         move |tx| {
