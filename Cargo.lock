@@ -2485,11 +2485,11 @@ name = "servicemanager"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
- "ed25519-dalek",
  "grpcconfig",
  "im",
  "jwk",
  "oauth-tacplus-types",
+ "p256",
  "prost",
  "rand 0.8.5",
  "token",

@@ -51,7 +51,7 @@ variables:
         - .cargo-home/git
   before_script:
     - *setup-netrc
-    - tacplus build --skip-post
+    - tacplus build
   script:
     - cargo build --release
   artifacts:
@@ -160,4 +160,4 @@ proto-validate:
   before_script:
     - *setup-netrc
   script:
-    - tacplus build --skip-post --tag $PROTO_VERSION
+    - tacplus build --tag $PROTO_VERSION
