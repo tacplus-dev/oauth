@@ -62,7 +62,8 @@ async fn main() {
         .with_env_filter(
             EnvFilter::from_default_env()
                 .add_directive("oauth=info".parse().unwrap())
-                .add_directive("oauth_tacplus=info".parse().unwrap()),
+                .add_directive("oauth_tacplus=info".parse().unwrap())
+                .add_directive("servicemesh=info".parse().unwrap()),
         )
         .init();
 
