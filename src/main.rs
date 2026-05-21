@@ -11,7 +11,7 @@ use oauth_tacplus::s2sm::handler::Handler;
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
 use oauth_tacplus::s2sm::ServiceManager;
-use oauth_tacplus::types::services::oauth::oauth::Config as FleetwoodConfig;
+use oauth_tacplus::types::services::oauth::oauth::Config as OauthConfig;
 use oauth_tacplus::types::services::kernel::kernel::{
     CliTokenBrokerRequest, CliTokenBrokerResponse,
     cli_token_broker_request, cli_token_broker_response,
@@ -19,17 +19,17 @@ use oauth_tacplus::types::services::kernel::kernel::{
 };
 
 use crate::auth::AuthImpl;
-use crate::service::FleetwoodImpl;
+use crate::service::OauthImpl;
 
-struct FleetwoodHandler {
-    fleetwood_impl: Arc<FleetwoodImpl>,
+struct OauthHandler {
+    oauth_impl: Arc<OauthImpl>,
     auth_impl: Arc<AuthImpl>,
 }
 
 #[tonic::async_trait]
-impl Handler for FleetwoodHandler {
+impl Handler for OauthHandler {
     fn session_grpc_impl(&self) -> Arc<dyn SessionHandler> {
-        Arc::clone(&self.fleetwood_impl) as Arc<dyn SessionHandler>
+        Arc::clone(&self.oauth_impl) as Arc<dyn SessionHandler>
     }
 
     fn auth_grpc_impl(&self) -> Arc<dyn AuthHandler> {
@@ -38,21 +38,21 @@ impl Handler for FleetwoodHandler {
 
     async fn session_config(
         &self,
-        cfg: &FleetwoodConfig,
+        cfg: &OauthConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.fleetwood_impl.apply_session_config(cfg);
+        self.oauth_impl.apply_session_config(cfg);
         Ok(())
     }
 
     async fn auth_config(
         &self,
-        cfg: &FleetwoodConfig,
+        cfg: &OauthConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.auth_impl.apply_config(cfg).await
     }
 
     async fn shutdown(&self) {
-        tracing::info!("fleetwood shutting down");
+        tracing::info!("oauth shutting down");
     }
 }
 
@@ -68,13 +68,13 @@ async fn main() {
         .init();
 
     if let Err(e) = run().await {
-        tracing::error!(error = %e, "fleetwood failed");
+        tracing::error!(error = %e, "oauth failed");
         std::process::exit(1);
     }
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!("starting fleetwood");
+    tracing::info!("starting oauth");
 
     
     let sm = Arc::new(ServiceManager::new().await?);
@@ -130,12 +130,12 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }),
     );
 
-    let fleetwood_impl = Arc::new(FleetwoodImpl::new(Arc::clone(&sm), broker_handle, Arc::clone(&pending)));
-    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), fleetwood_impl.broker_handle(), Arc::clone(&pending)));
-    // Note: broker_handle was moved into FleetwoodImpl. AuthImpl borrows it via broker_handle().
+    let oauth_impl = Arc::new(OauthImpl::new(Arc::clone(&sm), broker_handle, Arc::clone(&pending)));
+    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), oauth_impl.broker_handle(), Arc::clone(&pending)));
+    // Note: broker_handle was moved into OauthImpl. AuthImpl borrows it via broker_handle().
 
-    let handler: Arc<dyn Handler> = Arc::new(FleetwoodHandler {
-        fleetwood_impl,
+    let handler: Arc<dyn Handler> = Arc::new(OauthHandler {
+        oauth_impl,
         auth_impl,
     });
 

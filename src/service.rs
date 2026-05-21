@@ -21,7 +21,7 @@ use oauth_tacplus::types::services::oauth::oauth::{
     session_request, session_response, SessionRequest, SessionResponse,
 };
 
-pub struct FleetwoodImpl {
+pub struct OauthImpl {
     sm: Arc<ServiceManager>,
     broker: BrokerStreamBidiHandle,
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
@@ -30,7 +30,7 @@ pub struct FleetwoodImpl {
     auto_refresh_before_secs: AtomicI64,
 }
 
-impl FleetwoodImpl {
+impl OauthImpl {
     pub fn new(
         sm: Arc<ServiceManager>,
         broker: BrokerStreamBidiHandle,
@@ -98,7 +98,7 @@ async fn recv_session_id(inbound: &mut tonic::Streaming<SessionRequest>) -> Resu
 }
 
 #[tonic::async_trait]
-impl SessionHandler for FleetwoodImpl {
+impl SessionHandler for OauthImpl {
     async fn session(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,

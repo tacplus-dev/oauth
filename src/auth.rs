@@ -331,12 +331,12 @@ impl AuthHandler for AuthImpl {
         let mut claims = build_claims_struct(&id_claims).unwrap_or_else(|| prost_wkt_types::Struct {
             fields: HashMap::new(),
         });
-        // Set azp (authorized party) — tokens minted via OAuth flow carry azp=fleetwood
+        // Set azp (authorized party) — tokens minted via OAuth flow carry azp=oauth
         claims.fields.insert(
             "azp".to_string(),
             prost_wkt_types::Value {
                 kind: Some(prost_wkt_types::value::Kind::StringValue(
-                    "fleetwood".to_string(),
+                    "oauth".to_string(),
                 )),
             },
         );
