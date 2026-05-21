@@ -75,7 +75,9 @@ async fn main() {
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("starting fleetwood");
 
+    eprintln!("OAUTH-PREBOOT: about to create ServiceManager");
     let sm = Arc::new(ServiceManager::new().await?);
+    eprintln!("OAUTH-POSTBOOT: ServiceManager created");
 
     // Open the managed bidi stream to kernel's CliTokenBroker.
     // on_connect sends Register on each (re)connect.
@@ -86,7 +88,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let pending_for_callback = Arc::clone(&pending);
     eprintln!("OAUTH: initializing CLI token broker stream");
+    println!("OAUTH-STDOUT: initializing CLI token broker stream");
     tracing::info!("initializing CLI token broker stream");
+    std::fs::write("/tmp/broker-debug.txt", "broker_stream about to be called\n").ok();
     let broker_handle = sm.grpc_clients().services().cli_token_broker_client().broker_stream(
         move |tx| {
             let id = instance_id.clone();
