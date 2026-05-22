@@ -12,7 +12,6 @@ use oauth_tacplus::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse, Config,
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
-use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 use oauth_tacplus::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce,
 };
@@ -353,30 +352,14 @@ impl AuthHandler for AuthImpl {
         );
 
         // 6. Call kernel MintUserToken to get signed tokens.
-        let channel = self.sm.conn().await.ok_or_else(|| {
-            tonic::Status::unavailable("no connection to kernel")
-        })?;
-        let token = self.sm.get_token().await.map_err(|e| {
-            tonic::Status::internal(format!("failed to get service token: {e}"))
-        })?;
-        let mut mint_client = MintClient::new(channel);
-
-        let mut mint_req = tonic::Request::new(MintUserTokenRequest {
-            subject: subject.clone(),
-            claims: Some(claims.clone()),
-            // Propagate trace_id so kernel and opa appear in the trace.
-            trace_id: req.trace_id.clone(),
-            ..Default::default()
-        });
-        mint_req.metadata_mut().insert(
-            "authorization",
-            format!("Bearer {}", token).parse().map_err(|_| {
-                tonic::Status::internal("invalid token metadata")
-            })?,
-        );
-
-        let mint_resp = mint_client
-            .mint_user_token(mint_req)
+        let mint_resp = self.sm.s2s().kernel().mint_client()
+            .mint_user_token(MintUserTokenRequest {
+                subject: subject.clone(),
+                claims: Some(claims.clone()),
+                // Propagate trace_id so kernel and opa appear in the trace.
+                trace_id: req.trace_id.clone(),
+                ..Default::default()
+            })
             .await
             .map_err(|e| {
                 warn!(error = %e, "kernel MintUserToken failed");

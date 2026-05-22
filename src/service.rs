@@ -12,7 +12,6 @@ use tracing::{info, warn};
 use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
 use oauth_tacplus::s2sm::ServiceManager;
 use oauth_tacplus::types::common::tokenrequest::TokenMintRequest;
-use oauth_tacplus::types::services::kernel::kernel::mint_client::MintClient;
 use oauth_tacplus::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerRegisterNonce,
 };
@@ -73,12 +72,13 @@ async fn exchange_token(sm: &ServiceManager, input_token: &str, refresh_lifetime
         trace_id: trace_id.to_string(),
         ..Default::default()
     };
-    let channel = sm.conn().await.ok_or_else(|| tonic::Status::unavailable("no connection to kernel"))?;
-    let mut client = MintClient::new(channel);
-    let resp = client.token_mint(request).await.map_err(|e| {
-        warn!(error = %e, "delegation token exchange failed");
-        tonic::Status::internal(format!("token exchange failed: {e}"))
-    })?;
+    let resp = sm.s2s().kernel().mint_client()
+        .token_mint(request)
+        .await
+        .map_err(|e| {
+            warn!(error = %e, "delegation token exchange failed");
+            tonic::Status::internal(format!("token exchange failed: {e}"))
+        })?;
     let mint_resp = resp.into_inner();
     mint_resp.refresh_token.as_ref().map(|t| &t.base64).filter(|b: &&String| !b.is_empty())
         .or_else(|| mint_resp.access_token.as_ref().map(|t| &t.base64).filter(|b: &&String| !b.is_empty()))
