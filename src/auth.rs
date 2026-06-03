@@ -485,7 +485,20 @@ impl AuthHandler for AuthImpl {
                 kind: Some(prost_wkt_types::value::Kind::StringValue(email.to_string())),
             });
         }
-        if let Some(groups) = token.custom_field("origin_groups") {
+        // origin_iss is the IDP issuer, stamped on the token at first login
+        // (build_claims_struct prefixes well-known IDP claims with origin_, and
+        // the kernel clones it through refresh→access→service). The entitlements
+        // policy derives the tenant from input.claims.origin_iss, so without it
+        // OPA resolves tenant="" → empty entitlements. Forward it so the cached
+        // "already authenticated" re-auth resolves the same tenant as a fresh login.
+        if let Some(iss) = token.custom_field("origin_iss").and_then(|v| v.as_str()) {
+            fields.insert("origin_iss".to_string(), prost_wkt_types::Value {
+                kind: Some(prost_wkt_types::value::Kind::StringValue(iss.to_string())),
+            });
+        }
+        // groups drives authorized_projects + is_admin in the policy. It is NOT a
+        // well-known JWT claim, so it is stored under "groups" (not origin_groups).
+        if let Some(groups) = token.custom_field("groups") {
             if let Some(arr) = groups.as_array() {
                 let values: Vec<prost_wkt_types::Value> = arr.iter()
                     .filter_map(|v| v.as_str())
