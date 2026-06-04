@@ -72,7 +72,7 @@ async fn exchange_token(sm: &ServiceManager, input_token: &str, refresh_lifetime
         trace_id: trace_id.to_string(),
         ..Default::default()
     };
-    let resp = sm.s2s().mint().mint_client()
+    let resp = sm.s2s().kernel().mint_client()
         .token_mint(request)
         .await
         .map_err(|e| {
