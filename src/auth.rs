@@ -355,7 +355,7 @@ impl AuthHandler for AuthImpl {
         let mint_resp = self.sm.s2s().mint().mint_client()
             .mint_user_token(MintUserTokenRequest {
                 subject: subject.clone(),
-                claims: Some(claims.clone()),
+                claims: Some(claims),
                 // Propagate trace_id so kernel and opa appear in the trace.
                 trace_id: req.trace_id.clone(),
                 ..Default::default()
@@ -396,15 +396,20 @@ impl AuthHandler for AuthImpl {
             .unwrap_or(0);
 
         // 8. If this was a CLI-originated flow, complete the nonce via the
-        // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
-        // and delivers it to the oauth instance holding the CLI stream.
+        // kernel CliTokenBroker. oauth is the authorized broker: it has ALREADY
+        // minted the token above (step 6), so it hands the minted refresh token
+        // to kernel's nonce broker. Kernel is now pure pub/sub — it matches the
+        // nonce and forwards the token to the oauth instance holding the CLI
+        // stream via TokenDelivery (it no longer mints).
         if let Some(session_id) = &payload.session_id {
             self.broker.send(CliTokenBrokerRequest {
                 msg: Some(cli_token_broker_request::Msg::CompleteNonce(
                     CliTokenBrokerCompleteNonce {
                         nonce: session_id.clone(),
-                        subject: subject.clone(),
-                        claims: Some(claims),
+                        // TODO(generated): field renamed subject+claims (RESERVED) →
+                        // refresh_token (tag 4) in kernel.proto; confirm generated
+                        // field name on first codegen after the cutover fanout.
+                        refresh_token: refresh_token.clone(),
                         ..Default::default()
                     },
                 )),
@@ -414,7 +419,7 @@ impl AuthHandler for AuthImpl {
                 tonic::Status::internal(format!("failed to complete CLI nonce: {e}"))
             })?;
 
-            info!(sub = %subject, session_id = %session_id, "CLI nonce completed via broker");
+            info!(sub = %subject, session_id = %session_id, "CLI nonce completed via broker (oauth-minted token)");
         }
 
         info!(sub = %subject, "OAuth callback completed (delegated to kernel)");
@@ -515,19 +520,45 @@ impl AuthHandler for AuthImpl {
         }
         let claims = prost_wkt_types::Struct { fields };
 
+        // oauth is the authorized broker and now MINTS the CLI-login token itself
+        // (kernel no longer mints — it is pure pub/sub). Mint a fresh user token
+        // for the already-authenticated caller, then hand the refresh token to
+        // kernel's nonce broker for delivery to the waiting CLI session.
+        let mint_resp = self.sm.s2s().mint().mint_client()
+            .mint_user_token(MintUserTokenRequest {
+                subject: subject.clone(),
+                claims: Some(claims),
+                trace_id: req.trace_id.clone(),
+                ..Default::default()
+            })
+            .await
+            .map_err(|e| {
+                warn!(error = %e, "mint MintUserToken failed (cached CLI re-auth)");
+                tonic::Status::internal(format!("token mint failed: {e}"))
+            })?
+            .into_inner();
+
+        let refresh_token = mint_resp
+            .refresh_token
+            .as_ref()
+            .map(|t| t.base64.clone())
+            .unwrap_or_default();
+
         self.broker.send(CliTokenBrokerRequest {
             msg: Some(cli_token_broker_request::Msg::CompleteNonce(
                 CliTokenBrokerCompleteNonce {
                     nonce: req.session_id.clone(),
-                    subject: subject.clone(),
-                    claims: Some(claims),
+                    // TODO(generated): subject+claims (RESERVED) → refresh_token
+                    // (tag 4) in kernel.proto; confirm generated field name on
+                    // first codegen after the cutover fanout.
+                    refresh_token,
                     ..Default::default()
                 },
             )),
             ..Default::default()
         }).await?;
 
-        info!(sub = %subject, session_id = %req.session_id, "CLI auth completed via broker (already authenticated)");
+        info!(sub = %subject, session_id = %req.session_id, "CLI auth completed via broker (already authenticated, oauth-minted token)");
 
         Ok(CompleteCliAuthResponse {
             success: true,
