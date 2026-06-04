@@ -351,8 +351,8 @@ impl AuthHandler for AuthImpl {
             },
         );
 
-        // 6. Call kernel MintUserToken to get signed tokens.
-        let mint_resp = self.sm.s2s().kernel().mint_client()
+        // 6. Call mint service MintUserToken to get signed tokens.
+        let mint_resp = self.sm.s2s().mint().mint_client()
             .mint_user_token(MintUserTokenRequest {
                 subject: subject.clone(),
                 claims: Some(claims.clone()),
