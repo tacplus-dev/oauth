@@ -86,7 +86,10 @@ async fn exchange_token(sm: &ServiceManager, input_token: &str, refresh_lifetime
         .ok_or_else(|| tonic::Status::internal("MintService returned empty token"))
 }
 
-async fn recv_session_id(inbound: &mut tonic::Streaming<SessionRequest>) -> Result<(String, String), tonic::Status> {
+async fn recv_session_id<S>(inbound: &mut S) -> Result<(String, String), tonic::Status>
+where
+    S: tokio_stream::Stream<Item = Result<SessionRequest, tonic::Status>> + Unpin,
+{
     let first = inbound.next().await
         .ok_or_else(|| tonic::Status::invalid_argument("empty stream"))?
         .map_err(|e| tonic::Status::invalid_argument(format!("bad first message: {e}")))?;
@@ -102,7 +105,7 @@ impl SessionHandler for OauthImpl {
     async fn session(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
-        request: tonic::Request<tonic::Streaming<SessionRequest>>,
+        request: tonic::Request<Pin<Box<dyn tokio_stream::Stream<Item = Result<SessionRequest, tonic::Status>> + Send>>>,
     ) -> Result<tonic::Response<Pin<Box<dyn tokio_stream::Stream<Item = Result<SessionResponse, tonic::Status>> + Send>>>, tonic::Status> {
         let bearer_owned = servicemanager::auth::extract_bearer_token(&request).ok().map(|s| s.to_string());
         let mut inbound = request.into_inner();
