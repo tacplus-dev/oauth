@@ -7,12 +7,12 @@ use std::sync::Arc;
 
 use tracing_subscriber::EnvFilter;
 
-use oauth_tacplus::s2sm::handler::Handler;
-use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
-use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
-use oauth_tacplus::s2sm::ServiceManager;
-use oauth_tacplus::types::services::oauth::oauth::Config as OauthConfig;
-use oauth_tacplus::types::services::kernel::kernel::{
+use oauth_model::s2sm::handler::Handler;
+use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
+use oauth_model::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
+use oauth_model::s2sm::ServiceManager;
+use oauth_model::types::services::oauth::oauth::Config as OauthConfig;
+use oauth_model::types::services::kernel::kernel::{
     CliTokenBrokerRequest, CliTokenBrokerResponse,
     cli_token_broker_request, cli_token_broker_response,
     CliTokenBrokerRegister,
@@ -62,7 +62,7 @@ async fn main() {
         .with_env_filter(
             EnvFilter::from_default_env()
                 .add_directive("oauth=info".parse().unwrap())
-                .add_directive("oauth_tacplus=info".parse().unwrap())
+                .add_directive("oauth_model=info".parse().unwrap())
                 .add_directive("servicemesh=info".parse().unwrap()),
         )
         .init();

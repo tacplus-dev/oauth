@@ -5,18 +5,18 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
-use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
-use oauth_tacplus::s2sm::ServiceManager;
-use oauth_tacplus::types::common::tokenrequest::tokenrequest::MintUserTokenRequest;
-use oauth_tacplus::types::services::oauth::oauth::{
+use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
+use oauth_model::s2sm::ServiceManager;
+use oauth_model::types::common::tokenrequest::tokenrequest::MintUserTokenRequest;
+use oauth_model::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse, Config,
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
 };
-use oauth_tacplus::types::services::kernel::kernel::{
+use oauth_model::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce,
 };
-use oauth_tacplus::s2sm::internal::grpc::clients::services::kernel::cli_token_broker::BrokerStreamBidiHandle;
-use oauth_tacplus::types::services::oauth::oauth::{
+use oauth_model::s2sm::internal::grpc::clients::services::kernel::cli_token_broker::BrokerStreamBidiHandle;
+use oauth_model::types::services::oauth::oauth::{
     CompleteCliAuthRequest, CompleteCliAuthResponse,
 };
 
@@ -180,7 +180,7 @@ fn jwt_kid(token: &str) -> Option<String> {
 }
 
 /// Extract `exp` from a token's payload and compute remaining seconds.
-fn expires_in_from_token(token_proto: &oauth_tacplus::types::libs::token::token::Token, now: i64) -> i64 {
+fn expires_in_from_token(token_proto: &oauth_model::types::libs::token::token::Token, now: i64) -> i64 {
     for (k, v) in &token_proto.payload {
         if k == "exp" {
             if let Ok(exp) = v.parse::<i64>() {

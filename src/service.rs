@@ -9,14 +9,14 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tracing::{info, warn};
 
-use oauth_tacplus::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
-use oauth_tacplus::s2sm::ServiceManager;
-use oauth_tacplus::types::common::tokenrequest::TokenMintRequest;
-use oauth_tacplus::types::services::kernel::kernel::{
+use oauth_model::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
+use oauth_model::s2sm::ServiceManager;
+use oauth_model::types::common::tokenrequest::TokenMintRequest;
+use oauth_model::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerRegisterNonce,
 };
-use oauth_tacplus::s2sm::internal::grpc::clients::services::kernel::cli_token_broker::BrokerStreamBidiHandle;
-use oauth_tacplus::types::services::oauth::oauth::{
+use oauth_model::s2sm::internal::grpc::clients::services::kernel::cli_token_broker::BrokerStreamBidiHandle;
+use oauth_model::types::services::oauth::oauth::{
     session_request, session_response, SessionRequest, SessionResponse,
 };
 
@@ -49,7 +49,7 @@ impl OauthImpl {
         &self.broker
     }
 
-    pub fn apply_session_config(&self, cfg: &oauth_tacplus::types::services::oauth::oauth::Config) {
+    pub fn apply_session_config(&self, cfg: &oauth_model::types::services::oauth::oauth::Config) {
         let timeout = if cfg.session_timeout_seconds > 0 { cfg.session_timeout_seconds as u64 } else { 300 };
         let refresh = if cfg.refresh_token_lifetime_seconds > 0 { cfg.refresh_token_lifetime_seconds } else { 604800 };
         let auto_refresh = if cfg.auto_refresh_before_seconds > 0 { cfg.auto_refresh_before_seconds } else { 3600 };
