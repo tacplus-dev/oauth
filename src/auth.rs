@@ -260,7 +260,7 @@ impl AuthHandler for AuthImpl {
         })
     }
 
-    async fn callback(
+    async fn mint_callback_tokens(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
         req: CallbackRequest,
@@ -429,7 +429,7 @@ impl AuthHandler for AuthImpl {
         })
     }
 
-    async fn logout(
+    async fn revoke_session(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
         req: LogoutRequest,
@@ -463,13 +463,13 @@ impl AuthHandler for AuthImpl {
         })
     }
 
-    async fn complete_cli_auth(
+    async fn broker_cli_auth(
         &self,
         caller: Option<&servicemanager::auth::Caller>,
         req: CompleteCliAuthRequest,
     ) -> Result<CompleteCliAuthResponse, tonic::Status> {
         let caller = caller.ok_or_else(|| {
-            tonic::Status::unauthenticated("CompleteCliAuth requires authentication")
+            tonic::Status::unauthenticated("BrokerCliAuth requires authentication")
         })?;
         let token = caller.token();
         let subject = token.subject().unwrap_or("unknown").to_string();

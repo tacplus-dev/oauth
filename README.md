@@ -34,8 +34,8 @@ and CLI/device token brokering via bidirectional streaming.
 |-----|-------------|
 | `ListProviders` | Returns configured OAuth/OIDC providers |
 | `Authorize` | Initiates OAuth flow — returns authorization URL |
-| `Callback` | Handles IDP callback — exchanges code, verifies token, mints |
-| `Logout` | Invalidates session |
+| `MintCallbackTokens` | Handles IDP callback — exchanges code, verifies token, mints |
+| `RevokeSession` | Invalidates session |
 
 ### oauth.Session
 

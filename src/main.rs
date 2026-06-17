@@ -95,12 +95,29 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         move |tx| {
             let id = instance_id.clone();
             async move {
-                let _ = tx.send(CliTokenBrokerRequest {
+                tracing::info!(
+                    instance_id = %id,
+                    instance_id_len = id.len(),
+                    "registering CLI token broker stream"
+                );
+                let req = CliTokenBrokerRequest {
                     msg: Some(cli_token_broker_request::Msg::Register(
-                        CliTokenBrokerRegister { instance_id: id, ..Default::default() },
+                        CliTokenBrokerRegister { instance_id: id.clone(), ..Default::default() },
                     )),
                     ..Default::default()
-                });
+                };
+                match tx.send(req).await {
+                    Ok(()) => tracing::info!(
+                        instance_id = %id,
+                        "queued CLI token broker registration"
+                    ),
+                    Err(e) => tracing::error!(
+                        error = %e,
+                        instance_id = %id,
+                        instance_id_len = id.len(),
+                        "failed to queue CLI token broker registration"
+                    ),
+                }
             }
         },
         Arc::new(move |resp: CliTokenBrokerResponse| {

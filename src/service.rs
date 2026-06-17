@@ -73,7 +73,7 @@ async fn exchange_token(sm: &ServiceManager, input_token: &str, refresh_lifetime
         ..Default::default()
     };
     let resp = sm.s2s().kernel().mint_client()
-        .token_mint(request)
+        .mint_token(request)
         .await
         .map_err(|e| {
             warn!(error = %e, "delegation token exchange failed");
@@ -102,7 +102,7 @@ where
 
 #[tonic::async_trait]
 impl SessionHandler for OauthImpl {
-    async fn session(
+    async fn broker_session(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
         request: tonic::Request<Pin<Box<dyn tokio_stream::Stream<Item = Result<SessionRequest, tonic::Status>> + Send>>>,

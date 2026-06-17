@@ -942,6 +942,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "servicemanager",
+ "spiffe",
  "thiserror 1.0.69",
  "token",
  "tokio",
@@ -1700,6 +1701,8 @@ dependencies = [
  "serde_json",
  "service_im",
  "servicemanager",
+ "spiffe",
+ "tags",
  "token",
  "tokio",
  "tokio-stream",
@@ -1709,6 +1712,7 @@ dependencies = [
  "tonic-prost",
  "tracing",
  "x509",
+ "x509-cert",
 ]
 
 [[package]]
@@ -2726,6 +2730,7 @@ dependencies = [
  "prost",
  "rustls",
  "rustls-pemfile",
+ "spiffe",
  "token",
  "tokio",
  "tonic",
@@ -2819,6 +2824,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "spiffe"
+version = "0.1.0"
+dependencies = [
+ "data-encoding",
+ "regex",
+ "sha2",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2896,6 +2911,15 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "tags"
+version = "0.1.0"
+dependencies = [
+ "oauth-model-types",
+ "once_cell",
+ "regex",
 ]
 
 [[package]]
@@ -3055,6 +3079,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "signature",
+ "spiffe",
 ]
 
 [[package]]
@@ -3387,6 +3412,15 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8"
+dependencies = [
+ "tinyvec",
+]
 
 [[package]]
 name = "unicode-xid"
