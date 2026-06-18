@@ -86,7 +86,7 @@ async fn exchange_token(sm: &ServiceManager, input_token: &str, refresh_lifetime
         .ok_or_else(|| tonic::Status::internal("MintService returned empty token"))
 }
 
-async fn recv_session_id<S>(inbound: &mut S) -> Result<(String, String), tonic::Status>
+async fn recv_session_id<S>(inbound: &mut S) -> Result<(String, String, bool), tonic::Status>
 where
     S: tokio_stream::Stream<Item = Result<SessionRequest, tonic::Status>> + Unpin,
 {
@@ -95,7 +95,7 @@ where
         .map_err(|e| tonic::Status::invalid_argument(format!("bad first message: {e}")))?;
     let trace_id = first.trace_id.clone();
     match first.msg {
-        Some(session_request::Msg::SessionId(id)) => Ok((id, trace_id)),
+        Some(session_request::Msg::SessionId(id)) => Ok((id, trace_id, first.offline_access)),
         _ => Err(tonic::Status::invalid_argument("first message must contain session_id")),
     }
 }
@@ -109,7 +109,7 @@ impl SessionHandler for OauthImpl {
     ) -> Result<tonic::Response<Pin<Box<dyn tokio_stream::Stream<Item = Result<SessionResponse, tonic::Status>> + Send>>>, tonic::Status> {
         let bearer_owned = servicemanager::auth::extract_bearer_token(&request).ok().map(|s| s.to_string());
         let mut inbound = request.into_inner();
-        let (session_id, _trace_id) = recv_session_id(&mut inbound).await?;
+        let (session_id, _trace_id, offline_access) = recv_session_id(&mut inbound).await?;
 
         if let Some(bearer_str) = bearer_owned {
             // Authenticated session (daemon mode) — proactive refresh
@@ -156,7 +156,11 @@ impl SessionHandler for OauthImpl {
 
             self.broker.send(CliTokenBrokerRequest {
                 msg: Some(cli_token_broker_request::Msg::RegisterNonce(
-                    CliTokenBrokerRegisterNonce { nonce: session_id.clone(), ..Default::default() },
+                    CliTokenBrokerRegisterNonce {
+                        nonce: session_id.clone(),
+                        offline_access,
+                        ..Default::default()
+                    },
                 )),
                 ..Default::default()
             }).await?;
