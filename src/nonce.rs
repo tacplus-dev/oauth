@@ -24,7 +24,7 @@ pub struct StatePayload {
     /// Unix timestamp when the state was created.
     #[serde(rename = "t")]
     pub created_at: i64,
-    /// CLI session ID, present when the flow was initiated by cavalierctl.
+    /// CLI session ID, present when the flow was initiated by operator.
     /// When set, the Callback handler writes the minted token to OAuthState
     /// for delivery to the CLI bidi stream.
     #[serde(rename = "s", default, skip_serializing_if = "Option::is_none")]
