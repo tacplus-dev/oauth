@@ -11,7 +11,7 @@ use tracing::{info, warn};
 
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
 use oauth_model::s2sm::ServiceManager;
-use oauth_model::types::common::tokenrequest::TokenMintRequest;
+use oauth_model::types::sys::tokenrequest::TokenMintRequest;
 use oauth_model::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerRegisterNonce,
 };

@@ -1723,6 +1723,8 @@ version = "1.0.0"
 dependencies = [
  "base64 0.21.7",
  "bytes",
+ "hex",
+ "hmac",
  "pbjson",
  "pbjson-types",
  "prost",
@@ -1732,6 +1734,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
  "toml",
  "tonic",
  "tonic-prost",
@@ -4024,6 +4027,7 @@ dependencies = [
  "serde",
  "sha2",
  "signature",
+ "spiffe",
  "spki",
  "x509-cert",
 ]
