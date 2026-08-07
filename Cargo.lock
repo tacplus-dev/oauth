@@ -1488,6 +1488,7 @@ dependencies = [
  "chrono",
  "oauth-model-types",
  "once_cell",
+ "regex",
  "serde",
  "serde_json",
  "tracing",
