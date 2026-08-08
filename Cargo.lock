@@ -918,6 +918,7 @@ dependencies = [
 name = "grpcconfig"
 version = "0.1.0"
 dependencies = [
+ "logger",
  "oauth-model-types",
  "serde",
  "serde_json",
