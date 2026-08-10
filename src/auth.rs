@@ -91,7 +91,7 @@ impl AuthImpl {
 }
 
 /// Well-known JWT claims that get `origin_` prefix when forwarding from an
-/// external IDP token to avoid collision with Cavalier claims.
+/// external IDP token to avoid collision with Schematic claims.
 const WELL_KNOWN_JWT_CLAIMS: &[&str] = &["iss", "sub", "aud", "exp", "nbf", "iat", "jti"];
 
 /// Recursively convert a serde_json::Value to a prost_wkt_types::Value.
@@ -127,7 +127,7 @@ fn json_to_proto_value(val: &serde_json::Value) -> Option<prost_wkt_types::Value
 
 /// Build a prost_wkt_types::Struct from IDP token claims.
 /// Well-known JWT claims are prefixed with `origin_` to preserve the IDP's
-/// values without colliding with Cavalier's own standard claims.
+/// values without colliding with Schematic's own standard claims.
 /// All JSON value types are supported (strings, numbers, booleans, arrays, objects).
 fn build_claims_struct(payload: &HashMap<String, serde_json::Value>) -> Option<prost_wkt_types::Struct> {
     let mut fields = HashMap::new();
