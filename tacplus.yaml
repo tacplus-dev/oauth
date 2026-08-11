@@ -1,4 +1,4 @@
 language: rust
 pkg: com.gitlab.secondstarcavalier.controlplane.schematic.services.oauth
 output-dir: target/generated-sources
-src: https://gitlab.com/secondstarcavalier/schematic/platform/proto-base.git
+src: https://gitlab.com/secondstarcavalier/schematic/platform/proto.git
