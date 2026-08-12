@@ -1651,6 +1651,7 @@ dependencies = [
  "base64 0.22.1",
  "dashmap",
  "futures",
+ "logger",
  "oauth-model",
  "prost",
  "prost-types",

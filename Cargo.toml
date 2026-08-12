@@ -23,5 +23,6 @@ tonic = { version = "0.14", features = ["transport", "tls-ring"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 oauth-model = { path = "target/generated-sources/model" }
+logger = { path = "target/generated-sources/model/chassis/logger" }
 servicemanager = { path = "target/generated-sources/model/chassis/servicemanager" }
 token = { path = "target/generated-sources/model/chassis/token" }
