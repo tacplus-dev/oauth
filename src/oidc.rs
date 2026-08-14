@@ -45,6 +45,30 @@ pub struct JwkEntry {
     pub raw: HashMap<String, serde_json::Value>,
 }
 
+impl JwkEntry {
+    /// Reassembles the original JWK JSON object.
+    ///
+    /// kid/kty/alg are lifted into typed fields and the rest is captured by the
+    /// flattened `raw` map, so the object has to be put back together before it
+    /// can be deserialized into the chassis Jwk for signature verification.
+    pub fn to_json_value(&self) -> serde_json::Value {
+        let mut obj = serde_json::Map::new();
+        for (k, v) in &self.raw {
+            obj.insert(k.clone(), v.clone());
+        }
+        if let Some(ref kid) = self.kid {
+            obj.insert("kid".to_string(), serde_json::Value::String(kid.clone()));
+        }
+        if let Some(ref kty) = self.kty {
+            obj.insert("kty".to_string(), serde_json::Value::String(kty.clone()));
+        }
+        if let Some(ref alg) = self.alg {
+            obj.insert("alg".to_string(), serde_json::Value::String(alg.clone()));
+        }
+        serde_json::Value::Object(obj)
+    }
+}
+
 /// Token response from the IDP's token endpoint.
 #[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
@@ -291,6 +315,24 @@ impl OidcClient {
     }
 
     /// Fetch the IDP's JWKS. Results are cached for refetch_interval.
+    /// The (issuer, client_id) an id_token from this provider must carry.
+    ///
+    /// Verification lives in auth.rs but the provider config is private here,
+    /// so the two values the token must be BOUND to are exposed deliberately
+    /// and narrowly. Without binding, a validly-signed token from one
+    /// configured provider is accepted for another — the signature check alone
+    /// does not catch that.
+    pub fn expected_claims(&self, provider_index: i32) -> Result<(String, String), String> {
+        let prov = self
+            .providers
+            .get(&provider_index)
+            .ok_or_else(|| format!("unknown provider index {provider_index}"))?;
+        Ok((
+            prov.provider_cfg.issuer.trim_end_matches('/').to_string(),
+            prov.provider_cfg.client_id.clone(),
+        ))
+    }
+
     pub async fn fetch_jwks(&self, provider_index: i32) -> Result<Vec<JwkEntry>, String> {
         let prov = self
             .providers

@@ -25,4 +25,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 oauth-model = { path = "target/generated-sources/model" }
 logger = { path = "target/generated-sources/model/chassis/logger" }
 servicemanager = { path = "target/generated-sources/model/chassis/servicemanager" }
+jwk = { path = "target/generated-sources/model/chassis/jwk" }
 token = { path = "target/generated-sources/model/chassis/token" }

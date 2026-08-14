@@ -167,6 +167,21 @@ fn parse_jwt_payload(token: &str) -> Result<HashMap<String, serde_json::Value>, 
     serde_json::from_slice(&payload_bytes).map_err(|e| format!("invalid JWT payload JSON: {e}"))
 }
 
+/// True when the token's audience contains the expected client_id.
+///
+/// `aud` is either a string or an array of strings in the JWT spec. The typed
+/// payload models it as a single string, so the array shape is read from the
+/// custom claims — an IdP that sends an array must not silently fail open.
+fn audience_matches(claims: &HashMap<String, serde_json::Value>, expected: &str) -> bool {
+    match claims.get("aud") {
+        Some(serde_json::Value::String(s)) => s == expected,
+        Some(serde_json::Value::Array(items)) => items
+            .iter()
+            .any(|v| v.as_str().map(|s| s == expected).unwrap_or(false)),
+        _ => false,
+    }
+}
+
 /// Extract the `kid` header from a JWT.
 fn jwt_kid(token: &str) -> Option<String> {
     use base64::Engine;
@@ -302,20 +317,67 @@ impl AuthHandler for AuthImpl {
             .await
             .map_err(|e| tonic::Status::internal(format!("failed to fetch IDP JWKS: {e}")))?;
 
-        // Find matching key by kid
-        let _matching_key = kid
-            .as_deref()
-            .and_then(|k| jwks.iter().find(|j| j.kid.as_deref() == Some(k)));
+        // Find the signing key by kid. FAIL CLOSED when there is no match: an
+        // unmatched kid means we cannot verify, and "cannot verify" is not
+        // "accept".
+        let kid = kid.ok_or_else(|| {
+            tonic::Status::unauthenticated("IDP id_token has no kid; cannot select a verification key")
+        })?;
+        let matching_key = jwks
+            .iter()
+            .find(|j| j.kid.as_deref() == Some(kid.as_str()))
+            .ok_or_else(|| {
+                warn!(kid = %kid, "no IDP JWKS key matches the id_token kid");
+                tonic::Status::unauthenticated("no IDP signing key matches the id_token kid")
+            })?;
 
-        // Note: Full cryptographic verification of the IDP's JWT signature requires
-        // JWK-to-public-key conversion (RSA/EC/Ed25519). For now we verify the token
-        // structure and trust the TLS channel to the IDP's token endpoint (the id_token
-        // came directly from the IDP over HTTPS, not from the user).
-        // TODO: Add full JWK signature verification once ring/ed25519 JWK support is wired.
+        // Verify the signature with the chassis primitives. These existed the
+        // whole time — chassis/jwk parses RSA/EC/Ed25519 into an ImmutableJwk and
+        // chassis/token checks alg, exp and nbf before verifying — and this path
+        // simply never called them: the matched key was bound to `_matching_key`
+        // and dropped, and the claims below came from a base64 decode with no
+        // crypto at all. The same binary already verifies PLATFORM tokens this
+        // way (service.rs), and saml verifies its assertions against a cert.
+        let jwk_value = matching_key.to_json_value();
+        let parsed_jwk: jwk::jwk::Jwk = serde_json::from_value(jwk_value).map_err(|e| {
+            tonic::Status::unauthenticated(format!("IDP JWKS entry is not a usable JWK: {e}"))
+        })?;
+        let verifying_key = jwk::ImmutableJwk::new(parsed_jwk).map_err(|e| {
+            tonic::Status::unauthenticated(format!("IDP JWKS key could not be parsed: {e}"))
+        })?;
+        let id_token = token::Token::parse(id_token_str).map_err(|e| {
+            tonic::Status::unauthenticated(format!("IDP id_token is not a well-formed JWT: {e}"))
+        })?;
+        id_token.verify(&verifying_key).map_err(|e| {
+            warn!(error = %e, "IDP id_token signature verification failed");
+            tonic::Status::unauthenticated("IDP id_token failed signature verification")
+        })?;
 
-        // 4. Parse the ID token payload to extract subject + claims.
+        // Bind the token to THIS provider. A signature check alone does not do
+        // that: a validly-signed token from one configured IdP would otherwise
+        // be accepted for another provider_index, and nothing else in this flow
+        // ties the token to the provider whose code we just exchanged.
+        let (expected_issuer, expected_audience) = state
+            .oidc_client
+            .expected_claims(payload.provider_index)
+            .map_err(|e| tonic::Status::internal(format!("provider lookup failed: {e}")))?;
+        let token_issuer = id_token.issuer().unwrap_or_default();
+        if token_issuer.trim_end_matches('/') != expected_issuer {
+            warn!(expected = %expected_issuer, got = %token_issuer, "IDP id_token issuer mismatch");
+            return Err(tonic::Status::unauthenticated("IDP id_token issuer mismatch"));
+        }
+
+        // 4. Read the claims. Only AFTER the signature and issuer checks above —
+        // this decode is a base64 unwrap with no crypto, and it used to be the
+        // ONLY thing standing between the IdP response and a minted platform
+        // token.
         let id_claims = parse_jwt_payload(id_token_str)
             .map_err(|e| tonic::Status::unauthenticated(format!("failed to parse IDP ID token: {e}")))?;
+
+        if !audience_matches(&id_claims, &expected_audience) {
+            warn!(expected = %expected_audience, "IDP id_token audience mismatch");
+            return Err(tonic::Status::unauthenticated("IDP id_token audience mismatch"));
+        }
 
         // Prefer email over opaque sub.
         let subject = id_claims
@@ -533,5 +595,136 @@ impl AuthHandler for AuthImpl {
             success: true,
             ..Default::default()
         })
+    }
+}
+
+#[cfg(test)]
+mod idp_token_verification_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The audience check must accept BOTH JWT shapes and reject everything
+    /// else, including a missing claim.
+    ///
+    /// This binding is what stops a validly-signed token from one configured
+    /// IdP being accepted for another provider_index. Before this work the
+    /// callback verified nothing at all: the JWKS key was located by kid and
+    /// then dropped on the floor (`let _matching_key`), and the subject handed
+    /// to kernel's MintUserToken came from a bare base64 decode.
+    #[test]
+    fn audience_must_match_and_handles_both_jwt_shapes() {
+        let string_aud: HashMap<String, serde_json::Value> =
+            serde_json::from_value(json!({"aud": "schematic"})).unwrap();
+        assert!(audience_matches(&string_aud, "schematic"));
+        assert!(!audience_matches(&string_aud, "other-client"));
+
+        // The spec allows an array; the typed payload models aud as a single
+        // string, so an array must not silently fail open.
+        let array_aud: HashMap<String, serde_json::Value> =
+            serde_json::from_value(json!({"aud": ["other", "schematic"]})).unwrap();
+        assert!(audience_matches(&array_aud, "schematic"));
+        assert!(!audience_matches(&array_aud, "not-present"));
+
+        // Absent or wrongly-typed audience is a rejection, never a pass.
+        let no_aud: HashMap<String, serde_json::Value> =
+            serde_json::from_value(json!({"sub": "someone"})).unwrap();
+        assert!(!audience_matches(&no_aud, "schematic"));
+        let numeric_aud: HashMap<String, serde_json::Value> =
+            serde_json::from_value(json!({"aud": 42})).unwrap();
+        assert!(!audience_matches(&numeric_aud, "schematic"));
+    }
+
+    /// A JWKS entry must round-trip back into a JWK the chassis can parse.
+    ///
+    /// JwkEntry lifts kid/kty/alg into typed fields and flattens the rest, so
+    /// the object has to be reassembled before verification. If this drops a
+    /// field the key fails to parse and the callback fails CLOSED — but it
+    /// would fail closed for every login, so it is worth pinning.
+    #[test]
+    fn jwks_entry_round_trips_into_a_parsable_jwk() {
+        let entry: crate::oidc::JwkEntry = serde_json::from_value(json!({
+            "kid": "test-key-1",
+            "kty": "RSA",
+            "alg": "RS256",
+            "use": "sig",
+            "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM",
+            "e": "AQAB"
+        }))
+        .unwrap();
+
+        let value = entry.to_json_value();
+        assert_eq!(value["kid"], "test-key-1");
+        assert_eq!(value["kty"], "RSA");
+        assert_eq!(value["alg"], "RS256");
+        // The flattened remainder must survive too — without n/e there is no key.
+        assert_eq!(value["e"], "AQAB");
+        assert!(value["n"].as_str().is_some());
+    }
+}
+
+#[cfg(test)]
+mod live_idp_verification {
+    use super::*;
+
+    /// Verifies a REAL id_token from the live IdP through the exact sequence
+    /// the callback uses, and proves a tampered one is rejected.
+    ///
+    /// Ignored by default because it needs a live Keycloak. Run with:
+    ///   OIDC_TEST_TOKEN=$(cat idtok.txt) OIDC_TEST_JWKS=$(cat jwks.json) \
+    ///   cargo test live_idp -- --ignored --nocapture
+    ///
+    /// This exists because the unit tests above cover the claim binding but not
+    /// the crypto, and the crypto is the part that was missing entirely: the
+    /// callback located the signing key by kid and then dropped it.
+    #[test]
+    #[ignore]
+    fn real_idp_token_verifies_and_tampering_is_rejected() {
+        let token_str = std::env::var("OIDC_TEST_TOKEN").expect("OIDC_TEST_TOKEN");
+        let jwks_raw = std::env::var("OIDC_TEST_JWKS").expect("OIDC_TEST_JWKS");
+        let token_str = token_str.trim();
+
+        let jwks: serde_json::Value = serde_json::from_str(&jwks_raw).unwrap();
+        let entries: Vec<crate::oidc::JwkEntry> =
+            serde_json::from_value(jwks["keys"].clone()).unwrap();
+
+        let kid = jwt_kid(token_str).expect("token has a kid");
+        let key = entries
+            .iter()
+            .find(|j| j.kid.as_deref() == Some(kid.as_str()))
+            .expect("JWKS contains the token's kid");
+
+        let parsed: jwk::jwk::Jwk = serde_json::from_value(key.to_json_value())
+            .expect("JWKS entry deserializes into a chassis Jwk");
+        let verifying = jwk::ImmutableJwk::new(parsed).expect("key parses");
+
+        let tok = token::Token::parse(token_str).expect("token parses");
+        tok.verify(&verifying).expect("a genuine IdP token must verify");
+
+        let claims = parse_jwt_payload(token_str).unwrap();
+        assert!(
+            audience_matches(&claims, "schematic"),
+            "audience binding must accept the configured client_id"
+        );
+        assert!(!audience_matches(&claims, "some-other-client"));
+
+        // Tamper with the payload: same key, same structure, different claims.
+        // This is the case the old code could not detect at all.
+        let parts: Vec<&str> = token_str.split('.').collect();
+        let mut evil_claims = claims.clone();
+        evil_claims.insert(
+            "sub".to_string(),
+            serde_json::Value::String("attacker".to_string()),
+        );
+        use base64::Engine;
+        let evil_payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(serde_json::to_vec(&evil_claims).unwrap());
+        let forged = format!("{}.{}.{}", parts[0], evil_payload, parts[2]);
+
+        let forged_tok = token::Token::parse(&forged).expect("forged token still parses");
+        assert!(
+            forged_tok.verify(&verifying).is_err(),
+            "a token with altered claims MUST fail signature verification"
+        );
+        println!("live IdP token verified; tampered token rejected");
     }
 }
