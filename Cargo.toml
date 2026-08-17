@@ -27,3 +27,8 @@ logger = { path = "target/generated-sources/model/chassis/logger" }
 servicemanager = { path = "target/generated-sources/model/chassis/servicemanager" }
 jwk = { path = "target/generated-sources/model/chassis/jwk" }
 token = { path = "target/generated-sources/model/chassis/token" }
+
+[dev-dependencies]
+# Signing side of the chassis crypto, used by the id_token verification tests to
+# mint real signed tokens from a fixture key.
+key = { path = "target/generated-sources/model/chassis/key" }

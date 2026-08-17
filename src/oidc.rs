@@ -314,7 +314,6 @@ impl OidcClient {
         serde_json::from_slice(&body).map_err(|e| format!("parse token response: {e}"))
     }
 
-    /// Fetch the IDP's JWKS. Results are cached for refetch_interval.
     /// The (issuer, client_id) an id_token from this provider must carry.
     ///
     /// Verification lives in auth.rs but the provider config is private here,
@@ -333,6 +332,7 @@ impl OidcClient {
         ))
     }
 
+    /// Fetch the IDP's JWKS. Results are cached for refetch_interval.
     pub async fn fetch_jwks(&self, provider_index: i32) -> Result<Vec<JwkEntry>, String> {
         let prov = self
             .providers

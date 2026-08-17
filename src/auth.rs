@@ -194,6 +194,66 @@ fn jwt_kid(token: &str) -> Option<String> {
     header.get("kid")?.as_str().map(|s| s.to_string())
 }
 
+/// Verify an IdP id_token and return its claims.
+///
+/// The chassis token library checks the signature against the JWKS key named by
+/// the token's `kid`, plus alg, `exp` and `nbf`. On top of that the token is
+/// bound to the provider whose code was just exchanged: a signature check alone
+/// would accept a validly-signed token from one configured IdP for another
+/// provider_index, since nothing else in this flow ties the two together.
+///
+/// Every failure path rejects. Claims are read only once all checks have passed.
+fn verify_id_token(
+    id_token_str: &str,
+    jwks: &[crate::oidc::JwkEntry],
+    expected_issuer: &str,
+    expected_audience: &str,
+) -> Result<HashMap<String, serde_json::Value>, tonic::Status> {
+    // Find the signing key by kid. FAIL CLOSED when there is no match: an
+    // unmatched kid means we cannot verify, and "cannot verify" is not "accept".
+    let kid = jwt_kid(id_token_str).ok_or_else(|| {
+        tonic::Status::unauthenticated("IDP id_token has no kid; cannot select a verification key")
+    })?;
+    let matching_key = jwks
+        .iter()
+        .find(|j| j.kid.as_deref() == Some(kid.as_str()))
+        .ok_or_else(|| {
+            warn!(kid = %kid, "no IDP JWKS key matches the id_token kid");
+            tonic::Status::unauthenticated("no IDP signing key matches the id_token kid")
+        })?;
+
+    let parsed_jwk: jwk::jwk::Jwk =
+        serde_json::from_value(matching_key.to_json_value()).map_err(|e| {
+            tonic::Status::unauthenticated(format!("IDP JWKS entry is not a usable JWK: {e}"))
+        })?;
+    let verifying_key = jwk::ImmutableJwk::new(parsed_jwk).map_err(|e| {
+        tonic::Status::unauthenticated(format!("IDP JWKS key could not be parsed: {e}"))
+    })?;
+    let id_token = token::Token::parse(id_token_str).map_err(|e| {
+        tonic::Status::unauthenticated(format!("IDP id_token is not a well-formed JWT: {e}"))
+    })?;
+    id_token.verify(&verifying_key).map_err(|e| {
+        warn!(error = %e, "IDP id_token verification failed");
+        tonic::Status::unauthenticated("IDP id_token failed verification")
+    })?;
+
+    let token_issuer = id_token.issuer().unwrap_or_default();
+    if token_issuer.trim_end_matches('/') != expected_issuer {
+        warn!(expected = %expected_issuer, got = %token_issuer, "IDP id_token issuer mismatch");
+        return Err(tonic::Status::unauthenticated("IDP id_token issuer mismatch"));
+    }
+
+    let id_claims = parse_jwt_payload(id_token_str)
+        .map_err(|e| tonic::Status::unauthenticated(format!("failed to parse IDP ID token: {e}")))?;
+
+    if !audience_matches(&id_claims, expected_audience) {
+        warn!(expected = %expected_audience, "IDP id_token audience mismatch");
+        return Err(tonic::Status::unauthenticated("IDP id_token audience mismatch"));
+    }
+
+    Ok(id_claims)
+}
+
 /// Extract `exp` from a token's payload and compute remaining seconds.
 fn expires_in_from_token(token_proto: &oauth_model::types::sys::token::token::Token, now: i64) -> i64 {
     for (k, v) in &token_proto.payload {
@@ -309,75 +369,22 @@ impl AuthHandler for AuthImpl {
             .as_deref()
             .ok_or_else(|| tonic::Status::internal("IDP returned no id_token"))?;
 
-        // 3. Verify IDP ID token against IDP's JWKS.
-        let kid = jwt_kid(id_token_str);
+        // 3. Verify the IDP id_token: signature against the IDP's JWKS, plus
+        // exp/nbf, and bind it to the provider whose code we just exchanged.
         let jwks = state
             .oidc_client
             .fetch_jwks(payload.provider_index)
             .await
             .map_err(|e| tonic::Status::internal(format!("failed to fetch IDP JWKS: {e}")))?;
-
-        // Find the signing key by kid. FAIL CLOSED when there is no match: an
-        // unmatched kid means we cannot verify, and "cannot verify" is not
-        // "accept".
-        let kid = kid.ok_or_else(|| {
-            tonic::Status::unauthenticated("IDP id_token has no kid; cannot select a verification key")
-        })?;
-        let matching_key = jwks
-            .iter()
-            .find(|j| j.kid.as_deref() == Some(kid.as_str()))
-            .ok_or_else(|| {
-                warn!(kid = %kid, "no IDP JWKS key matches the id_token kid");
-                tonic::Status::unauthenticated("no IDP signing key matches the id_token kid")
-            })?;
-
-        // Verify the signature with the chassis primitives. These existed the
-        // whole time — chassis/jwk parses RSA/EC/Ed25519 into an ImmutableJwk and
-        // chassis/token checks alg, exp and nbf before verifying — and this path
-        // simply never called them: the matched key was bound to `_matching_key`
-        // and dropped, and the claims below came from a base64 decode with no
-        // crypto at all. The same binary already verifies PLATFORM tokens this
-        // way (service.rs), and saml verifies its assertions against a cert.
-        let jwk_value = matching_key.to_json_value();
-        let parsed_jwk: jwk::jwk::Jwk = serde_json::from_value(jwk_value).map_err(|e| {
-            tonic::Status::unauthenticated(format!("IDP JWKS entry is not a usable JWK: {e}"))
-        })?;
-        let verifying_key = jwk::ImmutableJwk::new(parsed_jwk).map_err(|e| {
-            tonic::Status::unauthenticated(format!("IDP JWKS key could not be parsed: {e}"))
-        })?;
-        let id_token = token::Token::parse(id_token_str).map_err(|e| {
-            tonic::Status::unauthenticated(format!("IDP id_token is not a well-formed JWT: {e}"))
-        })?;
-        id_token.verify(&verifying_key).map_err(|e| {
-            warn!(error = %e, "IDP id_token signature verification failed");
-            tonic::Status::unauthenticated("IDP id_token failed signature verification")
-        })?;
-
-        // Bind the token to THIS provider. A signature check alone does not do
-        // that: a validly-signed token from one configured IdP would otherwise
-        // be accepted for another provider_index, and nothing else in this flow
-        // ties the token to the provider whose code we just exchanged.
         let (expected_issuer, expected_audience) = state
             .oidc_client
             .expected_claims(payload.provider_index)
             .map_err(|e| tonic::Status::internal(format!("provider lookup failed: {e}")))?;
-        let token_issuer = id_token.issuer().unwrap_or_default();
-        if token_issuer.trim_end_matches('/') != expected_issuer {
-            warn!(expected = %expected_issuer, got = %token_issuer, "IDP id_token issuer mismatch");
-            return Err(tonic::Status::unauthenticated("IDP id_token issuer mismatch"));
-        }
 
-        // 4. Read the claims. Only AFTER the signature and issuer checks above —
-        // this decode is a base64 unwrap with no crypto, and it used to be the
-        // ONLY thing standing between the IdP response and a minted platform
-        // token.
-        let id_claims = parse_jwt_payload(id_token_str)
-            .map_err(|e| tonic::Status::unauthenticated(format!("failed to parse IDP ID token: {e}")))?;
-
-        if !audience_matches(&id_claims, &expected_audience) {
-            warn!(expected = %expected_audience, "IDP id_token audience mismatch");
-            return Err(tonic::Status::unauthenticated("IDP id_token audience mismatch"));
-        }
+        // 4. Claims come from the verified token only — a rejection here never
+        // reaches MintUserToken.
+        let id_claims =
+            verify_id_token(id_token_str, &jwks, &expected_issuer, &expected_audience)?;
 
         // Prefer email over opaque sub.
         let subject = id_claims
@@ -601,7 +608,195 @@ impl AuthHandler for AuthImpl {
 #[cfg(test)]
 mod idp_token_verification_tests {
     use super::*;
+    use base64::Engine;
     use serde_json::json;
+
+    const TEST_KID: &str = "oauth-test-key";
+    const TEST_ISSUER: &str = "https://idp.example.com/realms/schematic";
+    const TEST_AUDIENCE: &str = "schematic";
+
+    /// Fixture P-256 keypair. Test-only, never used outside these tests — it
+    /// stands in for the IdP's signing key so the crypto path runs for real
+    /// instead of being mocked out.
+    const TEST_PRIVATE_PEM: &str = "-----BEGIN PRIVATE KEY-----\n\
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7k1HsdAkjUtBG428\n\
+QH39rQVnir+rMuH2d6biVXBV2ZShRANCAAQOxMIoQW+QyI3WkD4Er9S43V/BK+F+\n\
+vtvE2Lrd3RM3DB/PzXNv36i967AX9G2Z+iS938JmBiFHZGwVnizguCe9\n\
+-----END PRIVATE KEY-----\n";
+
+    const TEST_PUBLIC_PEM: &str = "-----BEGIN PUBLIC KEY-----\n\
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDsTCKEFvkMiN1pA+BK/UuN1fwSvh\n\
+fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
+-----END PUBLIC KEY-----\n";
+
+    fn now() -> i64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+    }
+
+    fn b64_pem(pem: &str) -> String {
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(pem.as_bytes())
+    }
+
+    fn signing_key() -> key::keys::ImmutableKey {
+        key::keys::ImmutableKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PRIVATE_PEM)).unwrap()
+    }
+
+    /// The JWKS the "IdP" publishes — the fixture key's public half, converted
+    /// through the same chassis path a real IdP's key travels.
+    fn test_jwks() -> Vec<crate::oidc::JwkEntry> {
+        let public =
+            key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PUBLIC_PEM))
+                .unwrap();
+        let key_jwk = jwk::jwk::key_to_jwk(&public).unwrap();
+        vec![serde_json::from_value(serde_json::to_value(&key_jwk).unwrap()).unwrap()]
+    }
+
+    /// Mint an id_token signed by the fixture key, as the IdP would.
+    fn signed_id_token(iss: &str, aud: &str, exp: i64, nbf: Option<i64>) -> String {
+        let mut t = token::Token::new();
+        t.set_issuer(iss).unwrap();
+        t.set_audience(aud).unwrap();
+        t.set_subject("subject-opaque-id").unwrap();
+        t.set_expiration(exp).unwrap();
+        t.set_custom_field("email", json!("user@example.com")).unwrap();
+        if let Some(nbf) = nbf {
+            t.set_custom_field("nbf", json!(nbf)).unwrap();
+        }
+        t.sign(&signing_key()).unwrap();
+        t.base64().unwrap().to_string()
+    }
+
+    fn verify(token: &str) -> Result<HashMap<String, serde_json::Value>, tonic::Status> {
+        verify_id_token(token, &test_jwks(), TEST_ISSUER, TEST_AUDIENCE)
+    }
+
+    /// The real login path must still work: a correctly-signed token from the
+    /// configured issuer, for the configured client_id, verifies and yields its
+    /// claims.
+    #[test]
+    fn correctly_signed_matching_token_is_accepted() {
+        let tok = signed_id_token(TEST_ISSUER, TEST_AUDIENCE, now() + 3600, None);
+        let claims = verify(&tok).expect("a genuine id_token must be accepted");
+        assert_eq!(claims["email"], json!("user@example.com"));
+        assert_eq!(claims["sub"], json!("subject-opaque-id"));
+
+        // A trailing slash on the configured issuer is normalized, not a reject.
+        let with_slash = signed_id_token(
+            &format!("{TEST_ISSUER}/"),
+            TEST_AUDIENCE,
+            now() + 3600,
+            None,
+        );
+        assert!(verify(&with_slash).is_ok());
+    }
+
+    /// A token whose payload was altered after signing must fail. This is the
+    /// case the old code could not detect at all: the JWKS key was located by
+    /// kid and dropped, and claims came from a bare base64 decode.
+    #[test]
+    fn tampered_payload_is_rejected() {
+        let tok = signed_id_token(TEST_ISSUER, TEST_AUDIENCE, now() + 3600, None);
+        let parts: Vec<&str> = tok.split('.').collect();
+
+        let mut claims = parse_jwt_payload(&tok).unwrap();
+        claims.insert("email".to_string(), json!("attacker@evil.example"));
+        let forged_payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(serde_json::to_vec(&claims).unwrap());
+        let forged = format!("{}.{}.{}", parts[0], forged_payload, parts[2]);
+
+        let err = verify(&forged).expect_err("altered claims must not verify");
+        assert_eq!(err.code(), tonic::Code::Unauthenticated);
+    }
+
+    /// An unsigned token (alg=none style: valid structure, empty signature) must
+    /// be rejected, not read for its claims.
+    #[test]
+    fn unsigned_and_malformed_tokens_are_rejected() {
+        let tok = signed_id_token(TEST_ISSUER, TEST_AUDIENCE, now() + 3600, None);
+        let parts: Vec<&str> = tok.split('.').collect();
+
+        let unsigned = format!("{}.{}.", parts[0], parts[1]);
+        assert_eq!(
+            verify(&unsigned).unwrap_err().code(),
+            tonic::Code::Unauthenticated
+        );
+
+        // Not a JWT at all.
+        assert_eq!(
+            verify("not-a-jwt").unwrap_err().code(),
+            tonic::Code::Unauthenticated
+        );
+
+        // Signed by a key the JWKS does not contain — no kid match means we
+        // cannot verify, and "cannot verify" is not "accept".
+        let other_key = key::keys::generate_ec_p256_key().unwrap();
+        let mut t = token::Token::new();
+        t.set_issuer(TEST_ISSUER).unwrap();
+        t.set_audience(TEST_AUDIENCE).unwrap();
+        t.set_expiration(now() + 3600).unwrap();
+        t.sign(&other_key).unwrap();
+        let foreign = t.base64().unwrap().to_string();
+        assert_eq!(
+            verify(&foreign).unwrap_err().code(),
+            tonic::Code::Unauthenticated
+        );
+    }
+
+    /// A perfectly-signed token from a DIFFERENT issuer must not be accepted for
+    /// this provider. Nothing else in the callback flow binds the token to the
+    /// provider whose code was exchanged.
+    #[test]
+    fn wrong_issuer_is_rejected() {
+        let tok = signed_id_token(
+            "https://other-idp.example.com/realms/schematic",
+            TEST_AUDIENCE,
+            now() + 3600,
+            None,
+        );
+        let err = verify(&tok).expect_err("issuer mismatch must reject");
+        assert!(
+            err.message().contains("issuer mismatch"),
+            "unexpected error: {}",
+            err.message()
+        );
+    }
+
+    /// Likewise for a token minted for a different client_id.
+    #[test]
+    fn wrong_audience_is_rejected() {
+        let tok = signed_id_token(TEST_ISSUER, "some-other-client", now() + 3600, None);
+        let err = verify(&tok).expect_err("audience mismatch must reject");
+        assert!(
+            err.message().contains("audience mismatch"),
+            "unexpected error: {}",
+            err.message()
+        );
+    }
+
+    /// Expiry and not-before are enforced (the chassis allows 60s of clock skew,
+    /// so these are well outside it).
+    #[test]
+    fn expired_and_not_yet_valid_tokens_are_rejected() {
+        let expired = signed_id_token(TEST_ISSUER, TEST_AUDIENCE, now() - 3600, None);
+        assert_eq!(
+            verify(&expired).unwrap_err().code(),
+            tonic::Code::Unauthenticated
+        );
+
+        let not_yet = signed_id_token(
+            TEST_ISSUER,
+            TEST_AUDIENCE,
+            now() + 7200,
+            Some(now() + 3600),
+        );
+        assert_eq!(
+            verify(&not_yet).unwrap_err().code(),
+            tonic::Code::Unauthenticated
+        );
+    }
 
     /// The audience check must accept BOTH JWT shapes and reject everything
     /// else, including a missing claim.
@@ -666,65 +861,58 @@ mod idp_token_verification_tests {
 mod live_idp_verification {
     use super::*;
 
-    /// Verifies a REAL id_token from the live IdP through the exact sequence
-    /// the callback uses, and proves a tampered one is rejected.
+    /// Runs a REAL id_token and the REAL JWKS from a live IdP through
+    /// `verify_id_token` — the same function the callback calls — and proves a
+    /// tampered copy is rejected.
     ///
-    /// Ignored by default because it needs a live Keycloak. Run with:
+    /// The fixture-key tests above prove the logic; this proves it against an
+    /// actual IdP's RSA keys and claim shapes. Ignored by default because it
+    /// needs a live IdP. Run with:
     ///   OIDC_TEST_TOKEN=$(cat idtok.txt) OIDC_TEST_JWKS=$(cat jwks.json) \
+    ///   OIDC_TEST_ISS=<issuer> OIDC_TEST_AUD=<client_id> \
     ///   cargo test live_idp -- --ignored --nocapture
-    ///
-    /// This exists because the unit tests above cover the claim binding but not
-    /// the crypto, and the crypto is the part that was missing entirely: the
-    /// callback located the signing key by kid and then dropped it.
     #[test]
     #[ignore]
     fn real_idp_token_verifies_and_tampering_is_rejected() {
         let token_str = std::env::var("OIDC_TEST_TOKEN").expect("OIDC_TEST_TOKEN");
         let jwks_raw = std::env::var("OIDC_TEST_JWKS").expect("OIDC_TEST_JWKS");
+        let issuer = std::env::var("OIDC_TEST_ISS").expect("OIDC_TEST_ISS");
+        let audience = std::env::var("OIDC_TEST_AUD").expect("OIDC_TEST_AUD");
         let token_str = token_str.trim();
 
         let jwks: serde_json::Value = serde_json::from_str(&jwks_raw).unwrap();
-        let entries: Vec<crate::oidc::JwkEntry> =
+        let keys: Vec<crate::oidc::JwkEntry> =
             serde_json::from_value(jwks["keys"].clone()).unwrap();
 
-        let kid = jwt_kid(token_str).expect("token has a kid");
-        let key = entries
-            .iter()
-            .find(|j| j.kid.as_deref() == Some(kid.as_str()))
-            .expect("JWKS contains the token's kid");
-
-        let parsed: jwk::jwk::Jwk = serde_json::from_value(key.to_json_value())
-            .expect("JWKS entry deserializes into a chassis Jwk");
-        let verifying = jwk::ImmutableJwk::new(parsed).expect("key parses");
-
-        let tok = token::Token::parse(token_str).expect("token parses");
-        tok.verify(&verifying).expect("a genuine IdP token must verify");
-
-        let claims = parse_jwt_payload(token_str).unwrap();
-        assert!(
-            audience_matches(&claims, "schematic"),
-            "audience binding must accept the configured client_id"
+        let claims = verify_id_token(token_str, &keys, &issuer, &audience)
+            .expect("a genuine IdP id_token must be accepted");
+        println!(
+            "live IdP token accepted; sub={:?}",
+            claims.get("sub").and_then(|v| v.as_str())
         );
-        assert!(!audience_matches(&claims, "some-other-client"));
 
-        // Tamper with the payload: same key, same structure, different claims.
-        // This is the case the old code could not detect at all.
+        // Same signature, altered claims — the case the old code could not
+        // detect at all, since it read claims from a bare base64 decode.
+        use base64::Engine;
         let parts: Vec<&str> = token_str.split('.').collect();
         let mut evil_claims = claims.clone();
         evil_claims.insert(
             "sub".to_string(),
             serde_json::Value::String("attacker".to_string()),
         );
-        use base64::Engine;
         let evil_payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .encode(serde_json::to_vec(&evil_claims).unwrap());
         let forged = format!("{}.{}.{}", parts[0], evil_payload, parts[2]);
+        verify_id_token(&forged, &keys, &issuer, &audience)
+            .expect_err("a token with altered claims MUST be rejected");
 
-        let forged_tok = token::Token::parse(&forged).expect("forged token still parses");
-        assert!(
-            forged_tok.verify(&verifying).is_err(),
-            "a token with altered claims MUST fail signature verification"
-        );
-        println!("live IdP token verified; tampered token rejected");
+        // A live token is still bound to its provider: the real issuer's token
+        // must not be accepted for a different configured provider.
+        verify_id_token(token_str, &keys, "https://other-idp.example.com", &audience)
+            .expect_err("issuer binding must reject a token from another provider");
+        verify_id_token(token_str, &keys, &issuer, "some-other-client")
+            .expect_err("audience binding must reject a token for another client_id");
+
+        println!("live IdP: tampering, wrong issuer and wrong audience all rejected");
     }
 }
