@@ -5,8 +5,6 @@ mod service;
 
 use std::sync::Arc;
 
-use tracing_subscriber::EnvFilter;
-
 use oauth_model::s2sm::handler::Handler;
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::session::SessionHandler;
