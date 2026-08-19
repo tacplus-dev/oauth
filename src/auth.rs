@@ -27,7 +27,6 @@ use crate::oidc::OidcClient;
 pub struct AuthImpl {
     sm: Arc<ServiceManager>,
     broker: BrokerStreamBidiHandle,
-    pending: Arc<RwLock<HashMap<String, tokio::sync::oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
 }
 
@@ -39,15 +38,10 @@ struct AuthState {
 }
 
 impl AuthImpl {
-    pub fn new(
-        sm: Arc<ServiceManager>,
-        broker: &BrokerStreamBidiHandle,
-        pending: Arc<RwLock<HashMap<String, tokio::sync::oneshot::Sender<String>>>>,
-    ) -> Self {
+    pub fn new(sm: Arc<ServiceManager>, broker: &BrokerStreamBidiHandle) -> Self {
         Self {
             sm,
             broker: broker.clone(),
-            pending,
             state: RwLock::new(None),
         }
     }
