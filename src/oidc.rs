@@ -217,6 +217,42 @@ impl OidcClient {
         Ok(())
     }
 
+    /// Read one discovered endpoint, rediscovering lazily if it is not there.
+    ///
+    /// Discovery runs once, in `new()`, and a failure there used to be permanent:
+    /// the endpoint stayed `None` and every Authorize answered 500 until somebody
+    /// restarted oauth by hand. That is a startup race against the IDP — oauth
+    /// comes up first, Keycloak is not serving `.well-known` yet — and it recurs
+    /// on every later IDP restart too, so on a cluster where things get restarted
+    /// routinely it is a trap rather than a one-off.
+    ///
+    /// `fetch_jwks` already retried discovery for exactly this reason; the JWKS
+    /// URI was simply the only endpoint that did. Every endpoint accessor now
+    /// goes through here instead, so a provider that was undiscoverable at init
+    /// recovers on the next request that needs it.
+    async fn endpoint(
+        &self,
+        prov: &OidcProvider,
+        name: &str,
+        pick: fn(&OidcConfig) -> Option<String>,
+    ) -> Result<String, String> {
+        if let Some(v) = pick(&*prov.config.read().await) {
+            return Ok(v);
+        }
+        self.discover(prov).await.map_err(|e| {
+            format!(
+                "no {name} for provider {} (discovery retry: {e})",
+                prov.provider_cfg.name
+            )
+        })?;
+        pick(&*prov.config.read().await).ok_or_else(|| {
+            format!(
+                "no {name} for provider {} after discovery retry",
+                prov.provider_cfg.name
+            )
+        })
+    }
+
     /// Build the IDP authorization redirect URL with PKCE (S256).
     pub async fn build_authorize_url(
         &self,
@@ -230,11 +266,11 @@ impl OidcClient {
             .get(&provider_index)
             .ok_or_else(|| format!("unknown provider index {provider_index}"))?;
 
-        let cfg = prov.config.read().await;
-        let auth_endpoint = cfg
-            .authorization_endpoint
-            .as_deref()
-            .ok_or_else(|| format!("no authorization endpoint for provider {}", prov.provider_cfg.name))?;
+        let auth_endpoint = self
+            .endpoint(prov, "authorization endpoint", |c| {
+                c.authorization_endpoint.clone()
+            })
+            .await?;
 
         let scopes = if prov.provider_cfg.scopes.is_empty() {
             &self.default_scopes
@@ -275,13 +311,9 @@ impl OidcClient {
             .get(&provider_index)
             .ok_or_else(|| format!("unknown provider index {provider_index}"))?;
 
-        let cfg = prov.config.read().await;
-        let token_endpoint = cfg
-            .token_endpoint
-            .as_deref()
-            .ok_or_else(|| format!("no token endpoint for provider {}", prov.provider_cfg.name))?
-            .to_string();
-        drop(cfg);
+        let token_endpoint = self
+            .endpoint(prov, "token endpoint", |c| c.token_endpoint.clone())
+            .await?;
 
         let params = [
             ("grant_type", "authorization_code"),
@@ -349,33 +381,9 @@ impl OidcClient {
             }
         }
 
-        let jwks_uri = {
-            let cfg = prov.config.read().await;
-            cfg.jwks_uri.as_deref().map(|s| s.to_string())
-        };
-        // If discovery failed at startup (IDP not yet ready), retry now — the IDP
-        // is likely available by the time the first login attempt arrives.
-        let jwks_uri = match jwks_uri {
-            Some(uri) => uri,
-            None => {
-                if let Err(e) = self.discover(&prov).await {
-                    return Err(format!(
-                        "no JWKS URI for provider {} (discovery retry: {e})",
-                        prov.provider_cfg.name
-                    ));
-                }
-                let cfg = prov.config.read().await;
-                cfg.jwks_uri
-                    .as_deref()
-                    .ok_or_else(|| {
-                        format!(
-                            "no JWKS URI for provider {} after discovery retry",
-                            prov.provider_cfg.name
-                        )
-                    })?
-                    .to_string()
-            }
-        };
+        let jwks_uri = self
+            .endpoint(prov, "JWKS URI", |c| c.jwks_uri.clone())
+            .await?;
 
         let resp = prov
             .http_client
