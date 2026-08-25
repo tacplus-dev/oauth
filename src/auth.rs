@@ -380,13 +380,17 @@ impl AuthHandler for AuthImpl {
         let id_claims =
             verify_id_token(id_token_str, &jwks, &expected_issuer, &expected_audience)?;
 
-        // Prefer email over opaque sub.
+        // The principal is the raw IDP `sub`, as-is — never the email, which is
+        // reassignable and would make an email change into cross-user row
+        // inheritance under the store model. No issuer prefix: one human must be
+        // one principal. With no usable `sub` there is no identity to mint for.
         let subject = id_claims
-            .get("email")
+            .get("sub")
             .and_then(|v| v.as_str())
             .filter(|s| !s.is_empty())
-            .or_else(|| id_claims.get("sub").and_then(|v| v.as_str()))
-            .unwrap_or("unknown")
+            .ok_or_else(|| {
+                tonic::Status::unauthenticated("IDP id_token carries no usable sub claim")
+            })?
             .to_string();
 
         // 5. Build claims struct from IDP token.
@@ -404,7 +408,7 @@ impl AuthHandler for AuthImpl {
         );
         // Set sub — OPA trusted_caller check requires input.claims.sub.
         // build_claims_struct renames "sub" → "origin_sub" to avoid collisions,
-        // so we re-inject the resolved subject (email or opaque sub) as "sub".
+        // so we re-inject the resolved subject (the IDP sub) as "sub".
         claims.fields.insert(
             "sub".to_string(),
             prost_wkt_types::Value {
@@ -535,7 +539,15 @@ impl AuthHandler for AuthImpl {
             tonic::Status::unauthenticated("BrokerCliAuth requires authentication")
         })?;
         let token = caller.token();
-        let subject = token.subject().unwrap_or("unknown").to_string();
+        // Same rule as the callback path: no usable subject means no identity to
+        // broker, not a shared "unknown" principal.
+        let subject = token
+            .subject()
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| {
+                tonic::Status::unauthenticated("caller token carries no usable subject")
+            })?
+            .to_string();
 
         // Extract claims from the caller's token for OPA entitlement resolution.
         // Build a prost Struct from the token's custom fields.
