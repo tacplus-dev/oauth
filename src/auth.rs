@@ -7,7 +7,7 @@ use tracing::{info, warn};
 
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::ServiceManager;
-use oauth_model::types::sys::tokenrequest::tokenrequest::MintUserTokenRequest;
+use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest};
 use oauth_model::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse, Config,
     ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
@@ -262,6 +262,26 @@ fn expires_in_from_token(token_proto: &oauth_model::types::sys::token::token::To
     0
 }
 
+/// Build the kernel MintUserToken request for an IdP-brokered login.
+///
+/// `broker_kind` is set explicitly: kernel refuses the mint unless the request's
+/// kind appears in the resolved Delegate's `auth_broker_kinds`, and the
+/// `Default` zero value is `AUTH_BROKER_KIND_UNSPECIFIED`, which never matches.
+fn idp_mint_request(
+    subject: &str,
+    claims: prost_wkt_types::Struct,
+    trace_id: &str,
+) -> MintUserTokenRequest {
+    MintUserTokenRequest {
+        subject: subject.to_string(),
+        claims: Some(claims),
+        broker_kind: AuthBrokerKind::Idp as i32,
+        // Propagate trace_id so kernel and opa appear in the trace.
+        trace_id: trace_id.to_string(),
+        ..Default::default()
+    }
+}
+
 #[tonic::async_trait]
 impl AuthHandler for AuthImpl {
     async fn list_providers(
@@ -420,13 +440,7 @@ impl AuthHandler for AuthImpl {
 
         // 6. Call kernel MintUserToken to get signed tokens.
         let mint_resp = self.sm.s2s().kernel().mint_client()
-            .mint_user_token(MintUserTokenRequest {
-                subject: subject.clone(),
-                claims: Some(claims.clone()),
-                // Propagate trace_id so kernel and opa appear in the trace.
-                trace_id: req.trace_id.clone(),
-                ..Default::default()
-            })
+            .mint_user_token(idp_mint_request(&subject, claims.clone(), &req.trace_id))
             .await
             .map_err(|e| {
                 warn!(error = %e, "kernel MintUserToken failed");
@@ -920,5 +934,35 @@ mod live_idp_verification {
             .expect_err("audience binding must reject a token for another client_id");
 
         println!("live IdP: tampering, wrong issuer and wrong audience all rejected");
+    }
+}
+
+#[cfg(test)]
+mod broker_kind_tests {
+    use super::*;
+
+    /// The request the OAuth callback hands to kernel must name the IdP broker
+    /// kind. Kernel matches `broker_kind` against the resolved Delegate's
+    /// `auth_broker_kinds` and refuses the mint on a mismatch, so leaving the
+    /// field at its `Default` zero value refuses every real IdP login.
+    #[test]
+    fn the_mint_request_names_the_idp_broker_kind() {
+        let req = idp_mint_request(
+            "subject-opaque-id",
+            prost_wkt_types::Struct {
+                fields: HashMap::new(),
+            },
+            "trace-1",
+        );
+
+        assert_eq!(
+            AuthBrokerKind::try_from(req.broker_kind),
+            Ok(AuthBrokerKind::Idp)
+        );
+        assert_eq!(
+            AuthBrokerKind::Idp.as_str_name(),
+            "AUTH_BROKER_KIND_IDP"
+        );
+        assert_ne!(req.broker_kind, AuthBrokerKind::Unspecified as i32);
     }
 }
