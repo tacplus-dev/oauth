@@ -262,6 +262,57 @@ fn expires_in_from_token(token_proto: &oauth_model::types::sys::token::token::To
     0
 }
 
+/// Check a caller-supplied `callback_url` against a provider's configured
+/// redirect allowlist.
+///
+/// `Authorize` is unauthenticated and its `callback_url` is handed to the IdP
+/// as `redirect_uri`, so an unchecked value delivers the authorization code to
+/// whatever host the caller names. Matching is exact and case-sensitive:
+///
+///   - an entry that does not end in `/` matches only a byte-identical URL;
+///   - an entry that ends in `/` also matches any URL beginning with it.
+///
+/// The trailing slash is what ends the prefix on a path boundary, so a bare
+/// `starts_with` cannot be walked past the allowlisted origin or path segment.
+/// An empty allowlist matches nothing — no provider config means no redirect.
+fn callback_url_allowed(allowed_prefixes: &[String], callback_url: &str) -> bool {
+    allowed_prefixes.iter().any(|entry| {
+        if entry.ends_with('/') {
+            callback_url.starts_with(entry.as_str())
+        } else {
+            callback_url == entry
+        }
+    })
+}
+
+/// Resolve a provider by the index the caller supplied and reject the request
+/// unless its allowlist covers `callback_url`.
+fn check_callback_url(
+    config: &Config,
+    provider_index: i32,
+    callback_url: &str,
+) -> Result<(), tonic::Status> {
+    let provider = usize::try_from(provider_index)
+        .ok()
+        .and_then(|i| config.providers.get(i))
+        .ok_or_else(|| {
+            tonic::Status::invalid_argument(format!("unknown provider index {provider_index}"))
+        })?;
+
+    if !callback_url_allowed(&provider.allowed_redirect_uri_prefixes, callback_url) {
+        warn!(
+            provider = %provider.name,
+            callback_url = %callback_url,
+            "callback_url is not in the provider's redirect allowlist"
+        );
+        return Err(tonic::Status::invalid_argument(
+            "callback_url is not permitted for this provider",
+        ));
+    }
+
+    Ok(())
+}
+
 /// Build the kernel MintUserToken request for an IdP-brokered login.
 ///
 /// `broker_kind` is set explicitly: kernel refuses the mint unless the request's
@@ -326,6 +377,11 @@ impl AuthHandler for AuthImpl {
         let guard = self.require_state().await?;
         let state = guard.as_ref().unwrap();
 
+        // Before anything is encoded or sent: the caller-supplied callback_url
+        // becomes the IdP redirect_uri, so it must be one the operator
+        // allowlisted for this provider.
+        check_callback_url(&state.config, req.provider_index, &req.callback_url)?;
+
         let code_verifier = generate_code_verifier();
         let session_id = if req.session_id.is_empty() {
             None
@@ -363,7 +419,13 @@ impl AuthHandler for AuthImpl {
             .decode(&req.state)
             .map_err(|e| tonic::Status::unauthenticated(format!("invalid or expired state: {e}")))?;
 
-        // 2. Exchange authorization code for IDP tokens.
+        // 2. Re-check the callback_url the state carries. The state is
+        // encrypted, so this cannot have been forged, but the redirect_uri sent
+        // to the token endpoint gets its own check rather than trusting the
+        // decode.
+        check_callback_url(&state.config, payload.provider_index, &payload.callback_url)?;
+
+        // 3. Exchange authorization code for IDP tokens.
         let token_resp = state
             .oidc_client
             .exchange_code(
@@ -383,7 +445,7 @@ impl AuthHandler for AuthImpl {
             .as_deref()
             .ok_or_else(|| tonic::Status::internal("IDP returned no id_token"))?;
 
-        // 3. Verify the IDP id_token: signature against the IDP's JWKS, plus
+        // 4. Verify the IDP id_token: signature against the IDP's JWKS, plus
         // exp/nbf, and bind it to the provider whose code we just exchanged.
         let jwks = state
             .oidc_client
@@ -395,7 +457,7 @@ impl AuthHandler for AuthImpl {
             .expected_claims(payload.provider_index)
             .map_err(|e| tonic::Status::internal(format!("provider lookup failed: {e}")))?;
 
-        // 4. Claims come from the verified token only — a rejection here never
+        // 5. Claims come from the verified token only — a rejection here never
         // reaches MintUserToken.
         let id_claims =
             verify_id_token(id_token_str, &jwks, &expected_issuer, &expected_audience)?;
@@ -413,7 +475,7 @@ impl AuthHandler for AuthImpl {
             })?
             .to_string();
 
-        // 5. Build claims struct from IDP token.
+        // 6. Build claims struct from IDP token.
         let mut claims = build_claims_struct(&id_claims).unwrap_or_else(|| prost_wkt_types::Struct {
             fields: HashMap::new(),
         });
@@ -438,7 +500,7 @@ impl AuthHandler for AuthImpl {
             },
         );
 
-        // 6. Call kernel MintUserToken to get signed tokens.
+        // 7. Call kernel MintUserToken to get signed tokens.
         let mint_resp = self.sm.s2s().kernel().mint_client()
             .mint_user_token(idp_mint_request(&subject, claims.clone(), &req.trace_id))
             .await
@@ -448,7 +510,7 @@ impl AuthHandler for AuthImpl {
             })?
             .into_inner();
 
-        // 7. Compute expires_in from the tokens.
+        // 8. Compute expires_in from the tokens.
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -476,7 +538,7 @@ impl AuthHandler for AuthImpl {
             .map(|t| expires_in_from_token(t, now))
             .unwrap_or(0);
 
-        // 8. If this was a CLI-originated flow, complete the nonce via the
+        // 9. If this was a CLI-originated flow, complete the nonce via the
         // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
         // and delivers it to the oauth instance holding the CLI stream.
         if let Some(session_id) = &payload.session_id {
@@ -681,6 +743,11 @@ fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
         t.set_audience(aud).unwrap();
         t.set_subject("subject-opaque-id").unwrap();
         t.set_expiration(exp).unwrap();
+        // A real IdP id_token carries no namespace claim, and `verify_id_token`
+        // never looks at one. The chassis signer is the only signer available
+        // to this fixture and refuses to mint without it, so it is set purely
+        // to get a signed token out of `sign()`.
+        t.set_namespace("/").unwrap();
         t.set_custom_field("email", json!("user@example.com")).unwrap();
         if let Some(nbf) = nbf {
             t.set_custom_field("nbf", json!(nbf)).unwrap();
@@ -757,6 +824,7 @@ fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
         t.set_issuer(TEST_ISSUER).unwrap();
         t.set_audience(TEST_AUDIENCE).unwrap();
         t.set_expiration(now() + 3600).unwrap();
+        t.set_namespace("/").unwrap();
         t.sign(&other_key).unwrap();
         let foreign = t.base64().unwrap().to_string();
         assert_eq!(
@@ -964,5 +1032,141 @@ mod broker_kind_tests {
             "AUTH_BROKER_KIND_IDP"
         );
         assert_ne!(req.broker_kind, AuthBrokerKind::Unspecified as i32);
+    }
+}
+
+#[cfg(test)]
+mod callback_url_allowlist_tests {
+    use super::*;
+    use oauth_model::types::services::oauth::oauth::ProviderConfig;
+
+    const LEGIT: &str = "https://demo.34.29.52.40.nip.io/";
+
+    /// A provider configured the way the mock cluster configures one: the single
+    /// callback URL the webapp actually passes to Authorize.
+    fn provider(allowed: &[&str]) -> ProviderConfig {
+        ProviderConfig {
+            enable: true,
+            name: "drpepper".to_string(),
+            issuer: "https://keycloak.example/realms/drpepper".to_string(),
+            client_id: "schematic".to_string(),
+            client_secret: "secret".to_string(),
+            allowed_redirect_uri_prefixes: allowed.iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        }
+    }
+
+    fn config(allowed: &[&str]) -> Config {
+        Config {
+            enable: true,
+            providers: vec![provider(allowed)],
+            ..Default::default()
+        }
+    }
+
+    /// The real login path: the URL the webapp sends is the allowlisted one, so
+    /// Authorize proceeds to build a redirect.
+    #[test]
+    fn allowlisted_callback_url_is_accepted() {
+        assert!(check_callback_url(&config(&[LEGIT]), 0, LEGIT).is_ok());
+    }
+
+    /// A trailing-slash entry covers deeper paths under it — the webapp may
+    /// grow a route without the operator re-listing every page.
+    #[test]
+    fn trailing_slash_entry_covers_paths_beneath_it() {
+        assert!(callback_url_allowed(
+            &[LEGIT.to_string()],
+            "https://demo.34.29.52.40.nip.io/console/projects"
+        ));
+    }
+
+    /// The attack from the audit: an attacker-controlled host would receive the
+    /// authorization code. It must be refused with invalid_argument.
+    #[test]
+    fn attacker_supplied_callback_url_is_rejected() {
+        let err = check_callback_url(&config(&[LEGIT]), 0, "https://evil.example.com/steal")
+            .expect_err("an unlisted callback_url must be rejected");
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+    }
+
+    /// A bare `starts_with` against an entry with no trailing slash would let a
+    /// lookalike host or path through. It must not.
+    #[test]
+    fn prefix_lookalikes_do_not_satisfy_an_entry() {
+        let allowed = vec!["https://legit.example.com/app".to_string()];
+        assert!(callback_url_allowed(&allowed, "https://legit.example.com/app"));
+        // Host continues past the entry.
+        assert!(!callback_url_allowed(&allowed, "https://legit.example.com.evil.test/app"));
+        // Path segment continues past the entry.
+        assert!(!callback_url_allowed(&allowed, "https://legit.example.com/app-evil/cb"));
+        // Same for a trailing-slash entry: the slash must be reached honestly.
+        let allowed_slash = vec!["https://legit.example.com/app/".to_string()];
+        assert!(!callback_url_allowed(&allowed_slash, "https://legit.example.com/app-evil/"));
+    }
+
+    /// Fail closed: a provider with no allowlist authorizes nothing, rather
+    /// than falling back to "anything goes".
+    #[test]
+    fn empty_allowlist_rejects_everything() {
+        let err = check_callback_url(&config(&[]), 0, LEGIT)
+            .expect_err("an empty allowlist must authorize nothing");
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+    }
+
+    /// End-to-end over the same two steps `authorize` runs, in the same order,
+    /// against a real `OidcClient`: the allowlisted URL clears the check and
+    /// comes back embedded in the IDP redirect as `redirect_uri`, and the
+    /// attacker's URL is refused by the check — so `build_authorize_url`, and
+    /// with it the IDP, never sees it.
+    ///
+    /// The provider points at a dead port and carries an authorization_endpoint
+    /// override, so discovery fails fast and the URL is built offline.
+    #[tokio::test]
+    async fn only_an_allowlisted_callback_url_reaches_build_authorize_url() {
+        let mut p = provider(&[LEGIT]);
+        p.issuer = "https://127.0.0.1:1".to_string();
+        p.authorization_endpoint = "https://idp.test/auth".to_string();
+        let cfg = Config {
+            enable: true,
+            providers: vec![p],
+            ..Default::default()
+        };
+        let client = crate::oidc::OidcClient::new(&cfg.providers, &[], 3600)
+            .await
+            .expect("oidc client");
+
+        check_callback_url(&cfg, 0, LEGIT).expect("the allowlisted URL must pass the check");
+        let url = client
+            .build_authorize_url(0, "state", "verifier", LEGIT)
+            .await
+            .expect("authorize URL");
+        assert!(url.starts_with("https://idp.test/auth?"), "got {url}");
+        assert!(
+            url.contains(&serde_urlencoded::to_string([("redirect_uri", LEGIT)]).unwrap()),
+            "got {url}"
+        );
+
+        let evil = "https://evil.example.com/steal";
+        assert_eq!(
+            check_callback_url(&cfg, 0, evil).unwrap_err().code(),
+            tonic::Code::InvalidArgument,
+            "the attacker URL must never get as far as build_authorize_url"
+        );
+    }
+
+    /// An out-of-range provider_index has no allowlist to check against, so it
+    /// is refused before it can reach the OIDC client.
+    #[test]
+    fn unknown_provider_index_is_rejected() {
+        let cfg = config(&[LEGIT]);
+        assert_eq!(
+            check_callback_url(&cfg, 1, LEGIT).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
+        assert_eq!(
+            check_callback_url(&cfg, -1, LEGIT).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
     }
 }
