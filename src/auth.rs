@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use tokio::sync::RwLock;
+use tokio::sync::{oneshot, RwLock};
 use tracing::{info, warn};
 
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
@@ -23,10 +23,35 @@ use oauth_model::types::services::oauth::oauth::{
 use crate::nonce::{generate_code_verifier, StateCodec};
 use crate::oidc::OidcClient;
 
+/// A `session_id` is completable only where its CLI session is pending.
+///
+/// `broker_cli_auth` takes the `session_id` verbatim from the request, so
+/// without this check any authenticated caller who learns a nonce can complete
+/// someone else's CLI login and have that login's token delivered to the CLI
+/// that is waiting on it. `pending` is per-process: this closes the
+/// same-instance angle, and the kernel's `REGISTER_NONCE` `putIfAbsent` covers
+/// a registration that landed on a different oauth instance.
+async fn check_pending_session(
+    pending: &RwLock<HashMap<String, oneshot::Sender<String>>>,
+    session_id: &str,
+) -> Result<(), tonic::Status> {
+    if pending.read().await.contains_key(session_id) {
+        return Ok(());
+    }
+    warn!(session_id = %session_id, "BrokerCliAuth for a session_id with no pending CLI session, refusing");
+    Err(tonic::Status::not_found(
+        "no pending CLI login session for the supplied session_id",
+    ))
+}
+
 /// AuthImpl implements the Auth gRPC service (OAuth2/OIDC browser flows).
 pub struct AuthImpl {
     sm: Arc<ServiceManager>,
     broker: BrokerStreamBidiHandle,
+    /// The same map `OauthImpl` registers CLI sessions in — shared, not a copy,
+    /// so `broker_cli_auth` can tell a session this instance is actually
+    /// holding open from a `session_id` the caller merely knows.
+    pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
 }
 
@@ -38,10 +63,15 @@ struct AuthState {
 }
 
 impl AuthImpl {
-    pub fn new(sm: Arc<ServiceManager>, broker: &BrokerStreamBidiHandle) -> Self {
+    pub fn new(
+        sm: Arc<ServiceManager>,
+        broker: &BrokerStreamBidiHandle,
+        pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
+    ) -> Self {
         Self {
             sm,
             broker: broker.clone(),
+            pending,
             state: RwLock::new(None),
         }
     }
@@ -666,6 +696,8 @@ impl AuthHandler for AuthImpl {
         }
         let claims = prost_wkt_types::Struct { fields };
 
+        check_pending_session(&self.pending, &req.session_id).await?;
+
         self.broker.send(CliTokenBrokerRequest {
             msg: Some(cli_token_broker_request::Msg::CompleteNonce(
                 CliTokenBrokerCompleteNonce {
@@ -1167,6 +1199,49 @@ mod callback_url_allowlist_tests {
         assert_eq!(
             check_callback_url(&cfg, -1, LEGIT).unwrap_err().code(),
             tonic::Code::InvalidArgument
+        );
+    }
+}
+
+#[cfg(test)]
+mod pending_session_binding_tests {
+    use super::*;
+
+    /// A session this instance is holding open: `broker_cli_auth` may complete
+    /// its nonce.
+    #[tokio::test]
+    async fn a_pending_session_id_is_accepted() {
+        let pending = RwLock::new(HashMap::new());
+        let (tx, _rx) = oneshot::channel::<String>();
+        pending.write().await.insert("nonce-1".to_string(), tx);
+
+        check_pending_session(&pending, "nonce-1")
+            .await
+            .expect("a pending session_id must be completable");
+    }
+
+    /// The attack from the audit: an authenticated user who learns someone
+    /// else's session_id calls BrokerCliAuth with it. With no pending session
+    /// of that name, the request is refused and CompleteNonce is never sent.
+    #[tokio::test]
+    async fn an_unknown_session_id_is_rejected() {
+        let pending = RwLock::new(HashMap::new());
+        let (tx, _rx) = oneshot::channel::<String>();
+        pending.write().await.insert("victims-nonce".to_string(), tx);
+
+        let err = check_pending_session(&pending, "guessed-nonce")
+            .await
+            .expect_err("a session_id with no pending session must be rejected");
+        assert_eq!(err.code(), tonic::Code::NotFound);
+    }
+
+    /// Fail closed: an instance holding no sessions completes nothing.
+    #[tokio::test]
+    async fn an_empty_pending_map_completes_nothing() {
+        let pending = RwLock::new(HashMap::new());
+        assert_eq!(
+            check_pending_session(&pending, "nonce-1").await.unwrap_err().code(),
+            tonic::Code::NotFound
         );
     }
 }

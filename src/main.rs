@@ -156,7 +156,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let oauth_impl = Arc::new(OauthImpl::new(Arc::clone(&sm), broker_handle, Arc::clone(&pending)));
-    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), oauth_impl.broker_handle()));
+    let auth_impl = Arc::new(AuthImpl::new(Arc::clone(&sm), oauth_impl.broker_handle(), Arc::clone(&pending)));
     // Note: broker_handle was moved into OauthImpl. AuthImpl borrows it via broker_handle().
 
     let handler: Arc<dyn Handler> = Arc::new(OauthHandler {

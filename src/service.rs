@@ -86,6 +86,30 @@ async fn exchange_token(sm: &ServiceManager, input_token: &str, refresh_lifetime
         .ok_or_else(|| tonic::Status::internal("MintService returned empty token"))
 }
 
+/// Claim `session_id` for this CLI session, first-wins.
+///
+/// The nonce is the only thing binding a CLI session to the token that
+/// eventually arrives for it, so a second caller presenting a live
+/// `session_id` must not be able to displace the first one's waiting sender
+/// and receive its token. The check and the insert share one write lock: a
+/// read-then-write pair would let two concurrent claims both observe an empty
+/// slot.
+async fn claim_pending_session(
+    pending: &RwLock<HashMap<String, oneshot::Sender<String>>>,
+    session_id: &str,
+    reply_tx: oneshot::Sender<String>,
+) -> Result<(), tonic::Status> {
+    let mut map = pending.write().await;
+    if map.contains_key(session_id) {
+        warn!(session_id = %session_id, "session_id already claimed by a live CLI session, refusing");
+        return Err(tonic::Status::already_exists(
+            "session_id is already claimed by a live CLI session",
+        ));
+    }
+    map.insert(session_id.to_string(), reply_tx);
+    Ok(())
+}
+
 async fn recv_session_id<S>(inbound: &mut S) -> Result<(String, String, bool), tonic::Status>
 where
     S: tokio_stream::Stream<Item = Result<SessionRequest, tonic::Status>> + Unpin,
@@ -152,7 +176,7 @@ impl SessionHandler for OauthImpl {
             info!(session_id = %session_id, "unauthenticated session opened, registering nonce with broker");
 
             let (reply_tx, reply_rx) = oneshot::channel();
-            { self.pending.write().await.insert(session_id.clone(), reply_tx); }
+            claim_pending_session(&self.pending, &session_id, reply_tx).await?;
 
             self.broker.send(CliTokenBrokerRequest {
                 msg: Some(cli_token_broker_request::Msg::RegisterNonce(
@@ -189,5 +213,50 @@ impl SessionHandler for OauthImpl {
             });
             Ok(tonic::Response::new(Box::pin(ReceiverStream::new(rx))))
         }
+    }
+}
+
+#[cfg(test)]
+mod pending_session_tests {
+    use super::*;
+
+    fn pending_map() -> RwLock<HashMap<String, oneshot::Sender<String>>> {
+        RwLock::new(HashMap::new())
+    }
+
+    /// The ordinary case: a fresh session_id claims its slot.
+    #[tokio::test]
+    async fn a_fresh_session_id_is_registered() {
+        let pending = pending_map();
+        let (tx, _rx) = oneshot::channel();
+        claim_pending_session(&pending, "nonce-1", tx)
+            .await
+            .expect("a fresh session_id must be accepted");
+        assert!(pending.read().await.contains_key("nonce-1"));
+    }
+
+    /// The attack from the audit: a second CLI session presenting a live
+    /// session_id must be refused, and — the part that matters — must not
+    /// displace the first session's sender, or kernel's token delivery would
+    /// arrive at the attacker's stream instead of the victim's.
+    #[tokio::test]
+    async fn a_second_session_cannot_claim_a_live_session_id() {
+        let pending = pending_map();
+        let (first_tx, first_rx) = oneshot::channel();
+        claim_pending_session(&pending, "nonce-1", first_tx).await.unwrap();
+
+        let (second_tx, mut second_rx) = oneshot::channel();
+        let err = claim_pending_session(&pending, "nonce-1", second_tx)
+            .await
+            .expect_err("a live session_id must not be re-claimable");
+        assert_eq!(err.code(), tonic::Code::AlreadyExists);
+
+        // The registered sender is still the first session's: delivering the
+        // token reaches the original CLI, and the second caller's receiver is
+        // dead because its sender was dropped with the rejected claim.
+        let sender = pending.write().await.remove("nonce-1").expect("first sender still registered");
+        sender.send("the-token".to_string()).unwrap();
+        assert_eq!(first_rx.await.unwrap(), "the-token");
+        assert!(second_rx.try_recv().is_err());
     }
 }
