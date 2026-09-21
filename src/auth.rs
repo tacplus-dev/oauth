@@ -116,7 +116,7 @@ impl AuthImpl {
 
 /// Well-known JWT claims that get `origin_` prefix when forwarding from an
 /// external IDP token to avoid collision with Schematic claims.
-const WELL_KNOWN_JWT_CLAIMS: &[&str] = &["iss", "sub", "aud", "exp", "nbf", "iat", "jti"];
+const WELL_KNOWN_JWT_CLAIMS: &[&str] = &["iss", "sub", "aud", "exp", "nbf", "iat", "jti", "nonce"];
 
 /// Recursively convert a serde_json::Value to a prost_wkt_types::Value.
 /// Empty strings are dropped (return None). All other types are supported:
@@ -171,6 +171,44 @@ fn build_claims_struct(payload: &HashMap<String, serde_json::Value>) -> Option<p
         None
     } else {
         Some(prost_wkt_types::Struct { fields })
+    }
+}
+
+#[cfg(test)]
+mod build_claims_struct_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// A device/person link (identity §2/§3) proves two IdP logins share a
+    /// nonce by comparing the `origin_nonce` claim kernel reads off each
+    /// minted token. If `nonce` is not well-known, it passes through
+    /// unprefixed and kernel never sees `origin_nonce` — every link request
+    /// then fails `UNAUTHENTICATED` for a claim that was never missing on
+    /// the IDP side, only mislabeled on the way through oauth.
+    #[test]
+    fn nonce_claim_is_forwarded_as_origin_nonce() {
+        let mut payload = HashMap::new();
+        payload.insert("nonce".to_string(), json!("device-key-thumbprint"));
+        payload.insert("email".to_string(), json!("user@example.com"));
+
+        let claims = build_claims_struct(&payload).expect("non-empty payload yields a Struct");
+
+        assert!(
+            !claims.fields.contains_key("nonce"),
+            "nonce must not survive unprefixed"
+        );
+        let origin_nonce = claims
+            .fields
+            .get("origin_nonce")
+            .expect("nonce must be forwarded as origin_nonce");
+        assert_eq!(
+            origin_nonce.kind,
+            Some(prost_wkt_types::value::Kind::StringValue(
+                "device-key-thumbprint".to_string()
+            ))
+        );
+        // A claim that isn't well-known still passes through unprefixed.
+        assert!(claims.fields.contains_key("email"));
     }
 }
 
