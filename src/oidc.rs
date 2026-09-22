@@ -261,12 +261,17 @@ impl OidcClient {
     }
 
     /// Build the IDP authorization redirect URL with PKCE (S256).
+    ///
+    /// `nonce` is the caller-supplied OIDC nonce. An empty `nonce` sends no
+    /// `nonce` param at all rather than an empty one — IDPs differ on what an
+    /// empty value means, and only a device-possession login needs one.
     pub async fn build_authorize_url(
         &self,
         provider_index: i32,
         state: &str,
         code_verifier: &str,
         redirect_uri: &str,
+        nonce: &str,
     ) -> Result<String, String> {
         let prov = self
             .providers
@@ -289,15 +294,19 @@ impl OidcClient {
         let hash = Sha256::digest(code_verifier.as_bytes());
         let code_challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash);
 
-        let params = [
+        let scope = scopes.join(" ");
+        let mut params = vec![
             ("response_type", "code"),
             ("client_id", &prov.provider_cfg.client_id),
             ("redirect_uri", redirect_uri),
-            ("scope", &scopes.join(" ")),
+            ("scope", &scope),
             ("state", state),
             ("code_challenge", &code_challenge),
             ("code_challenge_method", "S256"),
         ];
+        if !nonce.is_empty() {
+            params.push(("nonce", nonce));
+        }
 
         let query = serde_urlencoded::to_string(params)
             .map_err(|e| format!("encoding params: {e}"))?;
@@ -527,7 +536,7 @@ mod tests {
     /// real result.
     async fn discover_via_client(p: ProviderConfig) -> Result<String, String> {
         let oc = OidcClient::new(&[p], &[], 3600).await?;
-        oc.build_authorize_url(0, "state", "verifier", "https://rp.test/cb")
+        oc.build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "")
             .await
     }
 
@@ -541,6 +550,40 @@ mod tests {
             src = s.source();
         }
         out
+    }
+
+    /// A caller-supplied nonce reaches the IDP's authorization endpoint. Without
+    /// it the IDP has no reason to put a `nonce` claim in the id_token, so
+    /// kernel's `origin_nonce` device-link check has nothing to compare.
+    #[tokio::test]
+    async fn a_supplied_nonce_is_sent_to_the_idp() {
+        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600)
+            .await
+            .expect("client");
+        let url = oc
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "device-key-thumbprint")
+            .await
+            .expect("authorize URL");
+        assert!(
+            url.contains("nonce=device-key-thumbprint"),
+            "the supplied nonce must be in the query: {url}"
+        );
+    }
+
+    /// Every login that is not proving device possession supplies no nonce, and
+    /// must send no `nonce` param at all — not an empty one.
+    #[tokio::test]
+    async fn no_nonce_param_is_sent_when_none_is_supplied() {
+        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600)
+            .await
+            .expect("client");
+        let url = oc
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "")
+            .await
+            .expect("authorize URL");
+        assert!(!url.contains("nonce="), "no nonce param may appear: {url}");
     }
 
     /// The workaround this file used to carry claimed rustls-webpki cannot verify

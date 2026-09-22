@@ -463,7 +463,13 @@ impl AuthHandler for AuthImpl {
 
         let redirect_url = state
             .oidc_client
-            .build_authorize_url(req.provider_index, &encoded_state, &code_verifier, &req.callback_url)
+            .build_authorize_url(
+                req.provider_index,
+                &encoded_state,
+                &code_verifier,
+                &req.callback_url,
+                &req.nonce,
+            )
             .await
             .map_err(|e| tonic::Status::internal(format!("failed to build authorize URL: {e}")))?;
 
@@ -1208,7 +1214,7 @@ mod callback_url_allowlist_tests {
 
         check_callback_url(&cfg, 0, LEGIT).expect("the allowlisted URL must pass the check");
         let url = client
-            .build_authorize_url(0, "state", "verifier", LEGIT)
+            .build_authorize_url(0, "state", "verifier", LEGIT, "")
             .await
             .expect("authorize URL");
         assert!(url.starts_with("https://idp.test/auth?"), "got {url}");
