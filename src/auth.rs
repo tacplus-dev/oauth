@@ -8,9 +8,11 @@ use tracing::{info, warn};
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::ServiceManager;
 use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest};
+use oauth_model::types::services::oauth::helpers::secrets_from_env_var;
 use oauth_model::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse, Config,
-    ListProvidersResponse, LogoutRequest, LogoutResponse, ProviderInfo,
+    FormPostCallbackRequest, FormPostCallbackResponse, ListProvidersResponse, LogoutRequest,
+    LogoutResponse, ProviderConfig, ProviderInfo,
 };
 use oauth_model::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce,
@@ -20,7 +22,7 @@ use oauth_model::types::services::oauth::oauth::{
     CompleteCliAuthRequest, CompleteCliAuthResponse,
 };
 
-use crate::nonce::{generate_code_verifier, StateCodec};
+use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
 use crate::oidc::OidcClient;
 
 /// A `session_id` is completable only where its CLI session is pending.
@@ -84,15 +86,25 @@ impl AuthImpl {
             return Ok(());
         }
 
+        // Secret inputs come from the pod env (operator SecretEnvVars), never
+        // from Config, which every config-holder in the fleet can read.
+        let secrets = secrets_from_env_var(&std::env::vars().collect());
+        check_provider_credentials(&cfg.providers, &secrets.apple_signin_key_p8)?;
+
         let oidc_client = OidcClient::new(
             &cfg.providers,
             &cfg.scopes,
             cfg.jwk_refetch_interval_seconds,
+            &secrets.apple_signin_key_p8,
         )
         .await
         .map_err(|e| format!("oidc client: {e}"))?;
 
-        let state_codec = StateCodec::new(&cfg.providers, cfg.nonce_expire_seconds);
+        let state_codec = StateCodec::new(
+            &cfg.providers,
+            &secrets.apple_signin_key_p8,
+            cfg.nonce_expire_seconds,
+        );
 
         *self.state.write().await = Some(AuthState {
             oidc_client,
@@ -111,6 +123,115 @@ impl AuthImpl {
             return Err(tonic::Status::failed_precondition("OAuth2 not enabled"));
         }
         Ok(guard)
+    }
+}
+
+/// Every enabled provider must be able to authenticate to its token endpoint:
+/// a Sign in with Apple provider with the .p8 key from the pod env, any other
+/// with a static `client_secret`. `client_secret` is not schema-required (an
+/// Apple provider has none), so this is what keeps a provider missing both
+/// from loading.
+fn check_provider_credentials(
+    providers: &[ProviderConfig],
+    apple_key_p8: &str,
+) -> Result<(), String> {
+    for p in providers.iter().filter(|p| p.enable) {
+        match &p.apple {
+            Some(_) if apple_key_p8.is_empty() => {
+                return Err(format!(
+                    "provider {} sets apple, but PROTO_SERVICES_OAUTH_SECRETS_APPLE_SIGNIN_KEY_P8 is empty",
+                    p.name
+                ))
+            }
+            None if p.client_secret.is_empty() => {
+                return Err(format!("provider {} has no client_secret", p.name))
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Where the browser goes after a form_post IDP (Apple) POSTs its response.
+///
+/// The webapp already completes a query-mode login from `?code=&state=` on its
+/// own page with MintCallbackTokens, so the POST is turned into exactly that
+/// redirect rather than given a second handoff. The state is checked here as it
+/// is again in MintCallbackTokens, and re-sealed carrying the first-
+/// authorization name, which Apple sends only in this POST. An unusable state
+/// sends the browser to "/", never to a URL the request named.
+fn form_post_redirect(
+    codec: &StateCodec,
+    config: &Config,
+    req: &FormPostCallbackRequest,
+) -> String {
+    let mut payload = match codec.decode(&req.state) {
+        Ok(p) => p,
+        Err(e) => {
+            warn!(error = %e, "form_post callback without a usable state, redirecting to /");
+            return "/".to_string();
+        }
+    };
+    if check_callback_url(config, payload.provider_index, &payload.callback_url).is_err() {
+        return "/".to_string();
+    }
+    // check_callback_url resolved the index, so the provider exists.
+    if config.providers[payload.provider_index as usize].apple.is_none() {
+        warn!(
+            provider_index = payload.provider_index,
+            "form_post callback for a provider that does not use form_post, redirecting to /"
+        );
+        return "/".to_string();
+    }
+
+    if req.code.is_empty() {
+        info!(error = %req.error, "form_post callback carried no code, returning to the webapp");
+        return payload.callback_url;
+    }
+
+    if !req.user.is_empty() {
+        match crate::apple::parse_user_name(&req.user) {
+            Ok((given, family)) => {
+                payload.given_name = given;
+                payload.family_name = family;
+            }
+            Err(e) => warn!(error = %e, "ignoring the form_post user field"),
+        }
+    }
+
+    let query = serde_urlencoded::to_string([
+        ("code", req.code.as_str()),
+        ("state", codec.seal(&payload).as_str()),
+    ])
+    .unwrap_or_default();
+    let separator = if payload.callback_url.contains('?') { '&' } else { '?' };
+    format!("{}{separator}{query}", payload.callback_url)
+}
+
+/// Add the first-authorization name a form_post IDP relayed through the state.
+///
+/// Apple sends the name once and never in the id_token, so this login's mint is
+/// the only one that can carry it. A claim the id_token already has is kept.
+fn add_first_authorization_name(claims: &mut prost_wkt_types::Struct, payload: &StatePayload) {
+    let string_value = |s: &str| prost_wkt_types::Value {
+        kind: Some(prost_wkt_types::value::Kind::StringValue(s.to_string())),
+    };
+    let full_name = [payload.given_name.as_deref(), payload.family_name.as_deref()]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ");
+    for (claim, value) in [
+        ("given_name", payload.given_name.as_deref().unwrap_or("")),
+        ("family_name", payload.family_name.as_deref().unwrap_or("")),
+        ("name", full_name.as_str()),
+    ] {
+        if !value.is_empty() {
+            claims
+                .fields
+                .entry(claim.to_string())
+                .or_insert_with(|| string_value(value));
+        }
     }
 }
 
@@ -574,6 +695,9 @@ impl AuthHandler for AuthImpl {
             },
         );
 
+        // A form_post IDP's first-authorization name, carried in the state.
+        add_first_authorization_name(&mut claims, &payload);
+
         // 7. Call kernel MintUserToken to get signed tokens.
         let mint_resp = self.sm.s2s().kernel().mint_client()
             .mint_user_token(idp_mint_request(&subject, claims.clone(), &req.trace_id))
@@ -642,6 +766,19 @@ impl AuthHandler for AuthImpl {
             callback_url: payload.callback_url,
             access_token_expires_in: access_expires_in,
             refresh_token_expires_in: refresh_expires_in,
+            ..Default::default()
+        })
+    }
+
+    async fn broker_form_post_callback(
+        &self,
+        _caller: Option<&servicemanager::auth::Caller>,
+        req: FormPostCallbackRequest,
+    ) -> Result<FormPostCallbackResponse, tonic::Status> {
+        let guard = self.require_state().await?;
+        let state = guard.as_ref().unwrap();
+        Ok(FormPostCallbackResponse {
+            redirect_url: form_post_redirect(&state.state_codec, &state.config, &req),
             ..Default::default()
         })
     }
@@ -769,7 +906,7 @@ mod idp_token_verification_tests {
     use base64::Engine;
     use serde_json::json;
 
-    const TEST_KID: &str = "oauth-test-key";
+    pub(super) const TEST_KID: &str = "oauth-test-key";
     const TEST_ISSUER: &str = "https://idp.example.com/realms/schematic";
     const TEST_AUDIENCE: &str = "schematic";
 
@@ -782,23 +919,23 @@ QH39rQVnir+rMuH2d6biVXBV2ZShRANCAAQOxMIoQW+QyI3WkD4Er9S43V/BK+F+\n\
 vtvE2Lrd3RM3DB/PzXNv36i967AX9G2Z+iS938JmBiFHZGwVnizguCe9\n\
 -----END PRIVATE KEY-----\n";
 
-    const TEST_PUBLIC_PEM: &str = "-----BEGIN PUBLIC KEY-----\n\
+    pub(super) const TEST_PUBLIC_PEM: &str = "-----BEGIN PUBLIC KEY-----\n\
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDsTCKEFvkMiN1pA+BK/UuN1fwSvh\n\
 fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
 -----END PUBLIC KEY-----\n";
 
-    fn now() -> i64 {
+    pub(super) fn now() -> i64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64
     }
 
-    fn b64_pem(pem: &str) -> String {
+    pub(super) fn b64_pem(pem: &str) -> String {
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(pem.as_bytes())
     }
 
-    fn signing_key() -> key::keys::ImmutableKey {
+    pub(super) fn signing_key() -> key::keys::ImmutableKey {
         key::keys::ImmutableKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PRIVATE_PEM)).unwrap()
     }
 
@@ -1208,7 +1345,7 @@ mod callback_url_allowlist_tests {
             providers: vec![p],
             ..Default::default()
         };
-        let client = crate::oidc::OidcClient::new(&cfg.providers, &[], 3600)
+        let client = crate::oidc::OidcClient::new(&cfg.providers, &[], 3600, "")
             .await
             .expect("oidc client");
 
@@ -1287,5 +1424,508 @@ mod pending_session_binding_tests {
             check_pending_session(&pending, "nonce-1").await.unwrap_err().code(),
             tonic::Code::NotFound
         );
+    }
+}
+
+#[cfg(test)]
+mod apple_signin_tests {
+    //! Sign in with Apple against a fake Apple: discovery, token endpoint and
+    //! JWKS served over real HTTP, so the authorize URL, the form_post callback,
+    //! the client-secret exchange and the id_token verification all run for
+    //! real. Only kernel's MintUserToken (it needs a cluster) is not called; the
+    //! claims handed to it are checked.
+    use super::idp_token_verification_tests::{b64_pem, now, signing_key, TEST_KID, TEST_PUBLIC_PEM};
+    use super::*;
+    use crate::apple::tests::{p8_verifier, TEST_P8_PEM};
+    use oauth_model::types::services::oauth::oauth::AppleSignIn;
+    use prost_wkt_types::value::Kind;
+    use serde_json::json;
+    use std::sync::Mutex;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::{TcpListener, TcpStream};
+
+    const SERVICES_ID: &str = "com.example.console.signin";
+    const TEAM_ID: &str = "TEAM123456";
+    const KEY_ID: &str = "KEY1234567";
+    const FORM_POST_URI: &str = "https://console.example/oauth/Auth/BrokerFormPostCallback";
+    const SPA: &str = "https://console.example/";
+    const APPLE_CODE: &str = "c0de.from.apple";
+    const APPLE_SUB: &str = "001234.0123456789abcdef0123456789abcdef.1234";
+    const RELAY_EMAIL: &str = "x7k2q9@privaterelay.appleid.com";
+    const APPLE_ISSUER: &str = "https://appleid.apple.com";
+    const FIRST_AUTH_USER: &str =
+        r#"{"name":{"firstName":"Ada","lastName":"Lovelace"},"email":"x7k2q9@privaterelay.appleid.com"}"#;
+
+    struct FakeApple {
+        issuer: String,
+        /// Every form POSTed to the token endpoint, in order.
+        token_forms: Arc<Mutex<Vec<HashMap<String, String>>>>,
+    }
+
+    /// The JWKS Apple publishes at /auth/keys: the id_token key's public half.
+    fn apple_jwks() -> serde_json::Value {
+        let public =
+            key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PUBLIC_PEM))
+                .unwrap();
+        json!({"keys": [jwk::jwk::key_to_jwk(&public).unwrap()]})
+    }
+
+    /// An id_token with Apple's claim shapes — `email_verified` and
+    /// `is_private_email` are strings, the email a private relay — signed with
+    /// the key the fake publishes.
+    fn apple_id_token(iss: &str) -> String {
+        let mut t = token::Token::new();
+        t.set_issuer(iss).unwrap();
+        t.set_audience(SERVICES_ID).unwrap();
+        t.set_subject(APPLE_SUB).unwrap();
+        t.set_issued_at(now()).unwrap();
+        t.set_expiration(now() + 600).unwrap();
+        // Only so the chassis signer will sign; see `signed_id_token`.
+        t.set_namespace("/").unwrap();
+        t.set_custom_field("email", json!(RELAY_EMAIL)).unwrap();
+        t.set_custom_field("email_verified", json!("true")).unwrap();
+        t.set_custom_field("is_private_email", json!("true")).unwrap();
+        t.sign(&signing_key()).unwrap();
+        t.base64().unwrap().to_string()
+    }
+
+    /// What Apple's token endpoint checks before it answers: a client secret
+    /// signed by the registered key for this team and Services ID, and the code
+    /// and redirect_uri of the authorization it issued.
+    fn apple_accepts(form: &HashMap<String, String>) -> bool {
+        let field = |k: &str| form.get(k).map(String::as_str).unwrap_or("");
+        let secret = field("client_secret");
+        let signed_by_p8 = token::Token::parse(secret)
+            .map(|t| t.verify(&p8_verifier(KEY_ID)).is_ok())
+            .unwrap_or(false);
+        let Ok(claims) = parse_jwt_payload(secret) else {
+            return false;
+        };
+        signed_by_p8
+            && claims.get("iss") == Some(&json!(TEAM_ID))
+            && claims.get("sub") == Some(&json!(SERVICES_ID))
+            && claims.get("aud") == Some(&json!(APPLE_ISSUER))
+            && field("client_id") == SERVICES_ID
+            && field("grant_type") == "authorization_code"
+            && field("code") == APPLE_CODE
+            && field("redirect_uri") == FORM_POST_URI
+    }
+
+    /// Read one HTTP/1.1 request: (path, body).
+    async fn read_request(sock: &mut TcpStream) -> (String, String) {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        let header_end = loop {
+            let n = sock.read(&mut chunk).await.unwrap_or(0);
+            if n == 0 {
+                return (String::new(), String::new());
+            }
+            buf.extend_from_slice(&chunk[..n]);
+            if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                break i + 4;
+            }
+        };
+        let head = String::from_utf8_lossy(&buf[..header_end]).to_string();
+        let path = head.split_whitespace().nth(1).unwrap_or("").to_string();
+        let content_length = head
+            .lines()
+            .find_map(|l| {
+                let (k, v) = l.split_once(':')?;
+                k.eq_ignore_ascii_case("content-length")
+                    .then(|| v.trim().parse::<usize>().ok())?
+            })
+            .unwrap_or(0);
+        while buf.len() < header_end + content_length {
+            let n = sock.read(&mut chunk).await.unwrap_or(0);
+            if n == 0 {
+                break;
+            }
+            buf.extend_from_slice(&chunk[..n]);
+        }
+        let body = String::from_utf8_lossy(&buf[header_end..]).to_string();
+        (path, body)
+    }
+
+    async fn spawn_fake_apple() -> FakeApple {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let issuer = format!("http://{}", listener.local_addr().unwrap());
+        let token_forms = Arc::new(Mutex::new(Vec::new()));
+
+        let discovery = json!({
+            "authorization_endpoint": format!("{issuer}/auth/authorize"),
+            "token_endpoint": format!("{issuer}/auth/token"),
+            "jwks_uri": format!("{issuer}/auth/keys"),
+        })
+        .to_string();
+        let jwks = apple_jwks().to_string();
+        let id_token = apple_id_token(&issuer);
+        let forms = Arc::clone(&token_forms);
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut sock, _)) = listener.accept().await else {
+                    return;
+                };
+                let (discovery, jwks, id_token, forms) =
+                    (discovery.clone(), jwks.clone(), id_token.clone(), Arc::clone(&forms));
+                tokio::spawn(async move {
+                    let (path, body) = read_request(&mut sock).await;
+                    let (status, resp) = match path.as_str() {
+                        "/.well-known/openid-configuration" => ("200 OK", discovery),
+                        "/auth/keys" => ("200 OK", jwks),
+                        "/auth/token" => {
+                            let form: HashMap<String, String> =
+                                serde_urlencoded::from_str(&body).unwrap_or_default();
+                            forms.lock().unwrap().push(form.clone());
+                            if apple_accepts(&form) {
+                                let resp = json!({
+                                    "id_token": id_token,
+                                    "access_token": "apple-access-token",
+                                    "token_type": "Bearer",
+                                    "expires_in": 3600,
+                                });
+                                ("200 OK", resp.to_string())
+                            } else {
+                                ("400 Bad Request", json!({"error": "invalid_client"}).to_string())
+                            }
+                        }
+                        _ => ("404 Not Found", "{}".to_string()),
+                    };
+                    let out = format!(
+                        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{resp}",
+                        resp.len()
+                    );
+                    let _ = sock.write_all(out.as_bytes()).await;
+                    let _ = sock.shutdown().await;
+                });
+            }
+        });
+
+        FakeApple { issuer, token_forms }
+    }
+
+    /// An Apple provider configured as the design says: Services ID as client_id,
+    /// no client_secret, Apple's scope names.
+    fn apple_provider(issuer: &str) -> ProviderConfig {
+        ProviderConfig {
+            enable: true,
+            name: "apple".to_string(),
+            issuer: issuer.to_string(),
+            client_id: SERVICES_ID.to_string(),
+            scopes: vec!["name".to_string(), "email".to_string()],
+            allowed_redirect_uri_prefixes: vec![SPA.to_string()],
+            apple: Some(AppleSignIn {
+                team_id: TEAM_ID.to_string(),
+                key_id: KEY_ID.to_string(),
+                form_post_redirect_uri: FORM_POST_URI.to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    /// A plain OIDC provider beside the Apple one, for the cases that must not
+    /// take the form_post path.
+    fn plain_provider() -> ProviderConfig {
+        ProviderConfig {
+            enable: true,
+            name: "google".to_string(),
+            issuer: "https://127.0.0.1:1".to_string(),
+            client_id: "google-client".to_string(),
+            client_secret: "google-secret".to_string(),
+            authorization_endpoint: "https://idp.test/auth".to_string(),
+            allowed_redirect_uri_prefixes: vec![SPA.to_string()],
+            ..Default::default()
+        }
+    }
+
+    fn config(providers: Vec<ProviderConfig>) -> Config {
+        Config {
+            enable: true,
+            providers,
+            ..Default::default()
+        }
+    }
+
+    fn query_of(url: &str) -> HashMap<String, String> {
+        serde_urlencoded::from_str(url.split_once('?').map(|(_, q)| q).unwrap_or("")).unwrap()
+    }
+
+    fn string_claim<'a>(claims: &'a prost_wkt_types::Struct, k: &str) -> Option<&'a str> {
+        match claims.fields.get(k)?.kind.as_ref()? {
+            Kind::StringValue(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    fn form(code: &str, state: &str, user: &str) -> FormPostCallbackRequest {
+        FormPostCallbackRequest {
+            code: code.to_string(),
+            state: state.to_string(),
+            id_token: "posted-id-token-is-never-used".to_string(),
+            user: user.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// The whole browser flow, in the order the browser drives it.
+    #[tokio::test]
+    async fn sign_in_with_apple_end_to_end_against_a_fake_apple() {
+        let apple = spawn_fake_apple().await;
+        let cfg = config(vec![apple_provider(&apple.issuer)]);
+        check_provider_credentials(&cfg.providers, TEST_P8_PEM).expect("apple + .p8 is complete");
+        let client = OidcClient::new(&cfg.providers, &[], 3600, TEST_P8_PEM)
+            .await
+            .expect("oidc client");
+        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+
+        // 1. Authorize. Apple is sent the registered server callback and asked
+        //    for form_post; the SPA URL travels only inside the state.
+        check_callback_url(&cfg, 0, SPA).expect("SPA is allowlisted");
+        let verifier = generate_code_verifier();
+        let state = codec.encode(0, SPA, &verifier, None);
+        let url = client
+            .build_authorize_url(0, &state, &verifier, SPA, "")
+            .await
+            .expect("authorize URL from discovery");
+        assert!(url.starts_with(&format!("{}/auth/authorize?", apple.issuer)), "got {url}");
+        let q = query_of(&url);
+        assert_eq!(q["response_mode"], "form_post");
+        assert_eq!(q["redirect_uri"], FORM_POST_URI);
+        assert_eq!(q["client_id"], SERVICES_ID);
+        assert_eq!(q["scope"], "name email");
+        assert_eq!(q["state"], state);
+
+        // 2. Apple POSTs the form. The callback answers with the webapp's
+        //    existing query-mode handoff, the name sealed into a fresh state.
+        let redirect = form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, FIRST_AUTH_USER));
+        assert!(redirect.starts_with(&format!("{SPA}?")), "got {redirect}");
+        let q = query_of(&redirect);
+        assert_eq!(q["code"], APPLE_CODE);
+        assert_ne!(q["state"], state, "the state is re-sealed, not echoed");
+        let payload = codec.decode(&q["state"]).expect("re-sealed state decodes");
+        assert_eq!(payload.provider_index, 0);
+        assert_eq!(payload.callback_url, SPA);
+        assert_eq!(payload.code_verifier, verifier);
+        assert_eq!(payload.given_name.as_deref(), Some("Ada"));
+        assert_eq!(payload.family_name.as_deref(), Some("Lovelace"));
+
+        // 3. MintCallbackTokens' steps, as it runs them: the code exchange with
+        //    a freshly minted client secret (the fake rejects anything else),
+        //    then the id_token verified against Apple's JWKS and bound to the
+        //    issuer and Services ID.
+        let tokens = client
+            .exchange_code(0, &q["code"], &payload.code_verifier, &payload.callback_url)
+            .await
+            .expect("the fake Apple accepts the minted client secret");
+        let sent = apple.token_forms.lock().unwrap().last().cloned().unwrap();
+        assert_eq!(sent["redirect_uri"], FORM_POST_URI);
+        assert_eq!(sent["code_verifier"], verifier);
+        let jwks = client.fetch_jwks(0).await.expect("Apple JWKS");
+        let (iss, aud) = client.expected_claims(0).unwrap();
+        assert_eq!(aud, SERVICES_ID);
+        let id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+            .expect("Apple's id_token verifies");
+
+        // 4. The claims handed to kernel: forwarded the way Google's are, plus
+        //    the first-authorization name.
+        let mut claims = build_claims_struct(&id_claims).unwrap();
+        add_first_authorization_name(&mut claims, &payload);
+        assert_eq!(string_claim(&claims, "origin_iss"), Some(apple.issuer.as_str()));
+        assert_eq!(string_claim(&claims, "origin_sub"), Some(APPLE_SUB));
+        assert_eq!(string_claim(&claims, "email"), Some(RELAY_EMAIL));
+        assert_eq!(string_claim(&claims, "email_verified"), Some("true"));
+        assert_eq!(string_claim(&claims, "is_private_email"), Some("true"));
+        assert_eq!(string_claim(&claims, "given_name"), Some("Ada"));
+        assert_eq!(string_claim(&claims, "family_name"), Some("Lovelace"));
+        assert_eq!(string_claim(&claims, "name"), Some("Ada Lovelace"));
+    }
+
+    /// The fake is not vacuous: a client secret signed with any key but the
+    /// registered .p8 is refused, as Apple refuses it, and the exchange fails.
+    #[tokio::test]
+    async fn a_client_secret_from_the_wrong_key_is_refused() {
+        let apple = spawn_fake_apple().await;
+        let cfg = config(vec![apple_provider(&apple.issuer)]);
+        let other = key::keys::generate_ec_p256_key().unwrap();
+        let other_p8 = std::str::from_utf8(other.pem_bytes()).unwrap();
+        let client = OidcClient::new(&cfg.providers, &[], 3600, other_p8).await.unwrap();
+
+        let err = client
+            .exchange_code(0, APPLE_CODE, "verifier", SPA)
+            .await
+            .expect_err("Apple must refuse a secret it cannot verify");
+        assert!(err.contains("invalid_client"), "got {err}");
+        assert_eq!(apple.token_forms.lock().unwrap().len(), 1);
+    }
+
+    /// The literal Apple issuer, with Apple's string-typed booleans, verifies and
+    /// forwards as origin_iss — what OPA's Apple arm will match on.
+    #[test]
+    fn apples_issuer_and_claim_shapes_verify_and_forward() {
+        let jwks: Vec<crate::oidc::JwkEntry> =
+            serde_json::from_value(apple_jwks()["keys"].clone()).unwrap();
+        let claims = verify_id_token(&apple_id_token(APPLE_ISSUER), &jwks, APPLE_ISSUER, SERVICES_ID)
+            .expect("Apple's id_token verifies");
+        let forwarded = build_claims_struct(&claims).unwrap();
+        assert_eq!(string_claim(&forwarded, "origin_iss"), Some(APPLE_ISSUER));
+        assert_eq!(string_claim(&forwarded, "email"), Some(RELAY_EMAIL));
+        assert_eq!(string_claim(&forwarded, "is_private_email"), Some("true"));
+
+        // Bound to the Services ID: a token for another client is refused.
+        assert!(verify_id_token(&apple_id_token(APPLE_ISSUER), &jwks, APPLE_ISSUER, "other.services.id").is_err());
+    }
+
+    /// GET-safe: a reload or bookmark (the gateway sends a GET as `{}`), a
+    /// forged, expired or foreign state all land on "/", never on a URL taken
+    /// from the request.
+    #[test]
+    fn an_unusable_state_redirects_to_root() {
+        let cfg = config(vec![plain_provider(), apple_provider("https://appleid.apple.com")]);
+        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+
+        assert_eq!(form_post_redirect(&codec, &cfg, &FormPostCallbackRequest::default()), "/");
+        assert_eq!(form_post_redirect(&codec, &cfg, &form(APPLE_CODE, "forged", "")), "/");
+
+        let expired = StateCodec::new(&cfg.providers, TEST_P8_PEM, -1);
+        let state = expired.encode(1, SPA, "v", None);
+        assert_eq!(form_post_redirect(&expired, &cfg, &form(APPLE_CODE, &state, "")), "/");
+
+        // A genuine state, but for the provider that does not use form_post.
+        let state = codec.encode(0, SPA, "v", None);
+        assert_eq!(form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, "")), "/");
+
+        // A genuine state whose callback_url is no longer allowlisted.
+        let state = codec.encode(1, "https://evil.example/", "v", None);
+        assert_eq!(form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, "")), "/");
+    }
+
+    /// A cancelled sign-in posts `error` and no code: back to the webapp, with
+    /// nothing for it to exchange.
+    #[test]
+    fn an_apple_error_returns_to_the_webapp_without_a_code() {
+        let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
+        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let state = codec.encode(0, SPA, "v", None);
+        let req = FormPostCallbackRequest {
+            state,
+            error: "user_cancelled_authorize".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(form_post_redirect(&codec, &cfg, &req), SPA);
+    }
+
+    /// Apple sends `user` on the first authorization only. Without it, or with
+    /// an unparsable one, the login still proceeds — just with no name.
+    #[test]
+    fn a_missing_or_bad_user_field_still_hands_off_the_code() {
+        let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
+        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        for user in ["", "not json"] {
+            let state = codec.encode(0, SPA, "v", None);
+            let q = query_of(&form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, user)));
+            assert_eq!(q["code"], APPLE_CODE);
+            let payload = codec.decode(&q["state"]).unwrap();
+            assert_eq!((payload.given_name, payload.family_name), (None, None));
+        }
+    }
+
+    /// Re-sealing keeps the original issue time, so a state that survives the
+    /// callback expires when it would have anyway.
+    #[test]
+    fn the_resealed_state_keeps_its_original_age() {
+        let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
+        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let state = codec.encode(0, SPA, "v", None);
+        let mut aged = codec.decode(&state).unwrap();
+        aged.created_at -= 200;
+        let aged_state = codec.seal(&aged);
+
+        let q = query_of(&form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &aged_state, "")));
+        assert_eq!(codec.decode(&q["state"]).unwrap().created_at, aged.created_at);
+    }
+
+    /// A callback_url that already has a query gets the handoff appended to it.
+    #[test]
+    fn the_handoff_appends_to_an_existing_query() {
+        let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
+        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let state = codec.encode(0, "https://console.example/?cli=1", "v", None);
+        let redirect = form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, ""));
+        assert!(redirect.starts_with("https://console.example/?cli=1&code="), "got {redirect}");
+    }
+
+    /// The name from the state never overrides a claim the id_token carries,
+    /// and nothing is added when there is no name.
+    #[test]
+    fn the_first_authorization_name_fills_only_missing_claims() {
+        let payload = StatePayload {
+            provider_index: 0,
+            callback_url: SPA.to_string(),
+            code_verifier: "v".to_string(),
+            created_at: 0,
+            session_id: None,
+            given_name: Some("Ada".to_string()),
+            family_name: None,
+        };
+        let mut claims = build_claims_struct(&HashMap::from([(
+            "given_name".to_string(),
+            json!("FromIdToken"),
+        )]))
+        .unwrap();
+        add_first_authorization_name(&mut claims, &payload);
+        assert_eq!(string_claim(&claims, "given_name"), Some("FromIdToken"));
+        assert_eq!(string_claim(&claims, "name"), Some("Ada"));
+        assert!(!claims.fields.contains_key("family_name"));
+
+        let mut empty = prost_wkt_types::Struct { fields: HashMap::new() };
+        add_first_authorization_name(
+            &mut empty,
+            &StatePayload { given_name: None, ..payload },
+        );
+        assert!(empty.fields.is_empty());
+    }
+
+    /// The authorize URL of a provider without `apple` is unchanged: its own
+    /// callback as redirect_uri and no response_mode.
+    #[tokio::test]
+    async fn a_plain_provider_is_not_sent_form_post() {
+        let cfg = config(vec![plain_provider()]);
+        let client = OidcClient::new(&cfg.providers, &[], 3600, TEST_P8_PEM).await.unwrap();
+        let url = client.build_authorize_url(0, "s", "v", SPA, "").await.unwrap();
+        let q = query_of(&url);
+        assert_eq!(q["redirect_uri"], SPA);
+        assert!(!q.contains_key("response_mode"), "got {url}");
+    }
+
+    /// Config apply refuses a provider that could never authenticate to its
+    /// token endpoint, naming what is missing.
+    #[test]
+    fn providers_missing_their_credential_are_refused() {
+        let apple = apple_provider("https://appleid.apple.com");
+        let err = check_provider_credentials(&[apple.clone()], "").unwrap_err();
+        assert!(err.contains("PROTO_SERVICES_OAUTH_SECRETS_APPLE_SIGNIN_KEY_P8"), "got {err}");
+
+        let mut no_secret = plain_provider();
+        no_secret.client_secret.clear();
+        let err = check_provider_credentials(&[no_secret.clone()], TEST_P8_PEM).unwrap_err();
+        assert!(err.contains("client_secret"), "got {err}");
+
+        // A disabled provider is not loaded, so it is not checked.
+        no_secret.enable = false;
+        assert!(check_provider_credentials(&[no_secret, plain_provider(), apple], TEST_P8_PEM).is_ok());
+    }
+
+    /// An Apple provider has no static client secret, so the .p8 is what makes
+    /// the state key secret. Pods sharing the Secret agree; a different (or
+    /// missing) .p8 cannot decode the state.
+    #[test]
+    fn the_p8_keys_the_state_cipher() {
+        let providers = vec![apple_provider("https://appleid.apple.com")];
+        let state = StateCodec::new(&providers, TEST_P8_PEM, 300).encode(0, SPA, "v", None);
+
+        assert!(StateCodec::new(&providers, TEST_P8_PEM, 300).decode(&state).is_ok());
+        assert!(StateCodec::new(&providers, "", 300).decode(&state).is_err());
+        assert!(StateCodec::new(&providers, "another p8", 300).decode(&state).is_err());
     }
 }

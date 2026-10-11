@@ -10,6 +10,8 @@ use tracing::{info, warn};
 
 use oauth_model::types::services::oauth::oauth::ProviderConfig;
 
+use crate::apple::AppleClientSecret;
+
 /// Subset of .well-known/openid-configuration that we need.
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 struct OidcConfig {
@@ -25,6 +27,22 @@ struct OidcProvider {
     jwks: RwLock<CachedJwks>,
     provider_cfg: ProviderConfig,
     http_client: Client,
+    /// Set for a provider with `apple`: its client secret is minted per token
+    /// exchange instead of read from `client_secret`.
+    apple_secret: Option<AppleClientSecret>,
+}
+
+impl OidcProvider {
+    /// The redirect_uri the IDP is sent, on both the authorize and the token
+    /// request. A form_post provider (Apple) answers at the server-side
+    /// callback it was registered with; `callback_url` then only travels in the
+    /// state, as the place that callback finally sends the browser.
+    fn redirect_uri<'a>(&'a self, callback_url: &'a str) -> &'a str {
+        match &self.provider_cfg.apple {
+            Some(apple) => &apple.form_post_redirect_uri,
+            None => callback_url,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -88,10 +106,14 @@ pub struct OidcClient {
 
 impl OidcClient {
     /// Create a new OidcClient and discover endpoints for all enabled providers.
+    ///
+    /// `apple_key_p8` is the PEM of the Sign in with Apple key
+    /// (`Secrets.apple_signin_key_p8`), used by any provider that sets `apple`.
     pub async fn new(
         providers_cfg: &[ProviderConfig],
         default_scopes: &[String],
         refetch_interval_secs: i64,
+        apple_key_p8: &str,
     ) -> Result<Self, String> {
         let scopes = if default_scopes.is_empty() {
             vec![
@@ -146,11 +168,20 @@ impl OidcClient {
                 .build()
                 .map_err(|e| format!("creating HTTP client for provider {}: {e}", p.name))?;
 
+            let apple_secret = match &p.apple {
+                Some(apple) => Some(
+                    AppleClientSecret::new(apple, &p.client_id, apple_key_p8)
+                        .map_err(|e| format!("provider {}: {e}", p.name))?,
+                ),
+                None => None,
+            };
+
             let prov = Arc::new(OidcProvider {
                 config: RwLock::new(OidcConfig::default()),
                 jwks: RwLock::new(CachedJwks::default()),
                 provider_cfg: p.clone(),
                 http_client,
+                apple_secret,
             });
             if let Err(e) = oc.discover(&prov).await {
                 warn!(provider = %p.name, error = %e, "OIDC discovery failed");
@@ -298,7 +329,7 @@ impl OidcClient {
         let mut params = vec![
             ("response_type", "code"),
             ("client_id", &prov.provider_cfg.client_id),
-            ("redirect_uri", redirect_uri),
+            ("redirect_uri", prov.redirect_uri(redirect_uri)),
             ("scope", &scope),
             ("state", state),
             ("code_challenge", &code_challenge),
@@ -306,6 +337,11 @@ impl OidcClient {
         ];
         if !nonce.is_empty() {
             params.push(("nonce", nonce));
+        }
+        // Apple requires form_post whenever name or email is requested, and
+        // answers it at the server-side callback named by redirect_uri.
+        if prov.provider_cfg.apple.is_some() {
+            params.push(("response_mode", "form_post"));
         }
 
         let query = serde_urlencoded::to_string(params)
@@ -331,12 +367,23 @@ impl OidcClient {
             .endpoint(prov, "token endpoint", |c| c.token_endpoint.clone())
             .await?;
 
+        let client_secret = match &prov.apple_secret {
+            Some(apple) => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs() as i64;
+                apple.mint(now)?
+            }
+            None => prov.provider_cfg.client_secret.clone(),
+        };
+
         let params = [
             ("grant_type", "authorization_code"),
             ("code", code),
-            ("redirect_uri", redirect_uri),
+            ("redirect_uri", prov.redirect_uri(redirect_uri)),
             ("client_id", &prov.provider_cfg.client_id),
-            ("client_secret", &prov.provider_cfg.client_secret),
+            ("client_secret", &client_secret),
             ("code_verifier", code_verifier),
         ];
 
@@ -535,7 +582,7 @@ mod tests {
     /// are set here, so `build_authorize_url` re-runs discovery and surfaces the
     /// real result.
     async fn discover_via_client(p: ProviderConfig) -> Result<String, String> {
-        let oc = OidcClient::new(&[p], &[], 3600).await?;
+        let oc = OidcClient::new(&[p], &[], 3600, "").await?;
         oc.build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "")
             .await
     }
@@ -558,7 +605,7 @@ mod tests {
     #[tokio::test]
     async fn a_supplied_nonce_is_sent_to_the_idp() {
         let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600)
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc
@@ -576,7 +623,7 @@ mod tests {
     #[tokio::test]
     async fn no_nonce_param_is_sent_when_none_is_supplied() {
         let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600)
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc

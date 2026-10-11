@@ -33,11 +33,10 @@ logger = { path = "target/generated-sources/model/chassis/logger" }
 servicemanager = { path = "target/generated-sources/model/chassis/servicemanager" }
 jwk = { path = "target/generated-sources/model/chassis/jwk" }
 token = { path = "target/generated-sources/model/chassis/token" }
+# Signs the Sign in with Apple client-secret JWT with the .p8 key (apple.rs).
+key = { path = "target/generated-sources/model/chassis/key" }
 
 [dev-dependencies]
-# Signing side of the chassis crypto, used by the id_token verification tests to
-# mint real signed tokens from a fixture key.
-key = { path = "target/generated-sources/model/chassis/key" }
 # Server side of the TLS stack, used by the oidc TLS verification tests to stand
 # up a real HTTPS listener the OIDC client dials for real.
 # default-features off pins these to the ring provider the crate already links.

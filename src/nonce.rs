@@ -29,20 +29,31 @@ pub struct StatePayload {
     /// for delivery to the CLI bidi stream.
     #[serde(rename = "s", default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+    /// First-authorization name relayed by a form_post IDP. Apple sends the
+    /// name once, in the POSTed `user` field and never in the id_token, so the
+    /// form_post callback seals it into the state for MintCallbackTokens.
+    #[serde(rename = "gn", default, skip_serializing_if = "Option::is_none")]
+    pub given_name: Option<String>,
+    #[serde(rename = "fn", default, skip_serializing_if = "Option::is_none")]
+    pub family_name: Option<String>,
 }
 
 /// AES-256-GCM codec for OAuth2 state parameters.
 ///
-/// The key is derived from sorted provider client secrets so all instances
-/// sharing the same config can encode/decode state — no shared nonce store.
+/// The key is derived from sorted provider client secrets, plus the Apple .p8
+/// key when one is configured, so all instances sharing the same config and
+/// Secret can encode/decode state — no shared nonce store. The .p8 matters
+/// because an Apple provider has no static client secret: its per-exchange
+/// minted secret differs per pod and per minute, so it cannot key the state.
 pub struct StateCodec {
     cipher: Aes256Gcm,
     ttl_secs: i64,
 }
 
 impl StateCodec {
-    /// Create a new StateCodec. Key is SHA-256 of sorted client secrets.
-    pub fn new(providers: &[ProviderConfig], ttl_secs: i64) -> Self {
+    /// Create a new StateCodec. Key is SHA-256 of sorted client secrets, then
+    /// the Apple .p8 PEM if non-empty (an empty one leaves the key unchanged).
+    pub fn new(providers: &[ProviderConfig], apple_key_p8: &str, ttl_secs: i64) -> Self {
         let mut secrets: Vec<&str> = providers.iter().map(|p| p.client_secret.as_str()).collect();
         secrets.sort();
 
@@ -51,6 +62,7 @@ impl StateCodec {
         for s in &secrets {
             hasher.update(s.as_bytes());
         }
+        hasher.update(apple_key_p8.as_bytes());
         let key = hasher.finalize();
 
         let cipher = Aes256Gcm::new(&key);
@@ -71,14 +83,21 @@ impl StateCodec {
             .unwrap_or_default()
             .as_secs() as i64;
 
-        let payload = StatePayload {
+        self.seal(&StatePayload {
             provider_index,
             callback_url: callback_url.to_string(),
             code_verifier: code_verifier.to_string(),
             created_at: now,
             session_id: session_id.map(|s| s.to_string()),
-        };
-        let plaintext = serde_json::to_vec(&payload).unwrap();
+            given_name: None,
+            family_name: None,
+        })
+    }
+
+    /// Encrypt an existing payload as-is, `created_at` included, so re-sealing
+    /// a decoded state never extends its lifetime.
+    pub fn seal(&self, payload: &StatePayload) -> String {
+        let plaintext = serde_json::to_vec(payload).unwrap();
 
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
