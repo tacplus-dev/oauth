@@ -377,6 +377,62 @@ fn jwt_kid(token: &str) -> Option<String> {
     header.get("kid")?.as_str().map(|s| s.to_string())
 }
 
+/// True for a GUID in its canonical 8-4-4-4-12 hex form, the only form Entra
+/// ID emits a `tid` in. Nothing else may be spliced into an issuer template.
+fn is_guid(s: &str) -> bool {
+    s.len() == 36
+        && s.char_indices().all(|(i, c)| match i {
+            8 | 13 | 18 | 23 => c == '-',
+            _ => c.is_ascii_hexdigit(),
+        })
+}
+
+/// The issuer a verified token must carry.
+///
+/// A provider whose issuer is per directory (Entra ID multi-tenant,
+/// `https://login.microsoftonline.com/{tid}/v2.0`) is configured with a
+/// template; "{tid}" is filled from the token's own `tid` claim, which must be
+/// a GUID. The token's `iss` is then compared exactly with the result, so a
+/// token from one directory cannot name another. Any other expected issuer is
+/// returned unchanged.
+fn resolve_expected_issuer(
+    expected_issuer: &str,
+    claims: &HashMap<String, serde_json::Value>,
+) -> Result<String, tonic::Status> {
+    if !expected_issuer.contains("{tid}") {
+        return Ok(expected_issuer.to_string());
+    }
+    let tid = claims
+        .get("tid")
+        .and_then(|v| v.as_str())
+        .filter(|t| is_guid(t))
+        .ok_or_else(|| {
+            warn!(tid = ?claims.get("tid"), "IDP id_token has no GUID tid for the issuer template");
+            tonic::Status::unauthenticated("IDP id_token carries no usable tid claim")
+        })?;
+    Ok(expected_issuer.replace("{tid}", tid))
+}
+
+/// Drop `email` unless the provider's `email_verified_claim` is true.
+///
+/// Policy maps a person to a tenant by `origin_iss` + `email`, and Entra ID
+/// sends an `email` it does not vouch for: it is a directory attribute any
+/// tenant admin can set. `xms_edov` (email domain owner verified) is the claim
+/// that says the address's domain is verified. Only a JSON `true` counts. An
+/// empty `email_verified_claim` leaves the claims unchanged. `preferred_username`
+/// is never promoted to `email`: Microsoft documents it as mutable and unusable
+/// for authorization.
+fn drop_unverified_email(claims: &mut HashMap<String, serde_json::Value>, email_verified_claim: &str) {
+    if email_verified_claim.is_empty()
+        || claims.get(email_verified_claim) == Some(&serde_json::Value::Bool(true))
+    {
+        return;
+    }
+    if claims.remove("email").is_some() {
+        warn!(claim = %email_verified_claim, "IDP email is not verified, not forwarding it");
+    }
+}
+
 /// Verify an IdP id_token and return its claims.
 ///
 /// The chassis token library checks the signature against the JWKS key named by
@@ -384,6 +440,8 @@ fn jwt_kid(token: &str) -> Option<String> {
 /// bound to the provider whose code was just exchanged: a signature check alone
 /// would accept a validly-signed token from one configured IdP for another
 /// provider_index, since nothing else in this flow ties the two together.
+///
+/// `expected_issuer` may be an issuer template (see `resolve_expected_issuer`).
 ///
 /// Every failure path rejects. Claims are read only once all checks have passed.
 fn verify_id_token(
@@ -420,14 +478,15 @@ fn verify_id_token(
         tonic::Status::unauthenticated("IDP id_token failed verification")
     })?;
 
+    let id_claims = parse_jwt_payload(id_token_str)
+        .map_err(|e| tonic::Status::unauthenticated(format!("failed to parse IDP ID token: {e}")))?;
+
+    let expected_issuer = resolve_expected_issuer(expected_issuer, &id_claims)?;
     let token_issuer = id_token.issuer().unwrap_or_default();
     if token_issuer.trim_end_matches('/') != expected_issuer {
         warn!(expected = %expected_issuer, got = %token_issuer, "IDP id_token issuer mismatch");
         return Err(tonic::Status::unauthenticated("IDP id_token issuer mismatch"));
     }
-
-    let id_claims = parse_jwt_payload(id_token_str)
-        .map_err(|e| tonic::Status::unauthenticated(format!("failed to parse IDP ID token: {e}")))?;
 
     if !audience_matches(&id_claims, expected_audience) {
         warn!(expected = %expected_audience, "IDP id_token audience mismatch");
@@ -654,8 +713,13 @@ impl AuthHandler for AuthImpl {
 
         // 5. Claims come from the verified token only — a rejection here never
         // reaches MintUserToken.
-        let id_claims =
+        let mut id_claims =
             verify_id_token(id_token_str, &jwks, &expected_issuer, &expected_audience)?;
+        // check_callback_url resolved the index, so the provider exists.
+        drop_unverified_email(
+            &mut id_claims,
+            &state.config.providers[payload.provider_index as usize].email_verified_claim,
+        );
 
         // The principal is the raw IDP `sub`, as-is — never the email, which is
         // reassignable and would make an email change into cross-user row
@@ -941,7 +1005,7 @@ fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
 
     /// The JWKS the "IdP" publishes — the fixture key's public half, converted
     /// through the same chassis path a real IdP's key travels.
-    fn test_jwks() -> Vec<crate::oidc::JwkEntry> {
+    pub(super) fn test_jwks() -> Vec<crate::oidc::JwkEntry> {
         let public =
             key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PUBLIC_PEM))
                 .unwrap();
@@ -1512,7 +1576,7 @@ mod apple_signin_tests {
     }
 
     /// Read one HTTP/1.1 request: (path, body).
-    async fn read_request(sock: &mut TcpStream) -> (String, String) {
+    pub(super) async fn read_request(sock: &mut TcpStream) -> (String, String) {
         let mut buf = Vec::new();
         let mut chunk = [0u8; 4096];
         let header_end = loop {
@@ -1927,5 +1991,377 @@ mod apple_signin_tests {
         assert!(StateCodec::new(&providers, TEST_P8_PEM, 300).decode(&state).is_ok());
         assert!(StateCodec::new(&providers, "", 300).decode(&state).is_err());
         assert!(StateCodec::new(&providers, "another p8", 300).decode(&state).is_err());
+    }
+}
+
+#[cfg(test)]
+mod entra_signin_tests {
+    //! Microsoft Entra ID (multi-tenant) against a fake Entra: discovery, token
+    //! endpoint and JWKS served over real HTTP under the `organizations` path, so
+    //! the authorize URL, the code exchange and the id_token verification against
+    //! the per-directory issuer template all run for real. Only kernel's
+    //! MintUserToken (it needs a cluster) is not called; the claims handed to it
+    //! are checked.
+    use super::apple_signin_tests::read_request;
+    use super::idp_token_verification_tests::{now, signing_key, test_jwks};
+    use super::*;
+    use prost_wkt_types::value::Kind;
+    use serde_json::json;
+    use std::sync::Mutex;
+    use tokio::io::AsyncWriteExt;
+    use tokio::net::TcpListener;
+
+    const CLIENT_ID: &str = "0a1b2c3d-1111-2222-3333-444455556666";
+    const CLIENT_SECRET: &str = "entra-client-secret";
+    const SPA: &str = "https://console.example/";
+    const ENTRA_CODE: &str = "0.AXo-code-from-entra";
+    const ENTRA_SUB: &str = "AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ";
+    const TID: &str = "72f988bf-86f1-41af-91ab-2d7cd011db47";
+    const OTHER_TID: &str = "aaaabbbb-0000-cccc-1111-dddd2222eeee";
+    /// The personal Microsoft account tenant; a `common` login can carry it.
+    const MSA_TID: &str = "9188040d-6c67-4c5b-b112-36a304b66dad";
+    const EMAIL: &str = "ada@contoso.example";
+    const TEMPLATE: &str = "https://login.microsoftonline.com/{tid}/v2.0";
+
+    fn issuer_for(tid: &str) -> String {
+        TEMPLATE.replace("{tid}", tid)
+    }
+
+    struct FakeEntra {
+        /// The fake's base URL; the provider's discovery issuer and template
+        /// hang off it the way they hang off login.microsoftonline.com.
+        base: String,
+        /// Every form POSTed to the token endpoint, in order.
+        token_forms: Arc<Mutex<Vec<HashMap<String, String>>>>,
+    }
+
+    /// An Entra v2.0 id_token: `iss` per directory, `tid`, a pairwise `sub`,
+    /// plus `extra` claims. Signed with the key the fake publishes.
+    fn entra_id_token(iss: &str, tid: Option<&str>, extra: &[(&str, serde_json::Value)]) -> String {
+        let mut t = token::Token::new();
+        t.set_issuer(iss).unwrap();
+        t.set_audience(CLIENT_ID).unwrap();
+        t.set_subject(ENTRA_SUB).unwrap();
+        t.set_issued_at(now()).unwrap();
+        t.set_expiration(now() + 3600).unwrap();
+        // Only so the chassis signer will sign; see `signed_id_token`.
+        t.set_namespace("/").unwrap();
+        if let Some(tid) = tid {
+            t.set_custom_field("tid", json!(tid)).unwrap();
+        }
+        t.set_custom_field("ver", json!("2.0")).unwrap();
+        for (k, v) in extra {
+            t.set_custom_field(*k, v.clone()).unwrap();
+        }
+        t.sign(&signing_key()).unwrap();
+        t.base64().unwrap().to_string()
+    }
+
+    /// What Entra's token endpoint checks before it answers: the app's client
+    /// secret, and the code and redirect_uri of the authorization it issued.
+    fn entra_accepts(form: &HashMap<String, String>) -> bool {
+        let field = |k: &str| form.get(k).map(String::as_str).unwrap_or("");
+        field("client_id") == CLIENT_ID
+            && field("client_secret") == CLIENT_SECRET
+            && field("grant_type") == "authorization_code"
+            && field("code") == ENTRA_CODE
+            && field("redirect_uri") == SPA
+            && !field("code_verifier").is_empty()
+    }
+
+    /// `id_token` builds the token the endpoint returns, given the fake's base URL.
+    async fn spawn_fake_entra(id_token: impl FnOnce(&str) -> String) -> FakeEntra {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let token_forms = Arc::new(Mutex::new(Vec::new()));
+
+        let discovery = json!({
+            "issuer": format!("{base}/{{tenantid}}/v2.0"),
+            "authorization_endpoint": format!("{base}/organizations/oauth2/v2.0/authorize"),
+            "token_endpoint": format!("{base}/organizations/oauth2/v2.0/token"),
+            "jwks_uri": format!("{base}/organizations/discovery/v2.0/keys"),
+            "end_session_endpoint": format!("{base}/organizations/oauth2/v2.0/logout"),
+        })
+        .to_string();
+        let keys: Vec<_> = test_jwks().iter().map(|k| k.to_json_value()).collect();
+        let jwks = json!({ "keys": keys }).to_string();
+        let id_token = id_token(&base);
+        let forms = Arc::clone(&token_forms);
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut sock, _)) = listener.accept().await else {
+                    return;
+                };
+                let (discovery, jwks, id_token, forms) =
+                    (discovery.clone(), jwks.clone(), id_token.clone(), Arc::clone(&forms));
+                tokio::spawn(async move {
+                    let (path, body) = read_request(&mut sock).await;
+                    let (status, resp) = match path.as_str() {
+                        "/organizations/v2.0/.well-known/openid-configuration" => ("200 OK", discovery),
+                        "/organizations/discovery/v2.0/keys" => ("200 OK", jwks),
+                        "/organizations/oauth2/v2.0/token" => {
+                            let form: HashMap<String, String> =
+                                serde_urlencoded::from_str(&body).unwrap_or_default();
+                            forms.lock().unwrap().push(form.clone());
+                            if entra_accepts(&form) {
+                                let resp = json!({
+                                    "id_token": id_token,
+                                    "access_token": "entra-access-token",
+                                    "token_type": "Bearer",
+                                    "expires_in": 3600,
+                                });
+                                ("200 OK", resp.to_string())
+                            } else {
+                                ("401 Unauthorized", json!({"error": "invalid_client"}).to_string())
+                            }
+                        }
+                        _ => ("404 Not Found", "{}".to_string()),
+                    };
+                    let out = format!(
+                        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{resp}",
+                        resp.len()
+                    );
+                    let _ = sock.write_all(out.as_bytes()).await;
+                    let _ = sock.shutdown().await;
+                });
+            }
+        });
+
+        FakeEntra { base, token_forms }
+    }
+
+    /// An Entra provider configured as the design says: discovery and JWKS from
+    /// the `organizations` endpoint, the per-directory issuer as a template,
+    /// and `email` trusted only with `xms_edov`.
+    fn entra_provider(base: &str) -> ProviderConfig {
+        ProviderConfig {
+            enable: true,
+            name: "microsoft".to_string(),
+            issuer: format!("{base}/organizations/v2.0"),
+            issuer_template: format!("{base}/{{tid}}/v2.0"),
+            email_verified_claim: "xms_edov".to_string(),
+            client_id: CLIENT_ID.to_string(),
+            client_secret: CLIENT_SECRET.to_string(),
+            allowed_redirect_uri_prefixes: vec![SPA.to_string()],
+            ..Default::default()
+        }
+    }
+
+    fn config(providers: Vec<ProviderConfig>) -> Config {
+        Config {
+            enable: true,
+            providers,
+            ..Default::default()
+        }
+    }
+
+    fn query_of(url: &str) -> HashMap<String, String> {
+        serde_urlencoded::from_str(url.split_once('?').map(|(_, q)| q).unwrap_or("")).unwrap()
+    }
+
+    fn string_claim<'a>(claims: &'a prost_wkt_types::Struct, k: &str) -> Option<&'a str> {
+        match claims.fields.get(k)?.kind.as_ref()? {
+            Kind::StringValue(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    fn verify(token: &str) -> Result<HashMap<String, serde_json::Value>, tonic::Status> {
+        verify_id_token(token, &test_jwks(), TEMPLATE, CLIENT_ID)
+    }
+
+    /// The whole browser flow, in the order the browser drives it.
+    #[tokio::test]
+    async fn entra_sign_in_end_to_end_against_a_fake_entra() {
+        let entra = spawn_fake_entra(|base| {
+            entra_id_token(
+                &format!("{base}/{TID}/v2.0"),
+                Some(TID),
+                &[
+                    ("email", json!(EMAIL)),
+                    ("xms_edov", json!(true)),
+                    ("preferred_username", json!(EMAIL)),
+                    ("oid", json!("00000000-0000-0000-66f3-3332eca7ea81")),
+                ],
+            )
+        })
+        .await;
+        let cfg = config(vec![entra_provider(&entra.base)]);
+        check_provider_credentials(&cfg.providers, "").expect("a client_secret is all Entra needs");
+        let client = OidcClient::new(&cfg.providers, &[], 3600, "").await.expect("oidc client");
+        let codec = StateCodec::new(&cfg.providers, "", 300);
+
+        // 1. Authorize: a plain query-mode OIDC redirect to the organizations
+        //    endpoint, with the SPA as redirect_uri.
+        check_callback_url(&cfg, 0, SPA).expect("SPA is allowlisted");
+        let verifier = generate_code_verifier();
+        let state = codec.encode(0, SPA, &verifier, None);
+        let url = client
+            .build_authorize_url(0, &state, &verifier, SPA, "")
+            .await
+            .expect("authorize URL from discovery");
+        assert!(
+            url.starts_with(&format!("{}/organizations/oauth2/v2.0/authorize?", entra.base)),
+            "got {url}"
+        );
+        let q = query_of(&url);
+        assert_eq!(q["redirect_uri"], SPA);
+        assert_eq!(q["client_id"], CLIENT_ID);
+        assert_eq!(q["scope"], "openid profile email");
+        assert_eq!(q["code_challenge_method"], "S256");
+        assert!(!q.contains_key("response_mode"), "got {url}");
+
+        // 2. MintCallbackTokens' steps, as it runs them: the code exchange with
+        //    the static client secret (the fake rejects anything else), the
+        //    id_token verified against the organizations JWKS and bound to the
+        //    per-directory issuer and the app's client id, then the email gate.
+        let payload = codec.decode(&state).unwrap();
+        let tokens = client
+            .exchange_code(0, ENTRA_CODE, &payload.code_verifier, &payload.callback_url)
+            .await
+            .expect("the fake Entra accepts the client secret");
+        let sent = entra.token_forms.lock().unwrap().last().cloned().unwrap();
+        assert_eq!(sent["redirect_uri"], SPA);
+        assert_eq!(sent["code_verifier"], verifier);
+        let jwks = client.fetch_jwks(0).await.expect("Entra JWKS");
+        let (iss, aud) = client.expected_claims(0).unwrap();
+        assert_eq!(iss, format!("{}/{{tid}}/v2.0", entra.base), "the template, not the discovery issuer");
+        assert_eq!(aud, CLIENT_ID);
+        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+            .expect("Entra's id_token verifies against the template");
+        drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim);
+
+        // 3. The claims handed to kernel: forwarded the way Google's are, with
+        //    the directory's own issuer as origin_iss.
+        let claims = build_claims_struct(&id_claims).unwrap();
+        let tenant_issuer = format!("{}/{TID}/v2.0", entra.base);
+        assert_eq!(string_claim(&claims, "origin_iss"), Some(tenant_issuer.as_str()));
+        assert_eq!(string_claim(&claims, "origin_sub"), Some(ENTRA_SUB));
+        assert_eq!(string_claim(&claims, "tid"), Some(TID));
+        assert_eq!(string_claim(&claims, "email"), Some(EMAIL));
+    }
+
+    /// The fake is not vacuous: a wrong client secret is refused, as Entra
+    /// refuses it, and the exchange fails.
+    #[tokio::test]
+    async fn a_wrong_client_secret_is_refused() {
+        let entra = spawn_fake_entra(|base| entra_id_token(&format!("{base}/{TID}/v2.0"), Some(TID), &[])).await;
+        let mut p = entra_provider(&entra.base);
+        p.client_secret = "stale-secret".to_string();
+        let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
+
+        let err = client
+            .exchange_code(0, ENTRA_CODE, "verifier", SPA)
+            .await
+            .expect_err("Entra must refuse a wrong secret");
+        assert!(err.contains("invalid_client"), "got {err}");
+        assert_eq!(entra.token_forms.lock().unwrap().len(), 1);
+    }
+
+    /// Any directory's token verifies against the template, including a
+    /// personal Microsoft account's; its own issuer is what gets checked.
+    #[test]
+    fn a_token_from_any_directory_verifies_against_its_own_issuer() {
+        for tid in [TID, OTHER_TID, MSA_TID] {
+            let claims = verify(&entra_id_token(&issuer_for(tid), Some(tid), &[]))
+                .unwrap_or_else(|e| panic!("tid {tid}: {}", e.message()));
+            assert_eq!(claims["iss"], json!(issuer_for(tid)));
+        }
+    }
+
+    /// A token naming one directory in `iss` and another in `tid` is refused:
+    /// the template is filled from `tid` and must reproduce `iss` exactly.
+    #[test]
+    fn an_issuer_that_does_not_match_its_tid_is_refused() {
+        let err = verify(&entra_id_token(&issuer_for(OTHER_TID), Some(TID), &[]))
+            .expect_err("iss and tid must name the same directory");
+        assert!(err.message().contains("issuer mismatch"), "got {}", err.message());
+
+        // The un-substituted template, or the discovery issuer, is not an issuer.
+        for iss in [TEMPLATE, "https://login.microsoftonline.com/organizations/v2.0"] {
+            assert!(verify(&entra_id_token(iss, Some(TID), &[])).is_err(), "iss {iss}");
+        }
+        // Another IDP's issuer is still refused.
+        assert!(verify(&entra_id_token("https://accounts.google.com", Some(TID), &[])).is_err());
+    }
+
+    /// `tid` is spliced into a URL, so anything but a GUID is refused before
+    /// substitution — even when `iss` was built to match the result.
+    #[test]
+    fn a_missing_or_non_guid_tid_is_refused() {
+        for tid in ["organizations", "common", "../evil", "72f988bf86f141af91ab2d7cd011db47", ""] {
+            let err = verify(&entra_id_token(&issuer_for(tid), Some(tid), &[]))
+                .expect_err("a non-GUID tid must be refused");
+            assert!(err.message().contains("tid"), "tid {tid:?}: {}", err.message());
+        }
+        let err = verify(&entra_id_token(&issuer_for(TID), None, &[])).expect_err("no tid");
+        assert!(err.message().contains("tid"), "got {}", err.message());
+
+        // A numeric tid is not a string GUID either.
+        let err = verify(&entra_id_token(&issuer_for("42"), None, &[("tid", json!(42))]))
+            .expect_err("numeric tid");
+        assert!(err.message().contains("tid"), "got {}", err.message());
+    }
+
+    #[test]
+    fn guid_shape() {
+        assert!(is_guid(TID));
+        assert!(is_guid("72F988BF-86F1-41AF-91AB-2D7CD011DB47"));
+        for s in [
+            "",
+            "72f988bf86f141af91ab2d7cd011db47",
+            "{72f988bf-86f1-41af-91ab-2d7cd011db47}",
+            "72f988bf-86f1-41af-91ab-2d7cd011db4",
+            "72f988bf-86f1-41af-91ab-2d7cd011db47a",
+            "72f988bf-86f1-41af-91ab_2d7cd011db47",
+            "g2f988bf-86f1-41af-91ab-2d7cd011db47",
+            "72f988bf-86f1-41af-91ab-2d7cd011db/7",
+        ] {
+            assert!(!is_guid(s), "{s:?}");
+        }
+    }
+
+    /// `email` survives only with `xms_edov` exactly `true`. Absent, false or a
+    /// string drops it; `preferred_username` is never promoted in its place.
+    #[test]
+    fn email_is_forwarded_only_when_xms_edov_is_true() {
+        let with = |edov: Option<serde_json::Value>| {
+            let mut claims: HashMap<String, serde_json::Value> = HashMap::from([
+                ("email".to_string(), json!(EMAIL)),
+                ("preferred_username".to_string(), json!(EMAIL)),
+            ]);
+            if let Some(v) = edov {
+                claims.insert("xms_edov".to_string(), v);
+            }
+            drop_unverified_email(&mut claims, "xms_edov");
+            claims
+        };
+
+        assert_eq!(with(Some(json!(true)))["email"], json!(EMAIL));
+        for edov in [None, Some(json!(false)), Some(json!("true")), Some(json!(1))] {
+            let claims = with(edov.clone());
+            assert!(!claims.contains_key("email"), "xms_edov {edov:?} must drop email");
+            assert_eq!(claims["preferred_username"], json!(EMAIL), "left as it was, not promoted");
+            let forwarded = build_claims_struct(&claims).unwrap();
+            assert_eq!(string_claim(&forwarded, "email"), None);
+        }
+
+        // A provider with no email_verified_claim (Google, Keycloak) is unchanged.
+        let mut claims = HashMap::from([("email".to_string(), json!(EMAIL))]);
+        drop_unverified_email(&mut claims, "");
+        assert_eq!(claims["email"], json!(EMAIL));
+    }
+
+    /// A provider without a template keeps its fixed issuer: the discovery
+    /// issuer is what its tokens are bound to.
+    #[tokio::test]
+    async fn a_provider_without_a_template_is_bound_to_its_issuer() {
+        let mut p = entra_provider("https://127.0.0.1:1");
+        p.issuer_template.clear();
+        p.authorization_endpoint = "https://idp.test/auth".to_string();
+        let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
+        let (iss, _) = client.expected_claims(0).unwrap();
+        assert_eq!(iss, "https://127.0.0.1:1/organizations/v2.0");
     }
 }

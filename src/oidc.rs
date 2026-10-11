@@ -416,13 +416,21 @@ impl OidcClient {
     /// and narrowly. Without binding, a validly-signed token from one
     /// configured provider is accepted for another — the signature check alone
     /// does not catch that.
+    ///
+    /// For a provider with `issuer_template` the issuer is that template, still
+    /// holding "{tid}"; `verify_id_token` fills it from the verified token.
     pub fn expected_claims(&self, provider_index: i32) -> Result<(String, String), String> {
         let prov = self
             .providers
             .get(&provider_index)
             .ok_or_else(|| format!("unknown provider index {provider_index}"))?;
+        let issuer = if prov.provider_cfg.issuer_template.is_empty() {
+            &prov.provider_cfg.issuer
+        } else {
+            &prov.provider_cfg.issuer_template
+        };
         Ok((
-            prov.provider_cfg.issuer.trim_end_matches('/').to_string(),
+            issuer.trim_end_matches('/').to_string(),
             prov.provider_cfg.client_id.clone(),
         ))
     }
