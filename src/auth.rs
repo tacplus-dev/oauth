@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use tokio::sync::{oneshot, RwLock};
 use tracing::{info, warn};
@@ -10,7 +10,8 @@ use oauth_model::s2sm::ServiceManager;
 use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest};
 use oauth_model::types::services::oauth::helpers::secrets_from_env_var;
 use oauth_model::types::services::oauth::oauth::{
-    AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse, Config,
+    AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse,
+    ClassifySignInEmailRequest, ClassifySignInEmailResponse, Config,
     FormPostCallbackRequest, FormPostCallbackResponse, ListProvidersResponse, LogoutRequest,
     LogoutResponse, ProviderConfig, ProviderInfo,
 };
@@ -24,6 +25,7 @@ use oauth_model::types::services::oauth::oauth::{
 
 use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
 use crate::oidc::OidcClient;
+use crate::signin_email::{EmailRateLimiter, MxResolver};
 
 /// A `session_id` is completable only where its CLI session is pending.
 ///
@@ -55,6 +57,8 @@ pub struct AuthImpl {
     /// holding open from a `session_id` the caller merely knows.
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
+    mx_resolver: Arc<dyn MxResolver>,
+    sign_in_email_limiter: EmailRateLimiter,
 }
 
 /// Initialized state — created on first config delivery.
@@ -69,12 +73,15 @@ impl AuthImpl {
         sm: Arc<ServiceManager>,
         broker: &BrokerStreamBidiHandle,
         pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
+        mx_resolver: Arc<dyn MxResolver>,
     ) -> Self {
         Self {
             sm,
             broker: broker.clone(),
             pending,
             state: RwLock::new(None),
+            mx_resolver,
+            sign_in_email_limiter: EmailRateLimiter::new(),
         }
     }
 
@@ -657,6 +664,21 @@ impl AuthHandler for AuthImpl {
             redirect_url,
             ..Default::default()
         })
+    }
+
+    async fn classify_sign_in_email(
+        &self,
+        _caller: Option<&servicemanager::auth::Caller>,
+        req: ClassifySignInEmailRequest,
+    ) -> Result<ClassifySignInEmailResponse, tonic::Status> {
+        if !self.sign_in_email_limiter.allow(&req.email, Instant::now()) {
+            return Err(tonic::Status::resource_exhausted(
+                "too many sign-in lookups for this address, try again in a minute",
+            ));
+        }
+        let guard = self.state.read().await;
+        let providers = guard.as_ref().map_or(&[][..], |s| s.config.providers.as_slice());
+        Ok(crate::signin_email::classify(self.mx_resolver.as_ref(), providers, &req.email).await)
     }
 
     async fn mint_callback_tokens(

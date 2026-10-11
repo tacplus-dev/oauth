@@ -8,6 +8,8 @@ aes-gcm = "0.10"
 base64 = "0.22"
 dashmap = "6"
 futures = "0.3"
+# MX lookups for Auth.ClassifySignInEmail (signin_email.rs).
+hickory-resolver = "0.26"
 prost = "0.14"
 prost-types = "0.14"
 prost-wkt-types = "0.7"
