@@ -87,39 +87,12 @@ impl AuthImpl {
 
     /// Initialize OIDC client and state codec from config.
     pub async fn apply_config(&self, cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
-        if !cfg.enable {
-            info!("OAuth2/OIDC disabled in config");
-            *self.state.write().await = None;
-            return Ok(());
+        let state = auth_state(cfg).await?;
+        match state {
+            None => info!("OAuth2/OIDC disabled in config"),
+            Some(_) => info!("OAuth2/OIDC initialized with {} providers", cfg.providers.len()),
         }
-
-        // Secret inputs come from the pod env (operator SecretEnvVars), never
-        // from Config, which every config-holder in the fleet can read.
-        let secrets = secrets_from_env_var(&std::env::vars().collect());
-        check_provider_credentials(&cfg.providers, &secrets.apple_signin_key_p8)?;
-
-        let oidc_client = OidcClient::new(
-            &cfg.providers,
-            &cfg.scopes,
-            cfg.jwk_refetch_interval_seconds,
-            &secrets.apple_signin_key_p8,
-        )
-        .await
-        .map_err(|e| format!("oidc client: {e}"))?;
-
-        let state_codec = StateCodec::new(
-            &cfg.providers,
-            &secrets.apple_signin_key_p8,
-            cfg.nonce_expire_seconds,
-        );
-
-        *self.state.write().await = Some(AuthState {
-            oidc_client,
-            state_codec,
-            config: cfg.clone(),
-        });
-
-        info!("OAuth2/OIDC initialized with {} providers", cfg.providers.len());
+        *self.state.write().await = state;
         Ok(())
     }
 
@@ -131,6 +104,41 @@ impl AuthImpl {
         }
         Ok(guard)
     }
+}
+
+/// The flow state a config yields. None while `enable` is off, and every
+/// sign-in RPC refuses on None (`require_state`): that is the sign-in, and so
+/// sign-up, kill switch (ops/datagate/README.md).
+async fn auth_state(cfg: &Config) -> Result<Option<AuthState>, Box<dyn std::error::Error>> {
+    if !cfg.enable {
+        return Ok(None);
+    }
+
+    // Secret inputs come from the pod env (operator SecretEnvVars), never
+    // from Config, which every config-holder in the fleet can read.
+    let secrets = secrets_from_env_var(&std::env::vars().collect());
+    check_provider_credentials(&cfg.providers, &secrets.apple_signin_key_p8)?;
+
+    let oidc_client = OidcClient::new(
+        &cfg.providers,
+        &cfg.scopes,
+        cfg.jwk_refetch_interval_seconds,
+        &secrets.apple_signin_key_p8,
+    )
+    .await
+    .map_err(|e| format!("oidc client: {e}"))?;
+
+    let state_codec = StateCodec::new(
+        &cfg.providers,
+        &secrets.apple_signin_key_p8,
+        cfg.nonce_expire_seconds,
+    );
+
+    Ok(Some(AuthState {
+        oidc_client,
+        state_codec,
+        config: cfg.clone(),
+    }))
 }
 
 /// Every enabled provider must be able to authenticate to its token endpoint:
@@ -1982,6 +1990,17 @@ mod apple_signin_tests {
         let q = query_of(&url);
         assert_eq!(q["redirect_uri"], SPA);
         assert!(!q.contains_key("response_mode"), "got {url}");
+    }
+
+    /// The sign-up kill switch: a config with `enable` off yields no flow state,
+    /// so a running instance that had sign-in on drops it on the next delivery.
+    #[tokio::test]
+    async fn enable_off_drops_the_flow_state() {
+        let mut cfg = config(vec![plain_provider()]);
+        assert!(auth_state(&cfg).await.unwrap().is_some());
+
+        cfg.enable = false;
+        assert!(auth_state(&cfg).await.unwrap().is_none());
     }
 
     /// Config apply refuses a provider that could never authenticate to its
