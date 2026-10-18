@@ -7,6 +7,7 @@ use tracing::{info, warn};
 
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::ServiceManager;
+use oauth_model::types::sys::token::JwtPayloadType;
 use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest};
 use oauth_model::types::services::oauth::helpers::secrets_from_env_var;
 use oauth_model::types::services::oauth::oauth::{
@@ -248,6 +249,23 @@ fn add_first_authorization_name(claims: &mut prost_wkt_types::Struct, payload: &
                 .or_insert_with(|| string_value(value));
         }
     }
+}
+
+/// Stamp the configured issuer of the provider this login came through as
+/// `provider_iss`.
+///
+/// `origin_iss` is the token's own `iss`, which for an Entra multi-tenant
+/// provider is per directory (`.../<tid>/v2.0`), so it never equals the
+/// configured `.../organizations/v2.0`. A tenant claim matcher names the
+/// configured provider issuer, and matches on this claim. Inserted after the
+/// IdP claims, so an id_token carrying its own `provider_iss` cannot set it.
+fn add_provider_issuer(claims: &mut prost_wkt_types::Struct, provider: &ProviderConfig) {
+    claims.fields.insert(
+        "provider_iss".to_string(),
+        prost_wkt_types::Value {
+            kind: Some(prost_wkt_types::value::Kind::StringValue(provider.issuer.clone())),
+        },
+    );
 }
 
 /// Well-known JWT claims that get `origin_` prefix when forwarding from an
@@ -576,6 +594,34 @@ fn check_callback_url(
     Ok(())
 }
 
+/// The OPA claims for an "already authenticated" CLI re-auth, read from the
+/// caller's Schematic token.
+///
+/// Kernel copied the login's claims onto the token (every claim that is not a
+/// Schematic payload type, and the origin_-prefixed IdP ones), and clones them
+/// through refresh→access→service. All of them are handed back, so OPA sees the
+/// same claims as on the fresh login (origin_iss, provider_iss, hd, tid,
+/// groups, ...) and resolves the same tenant and namespace. Schematic's own
+/// claims (iss, namespace, entitlements, azp, typ, ...) are left out, as
+/// kernel's claim copy leaves them out; `sub` is the token's subject.
+fn reauth_claims(token: &token::Token, subject: &str) -> prost_wkt_types::Struct {
+    let mut fields: HashMap<String, prost_wkt_types::Value> = token
+        .claims()
+        .iter()
+        .filter(|(k, _)| {
+            k.starts_with("origin_") || (k.as_str() != "typ" && k.parse::<JwtPayloadType>().is_err())
+        })
+        .filter_map(|(k, v)| Some((k.clone(), json_to_proto_value(v)?)))
+        .collect();
+    fields.insert(
+        "sub".to_string(),
+        prost_wkt_types::Value {
+            kind: Some(prost_wkt_types::value::Kind::StringValue(subject.to_string())),
+        },
+    );
+    prost_wkt_types::Struct { fields }
+}
+
 /// Build the kernel MintUserToken request for an IdP-brokered login.
 ///
 /// `broker_kind` is set explicitly: kernel refuses the mint unless the request's
@@ -791,6 +837,8 @@ impl AuthHandler for AuthImpl {
 
         // A form_post IDP's first-authorization name, carried in the state.
         add_first_authorization_name(&mut claims, &payload);
+        // check_callback_url resolved the index, so the provider exists.
+        add_provider_issuer(&mut claims, &state.config.providers[payload.provider_index as usize]);
 
         // 7. Call kernel MintUserToken to get signed tokens.
         let mint_resp = self.sm.s2s().kernel().mint_client()
@@ -930,46 +978,7 @@ impl AuthHandler for AuthImpl {
             })?
             .to_string();
 
-        // Extract claims from the caller's token for OPA entitlement resolution.
-        // Build a prost Struct from the token's custom fields.
-        let mut fields = std::collections::HashMap::new();
-        fields.insert("sub".to_string(), prost_wkt_types::Value {
-            kind: Some(prost_wkt_types::value::Kind::StringValue(subject.clone())),
-        });
-        if let Some(email) = token.custom_field("email").and_then(|v| v.as_str()) {
-            fields.insert("email".to_string(), prost_wkt_types::Value {
-                kind: Some(prost_wkt_types::value::Kind::StringValue(email.to_string())),
-            });
-        }
-        // origin_iss is the IDP issuer, stamped on the token at first login
-        // (build_claims_struct prefixes well-known IDP claims with origin_, and
-        // the kernel clones it through refresh→access→service). The entitlements
-        // policy derives the tenant from input.claims.origin_iss, so without it
-        // OPA resolves tenant="" → empty entitlements. Forward it so the cached
-        // "already authenticated" re-auth resolves the same tenant as a fresh login.
-        if let Some(iss) = token.custom_field("origin_iss").and_then(|v| v.as_str()) {
-            fields.insert("origin_iss".to_string(), prost_wkt_types::Value {
-                kind: Some(prost_wkt_types::value::Kind::StringValue(iss.to_string())),
-            });
-        }
-        // groups drives authorized_projects + is_admin in the policy. It is NOT a
-        // well-known JWT claim, so it is stored under "groups" (not origin_groups).
-        if let Some(groups) = token.custom_field("groups") {
-            if let Some(arr) = groups.as_array() {
-                let values: Vec<prost_wkt_types::Value> = arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .map(|s| prost_wkt_types::Value {
-                        kind: Some(prost_wkt_types::value::Kind::StringValue(s.to_string())),
-                    })
-                    .collect();
-                fields.insert("groups".to_string(), prost_wkt_types::Value {
-                    kind: Some(prost_wkt_types::value::Kind::ListValue(
-                        prost_wkt_types::ListValue { values },
-                    )),
-                });
-            }
-        }
-        let claims = prost_wkt_types::Struct { fields };
+        let claims = reauth_claims(token, &subject);
 
         check_pending_session(&self.pending, &req.session_id).await?;
 
@@ -2392,6 +2401,77 @@ mod entra_signin_tests {
         let mut claims = HashMap::from([("email".to_string(), json!(EMAIL))]);
         drop_unverified_email(&mut claims, "");
         assert_eq!(claims["email"], json!(EMAIL));
+    }
+
+    /// A login through the `organizations` provider: `origin_iss` is the
+    /// directory's own issuer, `provider_iss` the configured one a tenant claim
+    /// matcher names. An id_token's own `provider_iss` does not survive.
+    #[test]
+    fn an_organizations_login_carries_the_configured_issuer_as_provider_iss() {
+        let provider = entra_provider("https://login.microsoftonline.com");
+        let id_claims = verify(&entra_id_token(
+            &issuer_for(TID),
+            Some(TID),
+            &[("provider_iss", json!("https://evil.example"))],
+        ))
+        .unwrap();
+
+        let mut claims = build_claims_struct(&id_claims).unwrap();
+        add_provider_issuer(&mut claims, &provider);
+
+        assert_eq!(
+            string_claim(&claims, "provider_iss"),
+            Some("https://login.microsoftonline.com/organizations/v2.0")
+        );
+        assert_eq!(string_claim(&claims, "origin_iss"), Some(issuer_for(TID).as_str()));
+        assert_eq!(string_claim(&claims, "tid"), Some(TID));
+    }
+
+    /// The cached re-auth reads the login's claims back off the Schematic
+    /// token kernel minted, so a claim-matched tenant (Google `hd`, Entra
+    /// `tid`, both on `provider_iss`) resolves on that path too. Schematic's own
+    /// claims are not handed back to OPA as if they came from the IdP.
+    #[test]
+    fn the_reauth_path_forwards_the_login_claims_from_the_schematic_token() {
+        let mut t = token::Token::new();
+        t.set_issuer("kernel").unwrap();
+        t.set_subject(ENTRA_SUB).unwrap();
+        t.set_namespace("/tenants/contoso").unwrap();
+        t.set_token_use("refresh").unwrap();
+        t.set_azp("oauth").unwrap();
+        t.set_entitlements(&["KERNEL_ANY"]).unwrap();
+        for (k, v) in [
+            ("typ", json!("refresh")),
+            ("origin_iss", json!(issuer_for(TID))),
+            ("origin_sub", json!(ENTRA_SUB)),
+            ("provider_iss", json!("https://login.microsoftonline.com/organizations/v2.0")),
+            ("tid", json!(TID)),
+            ("hd", json!("contoso.example")),
+            ("email", json!(EMAIL)),
+            ("groups", json!(["admins"])),
+        ] {
+            t.set_custom_field(k, v).unwrap();
+        }
+
+        let claims = reauth_claims(&t, ENTRA_SUB);
+
+        assert_eq!(string_claim(&claims, "sub"), Some(ENTRA_SUB));
+        assert_eq!(
+            string_claim(&claims, "provider_iss"),
+            Some("https://login.microsoftonline.com/organizations/v2.0")
+        );
+        assert_eq!(string_claim(&claims, "origin_iss"), Some(issuer_for(TID).as_str()));
+        assert_eq!(string_claim(&claims, "origin_sub"), Some(ENTRA_SUB));
+        assert_eq!(string_claim(&claims, "tid"), Some(TID));
+        assert_eq!(string_claim(&claims, "hd"), Some("contoso.example"));
+        assert_eq!(string_claim(&claims, "email"), Some(EMAIL));
+        assert!(matches!(
+            claims.fields["groups"].kind.as_ref(),
+            Some(Kind::ListValue(l)) if l.values.len() == 1
+        ));
+        for schematic in ["iss", "namespace", "token_use", "azp", "entitlements", "typ"] {
+            assert!(!claims.fields.contains_key(schematic), "{schematic} must not be forwarded");
+        }
     }
 
     /// A provider without a template keeps its fixed issuer: the discovery
