@@ -3,7 +3,6 @@ mod auth;
 mod nonce;
 mod oidc;
 mod service;
-mod sign_in_link;
 mod signin_email;
 
 use std::sync::Arc;
