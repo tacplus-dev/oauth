@@ -2,7 +2,7 @@
 //!
 //! The domain's most-preferred MX hosts name its mail provider: Google Workspace
 //! or Microsoft 365 answer with the configured provider of that IDP, so the SPA
-//! goes straight to Authorize; anything else is a mail link. The answer is a
+//! goes straight to Authorize; anything else is unsupported. The answer is a
 //! function of public DNS and this service's provider config only. Nothing here
 //! reads an account, so the answer cannot say whether one exists.
 
@@ -99,7 +99,7 @@ fn provider_index(providers: &[ProviderConfig], method: SignInMethod) -> Option<
 
 /// Classify `email` (already schema-validated as an address) against
 /// `providers`. A lookup failure, an unknown provider, or a provider that is not
-/// configured all answer a mail link: it is the path every address can take.
+/// configured all answer unsupported.
 pub async fn classify(
     resolver: &dyn MxResolver,
     providers: &[ProviderConfig],
@@ -111,7 +111,7 @@ pub async fn classify(
         Err(e) => {
             // info, not warn: a typo or a made-up domain lands here, and the
             // route is public.
-            info!(domain = %domain, error = %e, "MX lookup failed, answering mail link");
+            info!(domain = %domain, error = %e, "MX lookup failed, answering unsupported");
             None
         }
     };
@@ -122,7 +122,7 @@ pub async fn classify(
             ..Default::default()
         },
         None => ClassifySignInEmailResponse {
-            method: SignInMethod::MailLink as i32,
+            method: SignInMethod::Unsupported as i32,
             ..Default::default()
         },
     }
@@ -275,7 +275,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn anything_else_answers_a_mail_link() {
+    async fn anything_else_answers_unsupported() {
         for email in [
             "pat@selfhosted.example",
             "pat@lookalike.example",
@@ -285,8 +285,8 @@ mod tests {
         ] {
             assert_eq!(
                 answer(email, &providers()).await,
-                (SignInMethod::MailLink, 0),
-                "{email} must answer a mail link"
+                (SignInMethod::Unsupported, 0),
+                "{email} must answer unsupported"
             );
         }
     }
@@ -297,15 +297,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn an_unconfigured_or_disabled_provider_answers_a_mail_link() {
+    async fn an_unconfigured_or_disabled_provider_answers_unsupported() {
         let no_microsoft = providers()[..3].to_vec();
-        assert_eq!(answer("pat@m365.example", &no_microsoft).await, (SignInMethod::MailLink, 0));
+        assert_eq!(answer("pat@m365.example", &no_microsoft).await, (SignInMethod::Unsupported, 0));
 
         let mut google_off = providers();
         google_off[1].enable = false;
-        assert_eq!(answer("pat@new-google.example", &google_off).await, (SignInMethod::MailLink, 0));
+        assert_eq!(answer("pat@new-google.example", &google_off).await, (SignInMethod::Unsupported, 0));
 
-        assert_eq!(answer("pat@new-google.example", &[]).await, (SignInMethod::MailLink, 0));
+        assert_eq!(answer("pat@new-google.example", &[]).await, (SignInMethod::Unsupported, 0));
     }
 
     #[tokio::test]
