@@ -8,13 +8,14 @@ use tracing::{info, warn};
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::ServiceManager;
 use oauth_model::types::sys::token::JwtPayloadType;
-use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest};
+use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest, TokenMintResponse};
 use oauth_model::types::services::oauth::helpers::secrets_from_env_var;
 use oauth_model::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse,
     ClassifySignInEmailRequest, ClassifySignInEmailResponse, Config,
     FormPostCallbackRequest, FormPostCallbackResponse, ListProvidersResponse, LogoutRequest,
-    LogoutResponse, ProviderConfig, ProviderInfo,
+    LogoutResponse, MintSignInLinkTokensRequest, ProviderConfig, ProviderInfo,
+    SendSignInLinkRequest, SendSignInLinkResponse,
 };
 use oauth_model::types::services::kernel::kernel::{
     CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce,
@@ -60,6 +61,9 @@ pub struct AuthImpl {
     state: RwLock<Option<AuthState>>,
     mx_resolver: Arc<dyn MxResolver>,
     sign_in_email_limiter: EmailRateLimiter,
+    /// SendSignInLink's own per-address limit, apart from the lookup limit, so
+    /// the ClassifySignInEmail that precedes a send does not spend its budget.
+    sign_in_link_limiter: EmailRateLimiter,
 }
 
 /// Initialized state — created on first config delivery.
@@ -83,6 +87,7 @@ impl AuthImpl {
             state: RwLock::new(None),
             mx_resolver,
             sign_in_email_limiter: EmailRateLimiter::new(),
+            sign_in_link_limiter: EmailRateLimiter::new(),
         }
     }
 
@@ -543,6 +548,26 @@ fn expires_in_from_token(token_proto: &oauth_model::types::sys::token::token::To
     0
 }
 
+/// The session a kernel mint answers the webapp with: both tokens and their
+/// remaining lifetimes, and where to send the browser. One shape for every way
+/// in, IdP callback or mail link, so the webapp completes them alike.
+pub(crate) fn callback_response(mint_resp: &TokenMintResponse, callback_url: String) -> CallbackResponse {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    let base64 = |t: &Option<oauth_model::types::sys::token::token::Token>| t.as_ref().map(|t| t.base64.clone()).unwrap_or_default();
+    let expires_in = |t: &Option<oauth_model::types::sys::token::token::Token>| t.as_ref().map(|t| expires_in_from_token(t, now)).unwrap_or(0);
+    CallbackResponse {
+        refresh_token: base64(&mint_resp.refresh_token),
+        access_token: base64(&mint_resp.access_token),
+        callback_url,
+        access_token_expires_in: expires_in(&mint_resp.access_token),
+        refresh_token_expires_in: expires_in(&mint_resp.refresh_token),
+        ..Default::default()
+    }
+}
+
 /// Check a caller-supplied `callback_url` against a provider's configured
 /// redirect allowlist.
 ///
@@ -556,7 +581,7 @@ fn expires_in_from_token(token_proto: &oauth_model::types::sys::token::token::To
 /// The trailing slash is what ends the prefix on a path boundary, so a bare
 /// `starts_with` cannot be walked past the allowlisted origin or path segment.
 /// An empty allowlist matches nothing — no provider config means no redirect.
-fn callback_url_allowed(allowed_prefixes: &[String], callback_url: &str) -> bool {
+pub(crate) fn callback_url_allowed(allowed_prefixes: &[String], callback_url: &str) -> bool {
     allowed_prefixes.iter().any(|entry| {
         if entry.ends_with('/') {
             callback_url.starts_with(entry.as_str())
@@ -735,6 +760,26 @@ impl AuthHandler for AuthImpl {
         Ok(crate::signin_email::classify(self.mx_resolver.as_ref(), providers, &req.email).await)
     }
 
+    async fn send_sign_in_link(
+        &self,
+        _caller: Option<&servicemanager::auth::Caller>,
+        req: SendSignInLinkRequest,
+    ) -> Result<SendSignInLinkResponse, tonic::Status> {
+        let guard = self.require_state().await?;
+        let state = guard.as_ref().unwrap();
+        crate::sign_in_link::send(self.sm.as_ref(), &self.sign_in_link_limiter, &state.config.providers, req).await
+    }
+
+    async fn mint_sign_in_link_tokens(
+        &self,
+        _caller: Option<&servicemanager::auth::Caller>,
+        req: MintSignInLinkTokensRequest,
+    ) -> Result<CallbackResponse, tonic::Status> {
+        let guard = self.require_state().await?;
+        let state = guard.as_ref().unwrap();
+        crate::sign_in_link::mint(self.sm.as_ref(), &state.config.providers, req).await
+    }
+
     async fn mint_callback_tokens(
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
@@ -850,34 +895,6 @@ impl AuthHandler for AuthImpl {
             })?
             .into_inner();
 
-        // 8. Compute expires_in from the tokens.
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
-
-        let refresh_token = mint_resp
-            .refresh_token
-            .as_ref()
-            .map(|t| t.base64.clone())
-            .unwrap_or_default();
-        let access_token = mint_resp
-            .access_token
-            .as_ref()
-            .map(|t| t.base64.clone())
-            .unwrap_or_default();
-
-        let refresh_expires_in = mint_resp
-            .refresh_token
-            .as_ref()
-            .map(|t| expires_in_from_token(t, now))
-            .unwrap_or(0);
-        let access_expires_in = mint_resp
-            .access_token
-            .as_ref()
-            .map(|t| expires_in_from_token(t, now))
-            .unwrap_or(0);
-
         // 9. If this was a CLI-originated flow, complete the nonce via the
         // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
         // and delivers it to the oauth instance holding the CLI stream.
@@ -902,14 +919,8 @@ impl AuthHandler for AuthImpl {
 
         info!(sub = %subject, "OAuth callback completed (delegated to kernel)");
 
-        Ok(CallbackResponse {
-            refresh_token,
-            access_token,
-            callback_url: payload.callback_url,
-            access_token_expires_in: access_expires_in,
-            refresh_token_expires_in: refresh_expires_in,
-            ..Default::default()
-        })
+        // 10. The session, with expires_in computed from the tokens.
+        Ok(callback_response(&mint_resp, payload.callback_url))
     }
 
     async fn broker_form_post_callback(
