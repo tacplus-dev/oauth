@@ -270,6 +270,46 @@ fn add_provider_issuer(claims: &mut prost_wkt_types::Struct, provider: &Provider
     );
 }
 
+/// Stamp `email_domain`: the ASCII-lowercased part after the last `@` of the
+/// forwarded `email`.
+///
+/// It is the input for OPA's per-tenant `email_domain` claim matcher, which
+/// maps a person to a tenant by the domain of their email. Identity is still
+/// `sub`. The domain is set only for an email the IdP verified: when the
+/// provider has an `email_verified_claim`, `drop_unverified_email` already
+/// removed an unverified `email`; otherwise the standard `email_verified` must
+/// be `true` (Apple sends the string `"true"`). `email` itself is still
+/// forwarded as before. An IdP's own `email_domain` is always removed first, so
+/// an id_token cannot set it.
+fn add_email_domain(claims: &mut prost_wkt_types::Struct, email_verified_claim: &str) {
+    use prost_wkt_types::value::Kind;
+    claims.fields.remove("email_domain");
+    let verified = !email_verified_claim.is_empty()
+        || matches!(
+            claims.fields.get("email_verified").and_then(|v| v.kind.as_ref()),
+            Some(Kind::BoolValue(true))
+        )
+        || matches!(
+            claims.fields.get("email_verified").and_then(|v| v.kind.as_ref()),
+            Some(Kind::StringValue(v)) if v == "true"
+        );
+    if !verified {
+        return;
+    }
+    let domain = match claims.fields.get("email").and_then(|v| v.kind.as_ref()) {
+        Some(Kind::StringValue(email)) => email.rsplit_once('@').map(|(_, d)| d.to_ascii_lowercase()),
+        _ => None,
+    };
+    if let Some(domain) = domain.filter(|d| !d.is_empty()) {
+        claims.fields.insert(
+            "email_domain".to_string(),
+            prost_wkt_types::Value {
+                kind: Some(Kind::StringValue(domain)),
+            },
+        );
+    }
+}
+
 /// Well-known JWT claims that get `origin_` prefix when forwarding from an
 /// external IDP token to avoid collision with Schematic claims.
 const WELL_KNOWN_JWT_CLAIMS: &[&str] = &["iss", "sub", "aud", "exp", "nbf", "iat", "jti", "nonce"];
@@ -844,7 +884,9 @@ impl AuthHandler for AuthImpl {
         // A form_post IDP's first-authorization name, carried in the state.
         add_first_authorization_name(&mut claims, &payload);
         // check_callback_url resolved the index, so the provider exists.
-        add_provider_issuer(&mut claims, &state.config.providers[payload.provider_index as usize]);
+        let provider = &state.config.providers[payload.provider_index as usize];
+        add_provider_issuer(&mut claims, provider);
+        add_email_domain(&mut claims, &provider.email_verified_claim);
 
         // 7. Call kernel MintUserToken to get signed tokens.
         let mint_resp = self.sm.s2s().kernel().mint_client()
@@ -2518,6 +2560,81 @@ mod entra_signin_tests {
         );
         assert_eq!(string_claim(&claims, "origin_iss"), Some(issuer_for(TID).as_str()));
         assert_eq!(string_claim(&claims, "tid"), Some(TID));
+    }
+
+    /// MintCallbackTokens' claim steps for an Entra id_token with `extra`
+    /// claims: verify, the email gate, the forwarded claims, then the
+    /// synthesized `provider_iss` and `email_domain`.
+    fn callback_claims(extra: &[(&str, serde_json::Value)]) -> prost_wkt_types::Struct {
+        let provider = entra_provider("https://login.microsoftonline.com");
+        let mut id_claims = verify(&entra_id_token(&issuer_for(TID), Some(TID), extra)).unwrap();
+        drop_unverified_email(&mut id_claims, &provider.email_verified_claim);
+        let mut claims = build_claims_struct(&id_claims).unwrap();
+        add_provider_issuer(&mut claims, &provider);
+        add_email_domain(&mut claims, &provider.email_verified_claim);
+        claims
+    }
+
+    /// A provider with no `email_verified_claim` (Google, Apple, Keycloak):
+    /// `email_domain` needs the standard `email_verified`, bool or Apple's
+    /// string, and is absent without it while `email` is still forwarded.
+    #[test]
+    fn without_a_verified_claim_the_domain_needs_standard_email_verified() {
+        let with = |verified: Option<serde_json::Value>| {
+            let mut claims = build_claims_struct(&HashMap::from_iter(
+                [("email".to_string(), json!("pat@example.com"))]
+                    .into_iter()
+                    .chain(verified.map(|v| ("email_verified".to_string(), v))),
+            ))
+            .unwrap();
+            add_email_domain(&mut claims, "");
+            claims
+        };
+        assert_eq!(string_claim(&with(Some(json!(true))), "email_domain"), Some("example.com"));
+        assert_eq!(string_claim(&with(Some(json!("true"))), "email_domain"), Some("example.com"));
+        for unverified in [Some(json!(false)), Some(json!("false")), None] {
+            let claims = with(unverified);
+            assert!(!claims.fields.contains_key("email_domain"));
+            assert_eq!(string_claim(&claims, "email"), Some("pat@example.com"));
+        }
+    }
+
+    /// A verified email carries its lowercased domain as `email_domain`.
+    #[test]
+    fn a_verified_email_carries_its_lowercased_domain() {
+        let claims = callback_claims(&[("email", json!("Pat@Example.COM")), ("xms_edov", json!(true))]);
+        assert_eq!(string_claim(&claims, "email_domain"), Some("example.com"));
+    }
+
+    /// An unverified email is dropped, and so no `email_domain` is set.
+    #[test]
+    fn an_unverified_email_carries_no_email_domain() {
+        let claims = callback_claims(&[("email", json!("pat@example.com")), ("xms_edov", json!(false))]);
+        assert_eq!(string_claim(&claims, "email"), None);
+        assert!(!claims.fields.contains_key("email_domain"));
+    }
+
+    /// An IdP's own `email_domain` never survives: the claim is the verified
+    /// email's domain.
+    #[test]
+    fn an_idp_supplied_email_domain_is_replaced_by_the_verified_one() {
+        let claims = callback_claims(&[
+            ("email", json!("pat@attacker.com")),
+            ("xms_edov", json!(true)),
+            ("email_domain", json!("victim.com")),
+        ]);
+        assert_eq!(string_claim(&claims, "email_domain"), Some("attacker.com"));
+    }
+
+    /// An IdP's own `email_domain` with an unverified email is removed, not
+    /// forwarded.
+    #[test]
+    fn an_idp_supplied_email_domain_without_a_verified_email_is_absent() {
+        let claims = callback_claims(&[
+            ("email", json!("pat@attacker.com")),
+            ("email_domain", json!("victim.com")),
+        ]);
+        assert!(!claims.fields.contains_key("email_domain"));
     }
 
     /// The cached re-auth reads the login's claims back off the Schematic
