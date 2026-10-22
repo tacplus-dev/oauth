@@ -26,7 +26,7 @@ use oauth_model::types::services::oauth::oauth::{
 
 use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
 use crate::oidc::OidcClient;
-use crate::signin_email::{DnsResolver, EmailRateLimiter, GlobalRateLimiter};
+use crate::signin_email::{DnsResolver, EmailRateLimiter, GlobalRateLimiter, IssuerFinder};
 
 /// A `session_id` is completable only where its CLI session is pending.
 ///
@@ -59,6 +59,7 @@ pub struct AuthImpl {
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
     dns_resolver: Arc<dyn DnsResolver>,
+    issuer_finder: Arc<dyn IssuerFinder>,
     sign_in_email_limiter: EmailRateLimiter,
     sign_in_global_limiter: GlobalRateLimiter,
 }
@@ -76,6 +77,7 @@ impl AuthImpl {
         broker: &BrokerStreamBidiHandle,
         pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
         dns_resolver: Arc<dyn DnsResolver>,
+        issuer_finder: Arc<dyn IssuerFinder>,
     ) -> Self {
         Self {
             sm,
@@ -83,6 +85,7 @@ impl AuthImpl {
             pending,
             state: RwLock::new(None),
             dns_resolver,
+            issuer_finder,
             sign_in_email_limiter: EmailRateLimiter::new(),
             sign_in_global_limiter: GlobalRateLimiter::new(),
         }
@@ -778,7 +781,7 @@ impl AuthHandler for AuthImpl {
         }
         let guard = self.state.read().await;
         let providers = guard.as_ref().map_or(&[][..], |s| s.config.providers.as_slice());
-        Ok(crate::signin_email::classify(self.dns_resolver.as_ref(), providers, &req.email).await)
+        Ok(crate::signin_email::classify(self.dns_resolver.as_ref(), self.issuer_finder.as_ref(), providers, &req.email).await)
     }
 
     async fn mint_callback_tokens(

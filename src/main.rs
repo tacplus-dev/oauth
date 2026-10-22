@@ -158,13 +158,16 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let oauth_impl = Arc::new(OauthImpl::new(Arc::clone(&sm), broker_handle, Arc::clone(&pending)));
-    // ClassifySignInEmail's TXT and MX lookups go through the pod's resolv.conf.
-    let dns_resolver = Arc::new(hickory_resolver::TokioResolver::builder_tokio()?.build()?);
+    // ClassifySignInEmail's TXT, MX and WebFinger A/AAAA lookups go through the
+    // pod's resolv.conf.
+    let dns_resolver = hickory_resolver::TokioResolver::builder_tokio()?.build()?;
+    let issuer_finder = Arc::new(signin_email::WebFinger::new(dns_resolver.clone())?);
     let auth_impl = Arc::new(AuthImpl::new(
         Arc::clone(&sm),
         oauth_impl.broker_handle(),
         Arc::clone(&pending),
-        dns_resolver,
+        Arc::new(dns_resolver),
+        issuer_finder,
     ));
     // Note: broker_handle was moved into OauthImpl. AuthImpl borrows it via broker_handle().
 

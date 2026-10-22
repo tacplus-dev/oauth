@@ -1,23 +1,27 @@
 //! Auth.ClassifySignInEmail: how a person signs in, guessed from their work
 //! email's DNS.
 //!
-//! A `_seabeam.<domain>` TXT record naming the IDP wins. Otherwise the domain's
-//! most-preferred MX hosts name its mail provider: Google Workspace or Microsoft
-//! 365 answer with the configured provider of that IDP, so the SPA goes straight
-//! to Authorize; anything else is unsupported. Every other enabled Google or
+//! An `_openid.<domain>` TXT record naming Google's or Microsoft's issuer wins.
+//! Otherwise the issuer the domain's WebFinger names for the address does.
+//! Otherwise the domain's most-preferred MX hosts name its mail provider: Google
+//! Workspace or Microsoft 365. Each answers with the configured provider of that
+//! IDP, so the SPA goes straight to Authorize; anything else is unsupported. Every other enabled Google or
 //! Microsoft provider is offered as an alternative, so a person whose guess is
-//! wrong (or missing) can pick. The answer is a function of public DNS and this
-//! service's provider config only. Nothing here reads an account, so the answer
+//! wrong (or missing) can pick. The answer is a function of public DNS, the
+//! domain's own WebFinger and this service's provider config only. Nothing here reads an account, so the answer
 //! cannot say whether one exists.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
-use std::time::Instant;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use hickory_resolver::proto::rr::RData;
 use hickory_resolver::TokioResolver;
+use reqwest::dns::{Addrs, Name, Resolve, Resolving};
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use tracing::info;
+use tracing::{debug, info};
 
 use oauth_model::types::services::oauth::oauth::{
     ClassifySignInEmailResponse, ProviderConfig, SignInMethod, SignInOption,
@@ -29,6 +33,18 @@ const GOOGLE_ISSUER: &str = "https://accounts.google.com";
 /// The issuer prefix every Microsoft Entra ID provider is configured with
 /// (`.../organizations/v2.0`, `.../common/v2.0` or one directory's GUID).
 const MICROSOFT_ISSUER_PREFIX: &str = "https://login.microsoftonline.com/";
+
+/// The issuer hosts a TXT `iss` or a WebFinger issuer is mapped by.
+const GOOGLE_ISSUER_HOST: &str = "accounts.google.com";
+const MICROSOFT_ISSUER_HOST: &str = "login.microsoftonline.com";
+
+/// The WebFinger link relation naming an account's OpenID Connect issuer (OIDC
+/// Discovery 1.0 section 2).
+const ISSUER_REL: &str = "http://openid.net/specs/connect/1.0/issuer";
+
+/// Bounds on the WebFinger request: the whole exchange, and the body read.
+const WEBFINGER_TIMEOUT: Duration = Duration::from_secs(2);
+const WEBFINGER_MAX_BODY: usize = 16 * 1024;
 
 /// DnsResolver answers a domain's MX records as (preference, exchange host),
 /// and a name's TXT records, each as its character-strings concatenated.
@@ -72,28 +88,175 @@ impl DnsResolver for TokioResolver {
     }
 }
 
-/// What a domain's `_seabeam` TXT record names as its IDP.
-#[derive(Debug, PartialEq)]
-enum TxtIdp {
-    Method(SignInMethod),
-    Issuer(String),
+/// IssuerFinder answers the OpenID Connect issuer a domain's WebFinger names
+/// for an address, or None.
+///
+/// A trait so the tests can answer from a table; the service uses `WebFinger`.
+#[tonic::async_trait]
+pub trait IssuerFinder: Send + Sync {
+    async fn issuer(&self, domain: &str, email: &str) -> Option<String>;
 }
 
-/// The IDP named by the one valid `v=seabeam1; idp=<google|microsoft|https://issuer>`
-/// record among `records`. Tags are `;`-separated with whitespace around them
-/// ignored, tag names and the `v`/keyword values are case-insensitive, and
-/// unknown tags are ignored. A record whose first tag is not `v=seabeam1` is not
-/// ours. None when no record or more than one is ours, or ours has no single
-/// well-formed `idp`: the guess then falls to MX rather than to an IDP the
-/// domain may not have meant.
-fn seabeam_idp(records: &[String]) -> Option<TxtIdp> {
+/// WebFinger asks `https://<domain>/.well-known/webfinger` for an address's
+/// issuer. The domain is whatever a caller types, so this is a request from
+/// inside the cluster to a host the caller chooses: https only, every address
+/// the domain resolves to must be public and the connection goes only to those
+/// (`PublicOnly`), no proxy, no redirects, and the time and body are bounded.
+pub struct WebFinger {
+    client: reqwest::Client,
+}
+
+impl WebFinger {
+    pub fn new(resolver: TokioResolver) -> reqwest::Result<Self> {
+        let client = reqwest::Client::builder()
+            .dns_resolver(Arc::new(PublicOnly(resolver)))
+            .no_proxy()
+            .https_only(true)
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(WEBFINGER_TIMEOUT)
+            .build()?;
+        Ok(Self { client })
+    }
+
+    async fn fetch(&self, domain: &str, email: &str) -> Result<Option<String>, String> {
+        let url = webfinger_url(domain, email).ok_or("not a plain domain name")?;
+        let mut resp = self.client.get(url).send().await.map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("status {}", resp.status()));
+        }
+        let mut body = Vec::new();
+        while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_string())? {
+            if body.len() + chunk.len() > WEBFINGER_MAX_BODY {
+                return Err("body over the cap".to_string());
+            }
+            body.extend_from_slice(&chunk);
+        }
+        Ok(jrd_issuer(&body))
+    }
+}
+
+#[tonic::async_trait]
+impl IssuerFinder for WebFinger {
+    async fn issuer(&self, domain: &str, email: &str) -> Option<String> {
+        // debug: most domains serve no WebFinger, and the route is public.
+        self.fetch(domain, email).await.unwrap_or_else(|e| {
+            debug!(domain = %domain, error = %e, "WebFinger gave no issuer");
+            None
+        })
+    }
+}
+
+/// The WebFinger query for `email` at `domain`. None unless `domain` is a plain
+/// DNS name: an IP literal would never reach `PublicOnly`, and anything the URL
+/// parser rewrote is not the domain that was typed.
+fn webfinger_url(domain: &str, email: &str) -> Option<reqwest::Url> {
+    let url = reqwest::Url::parse_with_params(
+        &format!("https://{domain}/.well-known/webfinger"),
+        &[("resource", format!("acct:{email}").as_str()), ("rel", ISSUER_REL)],
+    )
+    .ok()?;
+    (url.domain() == Some(domain)).then_some(url)
+}
+
+/// PublicOnly is the WebFinger client's DNS: a name's A and AAAA records, all of
+/// them public or the lookup fails. The client connects only to the addresses
+/// it returns, so a vetted answer cannot be swapped for another one afterwards.
+struct PublicOnly(TokioResolver);
+
+impl Resolve for PublicOnly {
+    fn resolve(&self, name: Name) -> Resolving {
+        let resolver = self.0.clone();
+        Box::pin(async move {
+            // Absolute for the same reason as `DnsResolver::mx`.
+            let lookup = resolver.lookup_ip(format!("{}.", name.as_str())).await?;
+            let addrs: Vec<IpAddr> = lookup.iter().collect();
+            if addrs.is_empty() || !addrs.iter().all(|a| is_public(*a)) {
+                return Err(format!("{} resolves to a non-public address", name.as_str()).into());
+            }
+            // Port 0: the client sets the URL's port.
+            let addrs: Addrs = Box::new(addrs.into_iter().map(|a| SocketAddr::new(a, 0)));
+            Ok(addrs)
+        })
+    }
+}
+
+/// Whether `addr` is a public unicast address: not unspecified, loopback,
+/// private, unique-local, link-local, CGNAT, NAT64, multicast, broadcast, reserved,
+/// or a documentation or benchmarking range. An IPv4-mapped IPv6 address is judged
+/// as its IPv4 address.
+fn is_public(addr: IpAddr) -> bool {
+    match addr {
+        IpAddr::V4(v4) => is_public_v4(v4),
+        IpAddr::V6(v6) => match v6.to_ipv4_mapped() {
+            Some(v4) => is_public_v4(v4),
+            None => {
+                let seg = v6.segments();
+                !(v6.is_unspecified()
+                    || v6.is_loopback()
+                    || v6.is_multicast()
+                    || v6.is_unique_local()
+                    || v6.is_unicast_link_local()
+                    // 2001:db8::/32 documentation, 2001:2::/48 benchmarking.
+                    || (seg[0] == 0x2001 && seg[1] == 0x0db8)
+                    || (seg[0] == 0x2001 && seg[1] == 0x0002 && seg[2] == 0)
+                    // 64:ff9b::/96 and 64:ff9b:1::/48 NAT64: they reach IPv4 space.
+                    || (seg[0] == 0x0064 && seg[1] == 0xff9b))
+            }
+        },
+    }
+}
+
+fn is_public_v4(v4: Ipv4Addr) -> bool {
+    let [a, b, _, _] = v4.octets();
+    !(a == 0
+        || v4.is_loopback()
+        || v4.is_private()
+        || v4.is_link_local()
+        || v4.is_multicast()
+        || v4.is_broadcast()
+        || v4.is_documentation()
+        // 100.64/10 CGNAT, 198.18/15 benchmarking, 240/4 reserved.
+        || (a == 100 && (64..128).contains(&b))
+        || (a == 198 && (b == 18 || b == 19))
+        || a >= 240)
+}
+
+/// A WebFinger JSON Resource Descriptor, as far as the issuer link.
+#[derive(Deserialize)]
+struct Jrd {
+    #[serde(default)]
+    links: Vec<JrdLink>,
+}
+
+#[derive(Deserialize)]
+struct JrdLink {
+    rel: Option<String>,
+    href: Option<String>,
+}
+
+/// The href of the first issuer link in a JRD body, when it is https. None for
+/// anything else, including a body that is not a JRD.
+fn jrd_issuer(body: &[u8]) -> Option<String> {
+    let jrd: Jrd = serde_json::from_slice(body).ok()?;
+    let link = jrd.links.into_iter().find(|l| l.rel.as_deref() == Some(ISSUER_REL))?;
+    link.href.filter(|href| href.starts_with("https://"))
+}
+
+/// The value of the one valid `v=OID1; iss=<host[:port][/path]>` record among
+/// `records` (`_openid.<domain>`, draft-sanz-openid-dns-discovery-01). Tags are
+/// `;`-separated with whitespace around them ignored, tag names and the `v`
+/// value are case-insensitive, and `clp` and unknown tags are ignored. A record
+/// whose first tag is not `v=OID1` is not one. None when no record or more than
+/// one is, or it has no single `iss`, or its `iss` carries a scheme: the guess
+/// then falls through rather than to an IDP the domain may not have meant.
+fn openid_iss(records: &[String]) -> Option<&str> {
     let mut ours = records.iter().filter_map(|record| {
         let mut tags = record.split(';').map(str::trim).filter(|t| !t.is_empty()).map(|t| {
             let (name, value) = t.split_once('=').unwrap_or((t, ""));
             (name.trim().to_ascii_lowercase(), value.trim())
         });
         match tags.next() {
-            Some((name, value)) if name == "v" && value.eq_ignore_ascii_case("seabeam1") => Some(tags),
+            Some((name, value)) if name == "v" && value.eq_ignore_ascii_case("OID1") => Some(tags),
             _ => None,
         }
     });
@@ -101,17 +264,24 @@ fn seabeam_idp(records: &[String]) -> Option<TxtIdp> {
     if ours.next().is_some() {
         return None;
     }
-    let mut idps = tags.filter(|(name, _)| name == "idp").map(|(_, value)| value);
-    let idp = idps.next()?;
-    if idps.next().is_some() {
+    let mut isses = tags.filter(|(name, _)| name == "iss").map(|(_, value)| value);
+    let iss = isses.next()?;
+    if isses.next().is_some() || iss.is_empty() || iss.contains("://") {
         return None;
     }
-    if idp.eq_ignore_ascii_case("google") {
-        Some(TxtIdp::Method(SignInMethod::Google))
-    } else if idp.eq_ignore_ascii_case("microsoft") {
-        Some(TxtIdp::Method(SignInMethod::Microsoft))
-    } else if idp.starts_with("https://") {
-        Some(TxtIdp::Issuer(idp.to_string()))
+    Some(iss)
+}
+
+/// The IDP an issuer without its scheme (`host[:port][/path]`) belongs to,
+/// judged by its host alone, case-insensitively. A port is part of the host, so
+/// `accounts.google.com:443` is no match. None for any other host: a custom
+/// issuer has no `SignInMethod`, and DNS or WebFinger never adds a trusted one.
+fn iss_method(iss: &str) -> Option<SignInMethod> {
+    let host = iss.split('/').next().unwrap_or("");
+    if host.eq_ignore_ascii_case(GOOGLE_ISSUER_HOST) {
+        Some(SignInMethod::Google)
+    } else if host.eq_ignore_ascii_case(MICROSOFT_ISSUER_HOST) {
+        Some(SignInMethod::Microsoft)
     } else {
         None
     }
@@ -165,52 +335,42 @@ fn provider_index(providers: &[ProviderConfig], method: SignInMethod) -> Option<
         .map(|i| i as i32)
 }
 
-/// The enabled provider a TXT record's IDP names. An issuer is answered only
-/// when it is a configured Google or Microsoft provider's issuer: DNS never adds
-/// a trusted issuer.
-fn txt_provider(providers: &[ProviderConfig], idp: TxtIdp) -> Option<(SignInMethod, i32)> {
-    match idp {
-        TxtIdp::Method(method) => provider_index(providers, method).map(|i| (method, i)),
-        TxtIdp::Issuer(issuer) => providers.iter().enumerate().find_map(|(i, p)| {
-            let method = issuer_method(&p.issuer)?;
-            (p.enable && p.issuer == issuer).then_some((method, i as i32))
-        }),
-    }
-}
-
 /// Classify `email` (already schema-validated as an address) against
-/// `providers`. The domain's `_seabeam` TXT record decides when it names a
-/// usable provider; otherwise its MX does. A lookup failure, an unknown
-/// provider, or a provider that is not configured all leave the guess
-/// unsupported; the alternatives are every other enabled Google or Microsoft
-/// provider either way.
+/// `providers`. The domain's `_openid` TXT record decides when it names a usable
+/// provider; otherwise its WebFinger issuer does; otherwise its MX does. A
+/// lookup failure, an unknown provider, or a provider that is not configured
+/// all leave the guess unsupported; the alternatives are every other enabled
+/// Google or Microsoft provider either way.
 pub async fn classify(
     resolver: &dyn DnsResolver,
+    finder: &dyn IssuerFinder,
     providers: &[ProviderConfig],
     email: &str,
 ) -> ClassifySignInEmailResponse {
     let domain = email.rsplit_once('@').map_or("", |(_, d)| d).to_ascii_lowercase();
-    // A failed TXT lookup is the usual case (most domains have no `_seabeam`
+    let usable = |method: Option<SignInMethod>| method.and_then(|m| provider_index(providers, m).map(|i| (m, i)));
+    // A failed TXT lookup is the usual case (most domains have no `_openid`
     // name), so it is not logged.
-    let from_txt = match resolver.txt(&format!("_seabeam.{domain}")).await {
-        Ok(records) => seabeam_idp(&records).and_then(|idp| txt_provider(providers, idp)),
+    let mut guess = match resolver.txt(&format!("_openid.{domain}")).await {
+        Ok(records) => usable(openid_iss(&records).and_then(iss_method)),
         Err(_) => None,
     };
-    let guess = match from_txt {
-        Some(guess) => Some(guess),
-        None => {
-            let method = match resolver.mx(&domain).await {
-                Ok(records) => mail_provider(&records),
-                Err(e) => {
-                    // info, not warn: a typo or a made-up domain lands here, and
-                    // the route is public.
-                    info!(domain = %domain, error = %e, "MX lookup failed, answering unsupported");
-                    None
-                }
-            };
-            method.and_then(|m| provider_index(providers, m).map(|i| (m, i)))
-        }
-    };
+    if guess.is_none() {
+        let issuer = finder.issuer(&domain, email).await;
+        guess = usable(issuer.as_deref().and_then(|i| i.strip_prefix("https://")).and_then(iss_method));
+    }
+    if guess.is_none() {
+        let method = match resolver.mx(&domain).await {
+            Ok(records) => mail_provider(&records),
+            Err(e) => {
+                // info, not warn: a typo or a made-up domain lands here, and
+                // the route is public.
+                info!(domain = %domain, error = %e, "MX lookup failed, answering unsupported");
+                None
+            }
+        };
+        guess = usable(method);
+    }
     let (method, provider_index) = guess.unwrap_or((SignInMethod::Unsupported, 0));
     let alternatives = providers
         .iter()
@@ -300,12 +460,13 @@ impl EmailRateLimiter {
 }
 
 /// Lookups the whole process answers in a burst, and the steady rate after it.
-/// Each classify costs up to two outbound DNS queries (TXT, then MX). Real
-/// sign-ins are a few per person per day; even a whole company arriving on a
-/// Monday morning is a few per second, and the gateway already holds each
-/// client IP to 0.5/s (burst 30). 10/s sustained (36,000 an hour) is far above
-/// that, while capping what many IPs together can make this service send to
-/// the resolver at 20 queries a second; a burst of 100 absorbs a wave of
+/// Each classify costs up to four outbound DNS queries (TXT; A and AAAA for
+/// WebFinger; MX) and one WebFinger request. Real sign-ins are a few per person
+/// per day; even a whole company arriving on a Monday morning is a few per
+/// second, and the gateway already holds each client IP to 0.5/s (burst 30).
+/// 10/s sustained (36,000 an hour) is far above that, while capping what many
+/// IPs together can make this service send to the resolver at 40 queries and
+/// to WebFinger hosts at 10 requests a second; a burst of 100 absorbs a wave of
 /// people signing in at once.
 const GLOBAL_BURST: f64 = 100.0;
 const GLOBAL_RATE_PER_SEC: f64 = 10.0;
@@ -332,7 +493,7 @@ impl GlobalRateLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     /// Answers from tables; a name not in one fails like NXDOMAIN.
     struct FakeResolver {
@@ -385,40 +546,74 @@ mod tests {
                 (2, "outlook.com.mail.protection.evil.example."),
             ]),
             ("empty.example", vec![]),
-            ("txt-google.example", vec![M365_MX]),
-            ("txt-microsoft.example", vec![GOOGLE_MX]),
             // Jody's case: a Google login whose mail is on iCloud.
             ("thescottsweb.com", vec![(10, "mx01.mail.icloud.com."), (10, "mx02.mail.icloud.com.")]),
-            ("txt-tenant-issuer.example", vec![GOOGLE_MX]),
-            ("txt-unknown-issuer.example", vec![GOOGLE_MX]),
-            ("txt-keycloak-issuer.example", vec![GOOGLE_MX]),
+            ("txt-google.example", vec![M365_MX]),
+            ("txt-microsoft.example", vec![GOOGLE_MX]),
+            ("txt-microsoft-tenant.example", vec![GOOGLE_MX]),
+            ("txt-custom-issuer.example", vec![M365_MX]),
             ("txt-two-records.example", vec![M365_MX]),
             ("txt-v-not-first.example", vec![M365_MX]),
             ("txt-no-version.example", vec![M365_MX]),
+            ("txt-no-iss.example", vec![M365_MX]),
+            ("txt-empty-iss.example", vec![M365_MX]),
+            ("txt-two-iss.example", vec![M365_MX]),
+            ("txt-scheme-iss.example", vec![M365_MX]),
+            ("txt-port-iss.example", vec![M365_MX]),
+            ("txt-lookalike-iss.example", vec![M365_MX]),
             ("txt-sloppy.example", vec![M365_MX]),
-            ("txt-bad-idp.example", vec![M365_MX]),
-            ("txt-http-issuer.example", vec![M365_MX]),
-            ("txt-two-idps.example", vec![M365_MX]),
-            ("txt-no-idp.example", vec![M365_MX]),
             ("txt-one-of-many.example", vec![M365_MX]),
+            ("wf-google.example", vec![M365_MX]),
+            ("wf-microsoft.example", vec![GOOGLE_MX]),
+            ("wf-custom.example", vec![M365_MX]),
+            ("wf-http.example", vec![M365_MX]),
         ]), txt: HashMap::from([
-            ("_seabeam.txt-google.example", vec!["v=seabeam1; idp=google"]),
-            ("_seabeam.txt-microsoft.example", vec!["v=seabeam1; idp=microsoft"]),
-            ("_seabeam.thescottsweb.com", vec!["v=seabeam1; idp=google"]),
-            ("_seabeam.txt-tenant-issuer.example", vec!["v=seabeam1; idp=https://login.microsoftonline.com/0f0e0d0c-0000-4000-8000-000000000001/v2.0"]),
-            ("_seabeam.txt-unknown-issuer.example", vec!["v=seabeam1; idp=https://idp.attacker.example"]),
-            ("_seabeam.txt-keycloak-issuer.example", vec!["v=seabeam1; idp=https://idp.example/realms/drpepper"]),
-            ("_seabeam.txt-two-records.example", vec!["v=seabeam1; idp=google", "v=seabeam1; idp=google"]),
-            ("_seabeam.txt-v-not-first.example", vec!["idp=google; v=seabeam1"]),
-            ("_seabeam.txt-no-version.example", vec!["idp=google"]),
-            ("_seabeam.txt-sloppy.example", vec![" V = SeaBeam1 ;color=blue;  IDP =Google ; future-tag ;"]),
-            ("_seabeam.txt-bad-idp.example", vec!["v=seabeam1; idp=okta"]),
-            ("_seabeam.txt-http-issuer.example", vec!["v=seabeam1; idp=http://accounts.google.com"]),
-            ("_seabeam.txt-two-idps.example", vec!["v=seabeam1; idp=google; idp=microsoft"]),
-            ("_seabeam.txt-no-idp.example", vec!["v=seabeam1"]),
+            ("_openid.thescottsweb.com", vec!["v=OID1;iss=accounts.google.com"]),
+            ("_openid.txt-google.example", vec!["v=OID1; iss=accounts.google.com"]),
+            ("_openid.txt-microsoft.example", vec!["v=OID1;iss=login.microsoftonline.com"]),
+            ("_openid.txt-microsoft-tenant.example", vec!["v=OID1;iss=login.microsoftonline.com/0f0e0d0c-0000-4000-8000-000000000001/v2.0"]),
+            ("_openid.txt-custom-issuer.example", vec!["v=OID1;iss=idp.example"]),
+            ("_openid.txt-two-records.example", vec!["v=OID1;iss=accounts.google.com", "v=OID1;iss=accounts.google.com"]),
+            ("_openid.txt-v-not-first.example", vec!["iss=accounts.google.com;v=OID1"]),
+            ("_openid.txt-no-version.example", vec!["iss=accounts.google.com"]),
+            ("_openid.txt-no-iss.example", vec!["v=OID1;clp=https://idp.example/clp"]),
+            ("_openid.txt-empty-iss.example", vec!["v=OID1;iss="]),
+            ("_openid.txt-two-iss.example", vec!["v=OID1;iss=accounts.google.com;iss=accounts.google.com"]),
+            ("_openid.txt-scheme-iss.example", vec!["v=OID1;iss=https://accounts.google.com"]),
+            ("_openid.txt-port-iss.example", vec!["v=OID1;iss=accounts.google.com:443"]),
+            ("_openid.txt-lookalike-iss.example", vec!["v=OID1;iss=accounts.google.com.evil.example"]),
+            ("_openid.txt-sloppy.example", vec![" V = oid1 ;CLP=https://idp.example/clp;  ISS = Accounts.Google.COM ; future-tag ;"]),
             // Other services' records under the same name are not ours.
-            ("_seabeam.txt-one-of-many.example", vec!["google-site-verification=abc", "v=seabeam1; idp=google", "v=spf1 -all"]),
+            ("_openid.txt-one-of-many.example", vec!["google-site-verification=abc", "v=OID1;iss=accounts.google.com", "v=spf1 -all"]),
         ]) }
+    }
+
+    /// Answers WebFinger from a table by domain, counting the calls.
+    struct FakeFinder {
+        issuers: HashMap<&'static str, &'static str>,
+        calls: AtomicUsize,
+    }
+
+    #[tonic::async_trait]
+    impl IssuerFinder for FakeFinder {
+        async fn issuer(&self, domain: &str, _email: &str) -> Option<String> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            self.issuers.get(domain).map(|i| i.to_string())
+        }
+    }
+
+    fn finder() -> FakeFinder {
+        FakeFinder {
+            issuers: HashMap::from([
+                ("wf-google.example", "https://accounts.google.com"),
+                ("wf-microsoft.example", "https://login.microsoftonline.com/0f0e0d0c-0000-4000-8000-000000000001/v2.0"),
+                ("wf-custom.example", "https://idp.example/realms/drpepper"),
+                ("wf-http.example", "http://accounts.google.com"),
+                // Never asked: its TXT record answers first.
+                ("txt-google.example", "https://login.microsoftonline.com/organizations/v2.0"),
+            ]),
+            calls: AtomicUsize::new(0),
+        }
     }
 
     fn provider(name: &str, issuer: &str, enable: bool) -> ProviderConfig {
@@ -441,7 +636,7 @@ mod tests {
     }
 
     async fn answer(email: &str, providers: &[ProviderConfig]) -> (SignInMethod, i32) {
-        let resp = classify(&resolver(), providers, email).await;
+        let resp = classify(&resolver(), &finder(), providers, email).await;
         (SignInMethod::try_from(resp.method).unwrap(), resp.provider_index)
     }
 
@@ -519,18 +714,20 @@ mod tests {
     }
 
     async fn alternatives(email: &str, providers: &[ProviderConfig]) -> Vec<(SignInMethod, i32)> {
-        let resp = classify(&resolver(), providers, email).await;
+        let resp = classify(&resolver(), &finder(), providers, email).await;
         resp.alternatives.iter().map(|o| (SignInMethod::try_from(o.method).unwrap(), o.provider_index)).collect()
     }
 
     #[tokio::test]
-    async fn a_txt_google_record_beats_a_microsoft_mx() {
+    async fn a_txt_google_issuer_beats_a_microsoft_mx() {
         assert_eq!(answer("pat@txt-google.example", &providers()).await, (SignInMethod::Google, 1));
     }
 
     #[tokio::test]
-    async fn a_txt_microsoft_record_beats_a_google_mx() {
+    async fn a_txt_microsoft_issuer_beats_a_google_mx() {
         assert_eq!(answer("pat@txt-microsoft.example", &providers()).await, (SignInMethod::Microsoft, 3));
+        // Any path on the Microsoft host, a directory's issuer included.
+        assert_eq!(answer("pat@txt-microsoft-tenant.example", &providers()).await, (SignInMethod::Microsoft, 3));
     }
 
     #[tokio::test]
@@ -539,40 +736,30 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_txt_issuer_of_a_configured_provider_answers_that_provider() {
-        assert_eq!(answer("pat@txt-tenant-issuer.example", &providers_with_tenant()).await, (SignInMethod::Microsoft, 4));
+    async fn a_custom_txt_issuer_falls_through() {
+        // No `SignInMethod` for it: DNS never adds a trusted issuer.
+        assert_eq!(answer("pat@txt-custom-issuer.example", &providers()).await, (SignInMethod::Microsoft, 3));
     }
 
     #[tokio::test]
-    async fn an_unusable_txt_issuer_falls_back_to_mx() {
-        // Not configured at all: DNS never adds a trusted issuer.
-        assert_eq!(answer("pat@txt-unknown-issuer.example", &providers()).await, (SignInMethod::Google, 1));
-        assert_eq!(answer("pat@txt-tenant-issuer.example", &providers()).await, (SignInMethod::Google, 1));
-        // Configured, but not a provider this RPC can answer.
-        assert_eq!(answer("pat@txt-keycloak-issuer.example", &providers()).await, (SignInMethod::Google, 1));
-        // Configured but disabled.
-        let mut tenant_off = providers_with_tenant();
-        tenant_off[4].enable = false;
-        assert_eq!(answer("pat@txt-tenant-issuer.example", &tenant_off).await, (SignInMethod::Google, 1));
-    }
-
-    #[tokio::test]
-    async fn a_txt_method_with_no_enabled_provider_falls_back_to_mx() {
+    async fn a_txt_issuer_with_no_enabled_provider_falls_through() {
         let mut google_off = providers();
         google_off[1].enable = false;
         assert_eq!(answer("pat@txt-google.example", &google_off).await, (SignInMethod::Microsoft, 3));
     }
 
     #[tokio::test]
-    async fn an_ambiguous_or_malformed_txt_record_is_ignored_for_mx() {
+    async fn an_ambiguous_or_malformed_txt_record_is_ignored() {
         for email in [
             "pat@txt-two-records.example",
             "pat@txt-v-not-first.example",
             "pat@txt-no-version.example",
-            "pat@txt-bad-idp.example",
-            "pat@txt-http-issuer.example",
-            "pat@txt-two-idps.example",
-            "pat@txt-no-idp.example",
+            "pat@txt-no-iss.example",
+            "pat@txt-empty-iss.example",
+            "pat@txt-two-iss.example",
+            "pat@txt-scheme-iss.example",
+            "pat@txt-port-iss.example",
+            "pat@txt-lookalike-iss.example",
         ] {
             assert_eq!(answer(email, &providers()).await, (SignInMethod::Microsoft, 3), "{email} must answer from MX");
         }
@@ -585,10 +772,35 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_failed_txt_lookup_answers_from_mx() {
-        // m365.example has MX but no `_seabeam` name: the fake fails it like NXDOMAIN.
-        assert!(resolver().txt("_seabeam.m365.example").await.is_err());
+    async fn a_failed_txt_lookup_asks_webfinger() {
+        // wf-google.example has no `_openid` name: the fake fails it like NXDOMAIN.
+        assert!(resolver().txt("_openid.wf-google.example").await.is_err());
+        assert_eq!(answer("pat@wf-google.example", &providers()).await, (SignInMethod::Google, 1));
+    }
+
+    #[tokio::test]
+    async fn a_webfinger_issuer_beats_the_mx() {
+        assert_eq!(answer("pat@wf-google.example", &providers()).await, (SignInMethod::Google, 1));
+        assert_eq!(answer("pat@wf-microsoft.example", &providers()).await, (SignInMethod::Microsoft, 3));
+    }
+
+    #[tokio::test]
+    async fn an_unusable_webfinger_issuer_falls_back_to_mx() {
+        assert_eq!(answer("pat@wf-custom.example", &providers()).await, (SignInMethod::Microsoft, 3));
+        assert_eq!(answer("pat@wf-http.example", &providers()).await, (SignInMethod::Microsoft, 3));
         assert_eq!(answer("pat@m365.example", &providers()).await, (SignInMethod::Microsoft, 3));
+    }
+
+    #[tokio::test]
+    async fn webfinger_is_asked_only_when_txt_gave_nothing() {
+        let finder = finder();
+        let resp = classify(&resolver(), &finder, &providers(), "pat@txt-google.example").await;
+        assert_eq!(resp.method, SignInMethod::Google as i32);
+        assert_eq!(finder.calls.load(Ordering::SeqCst), 0, "a usable TXT issuer answers before WebFinger");
+
+        classify(&resolver(), &finder, &providers(), "pat@txt-custom-issuer.example").await;
+        classify(&resolver(), &finder, &providers(), "pat@m365.example").await;
+        assert_eq!(finder.calls.load(Ordering::SeqCst), 2, "an unusable or missing TXT record asks WebFinger once");
     }
 
     #[tokio::test]
@@ -596,8 +808,8 @@ mod tests {
         assert_eq!(alternatives("pat@m365.example", &providers()).await, vec![(SignInMethod::Google, 1)]);
         assert_eq!(alternatives("pat@txt-google.example", &providers()).await, vec![(SignInMethod::Microsoft, 3)]);
         assert_eq!(
-            alternatives("pat@txt-tenant-issuer.example", &providers_with_tenant()).await,
-            vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 3)],
+            alternatives("pat@txt-microsoft-tenant.example", &providers_with_tenant()).await,
+            vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 4)],
         );
     }
 
@@ -619,6 +831,78 @@ mod tests {
             alternatives("pat@selfhosted.example", &microsoft_off).await,
             vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 4)],
         );
+    }
+
+    #[test]
+    fn is_public_refuses_every_internal_and_special_range() {
+        for addr in [
+            "127.0.0.1",
+            "::1",
+            "10.1.2.3",
+            "172.16.0.1",
+            "172.31.255.255",
+            "192.168.1.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "100.127.255.255",
+            "fc00::1",
+            "fd12:3456::1",
+            "fe80::1",
+            "0.0.0.0",
+            "::",
+            "224.0.0.1",
+            "ff02::1",
+            "255.255.255.255",
+            "::ffff:10.0.0.1",
+            "::ffff:127.0.0.1",
+            "192.0.2.1",
+            "198.18.0.1",
+            "2001:db8::1",
+            "64:ff9b::a00:1",
+            "64:ff9b:1::1",
+            "240.0.0.1",
+        ] {
+            assert!(!is_public(addr.parse().unwrap()), "{addr} must be refused");
+        }
+    }
+
+    #[test]
+    fn is_public_accepts_public_unicast() {
+        for addr in ["8.8.8.8", "2001:4860:4860::8888", "::ffff:8.8.8.8", "100.128.0.1", "172.32.0.1"] {
+            assert!(is_public(addr.parse().unwrap()), "{addr} must be accepted");
+        }
+    }
+
+    #[test]
+    fn the_webfinger_url_is_encoded_and_only_for_a_plain_domain() {
+        assert_eq!(
+            webfinger_url("example.com", "pat+x@example.com").unwrap().as_str(),
+            "https://example.com/.well-known/webfinger?resource=acct%3Apat%2Bx%40example.com&rel=http%3A%2F%2Fopenid.net%2Fspecs%2Fconnect%2F1.0%2Fissuer",
+        );
+        for domain in ["127.0.0.1", "[::1]", "example.com:8443", "example.com/x", "evil.example#.example.com", ""] {
+            assert!(webfinger_url(domain, "pat@example.com").is_none(), "{domain} must be refused");
+        }
+    }
+
+    #[test]
+    fn jrd_issuer_is_the_first_https_issuer_link() {
+        let body = br#"{"subject":"acct:pat@example.com","links":[
+            {"rel":"http://webfinger.net/rel/profile-page","href":"https://example.com/pat"},
+            {"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://accounts.google.com"},
+            {"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://login.microsoftonline.com/common/v2.0"}
+        ]}"#;
+        assert_eq!(jrd_issuer(body).as_deref(), Some("https://accounts.google.com"));
+
+        let http_first = br#"{"links":[
+            {"rel":"http://openid.net/specs/connect/1.0/issuer","href":"http://accounts.google.com"},
+            {"rel":"http://openid.net/specs/connect/1.0/issuer","href":"https://accounts.google.com"}
+        ]}"#;
+        assert_eq!(jrd_issuer(http_first), None, "the first issuer link decides, and it must be https");
+
+        assert_eq!(jrd_issuer(br#"{"links":[{"rel":"other","href":"https://accounts.google.com"}]}"#), None);
+        assert_eq!(jrd_issuer(br#"{"subject":"acct:pat@example.com"}"#), None);
+        assert_eq!(jrd_issuer(b"not json"), None);
+        assert_eq!(jrd_issuer(b""), None);
     }
 
     #[test]
