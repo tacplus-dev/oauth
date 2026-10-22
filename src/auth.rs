@@ -26,7 +26,7 @@ use oauth_model::types::services::oauth::oauth::{
 
 use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
 use crate::oidc::OidcClient;
-use crate::signin_email::{EmailRateLimiter, MxResolver};
+use crate::signin_email::{DnsResolver, EmailRateLimiter, GlobalRateLimiter};
 
 /// A `session_id` is completable only where its CLI session is pending.
 ///
@@ -58,8 +58,9 @@ pub struct AuthImpl {
     /// holding open from a `session_id` the caller merely knows.
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
-    mx_resolver: Arc<dyn MxResolver>,
+    dns_resolver: Arc<dyn DnsResolver>,
     sign_in_email_limiter: EmailRateLimiter,
+    sign_in_global_limiter: GlobalRateLimiter,
 }
 
 /// Initialized state — created on first config delivery.
@@ -74,15 +75,16 @@ impl AuthImpl {
         sm: Arc<ServiceManager>,
         broker: &BrokerStreamBidiHandle,
         pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
-        mx_resolver: Arc<dyn MxResolver>,
+        dns_resolver: Arc<dyn DnsResolver>,
     ) -> Self {
         Self {
             sm,
             broker: broker.clone(),
             pending,
             state: RwLock::new(None),
-            mx_resolver,
+            dns_resolver,
             sign_in_email_limiter: EmailRateLimiter::new(),
+            sign_in_global_limiter: GlobalRateLimiter::new(),
         }
     }
 
@@ -731,9 +733,12 @@ impl AuthHandler for AuthImpl {
                 "too many sign-in lookups for this address, try again in a minute",
             ));
         }
+        if !self.sign_in_global_limiter.allow(Instant::now()) {
+            return Err(tonic::Status::resource_exhausted("too many sign-in lookups, try again shortly"));
+        }
         let guard = self.state.read().await;
         let providers = guard.as_ref().map_or(&[][..], |s| s.config.providers.as_slice());
-        Ok(crate::signin_email::classify(self.mx_resolver.as_ref(), providers, &req.email).await)
+        Ok(crate::signin_email::classify(self.dns_resolver.as_ref(), providers, &req.email).await)
     }
 
     async fn mint_callback_tokens(
