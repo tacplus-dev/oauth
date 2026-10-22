@@ -710,6 +710,7 @@ impl AuthHandler for AuthImpl {
                 &code_verifier,
                 &req.callback_url,
                 &req.nonce,
+                &req.login_hint,
             )
             .await
             .map_err(|e| tonic::Status::internal(format!("failed to build authorize URL: {e}")))?;
@@ -1454,7 +1455,7 @@ mod callback_url_allowlist_tests {
 
         check_callback_url(&cfg, 0, LEGIT).expect("the allowlisted URL must pass the check");
         let url = client
-            .build_authorize_url(0, "state", "verifier", LEGIT, "")
+            .build_authorize_url(0, "state", "verifier", LEGIT, "", "")
             .await
             .expect("authorize URL");
         assert!(url.starts_with("https://idp.test/auth?"), "got {url}");
@@ -1527,6 +1528,36 @@ mod pending_session_binding_tests {
             check_pending_session(&pending, "nonce-1").await.unwrap_err().code(),
             tonic::Code::NotFound
         );
+    }
+}
+
+/// AuthorizeRequest's annotations, as the generated server wrapper enforces
+/// them: it runs `validate()` before `authorize` and answers InvalidArgument on
+/// failure, so these requests never reach the handler.
+#[cfg(test)]
+mod authorize_request_validation_tests {
+    use super::*;
+
+    fn request(login_hint: &str) -> AuthorizeRequest {
+        AuthorizeRequest {
+            callback_url: "https://console.example/".to_string(),
+            login_hint: login_hint.to_string(),
+            ..Default::default()
+        }
+    }
+
+    /// A login_hint that is not an email address is refused.
+    #[test]
+    fn a_non_email_login_hint_is_rejected() {
+        let err = request("not-an-email").validate().expect_err("a non-email hint must be refused");
+        assert!(err.contains("invalid email address"), "got {err}");
+    }
+
+    /// login_hint is optional: empty passes, as does a real address.
+    #[test]
+    fn an_empty_or_email_login_hint_is_accepted() {
+        request("").validate().expect("no hint is valid");
+        request("a+b@example.com").validate().expect("an email hint is valid");
     }
 }
 
@@ -1788,7 +1819,7 @@ mod apple_signin_tests {
         let verifier = generate_code_verifier();
         let state = codec.encode(0, SPA, &verifier, None);
         let url = client
-            .build_authorize_url(0, &state, &verifier, SPA, "")
+            .build_authorize_url(0, &state, &verifier, SPA, "", "")
             .await
             .expect("authorize URL from discovery");
         assert!(url.starts_with(&format!("{}/auth/authorize?", apple.issuer)), "got {url}");
@@ -1995,7 +2026,7 @@ mod apple_signin_tests {
     async fn a_plain_provider_is_not_sent_form_post() {
         let cfg = config(vec![plain_provider()]);
         let client = OidcClient::new(&cfg.providers, &[], 3600, TEST_P8_PEM).await.unwrap();
-        let url = client.build_authorize_url(0, "s", "v", SPA, "").await.unwrap();
+        let url = client.build_authorize_url(0, "s", "v", SPA, "", "").await.unwrap();
         let q = query_of(&url);
         assert_eq!(q["redirect_uri"], SPA);
         assert!(!q.contains_key("response_mode"), "got {url}");
@@ -2248,7 +2279,7 @@ mod entra_signin_tests {
         let verifier = generate_code_verifier();
         let state = codec.encode(0, SPA, &verifier, None);
         let url = client
-            .build_authorize_url(0, &state, &verifier, SPA, "")
+            .build_authorize_url(0, &state, &verifier, SPA, "", "")
             .await
             .expect("authorize URL from discovery");
         assert!(
@@ -2290,6 +2321,63 @@ mod entra_signin_tests {
         assert_eq!(string_claim(&claims, "origin_sub"), Some(ENTRA_SUB));
         assert_eq!(string_claim(&claims, "tid"), Some(TID));
         assert_eq!(string_claim(&claims, "email"), Some(EMAIL));
+    }
+
+    /// login_hint is a hint only. Authorize relays whatever address the caller
+    /// typed, but the person who signs in is whoever the IDP's id_token names:
+    /// a hint naming someone else never reaches the claims handed to kernel.
+    #[tokio::test]
+    async fn a_login_hint_never_decides_who_signs_in() {
+        const HINT: &str = "attacker@example.com";
+        let entra = spawn_fake_entra(|base| {
+            entra_id_token(
+                &format!("{base}/{TID}/v2.0"),
+                Some(TID),
+                &[("email", json!(EMAIL)), ("xms_edov", json!(true))],
+            )
+        })
+        .await;
+        let cfg = config(vec![entra_provider(&entra.base)]);
+        let client = OidcClient::new(&cfg.providers, &[], 3600, "").await.expect("oidc client");
+        let codec = StateCodec::new(&cfg.providers, "", 300);
+
+        // 1. Authorize's steps, as it runs them, with a login_hint naming
+        //    someone other than who will sign in.
+        let req = AuthorizeRequest {
+            provider_index: 0,
+            callback_url: SPA.to_string(),
+            login_hint: HINT.to_string(),
+            ..Default::default()
+        };
+        check_callback_url(&cfg, req.provider_index, &req.callback_url).expect("SPA is allowlisted");
+        let verifier = generate_code_verifier();
+        let state = codec.encode(req.provider_index, &req.callback_url, &verifier, None);
+        let url = client
+            .build_authorize_url(req.provider_index, &state, &verifier, &req.callback_url, &req.nonce, &req.login_hint)
+            .await
+            .expect("authorize URL from discovery");
+        assert_eq!(query_of(&url)["login_hint"], HINT);
+
+        // 2. MintCallbackTokens' steps, as it runs them.
+        let payload = codec.decode(&state).unwrap();
+        let tokens = client
+            .exchange_code(0, ENTRA_CODE, &payload.code_verifier, &payload.callback_url)
+            .await
+            .expect("the fake Entra accepts the client secret");
+        let jwks = client.fetch_jwks(0).await.expect("Entra JWKS");
+        let (iss, aud) = client.expected_claims(0).unwrap();
+        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+            .expect("Entra's id_token verifies");
+        drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim);
+
+        // 3. The claims handed to kernel name the id_token's subject, and the
+        //    hint appears nowhere in them.
+        let claims = build_claims_struct(&id_claims).unwrap();
+        assert_eq!(string_claim(&claims, "origin_sub"), Some(ENTRA_SUB));
+        assert_eq!(string_claim(&claims, "email"), Some(EMAIL));
+        for (k, v) in &claims.fields {
+            assert_ne!(v.kind, Some(Kind::StringValue(HINT.to_string())), "claim {k} carries the hint");
+        }
     }
 
     /// The fake is not vacuous: a wrong client secret is refused, as Entra

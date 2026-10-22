@@ -296,6 +296,11 @@ impl OidcClient {
     /// `nonce` is the caller-supplied OIDC nonce. An empty `nonce` sends no
     /// `nonce` param at all rather than an empty one — IDPs differ on what an
     /// empty value means, and only a device-possession login needs one.
+    ///
+    /// `login_hint` is an email address the IDP pre-fills on its sign-in page
+    /// (Keycloak's username/password form fills its username field from it).
+    /// It is a hint only: who signs in is decided by the id_token, never by
+    /// this. An empty `login_hint` sends no `login_hint` param at all.
     pub async fn build_authorize_url(
         &self,
         provider_index: i32,
@@ -303,6 +308,7 @@ impl OidcClient {
         code_verifier: &str,
         redirect_uri: &str,
         nonce: &str,
+        login_hint: &str,
     ) -> Result<String, String> {
         let prov = self
             .providers
@@ -337,6 +343,9 @@ impl OidcClient {
         ];
         if !nonce.is_empty() {
             params.push(("nonce", nonce));
+        }
+        if !login_hint.is_empty() {
+            params.push(("login_hint", login_hint));
         }
         // Apple requires form_post whenever name or email is requested, and
         // answers it at the server-side callback named by redirect_uri.
@@ -591,7 +600,7 @@ mod tests {
     /// real result.
     async fn discover_via_client(p: ProviderConfig) -> Result<String, String> {
         let oc = OidcClient::new(&[p], &[], 3600, "").await?;
-        oc.build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "")
+        oc.build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "", "")
             .await
     }
 
@@ -617,7 +626,7 @@ mod tests {
             .await
             .expect("client");
         let url = oc
-            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "device-key-thumbprint")
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "device-key-thumbprint", "")
             .await
             .expect("authorize URL");
         assert!(
@@ -635,10 +644,60 @@ mod tests {
             .await
             .expect("client");
         let url = oc
-            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "")
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "", "")
             .await
             .expect("authorize URL");
         assert!(!url.contains("nonce="), "no nonce param may appear: {url}");
+    }
+
+    /// The email the person already typed in our app reaches the IDP as
+    /// `login_hint`, so its sign-in page does not ask for it again.
+    #[tokio::test]
+    async fn a_supplied_login_hint_is_sent_to_the_idp() {
+        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+            .await
+            .expect("client");
+        let url = oc
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "", "ada@example.com")
+            .await
+            .expect("authorize URL");
+        assert!(
+            url.contains("login_hint=ada%40example.com"),
+            "the supplied login_hint must be in the query: {url}"
+        );
+    }
+
+    /// No email typed means no `login_hint` param at all — not an empty one.
+    #[tokio::test]
+    async fn no_login_hint_param_is_sent_when_none_is_supplied() {
+        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+            .await
+            .expect("client");
+        let url = oc
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "", "")
+            .await
+            .expect("authorize URL");
+        assert!(!url.contains("login_hint="), "no login_hint param may appear: {url}");
+    }
+
+    /// `+` and `@` are percent-encoded, so the IDP reads back the address as
+    /// typed rather than `a b@example.com`.
+    #[tokio::test]
+    async fn a_login_hint_is_url_encoded() {
+        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
+        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+            .await
+            .expect("client");
+        let url = oc
+            .build_authorize_url(0, "state", "verifier", "https://rp.test/cb", "", "a+b@example.com")
+            .await
+            .expect("authorize URL");
+        assert!(
+            url.contains("login_hint=a%2Bb%40example.com"),
+            "the login_hint must be percent-encoded: {url}"
+        );
     }
 
     /// The workaround this file used to carry claimed rustls-webpki cannot verify
