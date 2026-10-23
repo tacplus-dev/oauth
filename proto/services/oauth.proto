@@ -1,0 +1,647 @@
+// Copyright (c) 2026 Seabeam LLC. All rights reserved.
+
+// Package oauth provides protobuf definitions for the OAuth service.
+//
+// OAuth is the unified authentication and token broker. It handles:
+//   - OAuth2/OIDC browser flows (provider discovery, authorization code + PKCE,
+//     IDP token verification, kernel token minting delegation)
+//   - CLI/device token brokering via bidirectional streaming
+//
+// Browser auth flow:
+//
+//   1. User hits a microservice. The gRPC server checks
+//      for a valid bearer token. If absent/invalid, redirects to OAuth
+//      with a callback_url query parameter.
+//
+//   2. OAuth's webapp shows provider selection. User picks an IDP.
+//      OAuth redirects to the IDP with PKCE, state, and nonce.
+//
+//   3. IDP authenticates the user and redirects back to OAuth's callback.
+//      OAuth exchanges the authorization code for an ID token, validates
+//      it against the IDP's JWKS, then calls kernel's MintUserToken RPC to
+//      get refresh and access tokens signed by kernel.
+//
+//   4. OAuth installs both tokens in the user's browser (cookies) and
+//      redirects back to the original callback_url.
+//
+// CLI auth flow:
+//
+//   1. schematicctl generates a session ID, opens a bidi stream to OAuth,
+//      and launches the browser to the OAuth login URL with the session ID.
+//
+//   2. The session ID is encrypted into the OAuth state parameter alongside
+//      PKCE and callback data. The user completes OAuth in the browser.
+//
+//   3. On callback, OAuth decodes the state, recovers the session ID, mints
+//      a token via kernel, and writes it to OAuthState (kernel-hosted shared
+//      state). The OAuth pod holding the bidi stream watches OAuthState and
+//      delivers the token to schematicctl.
+//
+// This design is stateless across OAuth pods — any pod can handle the
+// callback, and any pod can deliver the token via the shared kernel state.
+//
+// OAuth has no signing keys — kernel is the sole token authority.
+
+syntax = "proto3";
+
+package oauth;
+
+import "sys/spec.proto";
+import "google/protobuf/empty.proto";
+
+option (spec.service) = {};
+option (spec.grpc_s2s_client) = {service: "kernel.Mint"};
+option (spec.grpc_s2s_client) = {service: "kernel.CliTokenBroker"};
+option (spec.state_imports) = {source: "kernel.Identity"};
+option (spec.int_const) = {name: "DEFAULT_PORT", value: 8443};
+
+// ============================================================================
+// Config
+// ============================================================================
+
+message Config {
+
+  option (spec.grpc_config) = {service_name: "oauth"};
+
+  // --- CLI session config ---
+
+  // session_timeout_seconds is how long an unauthenticated bidi session
+  // waits for token delivery before timing out.
+  // Minimum: 30 seconds. Maximum: 600 (10 minutes). Default: 300 (5 minutes).
+  int64 session_timeout_seconds = 1 [(spec.assert_duration) = DURATION_TYPE_POSITIVE, (spec.assert_duration_min) = 30, (spec.assert_duration_max) = 600, (spec.default_int) = 300];
+
+  // refresh_token_lifetime_seconds is the lifetime for long-lived refresh
+  // tokens issued to CLI clients. Longer than browser sessions because
+  // laptops may be offline for extended periods.
+  // Minimum: 3600 (1 hour). Maximum: 2592000 (30 days). Default: 604800 (7 days).
+  int64 refresh_token_lifetime_seconds = 2 [(spec.assert_duration) = DURATION_TYPE_POSITIVE, (spec.assert_duration_min) = 3600, (spec.assert_duration_max) = 2592000, (spec.default_int) = 604800];
+
+  // auto_refresh_before_seconds is how far before token expiry the service
+  // proactively refreshes tokens for connected daemon clients.
+  // Minimum: 60 (1 minute). Maximum: 86400 (1 day). Default: 3600 (1 hour).
+  int64 auto_refresh_before_seconds = 3 [(spec.assert_duration) = DURATION_TYPE_POSITIVE, (spec.assert_duration_min) = 60, (spec.assert_duration_max) = 86400, (spec.default_int) = 3600];
+
+  // --- OAuth2/OIDC config ---
+
+  // enable enables or disables OAuth2 authentication.
+  bool enable = 4;
+
+  // scopes are the default OAuth2 scopes requested from all providers.
+  // If empty, defaults to ["openid", "profile", "email"].
+  repeated string scopes = 5 [(spec.assert_max_size) = 16];
+
+  // providers is the list of OAuth2 identity provider configurations.
+  repeated ProviderConfig providers = 6 [(spec.assert_max_size) = 16];
+
+  // nonce_expire_seconds is how long OAuth2 nonces/state remain valid.
+  // Nonces prevent replay attacks in the authorization code flow.
+  // Minimum: 1 second. Maximum: 86400 (24 hours). Default: 300 (5 minutes).
+  int64 nonce_expire_seconds = 7 [(spec.assert_duration) = DURATION_TYPE_POSITIVE, (spec.assert_duration_min) = 1, (spec.assert_duration_max) = 86400, (spec.default_int) = 300];
+
+  // jwk_refetch_interval_seconds is the minimum interval between JWKS fetches
+  // from the same external IDP. Prevents excessive outbound requests.
+  // Default: 300 (5 minutes).
+  int64 jwk_refetch_interval_seconds = 8 [(spec.assert_duration) = DURATION_TYPE_POSITIVE, (spec.default_int) = 300];
+}
+
+// ProviderConfig configures a single OAuth2 identity provider.
+message ProviderConfig {
+  // enable enables or disables this provider.
+  bool enable = 1;
+
+  // name is a human-friendly label (e.g. "Google", "Okta", "Microsoft").
+  string name = 2 [(spec.assert_min_size) = 1];
+
+  // domains maps email domains to this provider. When a user's email domain
+  // matches, they are routed to this IDP automatically. Each entry is a DNS
+  // hostname, bounded to 253 bytes by RFC 1035/1123.
+  repeated string domains = 3 [(spec.assert_max_size) = 32, (spec.assert_element_max_size) = 253];
+
+  // issuer is the OpenID Connect issuer URL.
+  // Used for .well-known/openid-configuration auto-discovery.
+  string issuer = 4 [(spec.assert_url) = URL_SCHEME_HTTPS, (spec.assert_required) = true];
+
+  // client_id is the OAuth2 client identifier.
+  string client_id = 5 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // client_secret is the OAuth2 client secret. Required for every provider
+  // except one with `apple` set, whose secret is minted per token exchange
+  // (see AppleSignIn). The oauth service refuses a provider that has neither.
+  string client_secret = 6;
+
+  // authorization_endpoint overrides the auto-discovered authorization URL.
+  string authorization_endpoint = 7 [(spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // token_endpoint overrides the auto-discovered token URL.
+  string token_endpoint = 8 [(spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // end_session_endpoint overrides the auto-discovered logout URL.
+  string end_session_endpoint = 9 [(spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // scopes overrides the default scopes for this provider.
+  repeated string scopes = 10 [(spec.assert_max_size) = 16];
+
+  // ca_pem is an optional PEM-encoded CA certificate to trust for this provider.
+  // Used for providers with self-signed or private CA certificates (e.g. mock IDPs).
+  // If empty, the system default CA bundle is used.
+  string ca_pem = 11;
+
+  // allowed_redirect_uri_prefixes is the operator-configured allowlist of
+  // callback URLs this provider may redirect a user back to. AuthorizeRequest
+  // .callback_url is caller-supplied and unauthenticated; without this list it
+  // would be handed to the IDP as redirect_uri verbatim, letting anyone start a
+  // login that delivers the authorization code to a host they control.
+  //
+  // Matching rule (deliberately strict, no wildcards, no URL parsing):
+  //   - An entry that does NOT end in "/" matches only a byte-identical
+  //     callback_url.
+  //   - An entry that DOES end in "/" additionally matches any callback_url
+  //     that begins with it. The trailing slash is what makes the prefix end on
+  //     a path boundary, so "https://legit.example.com/app/" cannot be
+  //     satisfied by "https://legit.example.com/app-evil/..." and
+  //     "https://legit.example.com/app" cannot be satisfied by
+  //     "https://legit.example.comX/".
+  //
+  // Comparison is exact and case-sensitive. There is no implicit default: a
+  // provider with an empty list authorizes nothing, so the service fails closed
+  // if the field is ever missing at runtime.
+  repeated string allowed_redirect_uri_prefixes = 12 [(spec.assert_required) = true, (spec.assert_min_size) = 1, (spec.assert_max_size) = 32];
+
+  // apple, when set, makes this a Sign in with Apple provider. client_id is
+  // then the Services ID, issuer is https://appleid.apple.com, and
+  // client_secret is left empty.
+  AppleSignIn apple = 13;
+
+  // issuer_template, when set, is the issuer an id_token must carry for an IDP
+  // whose issuer differs per directory, with "{tid}" standing for the token's
+  // own `tid` claim. Microsoft Entra ID multi-tenant:
+  // "https://login.microsoftonline.com/{tid}/v2.0". `tid` must be a GUID; it is
+  // substituted and the result compared exactly with the token's `iss`. `issuer`
+  // stays the discovery and JWKS base (e.g.
+  // "https://login.microsoftonline.com/common/v2.0"). Empty means the
+  // token's `iss` must equal `issuer`.
+  string issuer_template = 14;
+
+  // email_verified_claim, when set, names a boolean id_token claim that must be
+  // true for the token's `email` to be forwarded. Without it the `email` claim is
+  // dropped before the mint, so an address the IDP has not verified never
+  // reaches policy as `email`. Microsoft Entra ID: "xms_edov" (an optional claim
+  // the app registration must request). A personal Microsoft account token
+  // (`iss` is issuer_template filled with tid 9188040d-6c67-4c5b-b112-36a304b66dad)
+  // that carries no such claim keeps its `email`: Microsoft verifies an MSA's
+  // address. Empty forwards `email` as the IDP sent it.
+  string email_verified_claim = 15;
+}
+
+// AppleSignIn carries what Sign in with Apple needs beyond plain OIDC.
+//
+// Apple's client secret is an ES256 JWT signed with the team's .p8 key: header
+// kid = key_id; claims iss = team_id, sub = the provider's client_id (the
+// Services ID), aud = https://appleid.apple.com. The oauth service mints it for
+// each token exchange from Secrets.apple_signin_key_p8.
+//
+// Apple delivers the authorization response with response_mode=form_post, a
+// POST to form_post_redirect_uri. That URL must be the Auth.BrokerFormPostCallback
+// REST route and must be registered on the Services ID.
+message AppleSignIn {
+  // team_id is the Apple Developer Team ID; the client secret's iss.
+  string team_id = 1 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // key_id is the Key ID of the .p8 key; the client secret's kid header.
+  string key_id = 2 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // form_post_redirect_uri is the absolute URL of the Auth.BrokerFormPostCallback
+  // route, e.g. https://console.seabeam.net/oauth/Auth/BrokerFormPostCallback. It is
+  // sent to Apple as redirect_uri on both the authorize and the token request.
+  string form_post_redirect_uri = 3 [(spec.assert_required) = true, (spec.assert_url) = URL_SCHEME_HTTPS];
+}
+
+// Secrets are the oauth service's secret inputs. They are delivered to the pod
+// as environment variables from a per-service Kubernetes Secret (operator
+// serviceSpec.SecretEnvVars), read with the generated secrets_from_env_var. They
+// are never a field on Config: Config travels in kernel's combined seed, which
+// every config-holder in the fleet can read.
+message Secrets {
+  // apple_signin_key_p8 is the PEM text of the Sign in with Apple .p8 key
+  // (PKCS#8, P-256). Required when any provider sets `apple`.
+  string apple_signin_key_p8 = 1;
+}
+
+// ============================================================================
+// CLI Auth Completion (webapp fast path)
+// ============================================================================
+
+// CompleteCliAuthRequest is sent by the webapp when the user is already
+// authenticated and wants to authorize a CLI session.
+message CompleteCliAuthRequest {
+  // session_id is the CLI session nonce from the URL query parameter.
+  string session_id = 1 [(spec.assert_required) = true, (spec.assert_min_size) = 64, (spec.assert_max_size) = 128];
+}
+
+// CompleteCliAuthResponse confirms the CLI session was completed.
+message CompleteCliAuthResponse {
+  // success indicates whether the nonce was matched and token minted.
+  bool success = 1;
+}
+
+// ============================================================================
+// CLI Session Service
+// ============================================================================
+
+// Session handles session establishment for CLI clients.
+// The client doesn't have a token yet — the whole point of this flow
+// is to obtain one, so each RPC has auth_disabled.
+service Session {
+  option (spec.service_c2s) = {};
+
+  // BrokerSession is a bidirectional stream between schematicctl and OAuth.
+  // The client sends a session_id, then waits for token delivery.
+  // OAuth holds the stream open until the Callback handler writes a
+  // matching token to OAuthState or the session times out.
+  rpc BrokerSession(stream SessionRequest) returns (stream SessionResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_PUBLIC_NO_AUTH]};
+  }
+}
+
+// ============================================================================
+// OAuth2/OIDC Auth Service
+// ============================================================================
+
+service Auth {
+  option (spec.service_c2s) = {};
+
+  // ListProviders returns the configured OAuth2 providers (public info only).
+  // The webapp calls this to render provider selection buttons.
+  rpc ListProviders(google.protobuf.Empty) returns (ListProvidersResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_PUBLIC_NO_AUTH]};
+    option (spec.method_collection) = {mode: COLLECTION_MODE_SNAPSHOT, order_by: ["provider_index"], max_items: 16};
+    option (spec.rest_method) = {methods: [REST_METHOD_GET]};
+  }
+
+  // Authorize initiates the OAuth2 authorization code flow.
+  // Creates a nonce/state in memory and returns the IDP redirect URL.
+  // The caller provides a callback_url for post-auth redirect.
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_PUBLIC_NO_AUTH]};
+  }
+
+  // ClassifySignInEmail guesses how a person signs in from their work email: an
+  // `_openid.<domain>` TXT record (`v=OID1;iss=...`) naming Google's,
+  // Microsoft's or Apple's issuer wins; otherwise the issuer the domain's
+  // WebFinger answers for the address; otherwise the MX records of its domain
+  // name Google Workspace, Microsoft 365 or iCloud+. The guess
+  // carries the configured provider's provider_index for Authorize; anything
+  // else answers SIGN_IN_METHOD_UNSUPPORTED. Every other enabled Google,
+  // Microsoft or Apple provider comes back as an alternative the person may pick
+  // instead. The answer depends on the domain's public DNS and this service's
+  // provider config only, never on whether an account exists. Rate-limited per
+  // address and in total; over a limit is RESOURCE_EXHAUSTED.
+  rpc ClassifySignInEmail(ClassifySignInEmailRequest) returns (ClassifySignInEmailResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_PUBLIC_NO_AUTH]};
+  }
+
+  // MintCallbackTokens handles the OAuth2 authorization code callback from the IDP.
+  // Exchanges the authorization code for an IDP ID token, validates it
+  // against the IDP's JWKS, then delegates to kernel's MintUserToken.
+  rpc MintCallbackTokens(CallbackRequest) returns (CallbackResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_SELF_AUTHENTICATES]};
+  }
+
+  // RevokeSession invalidates the session and optionally redirects to the IDP logout.
+  rpc RevokeSession(LogoutRequest) returns (LogoutResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_PUBLIC_NO_AUTH]};
+  }
+
+  // BrokerCliAuth is called by the webapp when a user is already logged in
+  // and session_id is in the URL. OAuth forwards the authenticated identity
+  // to kernel's CliTokenBroker for nonce completion and token minting.
+  rpc BrokerCliAuth(CompleteCliAuthRequest) returns (CompleteCliAuthResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_AUTH_ANY_USER]};
+  }
+
+  // BrokerFormPostCallback receives an IDP's response_mode=form_post authorization
+  // response (Sign in with Apple POSTs code, state, id_token and, on first
+  // authorization only, user) and answers with the redirect the browser must
+  // follow: the state's callback_url with code and a re-sealed state as query
+  // parameters, which the webapp completes with MintCallbackTokens exactly as
+  // it does for a query-mode IDP. It mints nothing.
+  //
+  // GET is accepted so a reload or bookmark lands somewhere sane: without a
+  // valid state the redirect is "/".
+  rpc BrokerFormPostCallback(FormPostCallbackRequest) returns (FormPostCallbackResponse) {
+    option (spec.rpc) = {principal: RPC_PRINCIPAL_USER, exposure: RPC_EXPOSURE_EXTERNAL, flags: [RPC_FLAG_PUBLIC_NO_AUTH]};
+    option (spec.rest_method) = {methods: [REST_METHOD_GET]};
+    option (spec.rest_browser) = {form_body: true, redirect_field: "redirect_url"};
+  }
+}
+
+// ============================================================================
+// Stream Messages
+// ============================================================================
+
+// SessionRequest is sent by the client on the bidi stream.
+message SessionRequest {
+  oneof msg {
+    // session_id initiates the session (first message on the stream).
+    // Must be a cryptographically random identifier (min 32 bytes, hex-encoded).
+    string session_id = 1 [(spec.assert_min_size) = 64, (spec.assert_max_size) = 128];
+  }
+
+  // offline_access requests an Offline Token (OT) for CLI/daemon sessions.
+  // The OT is delivered in SessionResponse.token and can be persisted by the
+  // local daemon; access and service tokens remain derived, short-lived, and
+  // memory-only.
+  bool offline_access = 2;
+}
+
+// SessionResponse is sent by the server on the bidi stream.
+message SessionResponse {
+  oneof msg {
+    // token delivers a long-lived refresh token to the client.
+    // Sent when the Callback writes a token to OAuthState (initial
+    // auth flow), or when the service proactively refreshes in daemon mode.
+    string token = 1 [(spec.assert_min_size) = 1, (spec.assert_max_size) = 8192];
+
+    // error signals a terminal error (session timeout, auth failure, etc.).
+    string error = 2 [(spec.assert_min_size) = 1, (spec.assert_max_size) = 1024];
+  }
+}
+
+// ============================================================================
+// Request/Response Types
+// ============================================================================
+
+// ListProvidersResponse contains public provider information for the login UI.
+message ListProvidersResponse {
+  repeated ProviderInfo providers = 1 [(spec.assert_max_size) = 16];
+}
+
+// ProviderInfo is the public-facing information about a provider.
+message ProviderInfo {
+  // name is the display name (e.g. "Google").
+  string name = 1 [(spec.assert_required) = true, (spec.assert_min_size) = 1, (spec.assert_max_size) = 128];
+
+  // domains handled by this provider. Each entry is a DNS hostname, bounded to
+  // 253 bytes by RFC 1035/1123.
+  repeated string domains = 2 [(spec.assert_max_size) = 32, (spec.assert_element_max_size) = 253];
+
+  // provider_index identifies this provider in subsequent Authorize calls.
+  int32 provider_index = 3 [(spec.assert_ge) = 0];
+}
+
+// AuthorizeRequest initiates an OAuth2 flow.
+message AuthorizeRequest {
+  // provider_index selects which configured provider to use.
+  int32 provider_index = 1 [(spec.assert_ge) = 0];
+
+  // callback_url is where the user is sent after successful authentication.
+  // This is the originating microservice's URL.
+  string callback_url = 2 [(spec.assert_url) = URL_SCHEME_HTTPS, (spec.assert_required) = true];
+
+  // session_id is set when the OAuth flow was initiated by a CLI client.
+  // If present, the callback handler writes the minted token to OAuthState
+  // for delivery to the matching bidi stream.
+  string session_id = 3 [(spec.assert_max_size) = 128];
+
+  // nonce is a caller-supplied OIDC nonce, relayed verbatim to the IDP's
+  // authorization endpoint so the IDP echoes it back as the id_token's
+  // `nonce` claim (forwarded to kernel as `origin_nonce`). Set by a device
+  // proving possession of its key — the value is then the key's RFC 7638
+  // thumbprint, which CreateTenantUserLink's device side compares against.
+  // Empty means no nonce is requested and no `nonce` param is sent at all,
+  // which is every login that is not proving device possession.
+  string nonce = 4 [(spec.assert_max_size) = 128];
+
+  // login_hint is an email address relayed to the IDP's authorization
+  // endpoint as the OIDC `login_hint` param, so the IDP pre-fills it on its
+  // sign-in page instead of asking the person to type it again. It is a hint
+  // only: the signed-in identity always comes from the IDP's id_token, never
+  // from this. Empty means no `login_hint` param is sent at all.
+  string login_hint = 5 [(spec.assert_email) = true, (spec.assert_max_size) = 254];
+}
+
+// AuthorizeResponse contains the IDP redirect URL.
+message AuthorizeResponse {
+  // redirect_url is the full OAuth2 authorization URL to redirect the user to.
+  string redirect_url = 1 [(spec.assert_required) = true, (spec.assert_url) = URL_SCHEME_HTTPS];
+}
+
+// ClassifySignInEmailRequest names the email address to classify.
+message ClassifySignInEmailRequest {
+  // email is the person's work address; only its domain is looked up.
+  string email = 1 [(spec.assert_required) = true, (spec.assert_email) = true, (spec.assert_max_size) = 254];
+}
+
+// SignInMethod is how a person with a given email domain signs in.
+enum SignInMethod {
+  SIGN_IN_METHOD_UNSPECIFIED = 0;
+  // Google: "Continue with Google". The domain's TXT record names Google, or
+  // its mail is Google Workspace.
+  SIGN_IN_METHOD_GOOGLE = 1;
+  // Microsoft: "Continue with Microsoft". The domain's TXT record names
+  // Microsoft, or its mail is Microsoft 365.
+  SIGN_IN_METHOD_MICROSOFT = 2;
+  // Apple: "Continue with Apple". The domain's TXT record names Apple, or its
+  // mail is iCloud+; a guess, override via alternatives.
+  SIGN_IN_METHOD_APPLE = 5;
+  // 2026-10-20: SIGN_IN_METHOD_MAIL_LINK (an emailed sign-in link) was 3; mail
+  // link removed from SeaBeam.
+  reserved 3;
+  reserved "SIGN_IN_METHOD_MAIL_LINK";
+  // None of them, no matching provider is configured, or the MX lookup failed: no
+  // guess for this address (it may still pick an alternative).
+  SIGN_IN_METHOD_UNSUPPORTED = 4;
+}
+
+// SignInOption is one way to sign in: a method and the configured provider
+// that serves it.
+message SignInOption {
+  // method is SIGN_IN_METHOD_GOOGLE, SIGN_IN_METHOD_MICROSOFT or
+  // SIGN_IN_METHOD_APPLE.
+  SignInMethod method = 1;
+
+  // provider_index is the provider to pass to Authorize.
+  int32 provider_index = 2 [(spec.assert_ge) = 0];
+}
+
+// ClassifySignInEmailResponse is the guessed sign-in method for the address's
+// domain and the alternatives to it.
+message ClassifySignInEmailResponse {
+  // method is the guess: from the domain's `_openid` TXT record if it names a
+  // usable provider, else from its WebFinger issuer, else from its MX records.
+  // Never SIGN_IN_METHOD_UNSPECIFIED.
+  SignInMethod method = 1 [(spec.assert_required) = true];
+
+  // provider_index is the guessed provider to pass to Authorize when method is
+  // SIGN_IN_METHOD_GOOGLE, SIGN_IN_METHOD_MICROSOFT or SIGN_IN_METHOD_APPLE; 0
+  // and meaningless for SIGN_IN_METHOD_UNSUPPORTED.
+  int32 provider_index = 2 [(spec.assert_ge) = 0];
+
+  // alternatives are every OTHER enabled Google, Microsoft or Apple provider, which
+  // the person may pick instead of the guess (their company's IDP may refuse
+  // them; that is its choice). All of them when method is
+  // SIGN_IN_METHOD_UNSUPPORTED. Bounded by the provider list (Config.providers).
+  repeated SignInOption alternatives = 3 [(spec.assert_max_size) = 16];
+}
+
+// CallbackRequest handles the OAuth2 authorization code callback.
+message CallbackRequest {
+  // code is the authorization code from the IDP.
+  string code = 1 [(spec.assert_required) = true];
+
+  // state is the anti-CSRF state parameter.
+  string state = 2 [(spec.assert_required) = true];
+}
+
+// CallbackResponse contains the minted tokens and the callback destination.
+message CallbackResponse {
+  // refresh_token is the long-lived refresh token signed by kernel.
+  string refresh_token = 1 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // access_token is the short-lived access token for immediate use.
+  string access_token = 2 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // callback_url is the original URL to redirect the user back to.
+  string callback_url = 3 [(spec.assert_required) = true, (spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // access_token_expires_in is the access token lifetime in seconds.
+  int64 access_token_expires_in = 4 [(spec.assert_gt) = 0];
+
+  // refresh_token_expires_in is the refresh token lifetime in seconds.
+  int64 refresh_token_expires_in = 5 [(spec.assert_gt) = 0];
+}
+
+// FormPostCallbackRequest is the form an IDP POSTs with response_mode=form_post.
+message FormPostCallbackRequest {
+  // code is the authorization code.
+  string code = 1;
+
+  // state is the encrypted state Authorize issued.
+  string state = 2;
+
+  // id_token is posted by Apple alongside the code. It is not trusted or used:
+  // MintCallbackTokens verifies the id_token returned by the token endpoint.
+  string id_token = 3;
+
+  // user is Apple's JSON with the person's name, sent on the first
+  // authorization only: {"name":{"firstName":"..","lastName":".."},"email":".."}.
+  string user = 4;
+
+  // error is set instead of code when the authorization failed or the user
+  // cancelled (e.g. "user_cancelled_authorize").
+  string error = 5;
+}
+
+// FormPostCallbackResponse names where the browser goes next.
+message FormPostCallbackResponse {
+  // redirect_url is the 303 target: callback_url?code=..&state=.. on success,
+  // callback_url on an IDP error, "/" when the state is unusable.
+  string redirect_url = 1 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+}
+
+// LogoutRequest initiates logout.
+message LogoutRequest {
+  // post_logout_redirect_url is where to send the user after logout.
+  string post_logout_redirect_url = 1 [(spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // id_token_hint is the ID token for the current session (used by some IDPs).
+  string id_token_hint = 2;
+}
+
+// LogoutResponse contains the IDP logout redirect URL.
+message LogoutResponse {
+  // redirect_url is the IDP's end-session URL (empty if no IDP logout configured).
+  string redirect_url = 1 [(spec.assert_url) = URL_SCHEME_HTTPS];
+}
+
+// ============================================================================
+// Multi-Tenancy: Cluster-Level IDP Configuration
+// ============================================================================
+
+// ClusterOAuthProvider describes a shared IDP (e.g. Google, GitHub) available
+// to all tenants. Tenants route users from these IDPs via ClaimMatcher entries.
+message ClusterOAuthProvider {
+  // issuer_url is the OpenID Connect issuer (e.g. "https://accounts.google.com").
+  string issuer_url = 1 [(spec.assert_url) = URL_SCHEME_HTTPS, (spec.assert_required) = true];
+
+  // client_id is the shared OAuth app client identifier.
+  string client_id = 2 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // client_secret is the sensitive OAuth app secret; supplied by cluster admin.
+  string client_secret = 3 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // allowed_scopes are the OAuth2 scopes requested from this IDP.
+  repeated string allowed_scopes = 4 [(spec.assert_max_size) = 16];
+
+  // jwks_uri overrides the auto-discovered JWKS endpoint.
+  string jwks_uri = 5 [(spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // ca_pem is an optional PEM-encoded CA certificate for self-signed IDPs.
+  string ca_pem = 6;
+
+  // enable enables or disables this cluster IDP.
+  bool enable = 7;
+}
+
+// ClusterOAuthConfig holds cluster-level shared IDP configuration.
+// Configured once by a cluster admin; shared across all tenants.
+// Delivered to the oauth service alongside per-tenant OAuthTenantConfig slices.
+message ClusterOAuthConfig {
+  repeated ClusterOAuthProvider providers = 1 [(spec.assert_max_size) = 16];
+}
+
+// ============================================================================
+// Multi-Tenancy: Per-Tenant OAuth Configuration
+// ============================================================================
+
+// OAuthProvider describes a tenant-owned IDP. The (issuer_url, client_id) pair
+// uniquely identifies this tenant — no claim matching needed.
+message OAuthProvider {
+  // issuer_url is the OpenID Connect issuer. Part of the (iss, aud) lookup key.
+  string issuer_url = 1 [(spec.assert_url) = URL_SCHEME_HTTPS, (spec.assert_required) = true];
+
+  // client_id is the OAuth2 client identifier. Part of the (iss, aud) lookup key.
+  string client_id = 2 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // client_secret is the OAuth2 client secret; comes from secrets overlay layer.
+  string client_secret = 3 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // allowed_scopes are the OAuth2 scopes requested from this IDP.
+  repeated string allowed_scopes = 4 [(spec.assert_max_size) = 16];
+
+  // jwks_uri overrides the auto-discovered JWKS endpoint.
+  string jwks_uri = 5 [(spec.assert_url) = URL_SCHEME_HTTPS];
+
+  // ca_pem is an optional PEM-encoded CA certificate for self-signed IDPs.
+  string ca_pem = 6;
+
+  // enable enables or disables this provider.
+  bool enable = 7;
+}
+
+// ClaimMatcher routes users arriving via a cluster-level shared IDP to this tenant.
+// The token has already been validated against the cluster IDP before matching.
+message ClaimMatcher {
+  // provider_issuer_url identifies which cluster IDP this rule applies to.
+  string provider_issuer_url = 1 [(spec.assert_url) = URL_SCHEME_HTTPS, (spec.assert_required) = true];
+
+  // claim_key is the JWT claim name (e.g. "hd", "email").
+  string claim_key = 2 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+
+  // claim_value is the expected value (e.g. "mycompany.com").
+  string claim_value = 3 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
+}
+
+// OAuthTenantConfig is the per-tenant OAuth configuration slice.
+// Tacplus auto-generates TenantConfig with this as the oauth field.
+// (IDP lives at the TENANT level — humans log into their tenant's IDP; the
+// tenant's OPA policy then derives their per-project entitlements.)
+message OAuthTenantConfig {
+  option (spec.config_slice) = {scope: CONFIG_SLICE_SCOPE_TENANT, service_name: "oauth"};
+
+  // providers are the tenant's IDPs (e.g. a corporate Okta instance).
+  repeated OAuthProvider providers = 1 [(spec.assert_max_size) = 16];
+
+  // claim_matchers route users from cluster-level shared IDPs to this tenant.
+  repeated ClaimMatcher claim_matchers = 2 [(spec.assert_max_size) = 32];
+}

@@ -1,0 +1,9 @@
+# Managed by tacplus — do not edit IDs manually.
+registries:
+    - https://github.com/tacplus-dev/registry.git
+services:
+    - name: oauth
+      id: 21
+      tenant_slice_field: 3
+      contract: https://gitlab.com/seabeam/schematic/platform/proto.git
+      visibility: private
