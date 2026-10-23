@@ -1,12 +1,13 @@
 //! Auth.ClassifySignInEmail: how a person signs in, guessed from their work
 //! email's DNS.
 //!
-//! An `_openid.<domain>` TXT record naming Google's or Microsoft's issuer wins.
-//! Otherwise the issuer the domain's WebFinger names for the address does.
-//! Otherwise the domain's most-preferred MX hosts name its mail provider: Google
-//! Workspace or Microsoft 365. Each answers with the configured provider of that
-//! IDP, so the SPA goes straight to Authorize; anything else is unsupported. Every other enabled Google or
-//! Microsoft provider is offered as an alternative, so a person whose guess is
+//! An `_openid.<domain>` TXT record naming Google's, Microsoft's or Apple's
+//! issuer wins. Otherwise the issuer the domain's WebFinger names for the address
+//! does. Otherwise the domain's most-preferred MX hosts name its mail provider:
+//! Google Workspace, Microsoft 365 or iCloud+ (Apple). Each answers with the
+//! configured provider of that IDP, so the
+//! SPA goes straight to Authorize; anything else is unsupported. Every other
+//! enabled Google, Microsoft or Apple provider is offered as an alternative, so a person whose guess is
 //! wrong (or missing) can pick. The answer is a function of public DNS, the
 //! domain's own WebFinger and this service's provider config only. Nothing here reads an account, so the answer
 //! cannot say whether one exists.
@@ -34,9 +35,13 @@ const GOOGLE_ISSUER: &str = "https://accounts.google.com";
 /// (`.../organizations/v2.0`, `.../common/v2.0` or one directory's GUID).
 const MICROSOFT_ISSUER_PREFIX: &str = "https://login.microsoftonline.com/";
 
+/// The issuer an Apple provider is configured with.
+const APPLE_ISSUER: &str = "https://appleid.apple.com";
+
 /// The issuer hosts a TXT `iss` or a WebFinger issuer is mapped by.
 const GOOGLE_ISSUER_HOST: &str = "accounts.google.com";
 const MICROSOFT_ISSUER_HOST: &str = "login.microsoftonline.com";
+const APPLE_ISSUER_HOST: &str = "appleid.apple.com";
 
 /// The WebFinger link relation naming an account's OpenID Connect issuer (OIDC
 /// Discovery 1.0 section 2).
@@ -282,6 +287,8 @@ fn iss_method(iss: &str) -> Option<SignInMethod> {
         Some(SignInMethod::Google)
     } else if host.eq_ignore_ascii_case(MICROSOFT_ISSUER_HOST) {
         Some(SignInMethod::Microsoft)
+    } else if host.eq_ignore_ascii_case(APPLE_ISSUER_HOST) {
+        Some(SignInMethod::Apple)
     } else {
         None
     }
@@ -290,7 +297,7 @@ fn iss_method(iss: &str) -> Option<SignInMethod> {
 /// The mail provider a set of MX records names, judged by the most-preferred
 /// records only: a domain migrating between providers keeps the old one at a
 /// higher preference value, and the lowest value is where its mail goes now.
-/// None when those records name neither provider, or name both.
+/// None when those records name no provider, or more than one.
 fn mail_provider(records: &[(u16, String)]) -> Option<SignInMethod> {
     let best = records.iter().map(|(pref, _)| *pref).min()?;
     let mut found = None;
@@ -304,6 +311,8 @@ fn mail_provider(records: &[(u16, String)]) -> Option<SignInMethod> {
             SignInMethod::Google
         } else if host.ends_with(".mail.protection.outlook.com") || host.ends_with(".mx.microsoft") {
             SignInMethod::Microsoft
+        } else if host.ends_with(".mail.icloud.com") {
+            SignInMethod::Apple
         } else {
             return None;
         };
@@ -322,6 +331,8 @@ fn issuer_method(issuer: &str) -> Option<SignInMethod> {
         Some(SignInMethod::Google)
     } else if issuer.starts_with(MICROSOFT_ISSUER_PREFIX) {
         Some(SignInMethod::Microsoft)
+    } else if issuer == APPLE_ISSUER {
+        Some(SignInMethod::Apple)
     } else {
         None
     }
@@ -340,7 +351,7 @@ fn provider_index(providers: &[ProviderConfig], method: SignInMethod) -> Option<
 /// provider; otherwise its WebFinger issuer does; otherwise its MX does. A
 /// lookup failure, an unknown provider, or a provider that is not configured
 /// all leave the guess unsupported; the alternatives are every other enabled
-/// Google or Microsoft provider either way.
+/// Google, Microsoft or Apple provider either way.
 pub async fn classify(
     resolver: &dyn DnsResolver,
     finder: &dyn IssuerFinder,
@@ -546,11 +557,15 @@ mod tests {
                 (2, "outlook.com.mail.protection.evil.example."),
             ]),
             ("empty.example", vec![]),
+            // iCloud+ mail on a custom domain.
+            ("icloud.example", vec![(10, "mx01.mail.icloud.com."), (10, "mx02.mail.icloud.com.")]),
+            ("icloud-google-split.example", vec![(10, "mx01.mail.icloud.com."), (10, "aspmx.l.google.com.")]),
             // Jody's case: a Google login whose mail is on iCloud.
             ("thescottsweb.com", vec![(10, "mx01.mail.icloud.com."), (10, "mx02.mail.icloud.com.")]),
             ("txt-google.example", vec![M365_MX]),
             ("txt-microsoft.example", vec![GOOGLE_MX]),
             ("txt-microsoft-tenant.example", vec![GOOGLE_MX]),
+            ("txt-apple.example", vec![M365_MX]),
             ("txt-custom-issuer.example", vec![M365_MX]),
             ("txt-two-records.example", vec![M365_MX]),
             ("txt-v-not-first.example", vec![M365_MX]),
@@ -565,6 +580,7 @@ mod tests {
             ("txt-one-of-many.example", vec![M365_MX]),
             ("wf-google.example", vec![M365_MX]),
             ("wf-microsoft.example", vec![GOOGLE_MX]),
+            ("wf-apple.example", vec![M365_MX]),
             ("wf-custom.example", vec![M365_MX]),
             ("wf-http.example", vec![M365_MX]),
         ]), txt: HashMap::from([
@@ -572,6 +588,7 @@ mod tests {
             ("_openid.txt-google.example", vec!["v=OID1; iss=accounts.google.com"]),
             ("_openid.txt-microsoft.example", vec!["v=OID1;iss=login.microsoftonline.com"]),
             ("_openid.txt-microsoft-tenant.example", vec!["v=OID1;iss=login.microsoftonline.com/0f0e0d0c-0000-4000-8000-000000000001/v2.0"]),
+            ("_openid.txt-apple.example", vec!["v=OID1;iss=appleid.apple.com"]),
             ("_openid.txt-custom-issuer.example", vec!["v=OID1;iss=idp.example"]),
             ("_openid.txt-two-records.example", vec!["v=OID1;iss=accounts.google.com", "v=OID1;iss=accounts.google.com"]),
             ("_openid.txt-v-not-first.example", vec!["iss=accounts.google.com;v=OID1"]),
@@ -607,6 +624,7 @@ mod tests {
             issuers: HashMap::from([
                 ("wf-google.example", "https://accounts.google.com"),
                 ("wf-microsoft.example", "https://login.microsoftonline.com/0f0e0d0c-0000-4000-8000-000000000001/v2.0"),
+                ("wf-apple.example", "https://appleid.apple.com"),
                 ("wf-custom.example", "https://idp.example/realms/drpepper"),
                 ("wf-http.example", "http://accounts.google.com"),
                 // Never asked: its TXT record answers first.
@@ -653,6 +671,18 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn icloud_mx_answers_the_apple_provider() {
+        assert_eq!(answer("pat@icloud.example", &providers()).await, (SignInMethod::Apple, 2));
+    }
+
+    #[tokio::test]
+    async fn icloud_mx_with_no_apple_provider_answers_unsupported() {
+        let mut apple_off = providers();
+        apple_off[2].enable = false;
+        assert_eq!(answer("pat@icloud.example", &apple_off).await, (SignInMethod::Unsupported, 0));
+    }
+
+    #[tokio::test]
     async fn the_domain_is_matched_case_insensitively() {
         assert_eq!(answer("Pat@M365.Example", &providers()).await, (SignInMethod::Microsoft, 3));
     }
@@ -665,6 +695,7 @@ mod tests {
             "pat@empty.example",
             "pat@nxdomain.example",
             "pat@split.example",
+            "pat@icloud-google-split.example",
         ] {
             assert_eq!(
                 answer(email, &providers()).await,
@@ -731,6 +762,11 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_txt_apple_issuer_beats_a_microsoft_mx() {
+        assert_eq!(answer("pat@txt-apple.example", &providers()).await, (SignInMethod::Apple, 2));
+    }
+
+    #[tokio::test]
     async fn a_txt_record_signs_in_an_icloud_mail_domain_with_google() {
         assert_eq!(answer("jody@thescottsweb.com", &providers()).await, (SignInMethod::Google, 1));
     }
@@ -782,6 +818,7 @@ mod tests {
     async fn a_webfinger_issuer_beats_the_mx() {
         assert_eq!(answer("pat@wf-google.example", &providers()).await, (SignInMethod::Google, 1));
         assert_eq!(answer("pat@wf-microsoft.example", &providers()).await, (SignInMethod::Microsoft, 3));
+        assert_eq!(answer("pat@wf-apple.example", &providers()).await, (SignInMethod::Apple, 2));
     }
 
     #[tokio::test]
@@ -804,18 +841,39 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn the_alternatives_are_every_other_google_or_microsoft_provider() {
-        assert_eq!(alternatives("pat@m365.example", &providers()).await, vec![(SignInMethod::Google, 1)]);
-        assert_eq!(alternatives("pat@txt-google.example", &providers()).await, vec![(SignInMethod::Microsoft, 3)]);
+    async fn the_alternatives_are_every_other_google_microsoft_or_apple_provider() {
+        assert_eq!(
+            alternatives("pat@m365.example", &providers()).await,
+            vec![(SignInMethod::Google, 1), (SignInMethod::Apple, 2)],
+        );
+        assert_eq!(
+            alternatives("pat@txt-google.example", &providers()).await,
+            vec![(SignInMethod::Apple, 2), (SignInMethod::Microsoft, 3)],
+        );
         assert_eq!(
             alternatives("pat@txt-microsoft-tenant.example", &providers_with_tenant()).await,
-            vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 4)],
+            vec![(SignInMethod::Google, 1), (SignInMethod::Apple, 2), (SignInMethod::Microsoft, 4)],
         );
     }
 
     #[tokio::test]
-    async fn an_unsupported_guess_offers_every_google_or_microsoft_provider() {
-        let all = vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 3), (SignInMethod::Microsoft, 4)];
+    async fn an_icloud_guess_offers_google_as_an_alternative() {
+        // Jody's case without the TXT record: iCloud mail, but a Google login.
+        assert_eq!(answer("pat@icloud.example", &providers()).await, (SignInMethod::Apple, 2));
+        assert_eq!(
+            alternatives("pat@icloud.example", &providers()).await,
+            vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 3)],
+        );
+    }
+
+    #[tokio::test]
+    async fn an_unsupported_guess_offers_every_google_microsoft_or_apple_provider() {
+        let all = vec![
+            (SignInMethod::Google, 1),
+            (SignInMethod::Apple, 2),
+            (SignInMethod::Microsoft, 3),
+            (SignInMethod::Microsoft, 4),
+        ];
         for email in ["pat@selfhosted.example", "pat@nxdomain.example"] {
             assert_eq!(answer(email, &providers_with_tenant()).await, (SignInMethod::Unsupported, 0));
             assert_eq!(alternatives(email, &providers_with_tenant()).await, all, "{email}");
@@ -826,10 +884,13 @@ mod tests {
     async fn a_disabled_provider_is_never_an_alternative() {
         let mut microsoft_off = providers_with_tenant();
         microsoft_off[3].enable = false;
-        assert_eq!(alternatives("pat@new-google.example", &microsoft_off).await, vec![(SignInMethod::Microsoft, 4)]);
+        assert_eq!(
+            alternatives("pat@new-google.example", &microsoft_off).await,
+            vec![(SignInMethod::Apple, 2), (SignInMethod::Microsoft, 4)],
+        );
         assert_eq!(
             alternatives("pat@selfhosted.example", &microsoft_off).await,
-            vec![(SignInMethod::Google, 1), (SignInMethod::Microsoft, 4)],
+            vec![(SignInMethod::Google, 1), (SignInMethod::Apple, 2), (SignInMethod::Microsoft, 4)],
         );
     }
 
