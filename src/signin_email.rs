@@ -32,7 +32,7 @@ use oauth_model::types::services::oauth::oauth::{
 const GOOGLE_ISSUER: &str = "https://accounts.google.com";
 
 /// The issuer prefix every Microsoft Entra ID provider is configured with
-/// (`.../organizations/v2.0`, `.../common/v2.0` or one directory's GUID).
+/// (`.../common/v2.0` or one directory's GUID).
 const MICROSOFT_ISSUER_PREFIX: &str = "https://login.microsoftonline.com/";
 
 /// The issuer an Apple provider is configured with.
@@ -628,7 +628,7 @@ mod tests {
                 ("wf-custom.example", "https://idp.example/realms/drpepper"),
                 ("wf-http.example", "http://accounts.google.com"),
                 // Never asked: its TXT record answers first.
-                ("txt-google.example", "https://login.microsoftonline.com/organizations/v2.0"),
+                ("txt-google.example", "https://login.microsoftonline.com/common/v2.0"),
             ]),
             calls: AtomicUsize::new(0),
         }
@@ -649,7 +649,7 @@ mod tests {
             provider("keycloak", "https://idp.example/realms/drpepper", true),
             provider("google", "https://accounts.google.com", true),
             provider("apple", "https://appleid.apple.com", true),
-            provider("microsoft", "https://login.microsoftonline.com/organizations/v2.0", true),
+            provider("microsoft", "https://login.microsoftonline.com/common/v2.0", true),
         ]
     }
 
@@ -725,7 +725,7 @@ mod tests {
     #[tokio::test]
     async fn the_provider_is_found_by_issuer_not_by_name() {
         let renamed = vec![
-            provider("Continue with Microsoft", "https://login.microsoftonline.com/organizations/v2.0", true),
+            provider("Continue with Microsoft", "https://login.microsoftonline.com/common/v2.0", true),
             provider("Google", "https://accounts.google.com", true),
             provider("google", "https://idp.example/realms/google", true),
         ];

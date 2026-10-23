@@ -261,7 +261,7 @@ fn add_first_authorization_name(claims: &mut prost_wkt_types::Struct, payload: &
 ///
 /// `origin_iss` is the token's own `iss`, which for an Entra multi-tenant
 /// provider is per directory (`.../<tid>/v2.0`), so it never equals the
-/// configured `.../organizations/v2.0`. A tenant claim matcher names the
+/// configured `.../common/v2.0`. A tenant claim matcher names the
 /// configured provider issuer, and matches on this claim. Inserted after the
 /// IdP claims, so an id_token carrying its own `provider_iss` cannot set it.
 fn add_provider_issuer(claims: &mut prost_wkt_types::Struct, provider: &ProviderConfig) {
@@ -491,6 +491,14 @@ fn resolve_expected_issuer(
     Ok(expected_issuer.replace("{tid}", tid))
 }
 
+/// The Entra ID tenant personal Microsoft accounts (MSA) sign in to: the `tid`
+/// of every MSA token, and the GUID in its `iss`.
+///
+/// Microsoft counts an MSA's email as domain-owner verified (the nOAuth
+/// guidance, "Migrate away from using email claims"), so an MSA token without
+/// `xms_edov` keeps its `email`; see `drop_unverified_email`.
+const MSA_TENANT_ID: &str = "9188040d-6c67-4c5b-b112-36a304b66dad";
+
 /// Drop `email` unless the provider's `email_verified_claim` is true.
 ///
 /// Policy maps a person to a tenant by `origin_iss` + `email`, and Entra ID
@@ -500,11 +508,27 @@ fn resolve_expected_issuer(
 /// empty `email_verified_claim` leaves the claims unchanged. `preferred_username`
 /// is never promoted to `email`: Microsoft documents it as mutable and unusable
 /// for authorization.
-fn drop_unverified_email(claims: &mut HashMap<String, serde_json::Value>, email_verified_claim: &str) {
-    if email_verified_claim.is_empty()
-        || claims.get(email_verified_claim) == Some(&serde_json::Value::Bool(true))
-    {
+///
+/// The one exception is a personal Microsoft account: a token whose verified
+/// `iss` is the provider's `issuer_template` filled with `MSA_TENANT_ID`, and
+/// which carries no `email_verified_claim` at all, keeps its `email`. A present
+/// claim is honoured as for any directory. The check is on `iss`, which
+/// `verify_id_token` bound to the template, never on an unverified `tid`.
+fn drop_unverified_email(
+    claims: &mut HashMap<String, serde_json::Value>,
+    email_verified_claim: &str,
+    issuer_template: &str,
+) {
+    if email_verified_claim.is_empty() {
         return;
+    }
+    let msa = issuer_template.contains("{tid}")
+        && claims.get("iss").and_then(|v| v.as_str()).map(|s| s.trim_end_matches('/'))
+            == Some(issuer_template.trim_end_matches('/').replace("{tid}", MSA_TENANT_ID).as_str());
+    match claims.get(email_verified_claim) {
+        Some(serde_json::Value::Bool(true)) => return,
+        None if msa => return,
+        _ => {}
     }
     if claims.remove("email").is_some() {
         warn!(claim = %email_verified_claim, "IDP email is not verified, not forwarding it");
@@ -841,10 +865,8 @@ impl AuthHandler for AuthImpl {
         let mut id_claims =
             verify_id_token(id_token_str, &jwks, &expected_issuer, &expected_audience)?;
         // check_callback_url resolved the index, so the provider exists.
-        drop_unverified_email(
-            &mut id_claims,
-            &state.config.providers[payload.provider_index as usize].email_verified_claim,
-        );
+        let provider = &state.config.providers[payload.provider_index as usize];
+        drop_unverified_email(&mut id_claims, &provider.email_verified_claim, &provider.issuer_template);
 
         // The principal is the raw IDP `sub`, as-is — never the email, which is
         // reassignable and would make an email change into cross-user row
@@ -886,8 +908,6 @@ impl AuthHandler for AuthImpl {
 
         // A form_post IDP's first-authorization name, carried in the state.
         add_first_authorization_name(&mut claims, &payload);
-        // check_callback_url resolved the index, so the provider exists.
-        let provider = &state.config.providers[payload.provider_index as usize];
         add_provider_issuer(&mut claims, provider);
         add_email_domain(&mut claims, &provider.email_verified_claim);
 
@@ -2128,7 +2148,7 @@ mod apple_signin_tests {
 #[cfg(test)]
 mod entra_signin_tests {
     //! Microsoft Entra ID (multi-tenant) against a fake Entra: discovery, token
-    //! endpoint and JWKS served over real HTTP under the `organizations` path, so
+    //! endpoint and JWKS served over real HTTP under the `common` path, so
     //! the authorize URL, the code exchange and the id_token verification against
     //! the per-directory issuer template all run for real. Only kernel's
     //! MintUserToken (it needs a cluster) is not called; the claims handed to it
@@ -2208,10 +2228,10 @@ mod entra_signin_tests {
 
         let discovery = json!({
             "issuer": format!("{base}/{{tenantid}}/v2.0"),
-            "authorization_endpoint": format!("{base}/organizations/oauth2/v2.0/authorize"),
-            "token_endpoint": format!("{base}/organizations/oauth2/v2.0/token"),
-            "jwks_uri": format!("{base}/organizations/discovery/v2.0/keys"),
-            "end_session_endpoint": format!("{base}/organizations/oauth2/v2.0/logout"),
+            "authorization_endpoint": format!("{base}/common/oauth2/v2.0/authorize"),
+            "token_endpoint": format!("{base}/common/oauth2/v2.0/token"),
+            "jwks_uri": format!("{base}/common/discovery/v2.0/keys"),
+            "end_session_endpoint": format!("{base}/common/oauth2/v2.0/logout"),
         })
         .to_string();
         let keys: Vec<_> = test_jwks().iter().map(|k| k.to_json_value()).collect();
@@ -2229,9 +2249,9 @@ mod entra_signin_tests {
                 tokio::spawn(async move {
                     let (path, body) = read_request(&mut sock).await;
                     let (status, resp) = match path.as_str() {
-                        "/organizations/v2.0/.well-known/openid-configuration" => ("200 OK", discovery),
-                        "/organizations/discovery/v2.0/keys" => ("200 OK", jwks),
-                        "/organizations/oauth2/v2.0/token" => {
+                        "/common/v2.0/.well-known/openid-configuration" => ("200 OK", discovery),
+                        "/common/discovery/v2.0/keys" => ("200 OK", jwks),
+                        "/common/oauth2/v2.0/token" => {
                             let form: HashMap<String, String> =
                                 serde_urlencoded::from_str(&body).unwrap_or_default();
                             forms.lock().unwrap().push(form.clone());
@@ -2263,13 +2283,13 @@ mod entra_signin_tests {
     }
 
     /// An Entra provider configured as the design says: discovery and JWKS from
-    /// the `organizations` endpoint, the per-directory issuer as a template,
+    /// the `common` endpoint, the per-directory issuer as a template,
     /// and `email` trusted only with `xms_edov`.
     fn entra_provider(base: &str) -> ProviderConfig {
         ProviderConfig {
             enable: true,
             name: "microsoft".to_string(),
-            issuer: format!("{base}/organizations/v2.0"),
+            issuer: format!("{base}/common/v2.0"),
             issuer_template: format!("{base}/{{tid}}/v2.0"),
             email_verified_claim: "xms_edov".to_string(),
             client_id: CLIENT_ID.to_string(),
@@ -2323,7 +2343,7 @@ mod entra_signin_tests {
         let client = OidcClient::new(&cfg.providers, &[], 3600, "").await.expect("oidc client");
         let codec = StateCodec::new(&cfg.providers, "", 300);
 
-        // 1. Authorize: a plain query-mode OIDC redirect to the organizations
+        // 1. Authorize: a plain query-mode OIDC redirect to the common
         //    endpoint, with the SPA as redirect_uri.
         check_callback_url(&cfg, 0, SPA).expect("SPA is allowlisted");
         let verifier = generate_code_verifier();
@@ -2333,7 +2353,7 @@ mod entra_signin_tests {
             .await
             .expect("authorize URL from discovery");
         assert!(
-            url.starts_with(&format!("{}/organizations/oauth2/v2.0/authorize?", entra.base)),
+            url.starts_with(&format!("{}/common/oauth2/v2.0/authorize?", entra.base)),
             "got {url}"
         );
         let q = query_of(&url);
@@ -2345,7 +2365,7 @@ mod entra_signin_tests {
 
         // 2. MintCallbackTokens' steps, as it runs them: the code exchange with
         //    the static client secret (the fake rejects anything else), the
-        //    id_token verified against the organizations JWKS and bound to the
+        //    id_token verified against the common JWKS and bound to the
         //    per-directory issuer and the app's client id, then the email gate.
         let payload = codec.decode(&state).unwrap();
         let tokens = client
@@ -2361,7 +2381,7 @@ mod entra_signin_tests {
         assert_eq!(aud, CLIENT_ID);
         let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
             .expect("Entra's id_token verifies against the template");
-        drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim);
+        drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim, &cfg.providers[0].issuer_template);
 
         // 3. The claims handed to kernel: forwarded the way Google's are, with
         //    the directory's own issuer as origin_iss.
@@ -2418,7 +2438,7 @@ mod entra_signin_tests {
         let (iss, aud) = client.expected_claims(0).unwrap();
         let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
             .expect("Entra's id_token verifies");
-        drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim);
+        drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim, &cfg.providers[0].issuer_template);
 
         // 3. The claims handed to kernel name the id_token's subject, and the
         //    hint appears nowhere in them.
@@ -2467,7 +2487,7 @@ mod entra_signin_tests {
         assert!(err.message().contains("issuer mismatch"), "got {}", err.message());
 
         // The un-substituted template, or the discovery issuer, is not an issuer.
-        for iss in [TEMPLATE, "https://login.microsoftonline.com/organizations/v2.0"] {
+        for iss in [TEMPLATE, "https://login.microsoftonline.com/common/v2.0"] {
             assert!(verify(&entra_id_token(iss, Some(TID), &[])).is_err(), "iss {iss}");
         }
         // Another IDP's issuer is still refused.
@@ -2510,19 +2530,22 @@ mod entra_signin_tests {
         }
     }
 
-    /// `email` survives only with `xms_edov` exactly `true`. Absent, false or a
-    /// string drops it; `preferred_username` is never promoted in its place.
+    /// A work directory's `email` survives only with `xms_edov` exactly `true`.
+    /// Absent, false or a string drops it; `preferred_username` is never
+    /// promoted in its place.
     #[test]
     fn email_is_forwarded_only_when_xms_edov_is_true() {
         let with = |edov: Option<serde_json::Value>| {
             let mut claims: HashMap<String, serde_json::Value> = HashMap::from([
+                ("iss".to_string(), json!(issuer_for(TID))),
+                ("tid".to_string(), json!(TID)),
                 ("email".to_string(), json!(EMAIL)),
                 ("preferred_username".to_string(), json!(EMAIL)),
             ]);
             if let Some(v) = edov {
                 claims.insert("xms_edov".to_string(), v);
             }
-            drop_unverified_email(&mut claims, "xms_edov");
+            drop_unverified_email(&mut claims, "xms_edov", TEMPLATE);
             claims
         };
 
@@ -2537,15 +2560,97 @@ mod entra_signin_tests {
 
         // A provider with no email_verified_claim (Google, Keycloak) is unchanged.
         let mut claims = HashMap::from([("email".to_string(), json!(EMAIL))]);
-        drop_unverified_email(&mut claims, "");
+        drop_unverified_email(&mut claims, "", "");
         assert_eq!(claims["email"], json!(EMAIL));
     }
 
-    /// A login through the `organizations` provider: `origin_iss` is the
+    /// A personal Microsoft account through the `common` provider: its
+    /// id_token, issued under the MSA tenant, verifies against the template,
+    /// and with no `xms_edov` keeps its `email`, which then carries its domain.
+    #[tokio::test]
+    async fn an_msa_sign_in_through_common_keeps_its_email() {
+        let entra = spawn_fake_entra(|base| {
+            entra_id_token(&format!("{base}/{MSA_TID}/v2.0"), Some(MSA_TID), &[("email", json!("pat@outlook.example"))])
+        })
+        .await;
+        let cfg = config(vec![entra_provider(&entra.base)]);
+        let client = OidcClient::new(&cfg.providers, &[], 3600, "").await.expect("oidc client");
+        let tokens = client
+            .exchange_code(0, ENTRA_CODE, "verifier", SPA)
+            .await
+            .expect("the fake Entra accepts the client secret");
+        let jwks = client.fetch_jwks(0).await.expect("Entra JWKS");
+        let (iss, aud) = client.expected_claims(0).unwrap();
+        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+            .expect("an MSA id_token verifies against the template");
+        let provider = &cfg.providers[0];
+        drop_unverified_email(&mut id_claims, &provider.email_verified_claim, &provider.issuer_template);
+
+        let mut claims = build_claims_struct(&id_claims).unwrap();
+        add_provider_issuer(&mut claims, provider);
+        add_email_domain(&mut claims, &provider.email_verified_claim);
+        let msa_issuer = format!("{}/{MSA_TID}/v2.0", entra.base);
+        assert_eq!(string_claim(&claims, "origin_iss"), Some(msa_issuer.as_str()));
+        assert_eq!(string_claim(&claims, "provider_iss"), Some(format!("{}/common/v2.0", entra.base).as_str()));
+        assert_eq!(string_claim(&claims, "email"), Some("pat@outlook.example"));
+        assert_eq!(string_claim(&claims, "email_domain"), Some("outlook.example"));
+    }
+
+    /// The email gate per account kind: a work directory needs `xms_edov`
+    /// true; a personal account without `xms_edov` keeps `email`, and one with
+    /// it present is held to it.
+    #[test]
+    fn an_msa_without_xms_edov_keeps_email_and_a_work_directory_does_not() {
+        let has_email = |tid: &str, edov: Option<serde_json::Value>| {
+            let extra: Vec<_> = [("email", json!("pat@example.com"))]
+                .into_iter()
+                .chain(edov.map(|v| ("xms_edov", v)))
+                .collect();
+            let claims = callback_claims(tid, &extra);
+            let email = string_claim(&claims, "email").is_some();
+            assert_eq!(email, string_claim(&claims, "email_domain") == Some("example.com"), "tid {tid}");
+            email
+        };
+        assert!(!has_email(TID, None), "work, no xms_edov");
+        assert!(!has_email(TID, Some(json!(false))), "work, xms_edov false");
+        assert!(has_email(TID, Some(json!(true))), "work, xms_edov true");
+        assert!(has_email(MSA_TID, None), "MSA, no xms_edov");
+        assert!(!has_email(MSA_TID, Some(json!(false))), "MSA, xms_edov false");
+        assert!(has_email(MSA_TID, Some(json!(true))), "MSA, xms_edov true");
+    }
+
+    /// A work directory cannot pass as a personal account: a token naming the
+    /// MSA tenant in `tid` under its own `iss` fails verification, and the
+    /// exemption reads the verified `iss`, so a forged `tid` alone changes
+    /// nothing. Nor does the MSA issuer exempt a provider with no template.
+    #[test]
+    fn the_msa_exemption_keys_on_the_verified_issuer_not_tid() {
+        let err = verify(&entra_id_token(&issuer_for(TID), Some(MSA_TID), &[("email", json!(EMAIL))]))
+            .expect_err("a work issuer with the MSA tid must be refused");
+        assert!(err.message().contains("issuer mismatch"), "got {}", err.message());
+
+        let forged = || {
+            HashMap::from([
+                ("iss".to_string(), json!(issuer_for(TID))),
+                ("tid".to_string(), json!(MSA_TID)),
+                ("email".to_string(), json!(EMAIL)),
+            ])
+        };
+        let mut claims = forged();
+        drop_unverified_email(&mut claims, "xms_edov", TEMPLATE);
+        assert!(!claims.contains_key("email"), "a forged tid must not exempt a work token");
+
+        let mut claims = forged();
+        claims.insert("iss".to_string(), json!(issuer_for(MSA_TID)));
+        drop_unverified_email(&mut claims, "xms_edov", "");
+        assert!(!claims.contains_key("email"), "no template, no exemption");
+    }
+
+    /// A login through the `common` provider: `origin_iss` is the
     /// directory's own issuer, `provider_iss` the configured one a tenant claim
     /// matcher names. An id_token's own `provider_iss` does not survive.
     #[test]
-    fn an_organizations_login_carries_the_configured_issuer_as_provider_iss() {
+    fn a_common_login_carries_the_configured_issuer_as_provider_iss() {
         let provider = entra_provider("https://login.microsoftonline.com");
         let id_claims = verify(&entra_id_token(
             &issuer_for(TID),
@@ -2559,19 +2664,19 @@ mod entra_signin_tests {
 
         assert_eq!(
             string_claim(&claims, "provider_iss"),
-            Some("https://login.microsoftonline.com/organizations/v2.0")
+            Some("https://login.microsoftonline.com/common/v2.0")
         );
         assert_eq!(string_claim(&claims, "origin_iss"), Some(issuer_for(TID).as_str()));
         assert_eq!(string_claim(&claims, "tid"), Some(TID));
     }
 
-    /// MintCallbackTokens' claim steps for an Entra id_token with `extra`
+    /// MintCallbackTokens' claim steps for directory `tid`'s Entra id_token with `extra`
     /// claims: verify, the email gate, the forwarded claims, then the
     /// synthesized `provider_iss` and `email_domain`.
-    fn callback_claims(extra: &[(&str, serde_json::Value)]) -> prost_wkt_types::Struct {
+    fn callback_claims(tid: &str, extra: &[(&str, serde_json::Value)]) -> prost_wkt_types::Struct {
         let provider = entra_provider("https://login.microsoftonline.com");
-        let mut id_claims = verify(&entra_id_token(&issuer_for(TID), Some(TID), extra)).unwrap();
-        drop_unverified_email(&mut id_claims, &provider.email_verified_claim);
+        let mut id_claims = verify(&entra_id_token(&issuer_for(tid), Some(tid), extra)).unwrap();
+        drop_unverified_email(&mut id_claims, &provider.email_verified_claim, &provider.issuer_template);
         let mut claims = build_claims_struct(&id_claims).unwrap();
         add_provider_issuer(&mut claims, &provider);
         add_email_domain(&mut claims, &provider.email_verified_claim);
@@ -2605,14 +2710,14 @@ mod entra_signin_tests {
     /// A verified email carries its lowercased domain as `email_domain`.
     #[test]
     fn a_verified_email_carries_its_lowercased_domain() {
-        let claims = callback_claims(&[("email", json!("Pat@Example.COM")), ("xms_edov", json!(true))]);
+        let claims = callback_claims(TID, &[("email", json!("Pat@Example.COM")), ("xms_edov", json!(true))]);
         assert_eq!(string_claim(&claims, "email_domain"), Some("example.com"));
     }
 
     /// An unverified email is dropped, and so no `email_domain` is set.
     #[test]
     fn an_unverified_email_carries_no_email_domain() {
-        let claims = callback_claims(&[("email", json!("pat@example.com")), ("xms_edov", json!(false))]);
+        let claims = callback_claims(TID, &[("email", json!("pat@example.com")), ("xms_edov", json!(false))]);
         assert_eq!(string_claim(&claims, "email"), None);
         assert!(!claims.fields.contains_key("email_domain"));
     }
@@ -2621,7 +2726,7 @@ mod entra_signin_tests {
     /// email's domain.
     #[test]
     fn an_idp_supplied_email_domain_is_replaced_by_the_verified_one() {
-        let claims = callback_claims(&[
+        let claims = callback_claims(TID, &[
             ("email", json!("pat@attacker.com")),
             ("xms_edov", json!(true)),
             ("email_domain", json!("victim.com")),
@@ -2633,7 +2738,7 @@ mod entra_signin_tests {
     /// forwarded.
     #[test]
     fn an_idp_supplied_email_domain_without_a_verified_email_is_absent() {
-        let claims = callback_claims(&[
+        let claims = callback_claims(TID, &[
             ("email", json!("pat@attacker.com")),
             ("email_domain", json!("victim.com")),
         ]);
@@ -2657,7 +2762,7 @@ mod entra_signin_tests {
             ("typ", json!("refresh")),
             ("origin_iss", json!(issuer_for(TID))),
             ("origin_sub", json!(ENTRA_SUB)),
-            ("provider_iss", json!("https://login.microsoftonline.com/organizations/v2.0")),
+            ("provider_iss", json!("https://login.microsoftonline.com/common/v2.0")),
             ("tid", json!(TID)),
             ("hd", json!("contoso.example")),
             ("email", json!(EMAIL)),
@@ -2671,7 +2776,7 @@ mod entra_signin_tests {
         assert_eq!(string_claim(&claims, "sub"), Some(ENTRA_SUB));
         assert_eq!(
             string_claim(&claims, "provider_iss"),
-            Some("https://login.microsoftonline.com/organizations/v2.0")
+            Some("https://login.microsoftonline.com/common/v2.0")
         );
         assert_eq!(string_claim(&claims, "origin_iss"), Some(issuer_for(TID).as_str()));
         assert_eq!(string_claim(&claims, "origin_sub"), Some(ENTRA_SUB));
@@ -2696,6 +2801,6 @@ mod entra_signin_tests {
         p.authorization_endpoint = "https://idp.test/auth".to_string();
         let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
         let (iss, _) = client.expected_claims(0).unwrap();
-        assert_eq!(iss, "https://127.0.0.1:1/organizations/v2.0");
+        assert_eq!(iss, "https://127.0.0.1:1/common/v2.0");
     }
 }
