@@ -1,7 +1,10 @@
 # OAuth Release Image
 # Layers the pre-built oauth binary onto a minimal runtime image.
 
-FROM registry.gitlab.com/seabeam/schematic/containers/debian/schematic-debian-1-2:latest
+# The base is a build argument: a fleet may hand in its own hardened base, the
+# default is the public one (no private registry in a public contract's repo).
+ARG BASE_IMAGE=debian:trixie-slim
+FROM ${BASE_IMAGE}
 
 ARG BUILD_DATE
 ARG VCS_REF
@@ -15,6 +18,7 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.title="OAuth" \
       org.opencontainers.image.description="Session management service for Schematic control plane"
 
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY target/release/oauth /usr/local/bin/oauth
 
 ENTRYPOINT ["oauth"]
