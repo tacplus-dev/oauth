@@ -21,4 +21,10 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY target/release/oauth /usr/local/bin/oauth
 
-ENTRYPOINT ["oauth"]
+# Every service runs under the launcher (github.com/tacplus-dev/launcher): PID 1
+# that forwards signals, propagates the exit code, and kills a deadlocked child
+# on gRPC health. The fleet's image pipeline puts the binary beside the Dockerfile.
+ARG TARGETARCH
+COPY launcher-linux-${TARGETARCH} /usr/local/bin/launcher
+ENV LAUNCH_CMD="oauth" HEALTH_PORT=8443
+ENTRYPOINT ["launcher"]
