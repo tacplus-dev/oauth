@@ -51,6 +51,8 @@ import "google/protobuf/empty.proto";
 
 option (spec.service) = {};
 option (spec.grpc_s2s_client) = {service: "kernel.Mint"};
+// Token exchange (MintToken) is the sys minting contract, hosted by kernel.
+option (spec.grpc_s2s_client) = {service: "minter.Minter"};
 option (spec.grpc_s2s_client) = {service: "kernel.CliTokenBroker"};
 option (spec.state_imports) = {source: "kernel.Identity"};
 option (spec.int_const) = {name: "DEFAULT_PORT", value: 8443};

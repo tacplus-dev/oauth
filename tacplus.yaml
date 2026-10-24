@@ -3,6 +3,9 @@ language: rust
 pkg: com.gitlab.seabeam.controlplane.schematic.services.oauth
 output-dir: target/generated-sources
 src: proto
+# oauth.proto declares clients of kernel.Mint and the sys minter hosted by kernel.
+depends:
+  - kernel
 header: |
   Copyright (c) 2026 Jody Scott
   SPDX-License-Identifier: Apache-2.0
