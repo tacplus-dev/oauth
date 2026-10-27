@@ -17,7 +17,7 @@ use oauth_model::types::services::oauth::oauth::{
     LogoutResponse, ProviderConfig, ProviderInfo,
 };
 use oauth_model::types::services::kernel::kernel::{
-    CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce,
+    CliTokenBrokerRequest, cli_token_broker_request, CliTokenBrokerCompleteNonce, TenantConfigEntry,
 };
 use oauth_model::s2sm::internal::grpc::clients::services::kernel::cli_token_broker::BrokerStreamBidiHandle;
 use oauth_model::types::services::oauth::oauth::{
@@ -26,6 +26,7 @@ use oauth_model::types::services::oauth::oauth::{
 
 use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
 use crate::oidc::{ExchangeError, ExchangeErrorKind, OidcClient};
+use crate::providers::{effective_providers, tenant_slices, TenantSlice};
 use crate::signin_email::{DnsResolver, EmailRateLimiter, GlobalRateLimiter, IssuerFinder};
 
 /// A `session_id` is completable only where its CLI session is pending.
@@ -58,6 +59,13 @@ pub struct AuthImpl {
     /// holding open from a `session_id` the caller merely knows.
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
     state: RwLock<Option<AuthState>>,
+    /// The last delivered Config and tenant slices, the two inputs `state` is
+    /// built from. Either changing rebuilds it from both.
+    fleet_config: std::sync::Mutex<Option<Config>>,
+    tenant_slices: std::sync::Mutex<Vec<TenantSlice>>,
+    /// Serializes rebuilds, so the state last installed is built from the
+    /// latest inputs.
+    rebuild_lock: tokio::sync::Mutex<()>,
     dns_resolver: Arc<dyn DnsResolver>,
     issuer_finder: Arc<dyn IssuerFinder>,
     sign_in_email_limiter: EmailRateLimiter,
@@ -68,7 +76,12 @@ pub struct AuthImpl {
 struct AuthState {
     oidc_client: OidcClient,
     state_codec: StateCodec,
+    /// The delivered Config with `providers` the effective list
+    /// (crate::providers::effective_providers): the fleet-wide providers at
+    /// their own indexes, then the tenant slices'.
     config: Config,
+    /// How many of `config.providers` are the fleet-wide ones.
+    fleet_providers: usize,
 }
 
 impl AuthImpl {
@@ -84,6 +97,9 @@ impl AuthImpl {
             broker: broker.clone(),
             pending,
             state: RwLock::new(None),
+            fleet_config: std::sync::Mutex::new(None),
+            tenant_slices: std::sync::Mutex::new(Vec::new()),
+            rebuild_lock: tokio::sync::Mutex::new(()),
             dns_resolver,
             issuer_finder,
             sign_in_email_limiter: EmailRateLimiter::new(),
@@ -93,10 +109,39 @@ impl AuthImpl {
 
     /// Initialize OIDC client and state codec from config.
     pub async fn apply_config(&self, cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
-        let state = auth_state(cfg).await?;
-        match state {
+        *self.fleet_config.lock().unwrap() = Some(cfg.clone());
+        self.rebuild().await
+    }
+
+    /// Record kernel's tenant config slices. Synchronous, so snapshots are kept
+    /// in the order the watch delivers them; `reload_tenants` applies them.
+    pub fn set_tenant_configs(&self, entries: &HashMap<String, TenantConfigEntry>) {
+        *self.tenant_slices.lock().unwrap() = tenant_slices(entries);
+    }
+
+    /// Rebuild the flow state with the tenant slices last recorded.
+    pub async fn reload_tenants(&self) {
+        if let Err(e) = self.rebuild().await {
+            error!(error = %e, "tenant config change not applied, keeping the providers in use");
+        }
+    }
+
+    /// Build the flow state from the last Config and tenant slices and install
+    /// it. Before the first Config there is nothing to build.
+    async fn rebuild(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let _rebuilding = self.rebuild_lock.lock().await;
+        let Some(cfg) = self.fleet_config.lock().unwrap().clone() else {
+            return Ok(());
+        };
+        let slices = self.tenant_slices.lock().unwrap().clone();
+        let state = auth_state(&cfg, &slices).await?;
+        match &state {
             None => info!("OAuth2/OIDC disabled in config"),
-            Some(_) => info!("OAuth2/OIDC initialized with {} providers", cfg.providers.len()),
+            Some(s) => info!(
+                "OAuth2/OIDC initialized with {} providers ({} from tenant slices)",
+                s.config.providers.len(),
+                s.config.providers.len() - s.fleet_providers
+            ),
         }
         *self.state.write().await = state;
         Ok(())
@@ -115,7 +160,10 @@ impl AuthImpl {
 /// The flow state a config yields. None while `enable` is off, and every
 /// sign-in RPC refuses on None (`require_state`): that is the sign-in, and so
 /// sign-up, kill switch (ops/datagate/README.md).
-async fn auth_state(cfg: &Config) -> Result<Option<AuthState>, Box<dyn std::error::Error>> {
+async fn auth_state(
+    cfg: &Config,
+    slices: &[TenantSlice],
+) -> Result<Option<AuthState>, Box<dyn std::error::Error>> {
     if !cfg.enable {
         return Ok(None);
     }
@@ -123,54 +171,37 @@ async fn auth_state(cfg: &Config) -> Result<Option<AuthState>, Box<dyn std::erro
     // Secret inputs come from the pod env (operator SecretEnvVars), never
     // from Config, which every config-holder in the fleet can read.
     let secrets = secrets_from_env_var(&std::env::vars().collect());
-    check_provider_credentials(&cfg.providers, &secrets.apple_signin_key_p8)?;
+    Ok(Some(flow_state(cfg, slices, &secrets.apple_signin_key_p8).await?))
+}
+
+/// The flow state for an enabled config, over the effective provider list.
+async fn flow_state(
+    cfg: &Config,
+    slices: &[TenantSlice],
+    apple_key_p8: &str,
+) -> Result<AuthState, Box<dyn std::error::Error>> {
+    let config = Config {
+        providers: effective_providers(cfg, slices, apple_key_p8),
+        ..cfg.clone()
+    };
 
     let oidc_client = OidcClient::new(
-        &cfg.providers,
-        &cfg.scopes,
-        cfg.jwk_refetch_interval_seconds,
-        &secrets.apple_signin_key_p8,
+        &config.providers,
+        &config.scopes,
+        config.jwk_refetch_interval_seconds,
+        apple_key_p8,
     )
     .await
     .map_err(|e| format!("oidc client: {e}"))?;
 
-    let state_codec = StateCodec::new(
-        &cfg.providers,
-        &secrets.apple_signin_key_p8,
-        cfg.nonce_expire_seconds,
-    );
+    let state_codec = StateCodec::new(&config.providers, apple_key_p8, config.nonce_expire_seconds);
 
-    Ok(Some(AuthState {
+    Ok(AuthState {
         oidc_client,
         state_codec,
-        config: cfg.clone(),
-    }))
-}
-
-/// Every enabled provider must be able to authenticate to its token endpoint:
-/// a Sign in with Apple provider with the .p8 key from the pod env, any other
-/// with a static `client_secret`. `client_secret` is not schema-required (an
-/// Apple provider has none), so this is what keeps a provider missing both
-/// from loading.
-fn check_provider_credentials(
-    providers: &[ProviderConfig],
-    apple_key_p8: &str,
-) -> Result<(), String> {
-    for p in providers.iter().filter(|p| p.enable) {
-        match &p.apple {
-            Some(_) if apple_key_p8.is_empty() => {
-                return Err(format!(
-                    "provider {} sets apple, but PROTO_SERVICES_OAUTH_SECRETS_APPLE_SIGNIN_KEY_P8 is empty",
-                    p.name
-                ))
-            }
-            None if p.client_secret.is_empty() => {
-                return Err(format!("provider {} has no client_secret", p.name))
-            }
-            _ => {}
-        }
-    }
-    Ok(())
+        config,
+        fleet_providers: cfg.providers.len(),
+    })
 }
 
 /// Where the browser goes after a form_post IDP (Apple) POSTs its response.
@@ -790,6 +821,22 @@ fn idp_mint_request(
     }
 }
 
+/// The sign-in options ListProviders answers: every enabled provider, with the
+/// index Authorize takes.
+fn provider_infos(providers: &[ProviderConfig]) -> Vec<ProviderInfo> {
+    providers
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p.enable)
+        .map(|(i, p)| ProviderInfo {
+            name: p.name.clone(),
+            domains: p.domains.clone(),
+            provider_index: i as i32,
+            ..Default::default()
+        })
+        .collect()
+}
+
 #[tonic::async_trait]
 impl AuthHandler for AuthImpl {
     async fn list_providers(
@@ -807,21 +854,8 @@ impl AuthHandler for AuthImpl {
             }
         };
 
-        let mut providers = Vec::new();
-        for (i, p) in state.config.providers.iter().enumerate() {
-            if !p.enable {
-                continue;
-            }
-            providers.push(ProviderInfo {
-                name: p.name.clone(),
-                domains: p.domains.clone(),
-                provider_index: i as i32,
-                ..Default::default()
-            });
-        }
-
         Ok(ListProvidersResponse {
-            providers,
+            providers: provider_infos(&state.config.providers),
             ..Default::default()
         })
     }
@@ -883,7 +917,10 @@ impl AuthHandler for AuthImpl {
             return Err(tonic::Status::resource_exhausted("too many sign-in lookups, try again shortly"));
         }
         let guard = self.state.read().await;
-        let providers = guard.as_ref().map_or(&[][..], |s| s.config.providers.as_slice());
+        // The fleet-wide providers only: the guess is made from any address
+        // anyone types, and a tenant's own client (its Google, say) is that
+        // tenant's sign-in option, not the route for every address at that IdP.
+        let providers = guard.as_ref().map_or(&[][..], |s| &s.config.providers[..s.fleet_providers]);
         Ok(crate::signin_email::classify(self.dns_resolver.as_ref(), self.issuer_finder.as_ref(), providers, &req.email).await)
     }
 
@@ -1792,6 +1829,62 @@ mod callback_url_allowlist_tests {
         );
     }
 
+    /// A tenant slice's provider is offered after the fleet-wide one and is
+    /// brokered the same way: its index clears the operator's tenant allowlist,
+    /// and the IDP redirect carries the tenant's own client. The tenant cannot
+    /// widen the allowlist: a URL only the fleet provider allows is refused.
+    #[tokio::test]
+    async fn a_tenant_provider_is_offered_and_brokered() {
+        use crate::providers::TenantSlice;
+        use oauth_model::types::services::oauth::oauth::{OAuthProvider, OAuthTenantConfig};
+
+        let tenant_webapp = "https://console.example/login";
+        let mut fleet = provider(&[LEGIT]);
+        fleet.issuer = "https://127.0.0.1:1".to_string();
+        fleet.authorization_endpoint = "https://idp.test/auth".to_string();
+        let cfg = Config {
+            enable: true,
+            providers: vec![fleet],
+            tenant_redirect_uri_prefixes: vec![tenant_webapp.to_string()],
+            ..Default::default()
+        };
+        let slices = [TenantSlice {
+            tenant: "/tenants/acme".to_string(),
+            config: OAuthTenantConfig {
+                providers: vec![OAuthProvider {
+                    enable: true,
+                    issuer_url: "https://127.0.0.1:2/realms/acme".to_string(),
+                    client_id: "acme-client".to_string(),
+                    client_secret: "acme-secret".to_string(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+        }];
+        let state = flow_state(&cfg, &slices, "").await.expect("flow state");
+
+        let offered: Vec<(String, i32)> = provider_infos(&state.config.providers)
+            .into_iter()
+            .map(|p| (p.name, p.provider_index))
+            .collect();
+        assert_eq!(offered, [("drpepper".to_string(), 0), ("acme: 127.0.0.1".to_string(), 1)]);
+        assert_eq!(state.fleet_providers, 1);
+
+        check_callback_url(&state.config, 1, tenant_webapp).expect("the tenant allowlist covers it");
+        assert_eq!(
+            check_callback_url(&state.config, 1, LEGIT).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
+        assert!(check_callback_url(&state.config, 0, tenant_webapp).is_err());
+
+        let encoded = state.state_codec.encode(1, tenant_webapp, "verifier", None);
+        assert_eq!(state.state_codec.decode(&encoded).unwrap().provider_index, 1);
+        assert_eq!(
+            state.oidc_client.expected_claims(1).unwrap(),
+            ("https://127.0.0.1:2/realms/acme".to_string(), "acme-client".to_string())
+        );
+    }
+
     /// An out-of-range provider_index has no allowlist to check against, so it
     /// is refused before it can reach the OIDC client.
     #[test]
@@ -2127,7 +2220,7 @@ mod apple_signin_tests {
     async fn sign_in_with_apple_end_to_end_against_a_fake_apple() {
         let apple = spawn_fake_apple().await;
         let cfg = config(vec![apple_provider(&apple.issuer)]);
-        check_provider_credentials(&cfg.providers, TEST_P8_PEM).expect("apple + .p8 is complete");
+        assert!(cfg.providers.iter().all(|p| crate::providers::credential_error(p, TEST_P8_PEM).is_none()), "apple + .p8 is complete");
         let client = OidcClient::new(&cfg.providers, &[], 3600, TEST_P8_PEM)
             .await
             .expect("oidc client");
@@ -2358,28 +2451,36 @@ mod apple_signin_tests {
     #[tokio::test]
     async fn enable_off_drops_the_flow_state() {
         let mut cfg = config(vec![plain_provider()]);
-        assert!(auth_state(&cfg).await.unwrap().is_some());
+        assert!(auth_state(&cfg, &[]).await.unwrap().is_some());
 
         cfg.enable = false;
-        assert!(auth_state(&cfg).await.unwrap().is_none());
+        assert!(auth_state(&cfg, &[]).await.unwrap().is_none());
     }
 
-    /// Config apply refuses a provider that could never authenticate to its
-    /// token endpoint, naming what is missing.
-    #[test]
-    fn providers_missing_their_credential_are_refused() {
+    /// A provider that could never authenticate to its token endpoint is named
+    /// with what is missing, and disabled on its own: the config still loads
+    /// and every other provider is offered.
+    #[tokio::test]
+    async fn providers_missing_their_credential_are_disabled_alone() {
         let apple = apple_provider("https://appleid.apple.com");
-        let err = check_provider_credentials(&[apple.clone()], "").unwrap_err();
+        let err = crate::providers::credential_error(&apple, "").unwrap();
         assert!(err.contains("PROTO_SERVICES_OAUTH_SECRETS_APPLE_SIGNIN_KEY_P8"), "got {err}");
 
         let mut no_secret = plain_provider();
         no_secret.client_secret.clear();
-        let err = check_provider_credentials(&[no_secret.clone()], TEST_P8_PEM).unwrap_err();
+        let err = crate::providers::credential_error(&no_secret, TEST_P8_PEM).unwrap();
         assert!(err.contains("client_secret"), "got {err}");
 
-        // A disabled provider is not loaded, so it is not checked.
-        no_secret.enable = false;
-        assert!(check_provider_credentials(&[no_secret, plain_provider(), apple], TEST_P8_PEM).is_ok());
+        let state = flow_state(&config(vec![no_secret, plain_provider(), apple]), &[], "")
+            .await
+            .expect("one provider missing its credential does not refuse the config");
+        let offered: Vec<i32> = provider_infos(&state.config.providers).iter().map(|p| p.provider_index).collect();
+        assert_eq!(offered, [1]);
+        let codec = &state.state_codec;
+        let st = codec.encode(1, SPA, "v", None);
+        assert!(check_callback_url(&state.config, 1, SPA).is_ok());
+        assert!(state.oidc_client.build_authorize_url(1, &st, "v", SPA, "", "").await.is_ok());
+        assert!(state.oidc_client.build_authorize_url(0, &st, "v", SPA, "", "").await.is_err());
     }
 
     /// An Apple provider has no static client secret, so the .p8 is what makes
@@ -2623,7 +2724,7 @@ mod entra_signin_tests {
         })
         .await;
         let cfg = config(vec![entra_provider(&entra.base)]);
-        check_provider_credentials(&cfg.providers, "").expect("a client_secret is all Entra needs");
+        assert!(crate::providers::credential_error(&cfg.providers[0], "").is_none(), "a client_secret is all Entra needs");
         let client = OidcClient::new(&cfg.providers, &[], 3600, "").await.expect("oidc client");
         let codec = StateCodec::new(&cfg.providers, "", 300);
 

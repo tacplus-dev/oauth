@@ -163,6 +163,42 @@ pub(crate) fn classify_token_error(status: reqwest::StatusCode, body: &[u8]) -> 
     }
 }
 
+/// The HTTP client a provider's discovery, JWKS and token requests go through.
+///
+/// TLS certificate verification is ON for every IDP connection. It used
+/// to be disabled here (danger_accept_invalid_certs) in BOTH branches,
+/// on the claim that "rustls-webpki does not verify Ed25519 CA chains
+/// correctly" -- which also made a configured ca_pem pointless. Anyone
+/// able to intercept the IDP connection could then serve their own JWKS
+/// and mint tokens this platform would trust: a full auth bypass.
+///
+/// The Ed25519 claim does not hold. rustls-webpki verifies an Ed25519
+/// CA chain -- see the tests at the bottom of this file, which stand up
+/// a real TLS server behind an Ed25519 root and check both that the
+/// chain is accepted and that an untrusted cert is refused.
+///
+/// http1_only is a SEPARATE, non-security workaround and stays: mock
+/// OIDC servers (Netty-based) don't advertise ALPN, and hyper/h2 fails
+/// when ALPN negotiation returns None.
+pub(crate) fn http_client(p: &ProviderConfig) -> Result<Client, String> {
+    let mut builder = Client::builder()
+        .timeout(Duration::from_secs(10))
+        // Stated rather than left to the feature defaults: the runtime
+        // image has no /etc/ssl/certs, so the compiled-in Mozilla root
+        // store is the only trust anchor set an IDP connection has.
+        .tls_built_in_webpki_certs(true)
+        .http1_only();
+    if !p.ca_pem.is_empty() {
+        info!(provider = %p.name, "using custom CA for OIDC HTTP client");
+        let cert = reqwest::Certificate::from_pem(p.ca_pem.as_bytes())
+            .map_err(|e| format!("parsing CA PEM for provider {}: {e}", p.name))?;
+        builder = builder.add_root_certificate(cert);
+    }
+    builder
+        .build()
+        .map_err(|e| format!("creating HTTP client for provider {}: {e}", p.name))
+}
+
 /// OIDC client handles discovery, authorization URL construction, and token exchange.
 pub struct OidcClient {
     providers: HashMap<i32, Arc<OidcProvider>>,
@@ -202,37 +238,7 @@ impl OidcClient {
                 continue;
             }
 
-            // TLS certificate verification is ON for every IDP connection. It used
-            // to be disabled here (danger_accept_invalid_certs) in BOTH branches,
-            // on the claim that "rustls-webpki does not verify Ed25519 CA chains
-            // correctly" -- which also made a configured ca_pem pointless. Anyone
-            // able to intercept the IDP connection could then serve their own JWKS
-            // and mint tokens this platform would trust: a full auth bypass.
-            //
-            // The Ed25519 claim does not hold. rustls-webpki verifies an Ed25519
-            // CA chain -- see the tests at the bottom of this file, which stand up
-            // a real TLS server behind an Ed25519 root and check both that the
-            // chain is accepted and that an untrusted cert is refused.
-            //
-            // http1_only is a SEPARATE, non-security workaround and stays: mock
-            // OIDC servers (Netty-based) don't advertise ALPN, and hyper/h2 fails
-            // when ALPN negotiation returns None.
-            let mut builder = Client::builder()
-                .timeout(Duration::from_secs(10))
-                // Stated rather than left to the feature defaults: the runtime
-                // image has no /etc/ssl/certs, so the compiled-in Mozilla root
-                // store is the only trust anchor set an IDP connection has.
-                .tls_built_in_webpki_certs(true)
-                .http1_only();
-            if !p.ca_pem.is_empty() {
-                info!(provider = %p.name, "using custom CA for OIDC HTTP client");
-                let cert = reqwest::Certificate::from_pem(p.ca_pem.as_bytes())
-                    .map_err(|e| format!("parsing CA PEM for provider {}: {e}", p.name))?;
-                builder = builder.add_root_certificate(cert);
-            }
-            let http_client = builder
-                .build()
-                .map_err(|e| format!("creating HTTP client for provider {}: {e}", p.name))?;
+            let http_client = http_client(p)?;
 
             let apple_secret = match &p.apple {
                 Some(apple) => Some(

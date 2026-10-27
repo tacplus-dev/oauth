@@ -57,9 +57,17 @@ and CLI/device token brokering via bidirectional streaming.
 | `refresh_token_lifetime_seconds` | 604800 | Refresh token lifetime (1h–30d) |
 | `auto_refresh_before_seconds` | 3600 | Auto-refresh window (60s–24h) |
 | `enable` | false | Enable OAuth auth flows |
-| `providers` | — | List of OAuth/OIDC provider configurations |
+| `providers` | — | List of OAuth/OIDC provider configurations (fleet-wide) |
+| `tenant_redirect_uri_prefixes` | — | Redirect allowlist for providers from tenant slices; empty offers none |
 | `nonce_expire_seconds` | 300 | CSRF nonce expiry |
 | `jwk_refetch_interval_seconds` | 300 | IDP JWKS refresh interval |
+
+Each tenant's own IdPs come from its `oauth.OAuthTenantConfig` slice in kernel's
+`ConfigState.tenant_configs` and are offered after `providers`. A tenant provider
+with the issuer and client id of a fleet-wide provider (or another tenant's) is
+refused and logged with its tenant; a slice that would take the list past 256 is
+refused whole; the `people` tenant's slice is not read (its providers stay in
+`providers`). An enabled provider missing its credential disables only itself.
 
 ## Key Files
 
@@ -67,6 +75,7 @@ and CLI/device token brokering via bidirectional streaming.
 - `src/service.rs` — Handler implementations
 - `src/auth.rs` — OAuth flow logic
 - `src/oidc.rs` — OIDC discovery and token verification
+- `src/providers.rs` — The fleet-wide and tenant-slice provider list
 - `src/session.rs` — Bidirectional session stream management
 - `src/nonce.rs` — CSRF nonce generation and validation
 

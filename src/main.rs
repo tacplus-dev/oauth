@@ -2,6 +2,7 @@ mod apple;
 mod auth;
 mod nonce;
 mod oidc;
+mod providers;
 mod service;
 mod signin_email;
 
@@ -170,6 +171,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         issuer_finder,
     ));
     // Note: broker_handle was moved into OauthImpl. AuthImpl borrows it via broker_handle().
+
+    // Each tenant's IdPs live in its own oauth config slice, which kernel
+    // stores in ConfigState.tenant_configs: every snapshot rebuilds the
+    // provider list. The cache is read once too, for a snapshot that arrived
+    // before the callback was registered; the first Config delivery builds
+    // with it.
+    let config_state = sm.state_clients().services().config_state();
+    let auth_for_tenants = Arc::clone(&auth_impl);
+    config_state.on_tenant_configs_change(Arc::new(move |entries| {
+        auth_for_tenants.set_tenant_configs(entries);
+        let auth = Arc::clone(&auth_for_tenants);
+        tokio::spawn(async move { auth.reload_tenants().await });
+    }));
+    auth_impl.set_tenant_configs(&config_state.get_tenant_configs_map());
 
     let handler: Arc<dyn Handler> = Arc::new(OauthHandler {
         oauth_impl,

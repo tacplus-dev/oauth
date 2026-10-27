@@ -104,6 +104,14 @@ message Config {
   // from the same external IDP. Prevents excessive outbound requests.
   // Default: 300 (5 minutes).
   int64 jwk_refetch_interval_seconds = 8 [(spec.assert_duration) = DURATION_TYPE_POSITIVE, (spec.default_int) = 300];
+
+  // tenant_redirect_uri_prefixes is the redirect allowlist of every provider
+  // read from a tenant's OAuthTenantConfig slice, with the matching rule of
+  // ProviderConfig.allowed_redirect_uri_prefixes. The redirect target is the
+  // fleet's webapp, not the tenant's, so it is set here by the operator and a
+  // tenant can never name it. Empty allows nothing: tenant providers are then
+  // not offered at all.
+  repeated string tenant_redirect_uri_prefixes = 9 [(spec.assert_max_size) = 32];
 }
 
 // ProviderConfig configures a single OAuth2 identity provider.
@@ -375,7 +383,10 @@ message SessionResponse {
 
 // ListProvidersResponse contains public provider information for the login UI.
 message ListProvidersResponse {
-  repeated ProviderInfo providers = 1 [(spec.assert_max_size) = 16];
+  // The fleet-wide providers and every tenant slice's. oauth refuses a whole
+  // tenant slice that would take the list past this bound rather than answer
+  // a list the bound refuses.
+  repeated ProviderInfo providers = 1 [(spec.assert_max_size) = 256];
 }
 
 // ProviderInfo is the public-facing information about a provider.
@@ -619,6 +630,10 @@ message OAuthProvider {
 
   // enable enables or disables this provider.
   bool enable = 7;
+
+  // name is the sign-in option's label (ProviderInfo.name). Empty means
+  // "<tenant>: <issuer host>".
+  string name = 8 [(spec.assert_max_size) = 128];
 }
 
 // ClaimMatcher routes users arriving via a cluster-level shared IDP to this tenant.
