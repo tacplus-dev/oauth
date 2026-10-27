@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use tokio::sync::{oneshot, RwLock};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::ServiceManager;
@@ -25,7 +25,7 @@ use oauth_model::types::services::oauth::oauth::{
 };
 
 use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
-use crate::oidc::OidcClient;
+use crate::oidc::{ExchangeError, ExchangeErrorKind, OidcClient};
 use crate::signin_email::{DnsResolver, EmailRateLimiter, GlobalRateLimiter, IssuerFinder};
 
 /// A `session_id` is completable only where its CLI session is pending.
@@ -711,6 +711,37 @@ fn check_callback_url(
     Ok(())
 }
 
+/// The status MintCallbackTokens answers for a failed code exchange, logged.
+///
+/// A provider refusing the exchange is not an internal error: the gateway maps
+/// these to a 4xx and the login page tells the person which of "this provider
+/// is not available right now" (FAILED_PRECONDITION) or "sign-in was refused,
+/// try again" (UNAUTHENTICATED) applies. The message names the provider and
+/// the reason class only; what the provider answered goes to the log.
+fn exchange_status(e: ExchangeError) -> tonic::Status {
+    let (provider, reason) = (&e.provider, e.reason);
+    match e.kind {
+        ExchangeErrorKind::Misconfigured => {
+            error!(provider = %provider, reason, error = %e.detail, "token exchange refused: provider misconfigured");
+            tonic::Status::failed_precondition(format!(
+                "{provider} sign-in is not available: the provider refused this service's client ({reason})"
+            ))
+        }
+        ExchangeErrorKind::Refused => {
+            info!(provider = %provider, reason, error = %e.detail, "token exchange refused the code");
+            tonic::Status::unauthenticated(format!("{provider} refused the sign-in code ({reason}); sign in again"))
+        }
+        ExchangeErrorKind::Unavailable => {
+            warn!(provider = %provider, reason, error = %e.detail, "token exchange failed: provider unavailable");
+            tonic::Status::unavailable(format!("{provider} sign-in is not reachable right now ({reason})"))
+        }
+        ExchangeErrorKind::Internal => {
+            error!(provider = %provider, reason, error = %e.detail, "token exchange failed");
+            tonic::Status::internal(format!("{provider} token exchange failed ({reason})"))
+        }
+    }
+}
+
 /// The OPA claims for an "already authenticated" CLI re-auth, read from the
 /// caller's Schematic token.
 ///
@@ -886,10 +917,7 @@ impl AuthHandler for AuthImpl {
                 &payload.callback_url,
             )
             .await
-            .map_err(|e| {
-                warn!(error = %e, "token exchange failed");
-                tonic::Status::internal(format!("token exchange failed: {e}"))
-            })?;
+            .map_err(exchange_status)?;
 
         let id_token_str = token_resp
             .id_token
@@ -2182,7 +2210,7 @@ mod apple_signin_tests {
             .exchange_code(0, APPLE_CODE, "verifier", SPA)
             .await
             .expect_err("Apple must refuse a secret it cannot verify");
-        assert!(err.contains("invalid_client"), "got {err}");
+        assert_eq!(err.reason, "invalid_client", "got {err}");
         assert_eq!(apple.token_forms.lock().unwrap().len(), 1);
     }
 
@@ -2379,6 +2407,7 @@ mod entra_signin_tests {
     use super::apple_signin_tests::read_request;
     use super::idp_token_verification_tests::{now, signing_key, test_jwks};
     use super::*;
+    use crate::oidc::classify_token_error;
     use prost_wkt_types::value::Kind;
     use serde_json::json;
     use std::sync::Mutex;
@@ -2431,16 +2460,34 @@ mod entra_signin_tests {
         t.base64().unwrap().to_string()
     }
 
-    /// What Entra's token endpoint checks before it answers: the app's client
-    /// secret, and the code and redirect_uri of the authorization it issued.
-    fn entra_accepts(form: &HashMap<String, String>) -> bool {
+    /// What Microsoft's token endpoint says about a stale secret. The body
+    /// must never reach the person; the tests look for this code in messages.
+    const AADSTS_BAD_SECRET: &str = "AADSTS7000215: Invalid client secret provided.";
+    const AADSTS_BAD_CODE: &str = "AADSTS70008: The provided authorization code has expired.";
+
+    /// What Entra's token endpoint checks before it answers, and the RFC 6749
+    /// error it answers with: the app's client secret (`invalid_client`), then
+    /// the code and redirect_uri of the authorization it issued
+    /// (`invalid_grant`).
+    fn entra_accepts(form: &HashMap<String, String>) -> Result<(), (&'static str, serde_json::Value)> {
         let field = |k: &str| form.get(k).map(String::as_str).unwrap_or("");
-        field("client_id") == CLIENT_ID
-            && field("client_secret") == CLIENT_SECRET
-            && field("grant_type") == "authorization_code"
-            && field("code") == ENTRA_CODE
-            && field("redirect_uri") == SPA
-            && !field("code_verifier").is_empty()
+        if field("client_id") != CLIENT_ID || field("client_secret") != CLIENT_SECRET {
+            return Err((
+                "401 Unauthorized",
+                json!({"error": "invalid_client", "error_description": AADSTS_BAD_SECRET, "error_codes": [7000215]}),
+            ));
+        }
+        if field("grant_type") != "authorization_code"
+            || field("code") != ENTRA_CODE
+            || field("redirect_uri") != SPA
+            || field("code_verifier").is_empty()
+        {
+            return Err((
+                "400 Bad Request",
+                json!({"error": "invalid_grant", "error_description": AADSTS_BAD_CODE, "error_codes": [70008]}),
+            ));
+        }
+        Ok(())
     }
 
     /// `id_token` builds the token the endpoint returns, given the fake's base URL.
@@ -2491,16 +2538,17 @@ mod entra_signin_tests {
                             let form: HashMap<String, String> =
                                 serde_urlencoded::from_str(&body).unwrap_or_default();
                             forms.lock().unwrap().push(form.clone());
-                            if entra_accepts(&form) {
-                                let resp = json!({
-                                    "id_token": id_token,
-                                    "access_token": "entra-access-token",
-                                    "token_type": "Bearer",
-                                    "expires_in": 3600,
-                                });
-                                ("200 OK", resp.to_string())
-                            } else {
-                                ("401 Unauthorized", json!({"error": "invalid_client"}).to_string())
+                            match entra_accepts(&form) {
+                                Ok(()) => {
+                                    let resp = json!({
+                                        "id_token": id_token,
+                                        "access_token": "entra-access-token",
+                                        "token_type": "Bearer",
+                                        "expires_in": 3600,
+                                    });
+                                    ("200 OK", resp.to_string())
+                                }
+                                Err((status, error)) => (status, error.to_string()),
                             }
                         }
                         _ => ("404 Not Found", "{}".to_string()),
@@ -2703,8 +2751,75 @@ mod entra_signin_tests {
             .exchange_code(0, ENTRA_CODE, "verifier", SPA)
             .await
             .expect_err("Entra must refuse a wrong secret");
-        assert!(err.contains("invalid_client"), "got {err}");
+        assert_eq!(err.kind, ExchangeErrorKind::Misconfigured, "got {err}");
+        assert_eq!(err.reason, "invalid_client");
         assert_eq!(entra.token_forms.lock().unwrap().len(), 1);
+    }
+
+    /// A provider refusing this service's client is a misconfiguration, not an
+    /// internal error: FAILED_PRECONDITION, naming the provider and the reason
+    /// class, never the secret or what the provider answered.
+    #[tokio::test]
+    async fn invalid_client_answers_failed_precondition_naming_the_provider() {
+        let entra = spawn_fake_entra(|base| entra_id_token(&format!("{base}/{TID}/v2.0"), Some(TID), &[])).await;
+        let mut p = entra_provider(&entra.base);
+        p.client_secret = "stale-secret".to_string();
+        let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
+
+        let err = client.exchange_code(0, ENTRA_CODE, "verifier", SPA).await.unwrap_err();
+        let status = exchange_status(err);
+        assert_eq!(status.code(), tonic::Code::FailedPrecondition, "got {status:?}");
+        let msg = status.message();
+        assert!(msg.contains("microsoft") && msg.contains("invalid_client"), "got {msg}");
+        for leak in ["stale-secret", "AADSTS", "error_description", "401"] {
+            assert!(!msg.contains(leak), "{leak} leaked into {msg}");
+        }
+    }
+
+    /// A refused code (expired, already redeemed) is the person's to retry:
+    /// UNAUTHENTICATED, naming the provider.
+    #[tokio::test]
+    async fn invalid_grant_answers_unauthenticated() {
+        let entra = spawn_fake_entra(|base| entra_id_token(&format!("{base}/{TID}/v2.0"), Some(TID), &[])).await;
+        let client = OidcClient::new(&[entra_provider(&entra.base)], &[], 3600, "").await.unwrap();
+
+        let err = client.exchange_code(0, "an-expired-code", "verifier", SPA).await.unwrap_err();
+        assert_eq!(err.kind, ExchangeErrorKind::Refused, "got {err}");
+        let status = exchange_status(err);
+        assert_eq!(status.code(), tonic::Code::Unauthenticated, "got {status:?}");
+        let msg = status.message();
+        assert!(msg.contains("microsoft") && msg.contains("invalid_grant"), "got {msg}");
+        assert!(!msg.contains("AADSTS") && !msg.contains(CLIENT_SECRET), "got {msg}");
+    }
+
+    /// A token endpoint nobody answers on is UNAVAILABLE.
+    #[tokio::test]
+    async fn an_unreachable_token_endpoint_answers_unavailable() {
+        let entra = spawn_fake_entra(|base| entra_id_token(&format!("{base}/{TID}/v2.0"), Some(TID), &[])).await;
+        let closed = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let dead = format!("http://{}/token", closed.local_addr().unwrap());
+        drop(closed);
+        let mut p = entra_provider(&entra.base);
+        p.token_endpoint = dead;
+        let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
+
+        let err = client.exchange_code(0, ENTRA_CODE, "verifier", SPA).await.unwrap_err();
+        assert_eq!(err.kind, ExchangeErrorKind::Unavailable, "got {err}");
+        let status = exchange_status(err);
+        assert_eq!(status.code(), tonic::Code::Unavailable, "got {status:?}");
+        assert!(status.message().contains("microsoft"), "got {}", status.message());
+    }
+
+    /// A 5xx carrying no RFC 6749 error is the provider unwell, not refusing.
+    #[test]
+    fn a_provider_5xx_is_unavailable_and_an_unknown_4xx_a_misconfiguration() {
+        use reqwest::StatusCode;
+        assert_eq!(classify_token_error(StatusCode::BAD_GATEWAY, b"<html>").0, ExchangeErrorKind::Unavailable);
+        assert_eq!(classify_token_error(StatusCode::TOO_MANY_REQUESTS, b"").0, ExchangeErrorKind::Unavailable);
+        assert_eq!(classify_token_error(StatusCode::NOT_FOUND, b"{}").0, ExchangeErrorKind::Misconfigured);
+        // An error the provider makes up is not echoed as the reason.
+        let (kind, reason) = classify_token_error(StatusCode::BAD_REQUEST, br#"{"error":"<script>"}"#);
+        assert_eq!((kind, reason), (ExchangeErrorKind::Misconfigured, "unrecognized refusal"));
     }
 
     /// Any directory's token verifies against the template, including a

@@ -102,6 +102,67 @@ pub struct TokenResponse {
     pub expires_in: Option<i64>,
 }
 
+/// What a failed token exchange means for the person signing in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExchangeErrorKind {
+    /// The provider refused this service's own client: its credentials or
+    /// registration (RFC 6749 §5.2 invalid_client, unauthorized_client, ...).
+    /// No retry helps; an operator has to fix the provider config.
+    Misconfigured,
+    /// The provider refused the code: expired, already redeemed, or not
+    /// issued for this redirect_uri and code_verifier (invalid_grant). Signing
+    /// in again gets a fresh one.
+    Refused,
+    /// The provider could not be reached, or answered that it is unwell.
+    Unavailable,
+    /// Anything else: a fault on this side, or a success it cannot read.
+    Internal,
+}
+
+/// A failed token exchange, classified.
+///
+/// `reason` is a fixed class (an RFC 6749 error code this service recognises,
+/// or a word of its own), safe to show the person. `detail` carries what the
+/// provider said and is for the log only: it can hold the response body.
+#[derive(Debug)]
+pub struct ExchangeError {
+    pub kind: ExchangeErrorKind,
+    pub provider: String,
+    pub reason: &'static str,
+    pub detail: String,
+}
+
+impl std::fmt::Display for ExchangeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} token exchange ({}): {}", self.provider, self.reason, self.detail)
+    }
+}
+
+/// Classify a non-success answer from a token endpoint by the RFC 6749 §5.2
+/// `error` it carries, falling back to the HTTP status.
+pub(crate) fn classify_token_error(status: reqwest::StatusCode, body: &[u8]) -> (ExchangeErrorKind, &'static str) {
+    #[derive(serde::Deserialize)]
+    struct ErrorBody {
+        error: String,
+    }
+    use ExchangeErrorKind::*;
+    let code = serde_json::from_slice::<ErrorBody>(body).ok().map(|b| b.error);
+    match code.as_deref() {
+        Some("invalid_grant") => (Refused, "invalid_grant"),
+        Some("invalid_client") => (Misconfigured, "invalid_client"),
+        Some("unauthorized_client") => (Misconfigured, "unauthorized_client"),
+        Some("unsupported_grant_type") => (Misconfigured, "unsupported_grant_type"),
+        Some("invalid_scope") => (Misconfigured, "invalid_scope"),
+        Some("invalid_request") => (Misconfigured, "invalid_request"),
+        Some("temporarily_unavailable") => (Unavailable, "temporarily_unavailable"),
+        Some("server_error") => (Unavailable, "server_error"),
+        _ if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS => {
+            (Unavailable, "provider error")
+        }
+        _ => (Misconfigured, "unrecognized refusal"),
+    }
+}
+
 /// OIDC client handles discovery, authorization URL construction, and token exchange.
 pub struct OidcClient {
     providers: HashMap<i32, Arc<OidcProvider>>,
@@ -371,15 +432,24 @@ impl OidcClient {
         code: &str,
         code_verifier: &str,
         redirect_uri: &str,
-    ) -> Result<TokenResponse, String> {
-        let prov = self
-            .providers
-            .get(&provider_index)
-            .ok_or_else(|| format!("unknown provider index {provider_index}"))?;
+    ) -> Result<TokenResponse, ExchangeError> {
+        let prov = self.providers.get(&provider_index).ok_or_else(|| ExchangeError {
+            kind: ExchangeErrorKind::Internal,
+            provider: format!("provider {provider_index}"),
+            reason: "unknown provider",
+            detail: format!("unknown provider index {provider_index}"),
+        })?;
+        let fail = |kind, reason, detail| ExchangeError {
+            kind,
+            provider: prov.provider_cfg.name.clone(),
+            reason,
+            detail,
+        };
 
         let token_endpoint = self
             .endpoint(prov, "token endpoint", |c| c.token_endpoint.clone())
-            .await?;
+            .await
+            .map_err(|e| fail(ExchangeErrorKind::Unavailable, "discovery failed", e))?;
 
         let client_secret = match &prov.apple_secret {
             Some(apple) => {
@@ -387,7 +457,9 @@ impl OidcClient {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs() as i64;
-                apple.mint(now)?
+                apple
+                    .mint(now)
+                    .map_err(|e| fail(ExchangeErrorKind::Misconfigured, "client secret not minted", e))?
             }
             None => prov.provider_cfg.client_secret.clone(),
         };
@@ -407,20 +479,26 @@ impl OidcClient {
             .form(&params)
             .send()
             .await
-            .map_err(|e| format!("token exchange: {e}"))?;
+            .map_err(|e| fail(ExchangeErrorKind::Unavailable, "unreachable", format!("token exchange: {e}")))?;
 
         let status = resp.status();
-        let body = resp.bytes().await.map_err(|e| format!("read body: {e}"))?;
+        let body = resp
+            .bytes()
+            .await
+            .map_err(|e| fail(ExchangeErrorKind::Unavailable, "unreachable", format!("read body: {e}")))?;
 
         if !status.is_success() {
-            return Err(format!(
-                "token endpoint returned {}: {}",
-                status,
-                String::from_utf8_lossy(&body)
+            let (kind, reason) = classify_token_error(status, &body);
+            return Err(fail(
+                kind,
+                reason,
+                format!("token endpoint returned {}: {}", status, String::from_utf8_lossy(&body)),
             ));
         }
 
-        serde_json::from_slice(&body).map_err(|e| format!("parse token response: {e}"))
+        serde_json::from_slice(&body).map_err(|e| {
+            fail(ExchangeErrorKind::Internal, "unreadable response", format!("parse token response: {e}"))
+        })
     }
 
     /// The (issuer, client_id) an id_token from this provider must carry.
