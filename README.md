@@ -69,6 +69,33 @@ refused and logged with its tenant; a slice that would take the list past 256 is
 refused whole; the `people` tenant's slice is not read (its providers stay in
 `providers`). An enabled provider missing its credential disables only itself.
 
+## Tenant providers: where they live
+
+A tenant's sign-in providers live in one place: its `oauth.OAuthTenantConfig`
+slice in kernel's `ConfigState.tenant_configs`, which the tenant edits with
+`UpdateTenantConfig` and kernel's `DeleteTenant` removes. oauth persists no
+tenant-provider data of its own: it writes nothing to disk or to kernel, and
+holds the slices only in memory, as the provider list, OIDC clients (with their
+discovery and JWKS caches) and state codec that every Config delivery and
+tenant config snapshot rebuilds whole. A provider its tenant removed, or a
+deleted tenant's, is in nothing built after (`src/auth.rs`
+`tenant_removal_tests`). A tenant change is applied over the last Config that
+built, so a Config that fails to build does not hold a deleted tenant's
+providers in place.
+
+A sign-in in flight names its provider by a stable key (tenant, issuer and
+client id; `fleet` for a fleet-wide provider) in its sealed `state`, not by an
+index in the list. If that provider is gone or moved to another issuer or
+client when the IdP answers, `MintCallbackTokens` answers FAILED_PRECONDITION
+"this sign-in option no longer exists" (Apple's form_post callback sends the
+browser to `/`), never another provider's login. The state is keyed by the
+operator's secrets (fleet-wide client secrets and the Apple .p8), so a tenant's
+edit does not void other sign-ins in flight; only with no operator secret at
+all do the tenants' secrets key it.
+
+The one fleet-level knob for tenant providers is `tenant_redirect_uri_prefixes`:
+the fleet webapp's own addresses, set by the operator.
+
 ## Key Files
 
 - `src/main.rs` — Server startup

@@ -80,6 +80,35 @@ fn client_key<'a>(issuer: &'a str, client_id: &'a str) -> (&'a str, &'a str) {
     (issuer.trim_end_matches('/'), client_id)
 }
 
+/// Whose a provider is: the operator's fleet-wide list, or a tenant's slice.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderOwner {
+    Fleet,
+    Tenant(String),
+}
+
+/// The stable name of a provider: its owner and client. A sign-in state names
+/// its provider by this, not by its index in the list, which shifts whenever a
+/// tenant's slice is added, edited or deleted; a state whose key is no longer
+/// offered resolves to nothing instead of to whatever provider took its index.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ProviderKey {
+    #[serde(rename = "o")]
+    pub owner: ProviderOwner,
+    #[serde(rename = "i")]
+    pub issuer: String,
+    #[serde(rename = "c")]
+    pub client_id: String,
+}
+
+impl ProviderKey {
+    pub fn new(owner: ProviderOwner, p: &ProviderConfig) -> Self {
+        let (issuer, client_id) = client_key(&p.issuer, &p.client_id);
+        Self { owner, issuer: issuer.to_string(), client_id: client_id.to_string() }
+    }
+}
+
 /// A tenant slice's provider as the service's provider type.
 ///
 /// Its redirect allowlist is the operator's `tenant_redirect_uri_prefixes`:
@@ -117,8 +146,12 @@ fn tenant_provider(tenant: &str, p: &OAuthProvider, redirect_prefixes: &[String]
     }
 }
 
-/// The providers the service offers: `cfg.providers`, at their own indexes,
-/// then each tenant slice's.
+/// The providers the service offers, each with its key: `cfg.providers`, at
+/// their own indexes, then each tenant slice's.
+///
+/// The list is built from `cfg` and `slices` alone: nothing of an earlier list
+/// is carried over, so a provider its tenant removed (or a tenant deleted with
+/// its slice) is in no list built after.
 ///
 /// One bad provider never takes the others down: an enabled provider missing
 /// its credential is disabled (a fleet-wide one keeps its index, so the list
@@ -131,8 +164,8 @@ pub fn effective_providers(
     cfg: &Config,
     slices: &[TenantSlice],
     apple_key_p8: &str,
-) -> Vec<ProviderConfig> {
-    let mut providers: Vec<ProviderConfig> = cfg
+) -> Vec<(ProviderKey, ProviderConfig)> {
+    let mut providers: Vec<(ProviderKey, ProviderConfig)> = cfg
         .providers
         .iter()
         .cloned()
@@ -143,7 +176,7 @@ pub fn effective_providers(
                     p.enable = false;
                 }
             }
-            p
+            (ProviderKey::new(ProviderOwner::Fleet, &p), p)
         })
         .collect();
 
@@ -171,11 +204,11 @@ pub fn effective_providers(
 
     // Who holds each (issuer, client_id): None for the fleet-wide list.
     let mut owners: HashMap<(String, String), Option<String>> = HashMap::new();
-    for p in &providers {
+    for (_, p) in &providers {
         let (iss, id) = client_key(&p.issuer, &p.client_id);
         owners.insert((iss.to_string(), id.to_string()), None);
     }
-    let mut listed = providers.iter().filter(|p| p.enable).count();
+    let mut listed = providers.iter().filter(|(_, p)| p.enable).count();
 
     for slice in slices {
         let tenant = slice.tenant.as_str();
@@ -229,7 +262,8 @@ pub fn effective_providers(
             let (iss, id) = client_key(&a.issuer, &a.client_id);
             owners.insert((iss.to_string(), id.to_string()), Some(tenant.to_string()));
         }
-        providers.extend(accepted);
+        let owner = ProviderOwner::Tenant(tenant.to_string());
+        providers.extend(accepted.into_iter().map(|a| (ProviderKey::new(owner.clone(), &a), a)));
     }
     providers
 }
@@ -284,6 +318,11 @@ mod tests {
         }
     }
 
+    /// The offered providers without their keys.
+    fn offered(cfg: &Config, slices: &[TenantSlice], apple_key_p8: &str) -> Vec<ProviderConfig> {
+        effective_providers(cfg, slices, apple_key_p8).into_iter().map(|(_, p)| p).collect()
+    }
+
     fn names(providers: &[ProviderConfig]) -> Vec<(&str, bool)> {
         providers.iter().map(|p| (p.name.as_str(), p.enable)).collect()
     }
@@ -314,7 +353,7 @@ mod tests {
     #[test]
     fn without_tenant_slices_the_fleet_list_is_unchanged() {
         let cfg = config(vec![fleet("Google", "https://accounts.google.com"), fleet("Okta", "https://okta.example")]);
-        assert_eq!(effective_providers(&cfg, &[], ""), cfg.providers);
+        assert_eq!(offered(&cfg, &[], ""), cfg.providers);
     }
 
     #[test]
@@ -330,7 +369,7 @@ mod tests {
             slice("/tenants/beta", vec![named]),
         ];
 
-        let got = effective_providers(&cfg, &slices, "");
+        let got = offered(&cfg, &slices, "");
         assert_eq!(names(&got), [("Google", true), ("acme: idp.acme.example", true), ("Beta SSO", true)]);
         let acme = &got[1];
         assert_eq!(acme.issuer, "https://idp.acme.example/oidc");
@@ -343,7 +382,7 @@ mod tests {
     #[test]
     fn a_long_fallback_name_is_cut_to_the_provider_info_bound() {
         let tenant = "é".repeat(100);
-        let got = effective_providers(&config(vec![]), &[slice(&tenant, vec![tenant_idp("https://idp.example", "c")])], "");
+        let got = offered(&config(vec![]), &[slice(&tenant, vec![tenant_idp("https://idp.example", "c")])], "");
         assert!(got[0].name.len() <= MAX_NAME_BYTES && got[0].name.len() > MAX_NAME_BYTES - 2, "{}", got[0].name);
     }
 
@@ -352,7 +391,7 @@ mod tests {
         let mut cfg = config(vec![fleet("Google", "https://accounts.google.com")]);
         cfg.tenant_redirect_uri_prefixes.clear();
         let slices = [slice("/tenants/acme", vec![tenant_idp("https://idp.acme.example", "acme")])];
-        let (got, log) = logs(|| effective_providers(&cfg, &slices, ""));
+        let (got, log) = logs(|| offered(&cfg, &slices, ""));
         assert_eq!(got, cfg.providers);
         assert!(log.contains("tenant_redirect_uri_prefixes is empty"), "{log}");
     }
@@ -362,11 +401,11 @@ mod tests {
         let cfg = config(vec![fleet("Google", "https://accounts.google.com")]);
         for people in ["people", "/people", "/tenants/people"] {
             let slices = [slice(people, vec![tenant_idp("https://appleid.apple.com", "com.example.people")])];
-            assert_eq!(effective_providers(&cfg, &slices, ""), cfg.providers, "{people}");
+            assert_eq!(offered(&cfg, &slices, ""), cfg.providers, "{people}");
         }
         // A tenant merely named like it is read.
         let slices = [slice("/tenants/peoples", vec![tenant_idp("https://idp.example", "c")])];
-        assert_eq!(effective_providers(&cfg, &slices, "").len(), 2);
+        assert_eq!(offered(&cfg, &slices, "").len(), 2);
     }
 
     #[test]
@@ -386,7 +425,7 @@ mod tests {
             ],
         )];
 
-        let (got, log) = logs(|| effective_providers(&cfg, &slices, ""));
+        let (got, log) = logs(|| offered(&cfg, &slices, ""));
         assert_eq!(names(&got), [("Google", true), ("Okta", false), ("acme: accounts.google.com", true)]);
         assert_eq!(got[2].client_id, "acme-client");
         assert_eq!(log.matches("shadows a fleet-wide provider").count(), 2, "{log}");
@@ -399,7 +438,7 @@ mod tests {
             slice("/tenants/acme", vec![tenant_idp("https://idp.example", "shared")]),
             slice("/tenants/beta", vec![tenant_idp("https://idp.example", "shared"), tenant_idp("https://idp.example", "beta")]),
         ];
-        let (got, log) = logs(|| effective_providers(&config(vec![]), &slices, ""));
+        let (got, log) = logs(|| offered(&config(vec![]), &slices, ""));
         assert_eq!(got.iter().map(|p| p.client_id.as_str()).collect::<Vec<_>>(), ["shared", "beta"]);
         assert!(log.contains("tenant=/tenants/beta owner=/tenants/acme"), "{log}");
     }
@@ -417,7 +456,7 @@ mod tests {
         let slices = [slice("/tenants/acme", vec![tenant_no_secret, tenant_idp("https://other.acme.example", "acme")])];
 
         // Without the .p8 the Apple provider is off too; every other stays.
-        let (got, log) = logs(|| effective_providers(&cfg, &slices, ""));
+        let (got, log) = logs(|| offered(&cfg, &slices, ""));
         assert_eq!(
             names(&got),
             [("NoSecret", false), ("Google", true), ("Apple", false), ("acme: other.acme.example", true)]
@@ -426,7 +465,7 @@ mod tests {
         assert!(log.contains("tenant=/tenants/acme"), "{log}");
 
         // With it, Apple is offered.
-        let got = effective_providers(&cfg, &slices, P8);
+        let got = offered(&cfg, &slices, P8);
         assert_eq!(names(&got)[2], ("Apple", true));
     }
 
@@ -435,7 +474,7 @@ mod tests {
         let mut bad_ca = tenant_idp("https://idp.acme.example", "acme");
         bad_ca.ca_pem = "-----BEGIN CERTIFICATE-----\nnot base64\n-----END CERTIFICATE-----\n".to_string();
         let slices = [slice("/tenants/acme", vec![bad_ca, tenant_idp("https://other.acme.example", "acme")])];
-        let got = effective_providers(&config(vec![]), &slices, "");
+        let got = offered(&config(vec![]), &slices, "");
         assert_eq!(names(&got), [("acme: other.acme.example", true)]);
     }
 
@@ -455,7 +494,7 @@ mod tests {
         slices.push(tenant(15, 1));
         slices.push(tenant(16, 0));
 
-        let (got, log) = logs(|| effective_providers(&config(fleet_list), &slices, ""));
+        let (got, log) = logs(|| offered(&config(fleet_list), &slices, ""));
         assert_eq!(got.len(), MAX_LISTED_PROVIDERS);
         assert!(got.iter().all(|p| p.issuer != "https://t15.example"));
         assert!(log.contains("tenant=/tenants/t15"), "{log}");

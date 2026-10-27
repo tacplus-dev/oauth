@@ -9,12 +9,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use oauth_model::types::services::oauth::oauth::ProviderConfig;
 
+use crate::providers::ProviderKey;
+
 /// Encrypted payload inside the OAuth2 state parameter.
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct StatePayload {
-    /// Provider index (position in the providers list).
-    #[serde(rename = "p")]
-    pub provider_index: i32,
+    /// The provider, by its stable key: its index in the list can name
+    /// another provider by the time the IdP answers.
+    #[serde(rename = "k")]
+    pub provider: ProviderKey,
     /// Original callback URL to redirect after auth.
     #[serde(rename = "c")]
     pub callback_url: String,
@@ -40,9 +43,10 @@ pub struct StatePayload {
 
 /// AES-256-GCM codec for OAuth2 state parameters.
 ///
-/// The key is derived from sorted provider client secrets, plus the Apple .p8
-/// key when one is configured, so all instances sharing the same config and
-/// Secret can encode/decode state — no shared nonce store. The .p8 matters
+/// The key is derived from the sorted client secrets of the providers it is
+/// given (the fleet-wide ones, see `auth::flow_state`), plus the Apple .p8 key
+/// when one is configured, so all instances sharing the same config and Secret
+/// can encode/decode state — no shared nonce store. The .p8 matters
 /// because an Apple provider has no static client secret: its per-exchange
 /// minted secret differs per pod and per minute, so it cannot key the state.
 pub struct StateCodec {
@@ -73,7 +77,7 @@ impl StateCodec {
     /// `session_id` is set when the flow was initiated by a CLI client.
     pub fn encode(
         &self,
-        provider_index: i32,
+        provider: &ProviderKey,
         callback_url: &str,
         code_verifier: &str,
         session_id: Option<&str>,
@@ -84,7 +88,7 @@ impl StateCodec {
             .as_secs() as i64;
 
         self.seal(&StatePayload {
-            provider_index,
+            provider: provider.clone(),
             callback_url: callback_url.to_string(),
             code_verifier: code_verifier.to_string(),
             created_at: now,

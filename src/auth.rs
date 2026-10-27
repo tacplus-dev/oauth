@@ -26,7 +26,7 @@ use oauth_model::types::services::oauth::oauth::{
 
 use crate::nonce::{generate_code_verifier, StateCodec, StatePayload};
 use crate::oidc::{ExchangeError, ExchangeErrorKind, OidcClient};
-use crate::providers::{effective_providers, tenant_slices, TenantSlice};
+use crate::providers::{effective_providers, tenant_slices, ProviderKey, TenantSlice};
 use crate::signin_email::{DnsResolver, EmailRateLimiter, GlobalRateLimiter, IssuerFinder};
 
 /// A `session_id` is completable only where its CLI session is pending.
@@ -58,14 +58,7 @@ pub struct AuthImpl {
     /// so `broker_cli_auth` can tell a session this instance is actually
     /// holding open from a `session_id` the caller merely knows.
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
-    state: RwLock<Option<AuthState>>,
-    /// The last delivered Config and tenant slices, the two inputs `state` is
-    /// built from. Either changing rebuilds it from both.
-    fleet_config: std::sync::Mutex<Option<Config>>,
-    tenant_slices: std::sync::Mutex<Vec<TenantSlice>>,
-    /// Serializes rebuilds, so the state last installed is built from the
-    /// latest inputs.
-    rebuild_lock: tokio::sync::Mutex<()>,
+    flow: Flow,
     dns_resolver: Arc<dyn DnsResolver>,
     issuer_finder: Arc<dyn IssuerFinder>,
     sign_in_email_limiter: EmailRateLimiter,
@@ -80,8 +73,80 @@ struct AuthState {
     /// (crate::providers::effective_providers): the fleet-wide providers at
     /// their own indexes, then the tenant slices'.
     config: Config,
+    /// The key of each of `config.providers`, at the same index.
+    keys: Vec<ProviderKey>,
     /// How many of `config.providers` are the fleet-wide ones.
     fleet_providers: usize,
+}
+
+/// The flow state and the two inputs it is built from: the Config in use and
+/// the tenant slices last delivered. Either changing rebuilds it from both,
+/// and each rebuild replaces the whole state (provider list, OIDC clients with
+/// their discovery and JWKS caches, state codec), so nothing of a provider
+/// that left the inputs outlives the rebuild.
+struct Flow {
+    state: RwLock<Option<AuthState>>,
+    /// The last Config a state was built from. A Config that fails to build
+    /// is not kept, so a tenant change is applied over the Config in use and
+    /// a deleted tenant's providers never stay because a broken Config was
+    /// delivered in between.
+    fleet_config: std::sync::Mutex<Option<Config>>,
+    tenant_slices: std::sync::Mutex<Vec<TenantSlice>>,
+    /// Serializes rebuilds, so the state last installed is built from the
+    /// latest inputs.
+    rebuild_lock: tokio::sync::Mutex<()>,
+}
+
+impl Flow {
+    fn new() -> Self {
+        Self {
+            state: RwLock::new(None),
+            fleet_config: std::sync::Mutex::new(None),
+            tenant_slices: std::sync::Mutex::new(Vec::new()),
+            rebuild_lock: tokio::sync::Mutex::new(()),
+        }
+    }
+
+    /// Build the flow state from `cfg` and the tenant slices last recorded,
+    /// and install it.
+    async fn apply_config(&self, cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
+        self.rebuild(Some(cfg)).await
+    }
+
+    /// Record kernel's tenant config slices.
+    fn set_tenant_configs(&self, entries: &HashMap<String, TenantConfigEntry>) {
+        *self.tenant_slices.lock().unwrap() = tenant_slices(entries);
+    }
+
+    /// Rebuild the flow state with the tenant slices last recorded.
+    async fn reload_tenants(&self) {
+        if let Err(e) = self.rebuild(None).await {
+            error!(error = %e, "tenant config change not applied, keeping the providers in use");
+        }
+    }
+
+    /// Build the flow state from `cfg` (or the Config in use) and the last
+    /// tenant slices, and install it. Before the first Config there is nothing
+    /// to build.
+    async fn rebuild(&self, cfg: Option<&Config>) -> Result<(), Box<dyn std::error::Error>> {
+        let _rebuilding = self.rebuild_lock.lock().await;
+        let Some(cfg) = cfg.cloned().or_else(|| self.fleet_config.lock().unwrap().clone()) else {
+            return Ok(());
+        };
+        let slices = self.tenant_slices.lock().unwrap().clone();
+        let state = auth_state(&cfg, &slices).await?;
+        *self.fleet_config.lock().unwrap() = Some(cfg);
+        match &state {
+            None => info!("OAuth2/OIDC disabled in config"),
+            Some(s) => info!(
+                "OAuth2/OIDC initialized with {} providers ({} from tenant slices)",
+                s.config.providers.len(),
+                s.config.providers.len() - s.fleet_providers
+            ),
+        }
+        *self.state.write().await = state;
+        Ok(())
+    }
 }
 
 impl AuthImpl {
@@ -96,10 +161,7 @@ impl AuthImpl {
             sm,
             broker: broker.clone(),
             pending,
-            state: RwLock::new(None),
-            fleet_config: std::sync::Mutex::new(None),
-            tenant_slices: std::sync::Mutex::new(Vec::new()),
-            rebuild_lock: tokio::sync::Mutex::new(()),
+            flow: Flow::new(),
             dns_resolver,
             issuer_finder,
             sign_in_email_limiter: EmailRateLimiter::new(),
@@ -109,47 +171,23 @@ impl AuthImpl {
 
     /// Initialize OIDC client and state codec from config.
     pub async fn apply_config(&self, cfg: &Config) -> Result<(), Box<dyn std::error::Error>> {
-        *self.fleet_config.lock().unwrap() = Some(cfg.clone());
-        self.rebuild().await
+        self.flow.apply_config(cfg).await
     }
 
     /// Record kernel's tenant config slices. Synchronous, so snapshots are kept
     /// in the order the watch delivers them; `reload_tenants` applies them.
     pub fn set_tenant_configs(&self, entries: &HashMap<String, TenantConfigEntry>) {
-        *self.tenant_slices.lock().unwrap() = tenant_slices(entries);
+        self.flow.set_tenant_configs(entries);
     }
 
     /// Rebuild the flow state with the tenant slices last recorded.
     pub async fn reload_tenants(&self) {
-        if let Err(e) = self.rebuild().await {
-            error!(error = %e, "tenant config change not applied, keeping the providers in use");
-        }
-    }
-
-    /// Build the flow state from the last Config and tenant slices and install
-    /// it. Before the first Config there is nothing to build.
-    async fn rebuild(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let _rebuilding = self.rebuild_lock.lock().await;
-        let Some(cfg) = self.fleet_config.lock().unwrap().clone() else {
-            return Ok(());
-        };
-        let slices = self.tenant_slices.lock().unwrap().clone();
-        let state = auth_state(&cfg, &slices).await?;
-        match &state {
-            None => info!("OAuth2/OIDC disabled in config"),
-            Some(s) => info!(
-                "OAuth2/OIDC initialized with {} providers ({} from tenant slices)",
-                s.config.providers.len(),
-                s.config.providers.len() - s.fleet_providers
-            ),
-        }
-        *self.state.write().await = state;
-        Ok(())
+        self.flow.reload_tenants().await
     }
 
     /// Helper to get initialized state or return error.
     async fn require_state(&self) -> Result<tokio::sync::RwLockReadGuard<'_, Option<AuthState>>, tonic::Status> {
-        let guard = self.state.read().await;
+        let guard = self.flow.state.read().await;
         if guard.is_none() {
             return Err(tonic::Status::failed_precondition("OAuth2 not enabled"));
         }
@@ -180,10 +218,8 @@ async fn flow_state(
     slices: &[TenantSlice],
     apple_key_p8: &str,
 ) -> Result<AuthState, Box<dyn std::error::Error>> {
-    let config = Config {
-        providers: effective_providers(cfg, slices, apple_key_p8),
-        ..cfg.clone()
-    };
+    let (keys, providers) = effective_providers(cfg, slices, apple_key_p8).into_iter().unzip();
+    let config = Config { providers, ..cfg.clone() };
 
     let oidc_client = OidcClient::new(
         &config.providers,
@@ -194,12 +230,19 @@ async fn flow_state(
     .await
     .map_err(|e| format!("oidc client: {e}"))?;
 
-    let state_codec = StateCodec::new(&config.providers, apple_key_p8, config.nonce_expire_seconds);
+    // The state key comes from the operator's secrets, the fleet-wide client
+    // secrets and the .p8, so a tenant editing or deleting its slice neither
+    // voids every sign-in in flight nor keys the state with a secret the
+    // tenant knows. Only an operator who gave none leaves it to the tenants'.
+    let operator_keyed = !apple_key_p8.is_empty() || cfg.providers.iter().any(|p| !p.client_secret.is_empty());
+    let key_providers = if operator_keyed { &cfg.providers } else { &config.providers };
+    let state_codec = StateCodec::new(key_providers, apple_key_p8, config.nonce_expire_seconds);
 
     Ok(AuthState {
         oidc_client,
         state_codec,
         config,
+        keys,
         fleet_providers: cfg.providers.len(),
     })
 }
@@ -215,6 +258,7 @@ async fn flow_state(
 fn form_post_redirect(
     codec: &StateCodec,
     config: &Config,
+    keys: &[ProviderKey],
     req: &FormPostCallbackRequest,
 ) -> String {
     let mut payload = match codec.decode(&req.state) {
@@ -224,13 +268,15 @@ fn form_post_redirect(
             return "/".to_string();
         }
     };
-    if check_callback_url(config, payload.provider_index, &payload.callback_url).is_err() {
+    let Ok(provider_index) = resolve_provider(config, keys, &payload.provider) else {
+        return "/".to_string();
+    };
+    if check_callback_url(config, provider_index, &payload.callback_url).is_err() {
         return "/".to_string();
     }
-    // check_callback_url resolved the index, so the provider exists.
-    if config.providers[payload.provider_index as usize].apple.is_none() {
+    if config.providers[provider_index as usize].apple.is_none() {
         warn!(
-            provider_index = payload.provider_index,
+            provider_index,
             "form_post callback for a provider that does not use form_post, redirecting to /"
         );
         return "/".to_string();
@@ -714,6 +760,23 @@ fn callback_url_allowed(allowed_prefixes: &[String], callback_url: &str) -> bool
     })
 }
 
+/// The index, in the list now offered, of the provider a sign-in state names.
+///
+/// A sign-in outlives the list it started from: its tenant may have edited the
+/// provider's issuer or client, disabled it or been deleted before the IdP
+/// answers. That sign-in fails here, as one to start again, rather than going
+/// on with whichever provider now has the index it started at.
+fn resolve_provider(config: &Config, keys: &[ProviderKey], key: &ProviderKey) -> Result<i32, tonic::Status> {
+    keys.iter()
+        .zip(&config.providers)
+        .position(|(k, p)| p.enable && k == key)
+        .map(|i| i as i32)
+        .ok_or_else(|| {
+            info!(provider = ?key, "sign-in state names a provider no longer offered");
+            tonic::Status::failed_precondition("this sign-in option no longer exists; sign in again")
+        })
+}
+
 /// Resolve a provider by the index the caller supplied and reject the request
 /// unless its allowlist covers `callback_url`.
 fn check_callback_url(
@@ -843,7 +906,7 @@ impl AuthHandler for AuthImpl {
         &self,
         _caller: Option<&servicemanager::auth::Caller>,
     ) -> Result<ListProvidersResponse, tonic::Status> {
-        let guard = self.state.read().await;
+        let guard = self.flow.state.read().await;
         let state = match guard.as_ref() {
             Some(s) => s,
             None => {
@@ -872,6 +935,8 @@ impl AuthHandler for AuthImpl {
         // becomes the IdP redirect_uri, so it must be one the operator
         // allowlisted for this provider.
         check_callback_url(&state.config, req.provider_index, &req.callback_url)?;
+        // check_callback_url resolved the index, so the provider exists.
+        let provider = &state.keys[req.provider_index as usize];
 
         let code_verifier = generate_code_verifier();
         let session_id = if req.session_id.is_empty() {
@@ -882,7 +947,7 @@ impl AuthHandler for AuthImpl {
         let encoded_state =
             state
                 .state_codec
-                .encode(req.provider_index, &req.callback_url, &code_verifier, session_id);
+                .encode(provider, &req.callback_url, &code_verifier, session_id);
 
         let redirect_url = state
             .oidc_client
@@ -916,7 +981,7 @@ impl AuthHandler for AuthImpl {
         if !self.sign_in_global_limiter.allow(Instant::now()) {
             return Err(tonic::Status::resource_exhausted("too many sign-in lookups, try again shortly"));
         }
-        let guard = self.state.read().await;
+        let guard = self.flow.state.read().await;
         // The fleet-wide providers only: the guess is made from any address
         // anyone types, and a tenant's own client (its Google, say) is that
         // tenant's sign-in option, not the route for every address at that IdP.
@@ -937,18 +1002,19 @@ impl AuthHandler for AuthImpl {
             .state_codec
             .decode(&req.state)
             .map_err(|e| tonic::Status::unauthenticated(format!("invalid or expired state: {e}")))?;
+        let provider_index = resolve_provider(&state.config, &state.keys, &payload.provider)?;
 
         // 2. Re-check the callback_url the state carries. The state is
         // encrypted, so this cannot have been forged, but the redirect_uri sent
         // to the token endpoint gets its own check rather than trusting the
         // decode.
-        check_callback_url(&state.config, payload.provider_index, &payload.callback_url)?;
+        check_callback_url(&state.config, provider_index, &payload.callback_url)?;
 
         // 3. Exchange authorization code for IDP tokens.
         let token_resp = state
             .oidc_client
             .exchange_code(
-                payload.provider_index,
+                provider_index,
                 &req.code,
                 &payload.code_verifier,
                 &payload.callback_url,
@@ -965,25 +1031,24 @@ impl AuthHandler for AuthImpl {
         // exp/nbf, and bind it to the provider whose code we just exchanged.
         let jwks = state
             .oidc_client
-            .fetch_jwks(payload.provider_index)
+            .fetch_jwks(provider_index)
             .await
             .map_err(|e| tonic::Status::internal(format!("failed to fetch IDP JWKS: {e}")))?;
         let signing_algs = state
             .oidc_client
-            .id_token_signing_algs(payload.provider_index)
+            .id_token_signing_algs(provider_index)
             .await
             .map_err(|e| tonic::Status::internal(format!("provider lookup failed: {e}")))?;
         let (expected_issuer, expected_audience) = state
             .oidc_client
-            .expected_claims(payload.provider_index)
+            .expected_claims(provider_index)
             .map_err(|e| tonic::Status::internal(format!("provider lookup failed: {e}")))?;
 
         // 5. Claims come from the verified token only — a rejection here never
         // reaches MintUserToken.
         let mut id_claims =
             verify_id_token(id_token_str, &jwks, &signing_algs, &expected_issuer, &expected_audience)?;
-        // check_callback_url resolved the index, so the provider exists.
-        let provider = &state.config.providers[payload.provider_index as usize];
+        let provider = &state.config.providers[provider_index as usize];
         drop_unverified_email(&mut id_claims, &provider.email_verified_claim, &provider.issuer_template);
 
         // The principal is the raw IDP `sub`, as-is — never the email, which is
@@ -1109,7 +1174,7 @@ impl AuthHandler for AuthImpl {
         let guard = self.require_state().await?;
         let state = guard.as_ref().unwrap();
         Ok(FormPostCallbackResponse {
-            redirect_url: form_post_redirect(&state.state_codec, &state.config, &req),
+            redirect_url: form_post_redirect(&state.state_codec, &state.config, &state.keys, &req),
             ..Default::default()
         })
     }
@@ -1121,7 +1186,7 @@ impl AuthHandler for AuthImpl {
     ) -> Result<LogoutResponse, tonic::Status> {
         let mut redirect_url = String::new();
 
-        let guard = self.state.read().await;
+        let guard = self.flow.state.read().await;
         if let Some(state) = guard.as_ref() {
             if !req.post_logout_redirect_url.is_empty() {
                 for i in 0..state.config.providers.len() {
@@ -1877,8 +1942,18 @@ mod callback_url_allowlist_tests {
         );
         assert!(check_callback_url(&state.config, 0, tenant_webapp).is_err());
 
-        let encoded = state.state_codec.encode(1, tenant_webapp, "verifier", None);
-        assert_eq!(state.state_codec.decode(&encoded).unwrap().provider_index, 1);
+        // The state names the provider by its owner and client, not its index.
+        assert_eq!(state.keys[0].owner, crate::providers::ProviderOwner::Fleet);
+        let acme = ProviderKey {
+            owner: crate::providers::ProviderOwner::Tenant("/tenants/acme".to_string()),
+            issuer: "https://127.0.0.1:2/realms/acme".to_string(),
+            client_id: "acme-client".to_string(),
+        };
+        assert_eq!(state.keys[1], acme);
+        let encoded = state.state_codec.encode(&state.keys[1], tenant_webapp, "verifier", None);
+        let payload = state.state_codec.decode(&encoded).unwrap();
+        assert_eq!(payload.provider, acme);
+        assert_eq!(resolve_provider(&state.config, &state.keys, &payload.provider).unwrap(), 1);
         assert_eq!(
             state.oidc_client.expected_claims(1).unwrap(),
             ("https://127.0.0.1:2/realms/acme".to_string(), "acme-client".to_string())
@@ -1898,6 +1973,279 @@ mod callback_url_allowlist_tests {
             check_callback_url(&cfg, -1, LEGIT).unwrap_err().code(),
             tonic::Code::InvalidArgument
         );
+    }
+}
+
+#[cfg(test)]
+mod tenant_removal_tests {
+    //! A tenant's providers live in its kernel slice only: deleting the tenant
+    //! (kernel's DeleteTenant removes the slice) or editing the slice takes
+    //! them out of everything on the next rebuild, and a sign-in in flight for
+    //! one fails as a sign-in to start again.
+    use super::*;
+    use crate::providers::ProviderOwner;
+    use oauth_model::types::generated::tenant_config::tenant_config::TenantConfig;
+    use oauth_model::types::services::oauth::oauth::{OAuthProvider, OAuthTenantConfig};
+
+    const WEBAPP: &str = "https://console.example/login";
+
+    fn fleet_provider() -> ProviderConfig {
+        ProviderConfig {
+            enable: true,
+            name: "fleet".to_string(),
+            issuer: "https://127.0.0.1:1".to_string(),
+            client_id: "fleet-client".to_string(),
+            client_secret: "fleet-secret".to_string(),
+            authorization_endpoint: "https://idp.test/auth".to_string(),
+            allowed_redirect_uri_prefixes: vec![WEBAPP.to_string()],
+            ..Default::default()
+        }
+    }
+
+    fn config() -> Config {
+        Config {
+            enable: true,
+            providers: vec![fleet_provider()],
+            tenant_redirect_uri_prefixes: vec![WEBAPP.to_string()],
+            nonce_expire_seconds: 300,
+            ..Default::default()
+        }
+    }
+
+    /// A tenant's IdP, named after it, with a client of its own.
+    fn idp(tenant: &str, client_id: &str) -> OAuthProvider {
+        OAuthProvider {
+            enable: true,
+            name: tenant.to_string(),
+            issuer_url: format!("https://127.0.0.1:2/realms/{tenant}"),
+            client_id: client_id.to_string(),
+            client_secret: format!("{tenant}-secret"),
+            ..Default::default()
+        }
+    }
+
+    /// kernel's ConfigState.tenant_configs holding these tenants' slices.
+    fn tenant_configs(tenants: &[(&str, Vec<OAuthProvider>)]) -> HashMap<String, TenantConfigEntry> {
+        tenants
+            .iter()
+            .map(|(t, providers)| {
+                let name = format!("/tenants/{t}");
+                let entry = TenantConfigEntry {
+                    tenant_name: name.clone(),
+                    config: Some(TenantConfig {
+                        oauth: Some(OAuthTenantConfig { providers: providers.clone(), ..Default::default() }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                };
+                (name, entry)
+            })
+            .collect()
+    }
+
+    fn tenant_key(tenant: &str, client_id: &str) -> ProviderKey {
+        ProviderKey {
+            owner: ProviderOwner::Tenant(format!("/tenants/{tenant}")),
+            issuer: format!("https://127.0.0.1:2/realms/{tenant}"),
+            client_id: client_id.to_string(),
+        }
+    }
+
+    /// A flow built from `config()` and these tenants' slices.
+    async fn flow(tenants: &[(&str, Vec<OAuthProvider>)]) -> Flow {
+        let flow = Flow::new();
+        flow.set_tenant_configs(&tenant_configs(tenants));
+        flow.apply_config(&config()).await.expect("flow state");
+        flow
+    }
+
+    /// Kernel's watch delivering a new snapshot, as main.rs wires it.
+    async fn deliver(flow: &Flow, tenants: &[(&str, Vec<OAuthProvider>)]) {
+        flow.set_tenant_configs(&tenant_configs(tenants));
+        flow.reload_tenants().await;
+    }
+
+    /// What ListProviders answers.
+    async fn listed(flow: &Flow) -> Vec<(String, i32)> {
+        let guard = flow.state.read().await;
+        provider_infos(&guard.as_ref().unwrap().config.providers)
+            .into_iter()
+            .map(|p| (p.name, p.provider_index))
+            .collect()
+    }
+
+    fn listing(names: &[&str]) -> Vec<(String, i32)> {
+        names.iter().enumerate().map(|(i, n)| (n.to_string(), i as i32)).collect()
+    }
+
+    /// Every lookup the flow state answers by index, for each index: the
+    /// provider's issuer and client, whether its allowlist is checked, and
+    /// whether the OIDC client still has it.
+    fn lookups(state: &AuthState) -> Vec<(ProviderKey, String, bool, Option<(String, String)>)> {
+        (0..state.config.providers.len() + 1)
+            .filter_map(|i| {
+                let key = state.keys.get(i)?.clone();
+                let p = &state.config.providers[i];
+                let checked = check_callback_url(&state.config, i as i32, WEBAPP).is_ok();
+                Some((key, p.client_secret.clone(), checked, state.oidc_client.expected_claims(i as i32).ok()))
+            })
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn a_deleted_tenant_leaves_nothing_behind() {
+        let acme = ("acme", vec![idp("acme", "acme-client"), idp("acme", "acme-cli")]);
+        let beta = ("beta", vec![idp("beta", "beta-client")]);
+        let flow = flow(&[acme.clone(), beta.clone()]).await;
+        assert_eq!(listed(&flow).await, listing(&["fleet", "acme", "acme", "beta"]));
+
+        // DeleteTenant removes acme's slice; the next snapshot lacks it.
+        deliver(&flow, &[beta.clone()]).await;
+        assert_eq!(listed(&flow).await, listing(&["fleet", "beta"]));
+        {
+            let guard = flow.state.read().await;
+            let state = guard.as_ref().unwrap();
+            assert_eq!(state.fleet_providers, 1);
+            assert!(state.config.providers.iter().all(|p| !p.issuer.contains("acme")));
+            let found = lookups(state);
+            assert_eq!(found.len(), 2);
+            assert_eq!(found[1].0, tenant_key("beta", "beta-client"));
+            assert_eq!(found[1].1, "beta-secret");
+            assert!(found[1].2);
+            assert_eq!(
+                found[1].3,
+                Some(("https://127.0.0.1:2/realms/beta".to_string(), "beta-client".to_string()))
+            );
+            // The indexes acme's providers had resolve to nothing.
+            for i in 2..4 {
+                assert!(check_callback_url(&state.config, i, WEBAPP).is_err(), "{i}");
+                assert!(state.oidc_client.expected_claims(i).is_err(), "{i}");
+            }
+        }
+
+        // The last tenant deleted leaves the fleet-wide list as it was.
+        deliver(&flow, &[]).await;
+        assert_eq!(listed(&flow).await, listing(&["fleet"]));
+        let guard = flow.state.read().await;
+        let state = guard.as_ref().unwrap();
+        assert_eq!(state.keys, [ProviderKey::new(ProviderOwner::Fleet, &fleet_provider())]);
+        assert!(state.oidc_client.expected_claims(1).is_err());
+    }
+
+    #[tokio::test]
+    async fn a_tenants_edit_replaces_its_providers() {
+        let flow = flow(&[("acme", vec![idp("acme", "acme-client"), idp("acme", "acme-cli")])]).await;
+
+        // acme drops one provider, moves the other to a new client and
+        // rotates its secret.
+        let mut moved = idp("acme", "acme-client-2");
+        moved.client_secret = "rotated".to_string();
+        deliver(&flow, &[("acme", vec![moved])]).await;
+
+        assert_eq!(listed(&flow).await, listing(&["fleet", "acme"]));
+        let guard = flow.state.read().await;
+        let found = lookups(guard.as_ref().unwrap());
+        assert_eq!(found.len(), 2);
+        assert_eq!(found[1].0, tenant_key("acme", "acme-client-2"));
+        assert_eq!(found[1].1, "rotated");
+        assert_eq!(
+            found[1].3,
+            Some(("https://127.0.0.1:2/realms/acme".to_string(), "acme-client-2".to_string()))
+        );
+        assert!(guard.as_ref().unwrap().oidc_client.expected_claims(2).is_err());
+    }
+
+    /// A Config that fails to build is not the one a tenant change is applied
+    /// over: the tenant's deletion still takes its providers out.
+    #[tokio::test]
+    async fn a_broken_config_in_between_does_not_keep_a_deleted_tenant() {
+        let flow = flow(&[("acme", vec![idp("acme", "acme-client")])]).await;
+        let mut broken = config();
+        broken.providers[0].ca_pem = "-----BEGIN CERTIFICATE-----\nnot base64\n-----END CERTIFICATE-----\n".to_string();
+        assert!(flow.apply_config(&broken).await.is_err());
+        assert_eq!(listed(&flow).await, listing(&["fleet", "acme"]));
+
+        deliver(&flow, &[]).await;
+        assert_eq!(listed(&flow).await, listing(&["fleet"]));
+    }
+
+    /// A sign-in that started before its tenant was deleted (or its provider
+    /// edited) fails as one to start again; it never goes on with the provider
+    /// that took its index. Other sign-ins in flight are not disturbed.
+    #[tokio::test]
+    async fn an_in_flight_sign_in_across_a_deletion() {
+        let acme = ("acme", vec![idp("acme", "acme-client")]);
+        let beta = ("beta", vec![idp("beta", "beta-client")]);
+        let flow = flow(&[acme.clone(), beta.clone()]).await;
+
+        // Authorize, for the fleet provider, acme's (index 1) and beta's (2).
+        let started: Vec<String> = {
+            let guard = flow.state.read().await;
+            let state = guard.as_ref().unwrap();
+            (0..3).map(|i| state.state_codec.encode(&state.keys[i], WEBAPP, "v", None)).collect()
+        };
+
+        // acme is deleted before its IdP answers; beta now has index 1.
+        deliver(&flow, &[beta.clone()]).await;
+        let guard = flow.state.read().await;
+        let state = guard.as_ref().unwrap();
+        let resolved: Vec<Result<i32, tonic::Status>> = started
+            .iter()
+            .map(|st| {
+                let payload = state.state_codec.decode(st).expect("the state outlives a tenant's deletion");
+                resolve_provider(&state.config, &state.keys, &payload.provider)
+            })
+            .collect();
+        assert_eq!(resolved[0].as_ref().unwrap(), &0);
+        let gone = resolved[1].as_ref().unwrap_err();
+        assert_eq!(gone.code(), tonic::Code::FailedPrecondition);
+        assert!(gone.message().contains("this sign-in option no longer exists"), "{gone:?}");
+        assert_eq!(resolved[2].as_ref().unwrap(), &1);
+
+        // Apple's form_post path refuses it the same way.
+        let req = FormPostCallbackRequest { code: "c".to_string(), state: started[1].clone(), ..Default::default() };
+        assert_eq!(form_post_redirect(&state.state_codec, &state.config, &state.keys, &req), "/");
+        drop(guard);
+
+        // An edit that moves beta's provider to another client ends beta's
+        // sign-in the same way; disabling the fleet one ends the fleet's.
+        let mut cfg = config();
+        cfg.providers[0].enable = false;
+        flow.apply_config(&cfg).await.unwrap();
+        deliver(&flow, &[("beta", vec![idp("beta", "beta-client-2")])]).await;
+        let guard = flow.state.read().await;
+        let state = guard.as_ref().unwrap();
+        for st in [&started[0], &started[2]] {
+            let payload = state.state_codec.decode(st).unwrap();
+            let err = resolve_provider(&state.config, &state.keys, &payload.provider).unwrap_err();
+            assert_eq!(err.code(), tonic::Code::FailedPrecondition);
+        }
+    }
+
+    /// The state key is the operator's: a tenant's slice changing leaves it
+    /// as it was, and a tenant's own secret is not in it.
+    #[tokio::test]
+    async fn the_state_key_does_not_follow_tenant_secrets() {
+        let flow = flow(&[("acme", vec![idp("acme", "acme-client")])]).await;
+        let st = {
+            let guard = flow.state.read().await;
+            guard.as_ref().unwrap().state_codec.encode(&ProviderKey::new(ProviderOwner::Fleet, &fleet_provider()), WEBAPP, "v", None)
+        };
+        let operator_only = StateCodec::new(&[fleet_provider()], "", 300);
+        assert!(operator_only.decode(&st).is_ok());
+
+        // With no operator secret at all, the tenants' still key it.
+        let mut bare = fleet_provider();
+        bare.client_secret.clear();
+        bare.enable = false;
+        let cfg = Config { providers: vec![bare.clone()], ..config() };
+        let slices = [crate::providers::TenantSlice {
+            tenant: "/tenants/acme".to_string(),
+            config: OAuthTenantConfig { providers: vec![idp("acme", "acme-client")], ..Default::default() },
+        }];
+        let state = flow_state(&cfg, &slices, "").await.unwrap();
+        let st = state.state_codec.encode(&state.keys[1], WEBAPP, "v", None);
+        assert!(StateCodec::new(&[bare], "", 300).decode(&st).is_err());
     }
 }
 
@@ -1984,6 +2332,7 @@ mod apple_signin_tests {
     use super::idp_token_verification_tests::{b64_pem, now, signing_key, TEST_KID, TEST_PUBLIC_PEM};
     use super::*;
     use crate::apple::tests::{p8_verifier, TEST_P8_PEM};
+    use crate::providers::ProviderOwner;
     use oauth_model::types::services::oauth::oauth::AppleSignIn;
     use prost_wkt_types::value::Kind;
     use serde_json::json;
@@ -2194,6 +2543,11 @@ mod apple_signin_tests {
         }
     }
 
+    /// The keys of a Config's providers, all fleet-wide.
+    fn keys(cfg: &Config) -> Vec<ProviderKey> {
+        cfg.providers.iter().map(|p| ProviderKey::new(ProviderOwner::Fleet, p)).collect()
+    }
+
     fn query_of(url: &str) -> HashMap<String, String> {
         serde_urlencoded::from_str(url.split_once('?').map(|(_, q)| q).unwrap_or("")).unwrap()
     }
@@ -2230,7 +2584,7 @@ mod apple_signin_tests {
         //    for form_post; the SPA URL travels only inside the state.
         check_callback_url(&cfg, 0, SPA).expect("SPA is allowlisted");
         let verifier = generate_code_verifier();
-        let state = codec.encode(0, SPA, &verifier, None);
+        let state = codec.encode(&keys(&cfg)[0], SPA, &verifier, None);
         let url = client
             .build_authorize_url(0, &state, &verifier, SPA, "", "")
             .await
@@ -2245,13 +2599,13 @@ mod apple_signin_tests {
 
         // 2. Apple POSTs the form. The callback answers with the webapp's
         //    existing query-mode handoff, the name sealed into a fresh state.
-        let redirect = form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, FIRST_AUTH_USER));
+        let redirect = form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, FIRST_AUTH_USER));
         assert!(redirect.starts_with(&format!("{SPA}?")), "got {redirect}");
         let q = query_of(&redirect);
         assert_eq!(q["code"], APPLE_CODE);
         assert_ne!(q["state"], state, "the state is re-sealed, not echoed");
         let payload = codec.decode(&q["state"]).expect("re-sealed state decodes");
-        assert_eq!(payload.provider_index, 0);
+        assert_eq!(payload.provider, keys(&cfg)[0]);
         assert_eq!(payload.callback_url, SPA);
         assert_eq!(payload.code_verifier, verifier);
         assert_eq!(payload.given_name.as_deref(), Some("Ada"));
@@ -2332,20 +2686,20 @@ mod apple_signin_tests {
         let cfg = config(vec![plain_provider(), apple_provider("https://appleid.apple.com")]);
         let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
 
-        assert_eq!(form_post_redirect(&codec, &cfg, &FormPostCallbackRequest::default()), "/");
-        assert_eq!(form_post_redirect(&codec, &cfg, &form(APPLE_CODE, "forged", "")), "/");
+        assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &FormPostCallbackRequest::default()), "/");
+        assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, "forged", "")), "/");
 
         let expired = StateCodec::new(&cfg.providers, TEST_P8_PEM, -1);
-        let state = expired.encode(1, SPA, "v", None);
-        assert_eq!(form_post_redirect(&expired, &cfg, &form(APPLE_CODE, &state, "")), "/");
+        let state = expired.encode(&keys(&cfg)[1], SPA, "v", None);
+        assert_eq!(form_post_redirect(&expired, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, "")), "/");
 
         // A genuine state, but for the provider that does not use form_post.
-        let state = codec.encode(0, SPA, "v", None);
-        assert_eq!(form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, "")), "/");
+        let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
+        assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, "")), "/");
 
         // A genuine state whose callback_url is no longer allowlisted.
-        let state = codec.encode(1, "https://evil.example/", "v", None);
-        assert_eq!(form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, "")), "/");
+        let state = codec.encode(&keys(&cfg)[1], "https://evil.example/", "v", None);
+        assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, "")), "/");
     }
 
     /// A cancelled sign-in posts `error` and no code: back to the webapp, with
@@ -2354,13 +2708,13 @@ mod apple_signin_tests {
     fn an_apple_error_returns_to_the_webapp_without_a_code() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
         let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
-        let state = codec.encode(0, SPA, "v", None);
+        let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
         let req = FormPostCallbackRequest {
             state,
             error: "user_cancelled_authorize".to_string(),
             ..Default::default()
         };
-        assert_eq!(form_post_redirect(&codec, &cfg, &req), SPA);
+        assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &req), SPA);
     }
 
     /// Apple sends `user` on the first authorization only. Without it, or with
@@ -2370,8 +2724,8 @@ mod apple_signin_tests {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
         let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
         for user in ["", "not json"] {
-            let state = codec.encode(0, SPA, "v", None);
-            let q = query_of(&form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, user)));
+            let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
+            let q = query_of(&form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, user)));
             assert_eq!(q["code"], APPLE_CODE);
             let payload = codec.decode(&q["state"]).unwrap();
             assert_eq!((payload.given_name, payload.family_name), (None, None));
@@ -2384,12 +2738,12 @@ mod apple_signin_tests {
     fn the_resealed_state_keeps_its_original_age() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
         let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
-        let state = codec.encode(0, SPA, "v", None);
+        let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
         let mut aged = codec.decode(&state).unwrap();
         aged.created_at -= 200;
         let aged_state = codec.seal(&aged);
 
-        let q = query_of(&form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &aged_state, "")));
+        let q = query_of(&form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &aged_state, "")));
         assert_eq!(codec.decode(&q["state"]).unwrap().created_at, aged.created_at);
     }
 
@@ -2398,8 +2752,8 @@ mod apple_signin_tests {
     fn the_handoff_appends_to_an_existing_query() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
         let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
-        let state = codec.encode(0, "https://console.example/?cli=1", "v", None);
-        let redirect = form_post_redirect(&codec, &cfg, &form(APPLE_CODE, &state, ""));
+        let state = codec.encode(&keys(&cfg)[0], "https://console.example/?cli=1", "v", None);
+        let redirect = form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, ""));
         assert!(redirect.starts_with("https://console.example/?cli=1&code="), "got {redirect}");
     }
 
@@ -2408,7 +2762,7 @@ mod apple_signin_tests {
     #[test]
     fn the_first_authorization_name_fills_only_missing_claims() {
         let payload = StatePayload {
-            provider_index: 0,
+            provider: ProviderKey::new(ProviderOwner::Fleet, &apple_provider(APPLE_ISSUER)),
             callback_url: SPA.to_string(),
             code_verifier: "v".to_string(),
             created_at: 0,
@@ -2477,7 +2831,7 @@ mod apple_signin_tests {
         let offered: Vec<i32> = provider_infos(&state.config.providers).iter().map(|p| p.provider_index).collect();
         assert_eq!(offered, [1]);
         let codec = &state.state_codec;
-        let st = codec.encode(1, SPA, "v", None);
+        let st = codec.encode(&state.keys[1], SPA, "v", None);
         assert!(check_callback_url(&state.config, 1, SPA).is_ok());
         assert!(state.oidc_client.build_authorize_url(1, &st, "v", SPA, "", "").await.is_ok());
         assert!(state.oidc_client.build_authorize_url(0, &st, "v", SPA, "", "").await.is_err());
@@ -2489,7 +2843,7 @@ mod apple_signin_tests {
     #[test]
     fn the_p8_keys_the_state_cipher() {
         let providers = vec![apple_provider("https://appleid.apple.com")];
-        let state = StateCodec::new(&providers, TEST_P8_PEM, 300).encode(0, SPA, "v", None);
+        let state = StateCodec::new(&providers, TEST_P8_PEM, 300).encode(&keys(&config(providers.clone()))[0], SPA, "v", None);
 
         assert!(StateCodec::new(&providers, TEST_P8_PEM, 300).decode(&state).is_ok());
         assert!(StateCodec::new(&providers, "", 300).decode(&state).is_err());
@@ -2509,6 +2863,7 @@ mod entra_signin_tests {
     use super::idp_token_verification_tests::{now, signing_key, test_jwks};
     use super::*;
     use crate::oidc::classify_token_error;
+    use crate::providers::ProviderOwner;
     use prost_wkt_types::value::Kind;
     use serde_json::json;
     use std::sync::Mutex;
@@ -2732,7 +3087,7 @@ mod entra_signin_tests {
         //    endpoint, with the SPA as redirect_uri.
         check_callback_url(&cfg, 0, SPA).expect("SPA is allowlisted");
         let verifier = generate_code_verifier();
-        let state = codec.encode(0, SPA, &verifier, None);
+        let state = codec.encode(&ProviderKey::new(ProviderOwner::Fleet, &cfg.providers[0]), SPA, &verifier, None);
         let url = client
             .build_authorize_url(0, &state, &verifier, SPA, "", "")
             .await
@@ -2809,7 +3164,7 @@ mod entra_signin_tests {
         };
         check_callback_url(&cfg, req.provider_index, &req.callback_url).expect("SPA is allowlisted");
         let verifier = generate_code_verifier();
-        let state = codec.encode(req.provider_index, &req.callback_url, &verifier, None);
+        let state = codec.encode(&ProviderKey::new(ProviderOwner::Fleet, &cfg.providers[0]), &req.callback_url, &verifier, None);
         let url = client
             .build_authorize_url(req.provider_index, &state, &verifier, &req.callback_url, &req.nonce, &req.login_hint)
             .await
