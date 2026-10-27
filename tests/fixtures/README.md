@@ -16,3 +16,15 @@ that runs outside `cargo test`.
 
 All three are valid for 20 years from 2026-08-30, so they do not need reissuing.
 To regenerate, see the openssl invocations in this file's git history.
+
+# JWT alg-selection cases
+
+`jwt-alg-cases.json` is the shared case table for which algorithm an IdP's JWKS
+key verifies with (oauth#4): a key that declares no `alg` (Microsoft's) accepts
+only the provider's discovery `id_token_signing_alg_values_supported` within the
+key's own family, and `none` and HMAC never. It carries throwaway RSA-2048,
+P-256 and Ed25519 keys, the public JWKS built from them, the HMAC
+key-confusion secrets (the public keys as PEM, DER and JWK `n`), and every case
+with the outcome it must reach. `auth::idp_alg_selection_tests` signs and
+verifies each one; another port reads the same file so the cases cannot drift.
+The tokens are signed at test time, so nothing in it expires.

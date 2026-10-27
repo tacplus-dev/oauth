@@ -47,3 +47,8 @@ key = { path = "target/generated-sources/model/chassis/key" }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 rustls-pemfile = "2"
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+# Sign the shared alg-selection cases (tests/fixtures/jwt-alg-cases.json): RS256
+# id_tokens, which the chassis signer does not issue, and the HMAC key-confusion
+# forgeries. Both already in the tree through the chassis crates.
+rsa = { version = "0.9", features = ["sha2"] }
+hmac = "0.12"

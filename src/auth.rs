@@ -535,20 +535,53 @@ fn drop_unverified_email(
     }
 }
 
+/// The algorithms a JWKS key verifies with.
+///
+/// Built from the key, never from the token: its family (`kty`, and `crv` for
+/// EC and OKP) as the chassis verifier implements it, narrowed to the key's
+/// declared `alg`, or, when it declares none, to the provider's discovery
+/// `id_token_signing_alg_values_supported`. Microsoft's JWKS carries no `alg`
+/// and its discovery lists `["RS256"]`; the chassis would otherwise derive one
+/// from the key size (2048-bit: RS384), which suits keys we issue but not an
+/// IdP's. `none` and HMAC are in no family, so no provider list can admit them.
+/// Matching is exact: `rs256` or `RS256 ` is not RS256.
+fn accepted_algs(key: &crate::oidc::JwkEntry, discovery_algs: &[String]) -> Vec<&'static str> {
+    let crv = key.raw.get("crv").and_then(|c| c.as_str());
+    let family: &[&'static str] = match (key.kty.as_deref(), crv) {
+        (Some("RSA"), _) => &["RS256", "RS384", "RS512"],
+        (Some("EC"), Some("P-256")) => &["ES256"],
+        (Some("EC"), Some("P-384")) => &["ES384"],
+        (Some("OKP"), Some("Ed25519")) => &["EdDSA"],
+        _ => &[],
+    };
+    family
+        .iter()
+        .copied()
+        .filter(|alg| match key.alg.as_deref() {
+            Some(declared) => declared == *alg,
+            None => discovery_algs.iter().any(|d| d == alg),
+        })
+        .collect()
+}
+
 /// Verify an IdP id_token and return its claims.
 ///
-/// The chassis token library checks the signature against the JWKS key named by
-/// the token's `kid`, plus alg, `exp` and `nbf`. On top of that the token is
-/// bound to the provider whose code was just exchanged: a signature check alone
-/// would accept a validly-signed token from one configured IdP for another
+/// The token's `alg` must be one the key accepts (see `accepted_algs`); that
+/// alg is then written onto the key, so the chassis token library verifies the
+/// signature with it explicitly against the JWKS key named by the token's
+/// `kid`, plus `exp` and `nbf`. On top of that the token is bound to the
+/// provider whose code was just exchanged: a signature check alone would
+/// accept a validly-signed token from one configured IdP for another
 /// provider_index, since nothing else in this flow ties the two together.
 ///
+/// `discovery_algs` is the provider's `id_token_signing_alg_values_supported`.
 /// `expected_issuer` may be an issuer template (see `resolve_expected_issuer`).
 ///
 /// Every failure path rejects. Claims are read only once all checks have passed.
 fn verify_id_token(
     id_token_str: &str,
     jwks: &[crate::oidc::JwkEntry],
+    discovery_algs: &[String],
     expected_issuer: &str,
     expected_audience: &str,
 ) -> Result<HashMap<String, serde_json::Value>, tonic::Status> {
@@ -565,16 +598,31 @@ fn verify_id_token(
             tonic::Status::unauthenticated("no IDP signing key matches the id_token kid")
         })?;
 
-    let parsed_jwk: jwk::jwk::Jwk =
-        serde_json::from_value(matching_key.to_json_value()).map_err(|e| {
-            tonic::Status::unauthenticated(format!("IDP JWKS entry is not a usable JWK: {e}"))
-        })?;
-    let verifying_key = jwk::ImmutableJwk::new(parsed_jwk).map_err(|e| {
-        tonic::Status::unauthenticated(format!("IDP JWKS key could not be parsed: {e}"))
-    })?;
+    // The accepted set comes from the key first; the token's alg is only
+    // checked against it. A header alg that is absent, empty or not a string
+    // never matches (a non-string one already fails the parse).
+    let accepted = accepted_algs(matching_key, discovery_algs);
     let id_token = token::Token::parse(id_token_str).map_err(|e| {
         tonic::Status::unauthenticated(format!("IDP id_token is not a well-formed JWT: {e}"))
     })?;
+    let token_alg = id_token.alg().unwrap_or_default();
+    let alg = accepted.iter().copied().find(|a| *a == token_alg).ok_or_else(|| {
+        warn!(kid = %kid, token_alg = ?token_alg, accepted = ?accepted, "IDP id_token alg is not one its key accepts");
+        tonic::Status::unauthenticated("IDP id_token alg is not accepted for its signing key")
+    })?;
+
+    let mut key_json = matching_key.to_json_value();
+    key_json["alg"] = serde_json::Value::String(alg.to_string());
+    let parsed_jwk: jwk::jwk::Jwk = serde_json::from_value(key_json).map_err(|e| {
+        tonic::Status::unauthenticated(format!("IDP JWKS entry is not a usable JWK: {e}"))
+    })?;
+    let verifying_key = jwk::ImmutableJwk::new(parsed_jwk).map_err(|e| {
+        tonic::Status::unauthenticated(format!("IDP JWKS key could not be parsed: {e}"))
+    })?;
+    if verifying_key.alg() != alg {
+        // The chassis fixes EC and OKP algs from the curve; it must agree.
+        return Err(tonic::Status::unauthenticated("IDP JWKS key does not verify with the accepted alg"));
+    }
     id_token.verify(&verifying_key).map_err(|e| {
         warn!(error = %e, "IDP id_token verification failed");
         tonic::Status::unauthenticated("IDP id_token failed verification")
@@ -855,6 +903,11 @@ impl AuthHandler for AuthImpl {
             .fetch_jwks(payload.provider_index)
             .await
             .map_err(|e| tonic::Status::internal(format!("failed to fetch IDP JWKS: {e}")))?;
+        let signing_algs = state
+            .oidc_client
+            .id_token_signing_algs(payload.provider_index)
+            .await
+            .map_err(|e| tonic::Status::internal(format!("provider lookup failed: {e}")))?;
         let (expected_issuer, expected_audience) = state
             .oidc_client
             .expected_claims(payload.provider_index)
@@ -863,7 +916,7 @@ impl AuthHandler for AuthImpl {
         // 5. Claims come from the verified token only — a rejection here never
         // reaches MintUserToken.
         let mut id_claims =
-            verify_id_token(id_token_str, &jwks, &expected_issuer, &expected_audience)?;
+            verify_id_token(id_token_str, &jwks, &signing_algs, &expected_issuer, &expected_audience)?;
         // check_callback_url resolved the index, so the provider exists.
         let provider = &state.config.providers[payload.provider_index as usize];
         drop_unverified_email(&mut id_claims, &provider.email_verified_claim, &provider.issuer_template);
@@ -1144,7 +1197,7 @@ fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
     }
 
     fn verify(token: &str) -> Result<HashMap<String, serde_json::Value>, tonic::Status> {
-        verify_id_token(token, &test_jwks(), TEST_ISSUER, TEST_AUDIENCE)
+        verify_id_token(token, &test_jwks(), &[], TEST_ISSUER, TEST_AUDIENCE)
     }
 
     /// The real login path must still work: a correctly-signed token from the
@@ -1359,7 +1412,7 @@ mod live_idp_verification {
         let keys: Vec<crate::oidc::JwkEntry> =
             serde_json::from_value(jwks["keys"].clone()).unwrap();
 
-        let claims = verify_id_token(token_str, &keys, &issuer, &audience)
+        let claims = verify_id_token(token_str, &keys, &[], &issuer, &audience)
             .expect("a genuine IdP id_token must be accepted");
         println!(
             "live IdP token accepted; sub={:?}",
@@ -1378,17 +1431,186 @@ mod live_idp_verification {
         let evil_payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .encode(serde_json::to_vec(&evil_claims).unwrap());
         let forged = format!("{}.{}.{}", parts[0], evil_payload, parts[2]);
-        verify_id_token(&forged, &keys, &issuer, &audience)
+        verify_id_token(&forged, &keys, &[], &issuer, &audience)
             .expect_err("a token with altered claims MUST be rejected");
 
         // A live token is still bound to its provider: the real issuer's token
         // must not be accepted for a different configured provider.
-        verify_id_token(token_str, &keys, "https://other-idp.example.com", &audience)
+        verify_id_token(token_str, &keys, &[], "https://other-idp.example.com", &audience)
             .expect_err("issuer binding must reject a token from another provider");
-        verify_id_token(token_str, &keys, &issuer, "some-other-client")
+        verify_id_token(token_str, &keys, &[], &issuer, "some-other-client")
             .expect_err("audience binding must reject a token for another client_id");
 
         println!("live IdP: tampering, wrong issuer and wrong audience all rejected");
+    }
+}
+
+#[cfg(test)]
+mod idp_alg_selection_tests {
+    //! Which algorithm an IdP's key verifies with (oauth#4). Microsoft's JWKS
+    //! publishes RSA keys with no `alg`; the accepted set is then the provider's
+    //! discovery `id_token_signing_alg_values_supported` within the key's family,
+    //! and `none` and HMAC are never in it. Every case comes from the shared
+    //! fixture tests/fixtures/jwt-alg-cases.json, so the cases cannot drift from
+    //! the other ports that read it.
+    use super::idp_token_verification_tests::{b64_pem, now};
+    use super::*;
+    use base64::Engine;
+    use hmac::Mac;
+    use rsa::pkcs8::DecodePrivateKey;
+    use rsa::signature::{SignatureEncoding, Signer};
+    use serde_json::{json, Value};
+
+    const FIXTURE: &str = include_str!("../tests/fixtures/jwt-alg-cases.json");
+
+    fn fixture() -> Value {
+        serde_json::from_str(FIXTURE).unwrap()
+    }
+
+    fn b64(bytes: &[u8]) -> String {
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    fn rsa_sign<D>(pem: &str, input: &[u8]) -> Vec<u8>
+    where
+        D: sha2::Digest + rsa::pkcs8::AssociatedOid,
+    {
+        let key = rsa::RsaPrivateKey::from_pkcs8_pem(pem).unwrap();
+        rsa::pkcs1v15::SigningKey::<D>::new(key).sign(input).to_vec()
+    }
+
+    fn hmac_sign<M: Mac + hmac::digest::KeyInit>(secret: &[u8], input: &[u8]) -> Vec<u8> {
+        let mut mac = <M as Mac>::new_from_slice(secret).unwrap();
+        mac.update(input);
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    /// The third JWT part for `how` (see the fixture's `sign`); None leaves the
+    /// token with two parts.
+    fn signature(fx: &Value, how: &str, input: &[u8]) -> Option<String> {
+        let private = |name: &str| fx["private_keys"][name].as_str().unwrap().to_string();
+        let chassis = |name: &str| {
+            key::keys::ImmutableKey::from_pem(name.to_string(), &b64_pem(&private(name)))
+                .unwrap()
+                .sign(input)
+                .unwrap()
+        };
+        let sig = match how {
+            "absent" => return None,
+            "empty" => Vec::new(),
+            "RS256" => rsa_sign::<sha2::Sha256>(&private("rsa"), input),
+            "RS384" => rsa_sign::<sha2::Sha384>(&private("rsa"), input),
+            "RS512" => rsa_sign::<sha2::Sha512>(&private("rsa"), input),
+            "ES256" => chassis("ec"),
+            "EdDSA" => chassis("okp"),
+            hs => {
+                let (alg, name) = hs.split_once(':').unwrap_or_else(|| panic!("unknown sign {hs}"));
+                let raw = fx["hmac_secrets"][name].as_str().unwrap();
+                let secret = if name.ends_with("-der") {
+                    base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(raw).unwrap()
+                } else {
+                    raw.as_bytes().to_vec()
+                };
+                match alg {
+                    "HS256" => hmac_sign::<hmac::Hmac<sha2::Sha256>>(&secret, input),
+                    "HS384" => hmac_sign::<hmac::Hmac<sha2::Sha384>>(&secret, input),
+                    "HS512" => hmac_sign::<hmac::Hmac<sha2::Sha512>>(&secret, input),
+                    other => panic!("unknown HMAC {other}"),
+                }
+            }
+        };
+        Some(b64(&sig))
+    }
+
+    /// The case's token: its header (plus the kid of the key under test),
+    /// the fixture claims, signed as the case says.
+    fn case_token(fx: &Value, case: &Value) -> String {
+        let mut header = case["header"].as_object().unwrap().clone();
+        header.insert("kid".to_string(), case["key"].clone());
+        let claims = &fx["claims"];
+        let payload = json!({
+            "iss": claims["iss"], "aud": claims["aud"], "sub": claims["sub"], "exp": now() + 3600,
+        });
+        let input = format!(
+            "{}.{}",
+            b64(&serde_json::to_vec(&header).unwrap()),
+            b64(&serde_json::to_vec(&payload).unwrap())
+        );
+        match signature(fx, case["sign"].as_str().unwrap(), input.as_bytes()) {
+            Some(sig) => format!("{input}.{sig}"),
+            None => input,
+        }
+    }
+
+    fn jwks(fx: &Value) -> Vec<crate::oidc::JwkEntry> {
+        serde_json::from_value(fx["jwks"].clone()).unwrap()
+    }
+
+    fn discovery(case: &Value) -> Vec<String> {
+        serde_json::from_value(case["discovery"].clone()).unwrap_or_default()
+    }
+
+    #[test]
+    fn every_shared_alg_case_reaches_its_expected_outcome() {
+        let fx = fixture();
+        let jwks = jwks(&fx);
+        let (iss, aud) = (fx["claims"]["iss"].as_str().unwrap(), fx["claims"]["aud"].as_str().unwrap());
+        let mut wrong = Vec::new();
+        let cases = fx["cases"].as_array().unwrap();
+        for case in cases {
+            let token = case_token(&fx, case);
+            let got = verify_id_token(&token, &jwks, &discovery(case), iss, aud);
+            let ok = match case["expect"].as_str().unwrap() {
+                "accept" => got.is_ok(),
+                "reject" => matches!(&got, Err(s) if s.code() == tonic::Code::Unauthenticated),
+                other => panic!("unknown expect {other}"),
+            };
+            if !ok {
+                wrong.push(format!("{}: expected {}, got {:?}", case["name"], case["expect"], got.map(|_| ())));
+            }
+        }
+        assert!(wrong.is_empty(), "{} of {} cases wrong:\n{}", wrong.len(), cases.len(), wrong.join("\n"));
+    }
+
+    /// The fixture holds the cases the issue names, so a trimmed fixture
+    /// cannot pass vacuously.
+    #[test]
+    fn the_fixture_covers_the_issue_cases() {
+        let fx = fixture();
+        let cases = fx["cases"].as_array().unwrap();
+        let expect = |name: &str| {
+            cases
+                .iter()
+                .find(|c| c["name"] == name)
+                .unwrap_or_else(|| panic!("fixture lacks {name:?}"))["expect"]
+                .clone()
+        };
+        assert_eq!(expect("no-alg RSA key, discovery [RS256], RS256 token"), "accept");
+        assert_eq!(expect("no-alg RSA key, discovery [RS384], RS256 token"), "reject");
+        assert_eq!(expect("RS256-declared key, empty discovery, RS256 token"), "accept");
+        assert_eq!(expect("alg none, empty signature, no-alg RSA key"), "reject");
+        assert_eq!(expect("HS256 keyed with rsa-pem, no-alg RSA key"), "reject");
+        let jwks = jwks(&fx);
+        assert!(jwks.iter().any(|k| k.kid.as_deref() == Some("rsa-noalg") && k.alg.is_none()));
+    }
+
+    /// The alg the key ends up verifying with is the one from the accepted set,
+    /// not whatever the token header claims: a provider listing several algs
+    /// still cannot make one key verify as another family.
+    #[test]
+    fn the_accepted_set_comes_from_the_key_and_the_provider() {
+        let fx = fixture();
+        let key = |kid: &str| jwks(&fx).into_iter().find(|k| k.kid.as_deref() == Some(kid)).unwrap();
+        let all: Vec<String> = ["none", "HS256", "RS256", "RS512", "PS256", "ES256", "ES384", "EdDSA"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert_eq!(accepted_algs(&key("rsa-noalg"), &all), vec!["RS256", "RS512"]);
+        assert_eq!(accepted_algs(&key("rsa-rs256"), &all), vec!["RS256"]);
+        assert_eq!(accepted_algs(&key("rsa-rs256"), &[]), vec!["RS256"]);
+        assert_eq!(accepted_algs(&key("ec-noalg"), &all), vec!["ES256"]);
+        assert_eq!(accepted_algs(&key("okp-noalg"), &all), vec!["EdDSA"]);
+        assert!(accepted_algs(&key("rsa-noalg"), &[]).is_empty());
     }
 }
 
@@ -1926,9 +2148,10 @@ mod apple_signin_tests {
         assert_eq!(sent["redirect_uri"], FORM_POST_URI);
         assert_eq!(sent["code_verifier"], verifier);
         let jwks = client.fetch_jwks(0).await.expect("Apple JWKS");
+        let algs = client.id_token_signing_algs(0).await.unwrap();
         let (iss, aud) = client.expected_claims(0).unwrap();
         assert_eq!(aud, SERVICES_ID);
-        let id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+        let id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &algs, &iss, &aud)
             .expect("Apple's id_token verifies");
 
         // 4. The claims handed to kernel: forwarded the way Google's are, plus
@@ -1969,7 +2192,7 @@ mod apple_signin_tests {
     fn apples_issuer_and_claim_shapes_verify_and_forward() {
         let jwks: Vec<crate::oidc::JwkEntry> =
             serde_json::from_value(apple_jwks()["keys"].clone()).unwrap();
-        let claims = verify_id_token(&apple_id_token(APPLE_ISSUER), &jwks, APPLE_ISSUER, SERVICES_ID)
+        let claims = verify_id_token(&apple_id_token(APPLE_ISSUER), &jwks, &[], APPLE_ISSUER, SERVICES_ID)
             .expect("Apple's id_token verifies");
         let forwarded = build_claims_struct(&claims).unwrap();
         assert_eq!(string_claim(&forwarded, "origin_iss"), Some(APPLE_ISSUER));
@@ -1977,7 +2200,7 @@ mod apple_signin_tests {
         assert_eq!(string_claim(&forwarded, "is_private_email"), Some("true"));
 
         // Bound to the Services ID: a token for another client is refused.
-        assert!(verify_id_token(&apple_id_token(APPLE_ISSUER), &jwks, APPLE_ISSUER, "other.services.id").is_err());
+        assert!(verify_id_token(&apple_id_token(APPLE_ISSUER), &jwks, &[], APPLE_ISSUER, "other.services.id").is_err());
     }
 
     /// GET-safe: a reload or bookmark (the gateway sends a GET as `{}`), a
@@ -2232,9 +2455,22 @@ mod entra_signin_tests {
             "token_endpoint": format!("{base}/common/oauth2/v2.0/token"),
             "jwks_uri": format!("{base}/common/discovery/v2.0/keys"),
             "end_session_endpoint": format!("{base}/common/oauth2/v2.0/logout"),
+            // Microsoft lists ["RS256"]; the fake signs with the P-256 fixture
+            // key, so it lists ES256 as well. A non-string entry is dropped,
+            // not a failed discovery.
+            "id_token_signing_alg_values_supported": ["RS256", "ES256", 256],
         })
         .to_string();
-        let keys: Vec<_> = test_jwks().iter().map(|k| k.to_json_value()).collect();
+        // Microsoft-shaped: the published keys carry no `alg` (oauth#4), so
+        // every flow below verifies through the discovery list.
+        let keys: Vec<_> = test_jwks()
+            .iter()
+            .map(|k| {
+                let mut v = k.to_json_value();
+                v.as_object_mut().unwrap().remove("alg");
+                v
+            })
+            .collect();
         let jwks = json!({ "keys": keys }).to_string();
         let id_token = id_token(&base);
         let forms = Arc::clone(&token_forms);
@@ -2319,7 +2555,7 @@ mod entra_signin_tests {
     }
 
     fn verify(token: &str) -> Result<HashMap<String, serde_json::Value>, tonic::Status> {
-        verify_id_token(token, &test_jwks(), TEMPLATE, CLIENT_ID)
+        verify_id_token(token, &test_jwks(), &[], TEMPLATE, CLIENT_ID)
     }
 
     /// The whole browser flow, in the order the browser drives it.
@@ -2376,10 +2612,13 @@ mod entra_signin_tests {
         assert_eq!(sent["redirect_uri"], SPA);
         assert_eq!(sent["code_verifier"], verifier);
         let jwks = client.fetch_jwks(0).await.expect("Entra JWKS");
+        let algs = client.id_token_signing_algs(0).await.unwrap();
+        assert!(jwks.iter().all(|k| k.alg.is_none()), "Entra's keys declare no alg");
+        assert_eq!(algs, ["RS256", "ES256"], "the discovery list, non-strings dropped");
         let (iss, aud) = client.expected_claims(0).unwrap();
         assert_eq!(iss, format!("{}/{{tid}}/v2.0", entra.base), "the template, not the discovery issuer");
         assert_eq!(aud, CLIENT_ID);
-        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &algs, &iss, &aud)
             .expect("Entra's id_token verifies against the template");
         drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim, &cfg.providers[0].issuer_template);
 
@@ -2435,8 +2674,9 @@ mod entra_signin_tests {
             .await
             .expect("the fake Entra accepts the client secret");
         let jwks = client.fetch_jwks(0).await.expect("Entra JWKS");
+        let algs = client.id_token_signing_algs(0).await.unwrap();
         let (iss, aud) = client.expected_claims(0).unwrap();
-        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &algs, &iss, &aud)
             .expect("Entra's id_token verifies");
         drop_unverified_email(&mut id_claims, &cfg.providers[0].email_verified_claim, &cfg.providers[0].issuer_template);
 
@@ -2580,8 +2820,9 @@ mod entra_signin_tests {
             .await
             .expect("the fake Entra accepts the client secret");
         let jwks = client.fetch_jwks(0).await.expect("Entra JWKS");
+        let algs = client.id_token_signing_algs(0).await.unwrap();
         let (iss, aud) = client.expected_claims(0).unwrap();
-        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &iss, &aud)
+        let mut id_claims = verify_id_token(tokens.id_token.as_deref().unwrap(), &jwks, &algs, &iss, &aud)
             .expect("an MSA id_token verifies against the template");
         let provider = &cfg.providers[0];
         drop_unverified_email(&mut id_claims, &provider.email_verified_claim, &provider.issuer_template);

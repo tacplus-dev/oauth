@@ -19,6 +19,11 @@ struct OidcConfig {
     token_endpoint: Option<String>,
     jwks_uri: Option<String>,
     end_session_endpoint: Option<String>,
+    /// The algs the provider signs id_tokens with. A JWKS key that declares no
+    /// `alg` (Microsoft's) verifies only with these; see `auth::accepted_algs`.
+    /// Read leniently: a non-string entry is dropped, not a failed discovery.
+    #[serde(default)]
+    id_token_signing_alg_values_supported: Vec<serde_json::Value>,
 }
 
 /// Per-provider discovered endpoints and cached JWKS.
@@ -442,6 +447,24 @@ impl OidcClient {
             issuer.trim_end_matches('/').to_string(),
             prov.provider_cfg.client_id.clone(),
         ))
+    }
+
+    /// The provider's discovery `id_token_signing_alg_values_supported`.
+    ///
+    /// Call it after `fetch_jwks`, which rediscovers when discovery has not
+    /// yet succeeded. Empty when the provider lists none: a JWKS key without
+    /// `alg` then verifies nothing (fail closed).
+    pub async fn id_token_signing_algs(&self, provider_index: i32) -> Result<Vec<String>, String> {
+        let prov = self
+            .providers
+            .get(&provider_index)
+            .ok_or_else(|| format!("unknown provider index {provider_index}"))?;
+        let cfg = prov.config.read().await;
+        Ok(cfg
+            .id_token_signing_alg_values_supported
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect())
     }
 
     /// Fetch the IDP's JWKS. Results are cached for refetch_interval.

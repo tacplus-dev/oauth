@@ -1,0 +1,1458 @@
+{
+  "about": "Shared JWT alg-selection cases (oauth#4). The accepted set is built from the key (kty/crv), narrowed to the key's declared alg or, when it has none, to the provider's id_token_signing_alg_values_supported; none and HMAC are never in it. Every test signs each case as described here and must reach the stated expect. Throwaway keys; not secrets.",
+  "claims": {
+    "iss": "https://idp.example.com",
+    "aud": "client-id",
+    "sub": "subject",
+    "exp": "now + 3600"
+  },
+  "sign": {
+    "RS256|RS384|RS512": "RSASSA-PKCS1-v1_5 over header.payload with private_keys.rsa and that hash",
+    "ES256": "ECDSA P-256 / SHA-256 with private_keys.ec, raw r||s",
+    "EdDSA": "Ed25519 with private_keys.okp",
+    "HSnnn:<secret>": "HMAC-SHA-nnn keyed with the bytes of hmac_secrets.<secret> (rsa-der/ec-der are base64url DER; the key is the decoded DER)",
+    "empty": "header.payload. (empty third part)",
+    "absent": "header.payload (two parts)"
+  },
+  "private_keys": {
+    "rsa": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCEpfehVmBgU5QV\ndY8n/3WZTjhySTxJc54+pE9ziIDtTQps6tG7JPgwj3k7SUuOtiFEHB0rbSdHUgUU\nJmlpGecDQS2PScJo50rxa6cvCRYjS7QA7UJAHURk6asyDMicG9J38GxCUhun7l3e\niKTc64yMvc2dYJmCGGKUOP96NkAau38WOsnrSPogKeg7YkrNW95D/Wk3IwIAdj5n\n6py+Vp4jNN41sqIpO0LV2TK7OUc/1WHstxzfNqZDP95YSR0E0eyiBYxvnmgCaBGB\nh+FXb1WpkWoHEMOTeGQsSfbGCVQ/is+huYHvaib5HAVGTAeaNVlAG8PegauXMsXV\n4y6V9TclAgMBAAECggEAArOKjnW+226bNPZ8vcGDD9p1IADg5SZnKWlqqYYdrDd6\nP1RPyr3HuTqIk/PezWgH7qv4oBo6sBeXDrShMALXHrVkoyEFUbOWTqsMHkeNXWhI\ncmy/mLvuZLpAwlpDYoJ5z8keRuseDflZu3v5zswfw82duJ0Guoyx2lSH6ko6LT+0\n7N95B6tQPi4ZWNV2OFmk/7+u7/r4jAu1BY6fP4Yy+zJ6wiMgyTtQwM5Ix7RUzmVA\nnJu5F9n+0Gusy+jtpwrQETM4brlrOQvYVPLf9WEkXV5tFs8BSzPnpPQN3AXjjOuZ\nxRxgqMZbTZprAWFfqmfiDjDpNgReDvNp58m3eDiaAQKBgQC6IhdLLkYdDTBpjXzA\nr0d1TVNT2HhSK8wSuiVBJXi95T/wei/ej/7Sy5NKNuEu6EiBGYh/8BtA9OsFMyEY\nEnFQ8xkGrGIFPFUyQbpbV+vqpVxvO2DVGs6GbLJdRW0u7xdX2NEdFFf2unUtAy4f\neX76uVLhgCAulAmrIdTq4y0ngQKBgQC2cGi9lzpd17VsHwhwZfurQVckIlVICh0+\nxkTqZlEX3IPJA0m0sLR2gO2Y1GnIjE4RIteWXzaTPmeEWz94Mmfkuf5uegtYIoOs\nKXphu0vFjv9ObubSlXMbXWg5E1wlDe7PeySh4A4cTc5dDXVqsJavG8J+qErFLWz7\nMKHJ5FNBpQKBgHFAtPOloDuk/sP6tuF2xP/2oLDvkaZNx8nNQUW2SxUgHBtx/RZq\nfx47h88sPS+RXixPIOLXcX3AiA+N4KEI97HNeHi7Apk08JG3tHBHut/25Zs4gd6o\nhOj90jk2OQzJpWZqIjKTYkJZiVpuCO5VupFLmcZjczFkGc3qs+aHe74BAoGAEU81\nANf6V7EBq5J+MHvclvEKHYmMYdtjzvLs0viGNSdc8ZN4SMaDOMMex+NPbhGxznpp\nzgCWov3GwI4PxY2ywcbL1xuJPAF6ULlWvTMSC1p36q8nA0/erff8zX2CvplF0TWz\n0g/6BsFzFO0T+N1sTozptS6ueWrH7kU89HTPWWkCgYEAtaBadVP5KzeqvB04kWo1\nZATYZ0tn+uw/821XrNAtkp2fZn2qGB7IJwYyFGqsqtax+xQL1ZmP40pUj35fwaK2\nmLkseShA/sesF+FIxU27RN/Vf9ZymetEgoVVoqS5XYfbedyKG4OTquSO3C1pez43\nZZ6r6/YEHrDLBZUStMfz7KQ=\n-----END PRIVATE KEY-----\n",
+    "ec": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgVYEjipsU4QzJyPCR\nC0KF0ZRQzYYkzMJHBKyfpJH+ipOhRANCAASilcsDK/DfkB1WyD5E6qKEReQg1Thi\n4mgVtInWMJWGVT7cpT72jdvroIGZm+6+avcivuWvrMAQVfSQhYJSrMZR\n-----END PRIVATE KEY-----\n",
+    "okp": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIG3x2P6cN7s8XpXUSSJIcK8SjpM2rtNj9eRTdXXW5JI1\n-----END PRIVATE KEY-----\n"
+  },
+  "hmac_secrets": {
+    "rsa-pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhKX3oVZgYFOUFXWPJ/91\nmU44ckk8SXOePqRPc4iA7U0KbOrRuyT4MI95O0lLjrYhRBwdK20nR1IFFCZpaRnn\nA0Etj0nCaOdK8WunLwkWI0u0AO1CQB1EZOmrMgzInBvSd/BsQlIbp+5d3oik3OuM\njL3NnWCZghhilDj/ejZAGrt/FjrJ60j6ICnoO2JKzVveQ/1pNyMCAHY+Z+qcvlae\nIzTeNbKiKTtC1dkyuzlHP9Vh7Lcc3zamQz/eWEkdBNHsogWMb55oAmgRgYfhV29V\nqZFqBxDDk3hkLEn2xglUP4rPobmB72om+RwFRkwHmjVZQBvD3oGrlzLF1eMulfU3\nJQIDAQAB\n-----END PUBLIC KEY-----\n",
+    "rsa-der": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhKX3oVZgYFOUFXWPJ_91mU44ckk8SXOePqRPc4iA7U0KbOrRuyT4MI95O0lLjrYhRBwdK20nR1IFFCZpaRnnA0Etj0nCaOdK8WunLwkWI0u0AO1CQB1EZOmrMgzInBvSd_BsQlIbp-5d3oik3OuMjL3NnWCZghhilDj_ejZAGrt_FjrJ60j6ICnoO2JKzVveQ_1pNyMCAHY-Z-qcvlaeIzTeNbKiKTtC1dkyuzlHP9Vh7Lcc3zamQz_eWEkdBNHsogWMb55oAmgRgYfhV29VqZFqBxDDk3hkLEn2xglUP4rPobmB72om-RwFRkwHmjVZQBvD3oGrlzLF1eMulfU3JQIDAQAB",
+    "rsa-n": "hKX3oVZgYFOUFXWPJ_91mU44ckk8SXOePqRPc4iA7U0KbOrRuyT4MI95O0lLjrYhRBwdK20nR1IFFCZpaRnnA0Etj0nCaOdK8WunLwkWI0u0AO1CQB1EZOmrMgzInBvSd_BsQlIbp-5d3oik3OuMjL3NnWCZghhilDj_ejZAGrt_FjrJ60j6ICnoO2JKzVveQ_1pNyMCAHY-Z-qcvlaeIzTeNbKiKTtC1dkyuzlHP9Vh7Lcc3zamQz_eWEkdBNHsogWMb55oAmgRgYfhV29VqZFqBxDDk3hkLEn2xglUP4rPobmB72om-RwFRkwHmjVZQBvD3oGrlzLF1eMulfU3JQ",
+    "ec-pem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEopXLAyvw35AdVsg+ROqihEXkINU4\nYuJoFbSJ1jCVhlU+3KU+9o3b66CBmZvuvmr3Ir7lr6zAEFX0kIWCUqzGUQ==\n-----END PUBLIC KEY-----\n",
+    "ec-der": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEopXLAyvw35AdVsg-ROqihEXkINU4YuJoFbSJ1jCVhlU-3KU-9o3b66CBmZvuvmr3Ir7lr6zAEFX0kIWCUqzGUQ"
+  },
+  "jwks": [
+    {
+      "kid": "rsa-noalg",
+      "kty": "RSA",
+      "n": "hKX3oVZgYFOUFXWPJ_91mU44ckk8SXOePqRPc4iA7U0KbOrRuyT4MI95O0lLjrYhRBwdK20nR1IFFCZpaRnnA0Etj0nCaOdK8WunLwkWI0u0AO1CQB1EZOmrMgzInBvSd_BsQlIbp-5d3oik3OuMjL3NnWCZghhilDj_ejZAGrt_FjrJ60j6ICnoO2JKzVveQ_1pNyMCAHY-Z-qcvlaeIzTeNbKiKTtC1dkyuzlHP9Vh7Lcc3zamQz_eWEkdBNHsogWMb55oAmgRgYfhV29VqZFqBxDDk3hkLEn2xglUP4rPobmB72om-RwFRkwHmjVZQBvD3oGrlzLF1eMulfU3JQ",
+      "e": "AQAB"
+    },
+    {
+      "kid": "rsa-rs256",
+      "alg": "RS256",
+      "kty": "RSA",
+      "n": "hKX3oVZgYFOUFXWPJ_91mU44ckk8SXOePqRPc4iA7U0KbOrRuyT4MI95O0lLjrYhRBwdK20nR1IFFCZpaRnnA0Etj0nCaOdK8WunLwkWI0u0AO1CQB1EZOmrMgzInBvSd_BsQlIbp-5d3oik3OuMjL3NnWCZghhilDj_ejZAGrt_FjrJ60j6ICnoO2JKzVveQ_1pNyMCAHY-Z-qcvlaeIzTeNbKiKTtC1dkyuzlHP9Vh7Lcc3zamQz_eWEkdBNHsogWMb55oAmgRgYfhV29VqZFqBxDDk3hkLEn2xglUP4rPobmB72om-RwFRkwHmjVZQBvD3oGrlzLF1eMulfU3JQ",
+      "e": "AQAB"
+    },
+    {
+      "kid": "ec-noalg",
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "opXLAyvw35AdVsg-ROqihEXkINU4YuJoFbSJ1jCVhlU",
+      "y": "PtylPvaN2-uggZmb7r5q9yK-5a-swBBV9JCFglKsxlE"
+    },
+    {
+      "kid": "ec-es256",
+      "alg": "ES256",
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "opXLAyvw35AdVsg-ROqihEXkINU4YuJoFbSJ1jCVhlU",
+      "y": "PtylPvaN2-uggZmb7r5q9yK-5a-swBBV9JCFglKsxlE"
+    },
+    {
+      "kid": "okp-noalg",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "cEnY3AUGAphE5e9Ozaj7apVcDRmtMggSjytHKuSIg4Q"
+    }
+  ],
+  "cases": [
+    {
+      "name": "no-alg RSA key, discovery [RS256], RS256 token",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "accept"
+    },
+    {
+      "name": "no-alg RSA key, discovery [RS384], RS256 token",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS384"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "no-alg RSA key, discovery [RS384], RS384 token",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS384"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS384"
+      },
+      "sign": "RS384",
+      "expect": "accept"
+    },
+    {
+      "name": "no-alg RSA key, discovery [RS256,RS512], RS512 token",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS512"
+      },
+      "sign": "RS512",
+      "expect": "accept"
+    },
+    {
+      "name": "no-alg RSA key, discovery [RS256,RS512], RS384 token",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS384"
+      },
+      "sign": "RS384",
+      "expect": "reject"
+    },
+    {
+      "name": "no-alg RSA key, empty discovery list",
+      "key": "rsa-noalg",
+      "discovery": [],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "no-alg RSA key, no discovery list",
+      "key": "rsa-noalg",
+      "discovery": null,
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "no-alg RSA key, discovery lists none and HS256 first",
+      "key": "rsa-noalg",
+      "discovery": [
+        "none",
+        "HS256",
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "accept"
+    },
+    {
+      "name": "no-alg EC P-256 key, discovery [RS256,ES256], ES256 token",
+      "key": "ec-noalg",
+      "discovery": [
+        "RS256",
+        "ES256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "ES256"
+      },
+      "sign": "ES256",
+      "expect": "accept"
+    },
+    {
+      "name": "no-alg OKP Ed25519 key, discovery [EdDSA], EdDSA token",
+      "key": "okp-noalg",
+      "discovery": [
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "EdDSA"
+      },
+      "sign": "EdDSA",
+      "expect": "accept"
+    },
+    {
+      "name": "RS256-declared key, empty discovery, RS256 token",
+      "key": "rsa-rs256",
+      "discovery": [],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "accept"
+    },
+    {
+      "name": "RS256-declared key, discovery [RS384], RS256 token",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS384"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "accept"
+    },
+    {
+      "name": "ES256-declared key, no discovery, ES256 token",
+      "key": "ec-es256",
+      "discovery": null,
+      "header": {
+        "typ": "JWT",
+        "alg": "ES256"
+      },
+      "sign": "ES256",
+      "expect": "accept"
+    },
+    {
+      "name": "RS256-declared key, RS512 token",
+      "key": "rsa-rs256",
+      "discovery": [],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS512"
+      },
+      "sign": "RS512",
+      "expect": "reject"
+    },
+    {
+      "name": "RS256-declared key, discovery [RS512], RS512 token",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS512"
+      },
+      "sign": "RS512",
+      "expect": "reject"
+    },
+    {
+      "name": "alg none, empty signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "none"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "none"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg none, empty signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "none"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "none"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg none, empty signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "none"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "none"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg none, absent signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "none"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "none"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg none, absent signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "none"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "none"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg none, absent signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "none"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "none"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg None, empty signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "None"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "None"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg None, empty signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "None"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "None"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg None, empty signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "None"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "None"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg None, absent signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "None"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "None"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg None, absent signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "None"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "None"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg None, absent signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "None"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "None"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg NONE, empty signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "NONE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "NONE"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg NONE, empty signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "NONE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "NONE"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg NONE, empty signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "NONE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "NONE"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg NONE, absent signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "NONE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "NONE"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg NONE, absent signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "NONE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "NONE"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg NONE, absent signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "NONE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "NONE"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg nOnE, empty signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "nOnE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "nOnE"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg nOnE, empty signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "nOnE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "nOnE"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg nOnE, empty signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "nOnE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "nOnE"
+      },
+      "sign": "empty",
+      "expect": "reject"
+    },
+    {
+      "name": "alg nOnE, absent signature, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "none",
+        "nOnE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "nOnE"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg nOnE, absent signature, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "none",
+        "nOnE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "nOnE"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "alg nOnE, absent signature, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "none",
+        "nOnE"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "nOnE"
+      },
+      "sign": "absent",
+      "expect": "reject"
+    },
+    {
+      "name": "no alg in header, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "no alg in header, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "empty alg in header, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": ""
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "empty alg in header, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": ""
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "null alg in header, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": null
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "null alg in header, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": null
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "numeric alg in header, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": 256
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "numeric alg in header, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": 256
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "array alg in header, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": [
+          "RS256"
+        ]
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "array alg in header, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": [
+          "RS256"
+        ]
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "object alg in header, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": {
+          "alg": "RS256"
+        }
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "object alg in header, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": {
+          "alg": "RS256"
+        }
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with rsa-pem, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:rsa-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with rsa-pem, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:rsa-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with rsa-der, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:rsa-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with rsa-der, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:rsa-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with rsa-n, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:rsa-n",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with rsa-n, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:rsa-n",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with ec-pem, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:ec-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS256 keyed with ec-der, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS256"
+      },
+      "sign": "HS256:ec-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with rsa-pem, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:rsa-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with rsa-pem, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:rsa-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with rsa-der, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:rsa-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with rsa-der, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:rsa-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with rsa-n, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:rsa-n",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with rsa-n, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:rsa-n",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with ec-pem, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:ec-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS384 keyed with ec-der, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS384"
+      },
+      "sign": "HS384:ec-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with rsa-pem, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:rsa-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with rsa-pem, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:rsa-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with rsa-der, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:rsa-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with rsa-der, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:rsa-der",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with rsa-n, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:rsa-n",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with rsa-n, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:rsa-n",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with ec-pem, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:ec-pem",
+      "expect": "reject"
+    },
+    {
+      "name": "HS512 keyed with ec-der, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "ES256",
+        "HS256",
+        "HS384",
+        "HS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "HS512"
+      },
+      "sign": "HS512:ec-der",
+      "expect": "reject"
+    },
+    {
+      "name": "ES256 token, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "ES256"
+      },
+      "sign": "ES256",
+      "expect": "reject"
+    },
+    {
+      "name": "EdDSA token, no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "EdDSA"
+      },
+      "sign": "EdDSA",
+      "expect": "reject"
+    },
+    {
+      "name": "ES256 token, RS256-declared key",
+      "key": "rsa-rs256",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "ES256"
+      },
+      "sign": "ES256",
+      "expect": "reject"
+    },
+    {
+      "name": "RS256 token, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "EdDSA token, no-alg EC key",
+      "key": "ec-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "EdDSA"
+      },
+      "sign": "EdDSA",
+      "expect": "reject"
+    },
+    {
+      "name": "ES384 token header, no-alg EC P-256 key",
+      "key": "ec-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "ES384"
+      },
+      "sign": "ES256",
+      "expect": "reject"
+    },
+    {
+      "name": "RS256 token, no-alg OKP key",
+      "key": "okp-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "ES256 token, no-alg OKP key",
+      "key": "okp-noalg",
+      "discovery": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "ES256",
+        "ES384",
+        "EdDSA"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "ES256"
+      },
+      "sign": "ES256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'RS1', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS1"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS1"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'PS256', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "PS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "PS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'PS384', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "PS384"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "PS384"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'PS512', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "PS512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "PS512"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'rs256', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "rs256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "rs256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'Rs256', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "Rs256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "Rs256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'RS256 ', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS256 "
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS256 "
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg ' RS256', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        " RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": " RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'RS2560', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "RS2560"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "RS2560"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'ES512', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "ES512"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "ES512"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg 'garbage', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "garbage"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "garbage"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    },
+    {
+      "name": "alg '\\x00RS256', no-alg RSA key",
+      "key": "rsa-noalg",
+      "discovery": [
+        "RS256",
+        "\u0000RS256"
+      ],
+      "header": {
+        "typ": "JWT",
+        "alg": "\u0000RS256"
+      },
+      "sign": "RS256",
+      "expect": "reject"
+    }
+  ]
+}
