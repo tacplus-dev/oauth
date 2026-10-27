@@ -5,5 +5,5 @@ services:
     - name: oauth
       id: 21
       tenant_slice_field: 3
-      contract: https://gitlab.com/seabeam/schematic/platform/proto.git
-      visibility: private
+      contract: https://github.com/tacplus-dev/oauth.git
+      visibility: public

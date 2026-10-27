@@ -361,7 +361,7 @@ mod tests {
     fn the_people_tenant_slice_is_not_read() {
         let cfg = config(vec![fleet("Google", "https://accounts.google.com")]);
         for people in ["people", "/people", "/tenants/people"] {
-            let slices = [slice(people, vec![tenant_idp("https://appleid.apple.com", "net.seabeam.people")])];
+            let slices = [slice(people, vec![tenant_idp("https://appleid.apple.com", "com.example.people")])];
             assert_eq!(effective_providers(&cfg, &slices, ""), cfg.providers, "{people}");
         }
         // A tenant merely named like it is read.

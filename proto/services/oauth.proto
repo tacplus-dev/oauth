@@ -1,4 +1,5 @@
-// Copyright (c) 2026 Seabeam LLC. All rights reserved.
+// Copyright (c) 2026 Jody Scott
+// SPDX-License-Identifier: Apache-2.0
 
 // Package oauth provides protobuf definitions for the OAuth service.
 //
@@ -221,7 +222,7 @@ message AppleSignIn {
   string key_id = 2 [(spec.assert_required) = true, (spec.assert_min_size) = 1];
 
   // form_post_redirect_uri is the absolute URL of the Auth.BrokerFormPostCallback
-  // route, e.g. https://console.seabeam.net/oauth/Auth/BrokerFormPostCallback. It is
+  // route, e.g. https://console.example.com/oauth/Auth/BrokerFormPostCallback. It is
   // sent to Apple as redirect_uri on both the authorize and the token request.
   string form_post_redirect_uri = 3 [(spec.assert_required) = true, (spec.assert_url) = URL_SCHEME_HTTPS];
 }
@@ -458,7 +459,7 @@ enum SignInMethod {
   // mail is iCloud+; a guess, override via alternatives.
   SIGN_IN_METHOD_APPLE = 5;
   // 2026-10-20: SIGN_IN_METHOD_MAIL_LINK (an emailed sign-in link) was 3; mail
-  // link removed from SeaBeam.
+  // link removed.
   reserved 3;
   reserved "SIGN_IN_METHOD_MAIL_LINK";
   // None of them, no matching provider is configured, or the MX lookup failed: no

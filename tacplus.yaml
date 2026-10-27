@@ -1,8 +1,8 @@
 language: rust
 # Compiler floor: the looper runs this MAJOR.MINOR line's latest patch.
 tacplus: "2.4"
-# pkg kept as copied so the hand-written code keeps compiling; moves with the packages later.
-pkg: com.gitlab.seabeam.controlplane.schematic.services.oauth
+# Rust takes only pkg's last segment: the crate stays oauth-model.
+pkg: com.github.tacplusdev.oauth
 output-dir: target/generated-sources
 src: proto
 # oauth.proto declares clients of kernel.Mint and the sys minter hosted by kernel.
