@@ -7,6 +7,7 @@ The authentication and token broker (Rust): OAuth2/OIDC browser flows and CLI/de
 Offers fleet-wide providers plus each tenant's IdPs from its config slice. Unreleased; tacplus floor 2.4.
 
 ## Next
+- Sign-in: per-tenant OIDC IdPs, Custom domain lookup, fresh-sign-in legs (#15)
 - Tenant providers: a deleted tenant leaves nothing behind (#11)
 - `gates` recipe in the justfile (#10; a `gates` recipe is already on main since b6e6a36)
 
