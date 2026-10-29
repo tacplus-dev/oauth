@@ -1587,8 +1587,6 @@ mod idp_alg_selection_tests {
     use super::*;
     use base64::Engine;
     use hmac::Mac;
-    use rsa::pkcs8::DecodePrivateKey;
-    use rsa::signature::{SignatureEncoding, Signer};
     use serde_json::{json, Value};
 
     const FIXTURE: &str = include_str!("../tests/fixtures/jwt-alg-cases.json");
@@ -1601,12 +1599,14 @@ mod idp_alg_selection_tests {
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
     }
 
-    fn rsa_sign<D>(pem: &str, input: &[u8]) -> Vec<u8>
-    where
-        D: sha2::Digest + rsa::pkcs8::AssociatedOid,
-    {
-        let key = rsa::RsaPrivateKey::from_pkcs8_pem(pem).unwrap();
-        rsa::pkcs1v15::SigningKey::<D>::new(key).sign(input).to_vec()
+    /// RSASSA-PKCS1-v1_5 with ring (blinded private-key operation), not the
+    /// `rsa` crate, which RUSTSEC-2023-0071 leaves with no fixed release (oauth#9).
+    fn rsa_sign(pem: &str, padding: &'static dyn ring::signature::RsaEncoding, input: &[u8]) -> Vec<u8> {
+        let der = rustls_pemfile::pkcs8_private_keys(&mut pem.as_bytes()).next().unwrap().unwrap();
+        let key = ring::signature::RsaKeyPair::from_pkcs8(der.secret_pkcs8_der()).unwrap();
+        let mut sig = vec![0; key.public().modulus_len()];
+        key.sign(padding, &ring::rand::SystemRandom::new(), input, &mut sig).unwrap();
+        sig
     }
 
     fn hmac_sign<M: Mac + hmac::digest::KeyInit>(secret: &[u8], input: &[u8]) -> Vec<u8> {
@@ -1628,9 +1628,9 @@ mod idp_alg_selection_tests {
         let sig = match how {
             "absent" => return None,
             "empty" => Vec::new(),
-            "RS256" => rsa_sign::<sha2::Sha256>(&private("rsa"), input),
-            "RS384" => rsa_sign::<sha2::Sha384>(&private("rsa"), input),
-            "RS512" => rsa_sign::<sha2::Sha512>(&private("rsa"), input),
+            "RS256" => rsa_sign(&private("rsa"), &ring::signature::RSA_PKCS1_SHA256, input),
+            "RS384" => rsa_sign(&private("rsa"), &ring::signature::RSA_PKCS1_SHA384, input),
+            "RS512" => rsa_sign(&private("rsa"), &ring::signature::RSA_PKCS1_SHA512, input),
             "ES256" => chassis("ec"),
             "EdDSA" => chassis("okp"),
             hs => {

@@ -1927,7 +1927,7 @@ dependencies = [
  "prost-wkt-types",
  "rand 0.8.8",
  "reqwest",
- "rsa",
+ "ring",
  "rustls",
  "rustls-pemfile",
  "serde",
