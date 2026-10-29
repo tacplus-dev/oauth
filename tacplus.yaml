@@ -1,6 +1,6 @@
 language: rust
 # Compiler floor: the looper runs this MAJOR.MINOR line's latest patch.
-tacplus: "2.4"
+tacplus: "2.5"
 # Rust takes only pkg's last segment: the crate stays oauth-model.
 pkg: com.github.tacplusdev.oauth
 output-dir: target/generated-sources
