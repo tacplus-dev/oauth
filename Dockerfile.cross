@@ -1,6 +1,6 @@
 # Multi-stage build: compile Rust for linux/arm64, then create runtime image.
 # Used for local development builds.
-FROM --platform=linux/arm64 rust:bookworm AS builder
+FROM --platform=linux/arm64 rust:trixie AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
@@ -13,10 +13,10 @@ WORKDIR /build
 
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
-COPY target/generated-sources/tacplus ./target/generated-sources/tacplus
+COPY target/generated-sources/model ./target/generated-sources/model
 
 # Remove any pre-compiled artifacts that are wrong architecture.
-RUN find target/generated-sources/tacplus/target -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+RUN find target/generated-sources/model/target -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 
 # Build the release binary.
 RUN cargo build --release
