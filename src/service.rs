@@ -124,6 +124,24 @@ where
     }
 }
 
+/// The RegisterNonce an unauthenticated session sends to kernel's broker. The
+/// session's request causes it, so it carries the session's trace_id, outer and
+/// inner.
+fn register_nonce_request(session_id: &str, trace_id: &str, offline_access: bool) -> CliTokenBrokerRequest {
+    CliTokenBrokerRequest {
+        msg: Some(cli_token_broker_request::Msg::RegisterNonce(
+            CliTokenBrokerRegisterNonce {
+                nonce: session_id.to_string(),
+                offline_access,
+                trace_id: trace_id.to_string(),
+                ..Default::default()
+            },
+        )),
+        trace_id: trace_id.to_string(),
+        ..Default::default()
+    }
+}
+
 #[tonic::async_trait]
 impl SessionHandler for OauthImpl {
     async fn broker_session(
@@ -133,7 +151,7 @@ impl SessionHandler for OauthImpl {
     ) -> Result<tonic::Response<Pin<Box<dyn tokio_stream::Stream<Item = Result<SessionResponse, tonic::Status>> + Send>>>, tonic::Status> {
         let bearer_owned = servicemanager::auth::extract_bearer_token(&request).ok().map(|s| s.to_string());
         let mut inbound = request.into_inner();
-        let (session_id, _trace_id, offline_access) = recv_session_id(&mut inbound).await?;
+        let (session_id, trace_id, offline_access) = recv_session_id(&mut inbound).await?;
 
         if let Some(bearer_str) = bearer_owned {
             // Authenticated session (daemon mode) — proactive refresh
@@ -178,16 +196,7 @@ impl SessionHandler for OauthImpl {
             let (reply_tx, reply_rx) = oneshot::channel();
             claim_pending_session(&self.pending, &session_id, reply_tx).await?;
 
-            self.broker.send(CliTokenBrokerRequest {
-                msg: Some(cli_token_broker_request::Msg::RegisterNonce(
-                    CliTokenBrokerRegisterNonce {
-                        nonce: session_id.clone(),
-                        offline_access,
-                        ..Default::default()
-                    },
-                )),
-                ..Default::default()
-            }).await?;
+            self.broker.send(register_nonce_request(&session_id, &trace_id, offline_access)).await?;
 
             let (tx, rx) = mpsc::channel(4);
             let timeout = Duration::from_secs(self.session_timeout());
@@ -258,5 +267,26 @@ mod pending_session_tests {
         sender.send("the-token".to_string()).unwrap();
         assert_eq!(first_rx.await.unwrap(), "the-token");
         assert!(second_rx.try_recv().is_err());
+    }
+}
+
+#[cfg(test)]
+mod register_nonce_tests {
+    use super::*;
+
+    /// The trace_id of the session's first message arrives on the RegisterNonce
+    /// the session causes, on the outer request and on the inner message.
+    #[test]
+    fn register_nonce_carries_the_inbound_trace_id() {
+        let req = register_nonce_request("the-nonce", "the-trace", true);
+        assert_eq!(req.trace_id, "the-trace");
+        match req.msg {
+            Some(cli_token_broker_request::Msg::RegisterNonce(inner)) => {
+                assert_eq!(inner.trace_id, "the-trace");
+                assert_eq!(inner.nonce, "the-nonce");
+                assert!(inner.offline_access);
+            }
+            other => panic!("expected RegisterNonce, got {other:?}"),
+        }
     }
 }
