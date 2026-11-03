@@ -152,6 +152,7 @@ impl SessionHandler for OauthImpl {
                     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
                     let sleep_secs = (exp - now - auto_refresh_before).max(1) as u64;
                     tokio::time::sleep(Duration::from_secs(sleep_secs)).await;
+                    // trace: unrelated: periodic daemon refresh on a timer for the stream's lifetime, not caused by any one request
                     match exchange_token(&sm, &current_token, refresh_lifetime, "").await {
                         Ok(new_token) => {
                             info!(session_id = %session_id, "daemon: refreshed token");
