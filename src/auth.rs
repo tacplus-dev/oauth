@@ -1287,17 +1287,7 @@ impl AuthHandler for AuthImpl {
 
         check_pending_session(&self.pending, &req.session_id).await?;
 
-        self.kernel.broker_send(&CliTokenBrokerRequest {
-            msg: Some(cli_token_broker_request::Msg::CompleteNonce(
-                CliTokenBrokerCompleteNonce {
-                    nonce: req.session_id.clone(),
-                    subject: subject.clone(),
-                    claims: Some(claims),
-                    ..Default::default()
-                },
-            )),
-            ..Default::default()
-        }).await?;
+        self.kernel.broker_send(&complete_nonce_request(&req.session_id, &subject, claims, &req.trace_id)).await?;
 
         info!(sub = %subject, session_id = %req.session_id, "CLI auth completed via broker (already authenticated)");
 
@@ -3770,6 +3760,50 @@ mod entra_signin_tests {
     async fn the_callback_trace_id_arrives_on_complete_nonce() {
         let kernel = run_callback(Some("nonce-1")).await;
         let mut sent = kernel.broker.into_inner().unwrap();
+        assert_eq!(sent.len(), 1);
+        let msg = sent.remove(0);
+        assert_eq!(msg.trace_id, TRACE_ID);
+        let Some(cli_token_broker_request::Msg::CompleteNonce(complete)) = msg.msg else {
+            panic!("expected a CompleteNonce, got {:?}", msg.msg);
+        };
+        assert_eq!(complete.trace_id, TRACE_ID);
+        assert_eq!(complete.nonce, "nonce-1");
+        assert_eq!(complete.subject, ENTRA_SUB);
+    }
+
+    /// Trace propagation (looper#51): the CompleteNonce BrokerCliAuth sends for
+    /// an already signed-in caller carries the request's trace_id, on the
+    /// stream message and on the CompleteNonce inside it.
+    #[tokio::test]
+    async fn the_broker_cli_auth_trace_id_arrives_on_complete_nonce() {
+        let kernel = Arc::new(RecordingKernel::default());
+        let pending = Arc::new(RwLock::new(HashMap::new()));
+        let (tx, _rx) = oneshot::channel::<String>();
+        pending.write().await.insert("nonce-1".to_string(), tx);
+        let auth = AuthImpl::with_kernel(
+            Arc::clone(&kernel) as Arc<dyn Kernel>,
+            pending,
+            Arc::new(NoLookups),
+            Arc::new(NoLookups),
+        );
+        let mut t = token::Token::new();
+        t.set_issuer("kernel").unwrap();
+        t.set_subject(ENTRA_SUB).unwrap();
+        let caller = servicemanager::auth::Caller::new(t, "req-1".to_string());
+
+        auth.broker_cli_auth(
+            Some(&caller),
+            CompleteCliAuthRequest {
+                session_id: "nonce-1".to_string(),
+                trace_id: TRACE_ID.to_string(),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("BrokerCliAuth completes a pending session");
+        drop(auth);
+
+        let mut sent = Arc::into_inner(kernel).unwrap().broker.into_inner().unwrap();
         assert_eq!(sent.len(), 1);
         let msg = sent.remove(0);
         assert_eq!(msg.trace_id, TRACE_ID);
