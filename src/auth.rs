@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 use oauth_model::s2sm::internal::grpc::servers::services::oauth::auth::AuthHandler;
 use oauth_model::s2sm::ServiceManager;
 use oauth_model::types::sys::token::JwtPayloadType;
-use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest};
+use oauth_model::types::sys::tokenrequest::tokenrequest::{AuthBrokerKind, MintUserTokenRequest, TokenMintResponse};
 use oauth_model::types::services::oauth::helpers::secrets_from_env_var;
 use oauth_model::types::services::oauth::oauth::{
     AuthorizeRequest, AuthorizeResponse, CallbackRequest, CallbackResponse,
@@ -50,10 +50,38 @@ async fn check_pending_session(
     ))
 }
 
-/// AuthImpl implements the Auth gRPC service (OAuth2/OIDC browser flows).
-pub struct AuthImpl {
+/// Kernel, as the sign-in handlers call it: MintUserToken and the
+/// CliTokenBroker stream.
+///
+/// A trait so the tests can run a handler and see what reaches kernel; the
+/// service uses `ClusterKernel`.
+#[tonic::async_trait]
+trait Kernel: Send + Sync {
+    async fn mint_user_token(&self, req: &MintUserTokenRequest) -> Result<TokenMintResponse, tonic::Status>;
+    async fn broker_send(&self, msg: &CliTokenBrokerRequest) -> Result<(), tonic::Status>;
+}
+
+/// Kernel over the cluster: its Mint service, and the CliTokenBroker stream
+/// `OauthImpl` holds open.
+struct ClusterKernel {
     sm: Arc<ServiceManager>,
     broker: BrokerStreamBidiHandle,
+}
+
+#[tonic::async_trait]
+impl Kernel for ClusterKernel {
+    async fn mint_user_token(&self, req: &MintUserTokenRequest) -> Result<TokenMintResponse, tonic::Status> {
+        Ok(self.sm.s2s().kernel().mint_client().mint_user_token(req.clone()).await?.into_inner())
+    }
+
+    async fn broker_send(&self, msg: &CliTokenBrokerRequest) -> Result<(), tonic::Status> {
+        self.broker.send(msg.clone()).await
+    }
+}
+
+/// AuthImpl implements the Auth gRPC service (OAuth2/OIDC browser flows).
+pub struct AuthImpl {
+    kernel: Arc<dyn Kernel>,
     /// The same map `OauthImpl` registers CLI sessions in — shared, not a copy,
     /// so `broker_cli_auth` can tell a session this instance is actually
     /// holding open from a `session_id` the caller merely knows.
@@ -157,9 +185,18 @@ impl AuthImpl {
         dns_resolver: Arc<dyn DnsResolver>,
         issuer_finder: Arc<dyn IssuerFinder>,
     ) -> Self {
+        let kernel = Arc::new(ClusterKernel { sm, broker: broker.clone() });
+        Self::with_kernel(kernel, pending, dns_resolver, issuer_finder)
+    }
+
+    fn with_kernel(
+        kernel: Arc<dyn Kernel>,
+        pending: Arc<RwLock<HashMap<String, oneshot::Sender<String>>>>,
+        dns_resolver: Arc<dyn DnsResolver>,
+        issuer_finder: Arc<dyn IssuerFinder>,
+    ) -> Self {
         Self {
-            sm,
-            broker: broker.clone(),
+            kernel,
             pending,
             flow: Flow::new(),
             dns_resolver,
@@ -884,6 +921,31 @@ fn idp_mint_request(
     }
 }
 
+/// Build the kernel CliTokenBroker CompleteNonce request that hands a CLI
+/// session's identity to kernel. `trace_id` is set on the stream message and on
+/// the CompleteNonce inside it, so kernel's half of the CLI login appears in the
+/// caller's trace.
+fn complete_nonce_request(
+    nonce: &str,
+    subject: &str,
+    claims: prost_wkt_types::Struct,
+    trace_id: &str,
+) -> CliTokenBrokerRequest {
+    CliTokenBrokerRequest {
+        msg: Some(cli_token_broker_request::Msg::CompleteNonce(
+            CliTokenBrokerCompleteNonce {
+                nonce: nonce.to_string(),
+                subject: subject.to_string(),
+                claims: Some(claims),
+                trace_id: trace_id.to_string(),
+                ..Default::default()
+            },
+        )),
+        trace_id: trace_id.to_string(),
+        ..Default::default()
+    }
+}
+
 /// The sign-in options ListProviders answers: every enabled provider, with the
 /// index Authorize takes.
 fn provider_infos(providers: &[ProviderConfig]) -> Vec<ProviderInfo> {
@@ -1095,14 +1157,13 @@ impl AuthHandler for AuthImpl {
         add_email_domain(&mut claims, &provider.email_verified_claim);
 
         // 7. Call kernel MintUserToken to get signed tokens.
-        let mint_resp = self.sm.s2s().kernel().mint_client()
-            .mint_user_token(idp_mint_request(&subject, claims.clone(), &req.trace_id))
+        let mint_resp = self.kernel
+            .mint_user_token(&idp_mint_request(&subject, claims.clone(), &req.trace_id))
             .await
             .map_err(|e| {
                 warn!(error = %e, "kernel MintUserToken failed");
                 tonic::Status::internal(format!("kernel token mint failed: {e}"))
-            })?
-            .into_inner();
+            })?;
 
         // 8. Compute expires_in from the tokens.
         let now = SystemTime::now()
@@ -1136,17 +1197,7 @@ impl AuthHandler for AuthImpl {
         // kernel CliTokenBroker. Kernel matches the nonce, mints the token,
         // and delivers it to the oauth instance holding the CLI stream.
         if let Some(session_id) = &payload.session_id {
-            self.broker.send(CliTokenBrokerRequest {
-                msg: Some(cli_token_broker_request::Msg::CompleteNonce(
-                    CliTokenBrokerCompleteNonce {
-                        nonce: session_id.clone(),
-                        subject: subject.clone(),
-                        claims: Some(claims),
-                        ..Default::default()
-                    },
-                )),
-                ..Default::default()
-            }).await.map_err(|e| {
+            self.kernel.broker_send(&complete_nonce_request(session_id, &subject, claims, &req.trace_id)).await.map_err(|e| {
                 warn!(session_id = %session_id, error = %e, "failed to complete CLI nonce via broker");
                 tonic::Status::internal(format!("failed to complete CLI nonce: {e}"))
             })?;
@@ -1236,7 +1287,7 @@ impl AuthHandler for AuthImpl {
 
         check_pending_session(&self.pending, &req.session_id).await?;
 
-        self.broker.send(CliTokenBrokerRequest {
+        self.kernel.broker_send(&CliTokenBrokerRequest {
             msg: Some(cli_token_broker_request::Msg::CompleteNonce(
                 CliTokenBrokerCompleteNonce {
                     nonce: req.session_id.clone(),
@@ -3614,5 +3665,119 @@ mod entra_signin_tests {
         let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
         let (iss, _) = client.expected_claims(0).unwrap();
         assert_eq!(iss, "https://127.0.0.1:1/common/v2.0");
+    }
+
+    /// Kernel as the handler tests see it: it records every request that
+    /// reaches it and mints nothing.
+    #[derive(Default)]
+    struct RecordingKernel {
+        mints: Mutex<Vec<MintUserTokenRequest>>,
+        broker: Mutex<Vec<CliTokenBrokerRequest>>,
+    }
+
+    #[tonic::async_trait]
+    impl Kernel for RecordingKernel {
+        async fn mint_user_token(&self, req: &MintUserTokenRequest) -> Result<TokenMintResponse, tonic::Status> {
+            self.mints.lock().unwrap().push(req.clone());
+            Ok(TokenMintResponse::default())
+        }
+
+        async fn broker_send(&self, msg: &CliTokenBrokerRequest) -> Result<(), tonic::Status> {
+            self.broker.lock().unwrap().push(msg.clone());
+            Ok(())
+        }
+    }
+
+    /// No DNS and no WebFinger: the callback looks up neither.
+    struct NoLookups;
+
+    #[tonic::async_trait]
+    impl DnsResolver for NoLookups {
+        async fn mx(&self, _domain: &str) -> Result<Vec<(u16, String)>, String> {
+            Err("no lookups in this test".to_string())
+        }
+        async fn txt(&self, _name: &str) -> Result<Vec<String>, String> {
+            Err("no lookups in this test".to_string())
+        }
+    }
+
+    #[tonic::async_trait]
+    impl IssuerFinder for NoLookups {
+        async fn issuer(&self, _domain: &str, _email: &str) -> Option<String> {
+            None
+        }
+    }
+
+    const TRACE_ID: &str = "trace-inbound-7f3a";
+
+    /// Run MintCallbackTokens against the fake Entra for a login whose state
+    /// carries `session_id`, the request carrying TRACE_ID, and answer what
+    /// reached kernel.
+    async fn run_callback(session_id: Option<&str>) -> RecordingKernel {
+        let entra = spawn_fake_entra(|base| {
+            entra_id_token(
+                &format!("{base}/{TID}/v2.0"),
+                Some(TID),
+                &[("email", json!(EMAIL)), ("xms_edov", json!(true))],
+            )
+        })
+        .await;
+        let kernel = Arc::new(RecordingKernel::default());
+        let auth = AuthImpl::with_kernel(
+            Arc::clone(&kernel) as Arc<dyn Kernel>,
+            Arc::new(RwLock::new(HashMap::new())),
+            Arc::new(NoLookups),
+            Arc::new(NoLookups),
+        );
+        auth.apply_config(&config(vec![entra_provider(&entra.base)])).await.unwrap();
+        let state = {
+            let guard = auth.flow.state.read().await;
+            let s = guard.as_ref().unwrap();
+            s.state_codec.encode(&s.keys[0], SPA, &generate_code_verifier(), session_id)
+        };
+
+        auth.mint_callback_tokens(
+            None,
+            CallbackRequest {
+                code: ENTRA_CODE.to_string(),
+                state,
+                trace_id: TRACE_ID.to_string(),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("the callback completes");
+        drop(auth);
+        Arc::into_inner(kernel).unwrap()
+    }
+
+    /// Trace propagation (looper#51): the MintUserToken request the callback
+    /// sends kernel carries the callback's trace_id.
+    #[tokio::test]
+    async fn the_callback_trace_id_arrives_on_mint_user_token() {
+        let kernel = run_callback(None).await;
+        let mints = kernel.mints.into_inner().unwrap();
+        assert_eq!(mints.len(), 1);
+        assert_eq!(mints[0].trace_id, TRACE_ID);
+        assert_eq!(mints[0].subject, ENTRA_SUB);
+        assert!(kernel.broker.into_inner().unwrap().is_empty(), "a browser login completes no nonce");
+    }
+
+    /// Trace propagation (looper#51): a CLI login's CompleteNonce, sent on
+    /// kernel's CliTokenBroker stream, carries the callback's trace_id, on the
+    /// stream message and on the CompleteNonce inside it.
+    #[tokio::test]
+    async fn the_callback_trace_id_arrives_on_complete_nonce() {
+        let kernel = run_callback(Some("nonce-1")).await;
+        let mut sent = kernel.broker.into_inner().unwrap();
+        assert_eq!(sent.len(), 1);
+        let msg = sent.remove(0);
+        assert_eq!(msg.trace_id, TRACE_ID);
+        let Some(cli_token_broker_request::Msg::CompleteNonce(complete)) = msg.msg else {
+            panic!("expected a CompleteNonce, got {:?}", msg.msg);
+        };
+        assert_eq!(complete.trace_id, TRACE_ID);
+        assert_eq!(complete.nonce, "nonce-1");
+        assert_eq!(complete.subject, ENTRA_SUB);
     }
 }
