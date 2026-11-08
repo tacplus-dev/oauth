@@ -9,8 +9,10 @@ the looper then marks it `promoted` or `declined` here with the date.
   between the two calls, the index can name another provider, and the person is sent to that IdP (its allowlist
   still applies). Proposal: an additive `ProviderInfo.key` / `AuthorizeRequest.provider_key` in oauth.proto, which
   the webapp would send. That is a public contract change, so it is not made here.
-- **ROADMAP.md "Now" line: tacplus floor 2.5** (2026-10-29, #13): the floor moved to 2.5 in tacplus.yaml and
-  STATE.md, but ROADMAP.md's "Now" line still says "tacplus floor 2.4". The looper may not change ROADMAP.md (its
-  push is refused); an agent changes that line at Jody's request.
+- **ROADMAP.md "Now" line: tacplus floor 2.6, pinned 2.6.1** (2026-10-29, #13; 2026-11-07, #20, #21): the floor
+  is 2.6 in tacplus.yaml, pinned to 2.6.1 and its build image by digest in tacplus.lock, but ROADMAP.md's "Now"
+  line still says "Unreleased; tacplus floor 2.4" (v0.1.0 is tagged). #21 asks for that line to follow the floor;
+  the looper may not change ROADMAP.md (its push is refused), so an agent changes it at Jody's request. Proposed:
+  "Released v0.1.x (source tags); tacplus floor 2.6, pinned 2.6.1 in tacplus.lock."
 
 ## Promoted / declined
