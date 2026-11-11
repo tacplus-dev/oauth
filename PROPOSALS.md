@@ -14,5 +14,9 @@ the looper then marks it `promoted` or `declined` here with the date.
   line still says "Unreleased; tacplus floor 2.4" (v0.1.0 is tagged). #21 asks for that line to follow the floor;
   the looper may not change ROADMAP.md (its push is refused), so an agent changes it at Jody's request. Proposed:
   "Released v0.1.x (source tags); tacplus floor 2.6, pinned 2.6.1 in tacplus.lock."
+- **tacplus: generate `rmcp = "3.9"` for the Rust model** (2026-11-11, #23): tacplus 2.6.1 generates
+  `rmcp = "3.4.1"` (a caret requirement) in the model's Cargo.toml, so a lock may keep 3.4.x–3.8.x, which carry
+  RUSTSEC-2026-0457, -0461 and -0462, until someone relocks by hand. oauth's Cargo.lock is relocked to 3.9.0 (#23);
+  a floor of 3.9 in the generator would make cargo move every such lock forward. That is a change in tacplus-dev/tacplus, not here.
 
 ## Promoted / declined
