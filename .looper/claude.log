@@ -1,0 +1,121 @@
+= init
+> Bash git status --short && git diff --stat && git log --oneline -3 && git diff && gh issue view 22 --repo tacplus-dev/oauth --comments | tail -20
+<  M Cargo.lock  M Cargo.toml  M Dockerfile  M Dockerfile.cross  M STATE.md  M justfile  Cargo.lock       |  2 +-  Cargo.toml       |  2 +-  Dockerfile       |  8 ++++++++  Dockerfile.cross |  4 ++++  STATE.md         | 11 ++++++-----  justfile         | 10 +++++++++-  6 files changed, 29 insertions(+...
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/22; gh issue view 113 --repo tacplus-dev/looper --comments 2>&1 | tail -40; which glab curl; curl -s https://gitlab.com/api/v4/projects/tacplus-dev%2Fbuild/pipelines/3052515210 | head -c 800; echo; curl -s "https://gitlab.com/api/v4/projects/tacplus-dev%2Fbuild/pipelin...
+< Exit code 1 author:	tacplus-looper association:	none edited:	false status:	none -- Status at 01:25Z, end of this run (its time runs out; the issue stays open):  - **Committed:** 0b727ad on `looper/looper-113`. repo-looper: a build with no `tacplus-dev/build` status from the reader app within `LOOPER...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/22; gh issue view 113 --repo tacplus-dev/looper --json state,labels,title; gh api repos/tacplus-dev/oauth/commits/fb5ace8/statuses --jq '.[]|[.context,.state,.description,.created_at]|@tsv' 2>&1 | head; for r in gateway opa operator blobstore llmproxy; do echo "== $r";...
+= task_started
+= task_notification
+< {"labels":[{"id":"LA_kwDOVYTbn88AAAAC_ah4NA","name":"bug","description":"Something isn't working","color":"d73a4a"},{"id":"LA_kwDOVYTbn88AAAAC_alRsw","name":"approved","description":"Approved by someone with write access; the repository's looper works it","color":"0E8A16"},{"id":"LA_kwDOVYTbn88AAAAD...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/22; grep -n FROM Dockerfile Dockerfile.cross; git ls-remote origin 'refs/heads/looper/oauth-22'; git log --oneline origin/looper/oauth-22 -4; git tag -n3 v0.1.1; which semgrep just
+< Dockerfile:7:FROM ${BASE_IMAGE} Dockerfile.cross:3:FROM --platform=linux/arm64 rust:trixie AS builder Dockerfile.cross:26:FROM --platform=linux/arm64 debian:trixie-slim e3160d4e3c52bd0263808957bf6cf323a003770c	refs/heads/looper/oauth-22 e3160d4 looper: work in progress on #22 (the run's end) fb5ace8...
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/22; git diff fb5ace8 --stat; echo ---; git log -2 --format='%H%n%B' fb5ace8; semgrep --config p/default --metrics off -q Dockerfile Dockerfile.cross 2>&1 | tail -5; just dockerfile-user && echo user-ok
+= task_started
+= task_notification
+< --- fb5ace844ac79b343fb0e9d6e7c022f0b21ab66c oauth 0.1.2: the version of the non-root image patch (#22)  The patch release v0.1.2 tags this crate version, as v0.1.1 did 0.1.1. Cargo.lock changes only oauth's own version line, the one change cargo makes for it; the gates' cargo build --locked checks ...
+= thinking_tokens
+= thinking_tokens
+The previous run's fix matches its commits exactly. I'm restoring those commits, then queuing the land again. The last three land attempts all timed out on build-infra starvation (looper#113).
+> Bash cd /builds/looper/oauth/issues/22; git reset -q fb5ace8 && git status --short && git log --oneline -3 && /usr/local/bin/repo-looper --repo oauth --issue 22 --checkpoint "Commits 8cc61f2 (USER 65532:65532 both Dockerfiles, just dockerfile-user gate) and fb5ace8 (0.1.2) restored on main 7aa70b5; semgr...
+> Bash cd /builds/looper/oauth/issues/22; nohup /usr/local/bin/repo-looper --repo oauth --issue 22 --land > /tmp/land22.log 2>&1 & echo $!
+< fb5ace8 oauth 0.1.2: the version of the non-root image patch (#22) 8cc61f2 Run the release image as non-root 65532:65532 (#22) 7aa70b5 HISTORY.md: #21 (looper) [2026-11-11T05:17:29Z] checkpoint of #22 (a step) pushed to looper/oauth-22:  8 files changed, 258 insertions(+), 8 deletions(-)
+< 1005
+= thinking_tokens
+= thinking_tokens
+> Bash timeout 590 bash -c 'until grep -qE "landed|nothing landed|merged|building|started" /tmp/land22.log; do sleep 30; done'; cat /tmp/land22.log
+= task_started
+= task_notification
+< [2026-11-11T05:17:30Z] checkpoint of #22 (land queued) pushed to looper/oauth-22:  9 files changed, 265 insertions(+), 8 deletions(-) [2026-11-11T05:17:32Z] queued: the manager of oauth merges looper/oauth-22 after the lands queued before it, one at a time, and says on the issue what came of it; wai...
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/22; git fetch -q origin; git diff --stat origin/main origin/looper/oauth-22; git log --oneline origin/main..origin/looper/oauth-22
+<  .looper/claude.log |  35 ++++++++++  .looper/land       |   4 ++  .looper/prompt.md  | 197 +++++++++++++++++++++++++++++++++++++++++++++++++++++  Cargo.lock         |   2 +-  Cargo.toml         |   2 +-  Dockerfile         |   8 +++  Dockerfile.cross   |   4 ++  STATE.md           |  11 +--  justfi...
+= thinking_tokens
+= thinking_tokens
+The land is queued. While it waits, I'll keep checking it with short polls.
+> Bash timeout 590 bash -c 'n=$(wc -l </tmp/land22.log); until [ $(wc -l </tmp/land22.log) -gt $n ]; do sleep 30; done'; tail -5 /tmp/land22.log; kill -0 1005 && echo running
+= task_started
+= task_notification
+< [2026-11-11T05:17:30Z] checkpoint of #22 (land queued) pushed to looper/oauth-22:  9 files changed, 265 insertions(+), 8 deletions(-) [2026-11-11T05:17:32Z] queued: the manager of oauth merges looper/oauth-22 after the lands queued before it, one at a time, and says on the issue what came of it; wai...
+> Bash timeout 590 bash -c 'n=$(wc -l </tmp/land22.log); until [ $(wc -l </tmp/land22.log) -gt $n ]; do sleep 30; done'; tail -3 /tmp/land22.log; kill -0 1005 && echo running; gh api repos/tacplus-dev/oauth/commits/looper/build-oauth-22/statuses --jq '.[0]|[.state,.description,.created_at]|@tsv' 2>&1|head ...
+= task_started
+= task_notification
+< [2026-11-11T05:17:30Z] checkpoint of #22 (land queued) pushed to looper/oauth-22:  9 files changed, 265 insertions(+), 8 deletions(-) [2026-11-11T05:17:32Z] queued: the manager of oauth merges looper/oauth-22 after the lands queued before it, one at a time, and says on the issue what came of it; wai...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/22; cat > /tmp/c22.md <<'EOF' Status, 2026-11-11 05:40Z: the fix is done and queued to land again. This issue now waits on tacplus-dev/looper#113 (build jobs that never report).  - **Commits on `looper/oauth-22`, queued with the manager (land queued 05:17Z):** 8cc61f2 ...
+< https://github.com/tacplus-dev/oauth/issues/22#issuecomment-6788193328
+> Bash cd /builds/looper/oauth/issues/22; /usr/local/bin/looper-trace check 2>&1 | tail -8
+< looper-trace: /builds/looper/oauth/issues/22 handler src/auth.rs:992 mint_callback_tokens (inbound: req)   causal src/auth.rs:1099 mint_user_token: carries the inbound trace_id FINDING untested src/auth.rs:992: mint_callback_tokens makes causal downstream calls (mint_user_token) but no test asserts ...
+Confirmed. Now the checkpoint, stopping my own wait process (the land stays queued with the manager), and the Blocked-by outcome.
+> Bash cd /builds/looper/oauth/issues/22; /usr/local/bin/repo-looper --repo oauth --issue 22 --checkpoint "8cc61f2 + fb5ace8 queued to land 05:17Z (4th land); earlier three timed out on build starvation, looper#113. Blocked-by looper#113. Left: land verdict (re-land if red), just gates on main, tag v0.1.2 ...
+< [2026-11-11T05:47:36Z] checkpoint of #22 (a step) pushed to looper/oauth-22:  9 files changed, 324 insertions(+), 8 deletions(-) Blocked-by: tacplus-dev/looper#113
+The fix for #22 is finished and queued to land on main again, but it hasn't landed yet: build jobs are stalling across the org (looper#113). I left #22 open and set this run's outcome to `Blocked-by: tacplus-dev/looper#113`.
+
+- **The fix:** two commits, unchanged from the last run.
+  - 8cc61f2 makes both `Dockerfile` and `Dockerfile.cross` create a system user and group `oauth` with the fixed ID 65532, and end with `USER 65532:65532`. oauth writes no files, so no directory needs to be owned by that user.
+  - It also adds a `dockerfile-user` step to `just gates` that fails if the Dockerfile's last `USER` isn't 65532:65532.
+  - fb5ace8 bumps the version to 0.1.2 for the patch release.
+- **Checked here:** semgrep (`p/default`) reports no findings on either fixed Dockerfile, though it flags `missing-user-entrypoint` on main's. `just dockerfile-user` passes. The trace check still flags only `mint_callback_tokens`, which is already #16; this change touches no handler.
+- **Why it hasn't landed:** all three earlier lands ended "no verdict within 3h". The last build was marked pending at 02:23Z and never reported. No tacplus-dev service has landed code since Nov 9, and the manager took 8 to 13 hours just to start a land last time. I queued a fourth land at 05:17Z, which the manager will still run after this run ends.
+- **Not verified:** that the image starts. There's no container runtime here, and no image has been built yet (#5).
+
+I posted this status on the issue: https://github.com/tacplus-dev/oauth/issues/22#issuecomment-6788193328
+
+Once the land succeeds, the next run checks that `just gates` passes on main, tags and pushes `v0.1.2`, comments and closes the issue. If the land times out again, that run re-lands it after looper#113 is closed.
+= success: The fix for #22 is finished and queued to land on main again, but it hasn't landed yet: build jobs are stalling across the org (looper#113). I left #22 open and set this run's outcome to `Blocked-by: tacplus-dev/looper#113`.
+
+- **The fix:** two commits, unchanged from the last run.
+  - 8cc61f2 makes both `Dockerfile` and `Dockerfile.cross` create a system user and group `oauth` with the fixed ID 65532, and end with `USER 65532:65532`. oauth writes no files, so no directory needs to be owned by that user.
+  - It also adds a `dockerfile-user` step to `just gates` that fails if the Dockerfile's last `USER` isn't 65532:65532.
+  - fb5ace8 bumps the version to 0.1.2 for the patch release.
+- **Checked here:** semgrep (`p/default`) reports no findings on either fixed Dockerfile, though it flags `missing-user-entrypoint` on main's. `just dockerfile-user` passes. The trace check still flags only `mint_callback_tokens`, which is already #16; this change touches no handler.
+- **Why it hasn't landed:** all three earlier lands ended "no verdict within 3h". The last build was marked pending at 02:23Z and never reported. No tacplus-dev service has landed code since Nov 9, and the manager took 8 to 13 hours just to start a land last time. I queued a fourth land at 05:17Z, which the manager will still run after this run ends.
+- **Not verified:** that the image starts. There's no container runtime here, and no image has been built yet (#5).
+
+I posted this status on the issue: https://github.com/tacplus-dev/oauth/issues/22#issuecomment-6788193328
+
+Once the land succeeds, the next run checks that `just gates` passes on main, tags and pushes `v0.1.2`, comments and closes the issue. If the land times out again, that run re-lands it after looper#113 is closed.
