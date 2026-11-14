@@ -18,5 +18,10 @@ the looper then marks it `promoted` or `declined` here with the date.
   (#5; blocked on tacplus-dev/looper#12)" names a blocker closed 2026-10-29; #5 now waits on
   tacplus-dev/looper#115 and tacplus-dev/looper#112 (its `Blocked-by:` lines). #25 fixes the same line in
   STATE.md. Proposed: "(#5; blocked on tacplus-dev/looper#115 and tacplus-dev/looper#112)".
+- **Chassis x509: a self-signed CA in one call** (2026-11-14, #26): the oidc TLS tests now issue their
+  certificates at run time with the chassis signer, but `ImmutableCertChain::self_sign` never sets `is_ca`, so the
+  test root takes two steps (a self-signed bootstrap cert that issues the CA cert over the same key), and
+  `X509CertRequest` has no IP SANs. Proposal for tacplus-dev/tacplus: `self_sign` taking `is_ca` (Go/Java parity
+  permitting), so any service's tests can make a CA directly.
 
 ## Promoted / declined

@@ -99,22 +99,23 @@ pub fn parse_user_name(user_json: &str) -> Result<(Option<String>, Option<String
 pub(crate) mod tests {
     use super::*;
 
-    /// Fixture P-256 keypair standing in for an Apple .p8 key. Test-only; a
-    /// different key from the one the fake Apple signs id_tokens with.
-    pub(crate) const TEST_P8_PEM: &str = "-----BEGIN PRIVATE KEY-----\n\
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgYwTfg/yvjlM9jR9F\n\
-XmJdM3RO2toUSx/FeNt5nt5hLL2hRANCAAREhlYv84cmU81Pj3jscphXmrNneSeT\n\
-+eSRP7uN+GXDoRDiDXKpF2G5GP38PlTt436XKsk3JQOUTfLgmabTmwOV\n\
------END PRIVATE KEY-----\n";
+    /// Fixture P-256 keypair standing in for an Apple .p8 key, generated once
+    /// per run (oauth#26). Test-only; a different key from the one the fake
+    /// Apple signs id_tokens with.
+    fn test_p8() -> &'static key::keys::ImmutableKey {
+        static KEY: std::sync::OnceLock<key::keys::ImmutableKey> = std::sync::OnceLock::new();
+        KEY.get_or_init(|| key::keys::generate_ec_p256_key().unwrap())
+    }
 
-    pub(crate) const TEST_P8_PUBLIC_PEM: &str = "-----BEGIN PUBLIC KEY-----\n\
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERIZWL/OHJlPNT4947HKYV5qzZ3kn\n\
-k/nkkT+7jfhlw6EQ4g1yqRdhuRj9/D5U7eN+lyrJNyUDlE3y4Jmm05sDlQ==\n\
------END PUBLIC KEY-----\n";
+    /// The fixture .p8 as Apple hands it out: a PKCS#8 PEM.
+    pub(crate) fn test_p8_pem() -> &'static str {
+        crate::test_keys::private_pem(test_p8())
+    }
 
     /// The chassis verifier for a client secret minted with the fixture .p8.
     pub(crate) fn p8_verifier(key_id: &str) -> jwk::ImmutableJwk {
-        let b64 = base64::engine::general_purpose::STANDARD.encode(TEST_P8_PUBLIC_PEM);
+        let public_pem = crate::test_keys::public_pem(test_p8());
+        let b64 = base64::engine::general_purpose::STANDARD.encode(public_pem);
         let public = key::keys::ImmutablePublicKey::from_pem(key_id.to_string(), &b64).unwrap();
         jwk::ImmutableJwk::new(jwk::jwk::key_to_jwk(&public).unwrap()).unwrap()
     }
@@ -141,7 +142,7 @@ k/nkkT+7jfhlw6EQ4g1yqRdhuRj9/D5U7eN+lyrJNyUDlE3y4Jmm05sDlQ==\n\
     /// chassis verifier — a path independent of the one that signed it.
     #[test]
     fn minted_client_secret_has_apples_shape_and_verifies() {
-        let secret = AppleClientSecret::new(&apple(), "com.example.services", TEST_P8_PEM)
+        let secret = AppleClientSecret::new(&apple(), "com.example.services", test_p8_pem())
             .expect("a PKCS#8 P-256 key is a valid .p8");
         let jwt = secret.mint(1_760_000_000).unwrap();
 

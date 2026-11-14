@@ -5,6 +5,8 @@ mod oidc;
 mod providers;
 mod service;
 mod signin_email;
+#[cfg(test)]
+mod test_keys;
 
 use std::sync::Arc;
 

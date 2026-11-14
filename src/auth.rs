@@ -1267,19 +1267,17 @@ mod idp_token_verification_tests {
     const TEST_ISSUER: &str = "https://idp.example.com/realms/schematic";
     const TEST_AUDIENCE: &str = "schematic";
 
-    /// Fixture P-256 keypair. Test-only, never used outside these tests — it
-    /// stands in for the IdP's signing key so the crypto path runs for real
-    /// instead of being mocked out.
-    const TEST_PRIVATE_PEM: &str = "-----BEGIN PRIVATE KEY-----\n\
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7k1HsdAkjUtBG428\n\
-QH39rQVnir+rMuH2d6biVXBV2ZShRANCAAQOxMIoQW+QyI3WkD4Er9S43V/BK+F+\n\
-vtvE2Lrd3RM3DB/PzXNv36i967AX9G2Z+iS938JmBiFHZGwVnizguCe9\n\
------END PRIVATE KEY-----\n";
+    /// Fixture P-256 keypair, generated once per run (oauth#26). Test-only,
+    /// never used outside these tests — it stands in for the IdP's signing key
+    /// so the crypto path runs for real instead of being mocked out.
+    fn test_key() -> &'static key::keys::ImmutableKey {
+        static KEY: std::sync::OnceLock<key::keys::ImmutableKey> = std::sync::OnceLock::new();
+        KEY.get_or_init(|| key::keys::generate_ec_p256_key().unwrap())
+    }
 
-    pub(super) const TEST_PUBLIC_PEM: &str = "-----BEGIN PUBLIC KEY-----\n\
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDsTCKEFvkMiN1pA+BK/UuN1fwSvh\n\
-fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
------END PUBLIC KEY-----\n";
+    pub(super) fn test_public_pem() -> String {
+        crate::test_keys::public_pem(test_key())
+    }
 
     pub(super) fn now() -> i64 {
         SystemTime::now()
@@ -1293,14 +1291,15 @@ fr7bxNi63d0TNwwfz81zb9+oveuwF/Rtmfokvd/CZgYhR2RsFZ4s4LgnvQ==\n\
     }
 
     pub(super) fn signing_key() -> key::keys::ImmutableKey {
-        key::keys::ImmutableKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PRIVATE_PEM)).unwrap()
+        let pem = crate::test_keys::private_pem(test_key());
+        key::keys::ImmutableKey::from_pem(TEST_KID.to_string(), &b64_pem(pem)).unwrap()
     }
 
     /// The JWKS the "IdP" publishes — the fixture key's public half, converted
     /// through the same chassis path a real IdP's key travels.
     pub(super) fn test_jwks() -> Vec<crate::oidc::JwkEntry> {
         let public =
-            key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PUBLIC_PEM))
+            key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(&test_public_pem()))
                 .unwrap();
         let key_jwk = jwk::jwk::key_to_jwk(&public).unwrap();
         vec![serde_json::from_value(serde_json::to_value(&key_jwk).unwrap()).unwrap()]
@@ -1583,7 +1582,7 @@ mod idp_alg_selection_tests {
     //! and `none` and HMAC are never in it. Every case comes from the shared
     //! fixture tests/fixtures/jwt-alg-cases.json, so the cases cannot drift from
     //! the other ports that read it.
-    use super::idp_token_verification_tests::{b64_pem, now};
+    use super::idp_token_verification_tests::now;
     use super::*;
     use base64::Engine;
     use hmac::Mac;
@@ -1593,6 +1592,34 @@ mod idp_alg_selection_tests {
 
     fn fixture() -> Value {
         serde_json::from_str(FIXTURE).unwrap()
+    }
+
+    /// The fixture's `keys`, generated once per run (oauth#26): the fixture
+    /// carries no key material, only which key each JWKS entry and secret is.
+    fn case_key(name: &str) -> &'static key::keys::ImmutableKey {
+        static KEYS: std::sync::OnceLock<HashMap<&'static str, key::keys::ImmutableKey>> =
+            std::sync::OnceLock::new();
+        let keys = KEYS.get_or_init(|| {
+            HashMap::from([
+                ("rsa", key::keys::generate_rsa_4096_key().unwrap()),
+                ("ec", key::keys::generate_ec_p256_key().unwrap()),
+                ("okp", key::keys::generate_ed25519_key().unwrap()),
+            ])
+        });
+        keys.get(name).unwrap_or_else(|| panic!("the fixture names no key {name:?}"))
+    }
+
+    /// The fixture's `hmac_secrets.<name>`: a key's public half in the form an
+    /// attacker would lift from the IdP, as the HMAC key.
+    fn hmac_secret(name: &str) -> Vec<u8> {
+        let (which, form) = name.split_once('-').unwrap_or_else(|| panic!("unknown secret {name}"));
+        let generated = case_key(which);
+        match (form, generated.public_key()) {
+            ("pem", _) => crate::test_keys::public_pem(generated).into_bytes(),
+            ("der", _) => crate::test_keys::spki_der(generated),
+            ("n", key::keys::PublicKey::Rsa(k)) => b64(k.n()).into_bytes(),
+            _ => panic!("unknown secret {name}"),
+        }
     }
 
     fn b64(bytes: &[u8]) -> String {
@@ -1618,29 +1645,20 @@ mod idp_alg_selection_tests {
     /// The third JWT part for `how` (see the fixture's `sign`); None leaves the
     /// token with two parts.
     fn signature(fx: &Value, how: &str, input: &[u8]) -> Option<String> {
-        let private = |name: &str| fx["private_keys"][name].as_str().unwrap().to_string();
-        let chassis = |name: &str| {
-            key::keys::ImmutableKey::from_pem(name.to_string(), &b64_pem(&private(name)))
-                .unwrap()
-                .sign(input)
-                .unwrap()
-        };
+        let rsa = crate::test_keys::private_pem(case_key("rsa"));
+        let chassis = |name: &str| case_key(name).sign(input).unwrap();
         let sig = match how {
             "absent" => return None,
             "empty" => Vec::new(),
-            "RS256" => rsa_sign(&private("rsa"), &ring::signature::RSA_PKCS1_SHA256, input),
-            "RS384" => rsa_sign(&private("rsa"), &ring::signature::RSA_PKCS1_SHA384, input),
-            "RS512" => rsa_sign(&private("rsa"), &ring::signature::RSA_PKCS1_SHA512, input),
+            "RS256" => rsa_sign(rsa, &ring::signature::RSA_PKCS1_SHA256, input),
+            "RS384" => rsa_sign(rsa, &ring::signature::RSA_PKCS1_SHA384, input),
+            "RS512" => rsa_sign(rsa, &ring::signature::RSA_PKCS1_SHA512, input),
             "ES256" => chassis("ec"),
             "EdDSA" => chassis("okp"),
             hs => {
                 let (alg, name) = hs.split_once(':').unwrap_or_else(|| panic!("unknown sign {hs}"));
-                let raw = fx["hmac_secrets"][name].as_str().unwrap();
-                let secret = if name.ends_with("-der") {
-                    base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(raw).unwrap()
-                } else {
-                    raw.as_bytes().to_vec()
-                };
+                assert!(fx["hmac_secrets"][name].is_string(), "the fixture names no secret {name:?}");
+                let secret = hmac_secret(name);
                 match alg {
                     "HS256" => hmac_sign::<hmac::Hmac<sha2::Sha256>>(&secret, input),
                     "HS384" => hmac_sign::<hmac::Hmac<sha2::Sha384>>(&secret, input),
@@ -1672,8 +1690,28 @@ mod idp_alg_selection_tests {
         }
     }
 
+    /// The fixture's JWKS, each entry completed with the public half of the
+    /// key it names.
     fn jwks(fx: &Value) -> Vec<crate::oidc::JwkEntry> {
-        serde_json::from_value(fx["jwks"].clone()).unwrap()
+        let entries = fx["jwks"].as_array().unwrap().iter().map(|entry| {
+            let mut entry = entry.as_object().unwrap().clone();
+            let name = entry.remove("key").unwrap();
+            match case_key(name.as_str().unwrap()).public_key() {
+                key::keys::PublicKey::Rsa(k) => {
+                    entry.insert("n".to_string(), json!(b64(k.n())));
+                    entry.insert("e".to_string(), json!(b64(k.e())));
+                }
+                key::keys::PublicKey::EcP256(k) | key::keys::PublicKey::EcP384(k) => {
+                    entry.insert("x".to_string(), json!(b64(k.x())));
+                    entry.insert("y".to_string(), json!(b64(k.y())));
+                }
+                key::keys::PublicKey::Ed25519(k) => {
+                    entry.insert("x".to_string(), json!(b64(k.as_bytes())));
+                }
+            }
+            serde_json::from_value::<crate::oidc::JwkEntry>(Value::Object(entry)).unwrap()
+        });
+        entries.collect()
     }
 
     fn discovery(case: &Value) -> Vec<String> {
@@ -2329,9 +2367,9 @@ mod apple_signin_tests {
     //! the client-secret exchange and the id_token verification all run for
     //! real. Only kernel's MintUserToken (it needs a cluster) is not called; the
     //! claims handed to it are checked.
-    use super::idp_token_verification_tests::{b64_pem, now, signing_key, TEST_KID, TEST_PUBLIC_PEM};
+    use super::idp_token_verification_tests::{b64_pem, now, signing_key, test_public_pem, TEST_KID};
     use super::*;
-    use crate::apple::tests::{p8_verifier, TEST_P8_PEM};
+    use crate::apple::tests::{p8_verifier, test_p8_pem};
     use crate::providers::ProviderOwner;
     use oauth_model::types::services::oauth::oauth::AppleSignIn;
     use prost_wkt_types::value::Kind;
@@ -2361,7 +2399,7 @@ mod apple_signin_tests {
     /// The JWKS Apple publishes at /auth/keys: the id_token key's public half.
     fn apple_jwks() -> serde_json::Value {
         let public =
-            key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(TEST_PUBLIC_PEM))
+            key::keys::ImmutablePublicKey::from_pem(TEST_KID.to_string(), &b64_pem(&test_public_pem()))
                 .unwrap();
         json!({"keys": [jwk::jwk::key_to_jwk(&public).unwrap()]})
     }
@@ -2574,11 +2612,11 @@ mod apple_signin_tests {
     async fn sign_in_with_apple_end_to_end_against_a_fake_apple() {
         let apple = spawn_fake_apple().await;
         let cfg = config(vec![apple_provider(&apple.issuer)]);
-        assert!(cfg.providers.iter().all(|p| crate::providers::credential_error(p, TEST_P8_PEM).is_none()), "apple + .p8 is complete");
-        let client = OidcClient::new(&cfg.providers, &[], 3600, TEST_P8_PEM)
+        assert!(cfg.providers.iter().all(|p| crate::providers::credential_error(p, test_p8_pem()).is_none()), "apple + .p8 is complete");
+        let client = OidcClient::new(&cfg.providers, &[], 3600, test_p8_pem())
             .await
             .expect("oidc client");
-        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let codec = StateCodec::new(&cfg.providers, test_p8_pem(), 300);
 
         // 1. Authorize. Apple is sent the registered server callback and asked
         //    for form_post; the SPA URL travels only inside the state.
@@ -2684,12 +2722,12 @@ mod apple_signin_tests {
     #[test]
     fn an_unusable_state_redirects_to_root() {
         let cfg = config(vec![plain_provider(), apple_provider("https://appleid.apple.com")]);
-        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let codec = StateCodec::new(&cfg.providers, test_p8_pem(), 300);
 
         assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &FormPostCallbackRequest::default()), "/");
         assert_eq!(form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, "forged", "")), "/");
 
-        let expired = StateCodec::new(&cfg.providers, TEST_P8_PEM, -1);
+        let expired = StateCodec::new(&cfg.providers, test_p8_pem(), -1);
         let state = expired.encode(&keys(&cfg)[1], SPA, "v", None);
         assert_eq!(form_post_redirect(&expired, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, "")), "/");
 
@@ -2707,7 +2745,7 @@ mod apple_signin_tests {
     #[test]
     fn an_apple_error_returns_to_the_webapp_without_a_code() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
-        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let codec = StateCodec::new(&cfg.providers, test_p8_pem(), 300);
         let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
         let req = FormPostCallbackRequest {
             state,
@@ -2722,7 +2760,7 @@ mod apple_signin_tests {
     #[test]
     fn a_missing_or_bad_user_field_still_hands_off_the_code() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
-        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let codec = StateCodec::new(&cfg.providers, test_p8_pem(), 300);
         for user in ["", "not json"] {
             let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
             let q = query_of(&form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, user)));
@@ -2737,7 +2775,7 @@ mod apple_signin_tests {
     #[test]
     fn the_resealed_state_keeps_its_original_age() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
-        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let codec = StateCodec::new(&cfg.providers, test_p8_pem(), 300);
         let state = codec.encode(&keys(&cfg)[0], SPA, "v", None);
         let mut aged = codec.decode(&state).unwrap();
         aged.created_at -= 200;
@@ -2751,7 +2789,7 @@ mod apple_signin_tests {
     #[test]
     fn the_handoff_appends_to_an_existing_query() {
         let cfg = config(vec![apple_provider("https://appleid.apple.com")]);
-        let codec = StateCodec::new(&cfg.providers, TEST_P8_PEM, 300);
+        let codec = StateCodec::new(&cfg.providers, test_p8_pem(), 300);
         let state = codec.encode(&keys(&cfg)[0], "https://console.example/?cli=1", "v", None);
         let redirect = form_post_redirect(&codec, &cfg, &keys(&cfg), &form(APPLE_CODE, &state, ""));
         assert!(redirect.starts_with("https://console.example/?cli=1&code="), "got {redirect}");
@@ -2793,7 +2831,7 @@ mod apple_signin_tests {
     #[tokio::test]
     async fn a_plain_provider_is_not_sent_form_post() {
         let cfg = config(vec![plain_provider()]);
-        let client = OidcClient::new(&cfg.providers, &[], 3600, TEST_P8_PEM).await.unwrap();
+        let client = OidcClient::new(&cfg.providers, &[], 3600, test_p8_pem()).await.unwrap();
         let url = client.build_authorize_url(0, "s", "v", SPA, "", "").await.unwrap();
         let q = query_of(&url);
         assert_eq!(q["redirect_uri"], SPA);
@@ -2822,7 +2860,7 @@ mod apple_signin_tests {
 
         let mut no_secret = plain_provider();
         no_secret.client_secret.clear();
-        let err = crate::providers::credential_error(&no_secret, TEST_P8_PEM).unwrap();
+        let err = crate::providers::credential_error(&no_secret, test_p8_pem()).unwrap();
         assert!(err.contains("client_secret"), "got {err}");
 
         let state = flow_state(&config(vec![no_secret, plain_provider(), apple]), &[], "")
@@ -2843,9 +2881,9 @@ mod apple_signin_tests {
     #[test]
     fn the_p8_keys_the_state_cipher() {
         let providers = vec![apple_provider("https://appleid.apple.com")];
-        let state = StateCodec::new(&providers, TEST_P8_PEM, 300).encode(&keys(&config(providers.clone()))[0], SPA, "v", None);
+        let state = StateCodec::new(&providers, test_p8_pem(), 300).encode(&keys(&config(providers.clone()))[0], SPA, "v", None);
 
-        assert!(StateCodec::new(&providers, TEST_P8_PEM, 300).decode(&state).is_ok());
+        assert!(StateCodec::new(&providers, test_p8_pem(), 300).decode(&state).is_ok());
         assert!(StateCodec::new(&providers, "", 300).decode(&state).is_err());
         assert!(StateCodec::new(&providers, "another p8", 300).decode(&state).is_err());
     }

@@ -628,11 +628,89 @@ mod tests {
     use tokio::net::TcpListener;
     use tokio_rustls::TlsAcceptor;
 
-    const ED25519_CA: &str = include_str!("../tests/fixtures/ed25519-ca.crt");
-    const ED25519_LEAF_CRT: &str = include_str!("../tests/fixtures/ed25519-leaf.crt");
-    const ED25519_LEAF_KEY: &str = include_str!("../tests/fixtures/ed25519-leaf.key");
-    const ROGUE_CRT: &str = include_str!("../tests/fixtures/rogue.crt");
-    const ROGUE_KEY: &str = include_str!("../tests/fixtures/rogue.key");
+    use x509::x509::{X509CertRequest, X509ExtKeyUsage, X509KeyUsage};
+    use x509::{ImmutableCert, ImmutableCertChain};
+
+    /// Throwaway TLS certificates and keys, as PEM, issued once per run with the
+    /// chassis signer (oauth#26), so no private key is committed.
+    struct TlsFixtures {
+        /// An **Ed25519** root CA. It exists to test the specific claim the
+        /// removed `danger_accept_invalid_certs` workaround was justified by:
+        /// that rustls-webpki cannot verify an Ed25519 CA chain. It can.
+        ca: String,
+        /// An ECDSA P-256 leaf for `localhost`, issued by the Ed25519 CA: the
+        /// shape the live IDP presents (Let's Encrypt issues ECDSA leaves under
+        /// its Ed25519 `YE1` intermediate).
+        leaf_crt: String,
+        leaf_key: String,
+        /// A self-signed P-256 leaf for the same name, chaining to nothing. It
+        /// plays the interceptor that verification must refuse.
+        rogue_crt: String,
+        rogue_key: String,
+    }
+
+    fn tls() -> &'static TlsFixtures {
+        static TLS: std::sync::OnceLock<TlsFixtures> = std::sync::OnceLock::new();
+        TLS.get_or_init(|| {
+            use crate::test_keys::{private_pem, public_key};
+            use key::keys::{generate_ec_p256_key, generate_ed25519_key};
+
+            const CA_NAME: &str = "oauth-test-ed25519-ca";
+            let exp = (std::time::SystemTime::now() + Duration::from_secs(24 * 3600))
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64;
+            let pem = |cert: &ImmutableCert| String::from_utf8(cert.pem_bytes().to_vec()).unwrap();
+
+            // The chassis self_sign never marks a cert as a CA, so the root
+            // takes two steps: a self-signed bootstrap cert, which then issues
+            // the CA cert over the same key and name.
+            let ca_key = generate_ed25519_key().unwrap();
+            let bootstrap = ImmutableCertChain::for_self_signing(ca_key.clone())
+                .self_sign(CA_NAME, exp, X509KeyUsage::CertSign, &[])
+                .unwrap();
+            let ca = ImmutableCertChain::new(vec![bootstrap], Some(ca_key.clone()))
+                .unwrap()
+                .sign(&X509CertRequest {
+                    public_key: Some(public_key(&ca_key)),
+                    exp,
+                    key_usage: X509KeyUsage::CertSign,
+                    issuer: CA_NAME.to_string(),
+                    is_ca: true,
+                    path_len_constraint: -1,
+                    ..Default::default()
+                })
+                .unwrap();
+            let ca_pem = pem(&ca);
+
+            let leaf_key = generate_ec_p256_key().unwrap();
+            let leaf = ImmutableCertChain::new(vec![ca], Some(ca_key))
+                .unwrap()
+                .sign(&X509CertRequest {
+                    public_key: Some(public_key(&leaf_key)),
+                    exp,
+                    key_usage: X509KeyUsage::DigitalSignature,
+                    ext_key_usage: vec![X509ExtKeyUsage::ServerAuth],
+                    issuer: "localhost".to_string(),
+                    dns_names: vec!["localhost".to_string()],
+                    ..Default::default()
+                })
+                .unwrap();
+
+            let rogue_key = generate_ec_p256_key().unwrap();
+            let rogue = ImmutableCertChain::for_self_signing(rogue_key.clone())
+                .self_sign("localhost", exp, X509KeyUsage::DigitalSignature, &[X509ExtKeyUsage::ServerAuth])
+                .unwrap();
+
+            TlsFixtures {
+                ca: ca_pem,
+                leaf_crt: pem(&leaf),
+                leaf_key: private_pem(&leaf_key).to_string(),
+                rogue_crt: pem(&rogue),
+                rogue_key: private_pem(&rogue_key).to_string(),
+            }
+        })
+    }
 
     /// Stand up a throwaway HTTPS listener serving an OIDC discovery document.
     ///
@@ -728,8 +806,8 @@ mod tests {
     /// kernel's `origin_nonce` device-link check has nothing to compare.
     #[tokio::test]
     async fn a_supplied_nonce_is_sent_to_the_idp() {
-        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+        let port = spawn_idp(&tls().leaf_crt, &tls().leaf_key).await;
+        let oc = OidcClient::new(&[provider(port, &tls().ca)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc
@@ -746,8 +824,8 @@ mod tests {
     /// must send no `nonce` param at all — not an empty one.
     #[tokio::test]
     async fn no_nonce_param_is_sent_when_none_is_supplied() {
-        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+        let port = spawn_idp(&tls().leaf_crt, &tls().leaf_key).await;
+        let oc = OidcClient::new(&[provider(port, &tls().ca)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc
@@ -761,8 +839,8 @@ mod tests {
     /// `login_hint`, so its sign-in page does not ask for it again.
     #[tokio::test]
     async fn a_supplied_login_hint_is_sent_to_the_idp() {
-        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+        let port = spawn_idp(&tls().leaf_crt, &tls().leaf_key).await;
+        let oc = OidcClient::new(&[provider(port, &tls().ca)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc
@@ -778,8 +856,8 @@ mod tests {
     /// No email typed means no `login_hint` param at all — not an empty one.
     #[tokio::test]
     async fn no_login_hint_param_is_sent_when_none_is_supplied() {
-        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+        let port = spawn_idp(&tls().leaf_crt, &tls().leaf_key).await;
+        let oc = OidcClient::new(&[provider(port, &tls().ca)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc
@@ -793,8 +871,8 @@ mod tests {
     /// typed rather than `a b@example.com`.
     #[tokio::test]
     async fn a_login_hint_is_url_encoded() {
-        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let oc = OidcClient::new(&[provider(port, ED25519_CA)], &[], 3600, "")
+        let port = spawn_idp(&tls().leaf_crt, &tls().leaf_key).await;
+        let oc = OidcClient::new(&[provider(port, &tls().ca)], &[], 3600, "")
             .await
             .expect("client");
         let url = oc
@@ -812,8 +890,8 @@ mod tests {
     /// leaf issued by a real Ed25519 root, with verification fully enabled.
     #[tokio::test]
     async fn ed25519_ca_chain_verifies() {
-        let port = spawn_idp(ED25519_LEAF_CRT, ED25519_LEAF_KEY).await;
-        let url = discover_via_client(provider(port, ED25519_CA))
+        let port = spawn_idp(&tls().leaf_crt, &tls().leaf_key).await;
+        let url = discover_via_client(provider(port, &tls().ca))
             .await
             .expect("Ed25519 CA chain must verify");
         assert!(url.starts_with("https://idp.test/auth?"), "got {url}");
@@ -823,8 +901,8 @@ mod tests {
     /// configured CA did not issue. The handshake must fail.
     #[tokio::test]
     async fn untrusted_cert_rejected_when_ca_configured() {
-        let port = spawn_idp(ROGUE_CRT, ROGUE_KEY).await;
-        let err = discover_via_client(provider(port, ED25519_CA))
+        let port = spawn_idp(&tls().rogue_crt, &tls().rogue_key).await;
+        let err = discover_via_client(provider(port, &tls().ca))
             .await
             .expect_err("untrusted cert must not be accepted");
         assert!(err.contains("discovery retry"), "got {err}");
@@ -834,7 +912,7 @@ mod tests {
     /// self-signed IDP cert either.
     #[tokio::test]
     async fn untrusted_cert_rejected_with_system_roots() {
-        let port = spawn_idp(ROGUE_CRT, ROGUE_KEY).await;
+        let port = spawn_idp(&tls().rogue_crt, &tls().rogue_key).await;
         let err = discover_via_client(provider(port, ""))
             .await
             .expect_err("untrusted cert must not be accepted");
@@ -846,7 +924,7 @@ mod tests {
     /// failing for some unrelated reason and the tests above passing vacuously.
     #[tokio::test]
     async fn rejection_reason_is_certificate_verification() {
-        let port = spawn_idp(ROGUE_CRT, ROGUE_KEY).await;
+        let port = spawn_idp(&tls().rogue_crt, &tls().rogue_key).await;
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .http1_only()

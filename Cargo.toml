@@ -53,3 +53,6 @@ tokio-rustls = { version = "0.26", default-features = false, features = ["ring",
 # ring, not the rsa crate: rsa has RUSTSEC-2023-0071 and no fixed release (#9).
 ring = "0.17"
 hmac = "0.12"
+# Issues the oidc TLS tests' certificates when they run (oauth#26), with the
+# keys the chassis key crate generates: no test key or certificate is committed.
+x509 = { path = "target/generated-sources/model/chassis/x509" }
