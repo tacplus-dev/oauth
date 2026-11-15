@@ -19,6 +19,13 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.description="Session management service for Schematic control plane"
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# oauth needs no root: it runs as a fixed UID/GID, not a useradd default, so the
+# operator's securityContext (runAsUser/runAsGroup 65532) can name it (#22). It
+# writes no file (its state is in memory and the kernel), so it owns no directory.
+RUN groupadd --system --gid 65532 oauth \
+ && useradd --system --uid 65532 --gid 65532 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin oauth
+
 COPY target/release/oauth /usr/local/bin/oauth
 
 # Every service runs under the launcher (github.com/tacplus-dev/launcher): PID 1
@@ -27,4 +34,5 @@ COPY target/release/oauth /usr/local/bin/oauth
 ARG TARGETARCH
 COPY launcher-linux-${TARGETARCH} /usr/local/bin/launcher
 ENV LAUNCH_CMD="oauth" HEALTH_PORT=8443
+USER 65532:65532
 ENTRYPOINT ["launcher"]
