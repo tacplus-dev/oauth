@@ -112,6 +112,48 @@ the fleet webapp's own addresses, set by the operator.
 just        # generate + compile
 ```
 
+## Releasing
+
+oauth is released by version, and fleets pin a release line, `MAJOR.MINOR`, which is always that line's
+highest patch ([tacplus#180](https://github.com/tacplus-dev/tacplus/issues/180)). Versions are `0.x` until
+SeaBeam's launch, when `1.0.0` is cut; on `0.x` a minor may break, a patch never does.
+
+A change merged to main is released by the same run that merged it: a fix as the next patch, a feature as the
+next minor. To cut one, from the commit to release:
+
+```sh
+git tag -a v0.1.2 -m "oauth 0.1.2: ..."   # a patch to an older line is tagged on release/MAJOR.MINOR
+git push origin v0.1.2
+```
+
+The tag runs [release.yml](.github/workflows/release.yml). Its `gates` job runs `just gates` on the tagged commit
+in the build image that commit's `tacplus.lock` pins ([ci/release-gates.sh](ci/release-gates.sh)), as the build
+jobs do. Its `release` job generates with the same image ([ci/tacplus.sh](ci/tacplus.sh)), builds the binary and
+the [launcher](https://github.com/tacplus-dev/launcher) it runs under (from source at release.yml's
+`LAUNCHER_COMMIT`), and pushes `ghcr.io/tacplus-dev/oauth:<version>` ([ci/release-image.sh](ci/release-image.sh)),
+labelled with the version, commit and commit date, and `:<MAJOR.MINOR>` moved to it only when it is the line's
+highest patch, so the line tag never goes backwards and no other line moves
+([ci/release-tags.sh](ci/release-tags.sh)). The GitHub release's notes are the commits since the previous release
+([ci/release-notes.sh](ci/release-notes.sh)); it is marked Latest only when it is the highest release, never a
+patch on an older line ([ci/release-plan.sh](ci/release-plan.sh)). A pre-release (`v0.2.0-rc.1`) publishes only
+its own tag. The package is public: pulls need no credential. Never move or delete a pushed tag.
+[tests/release.rs](tests/release.rs), part of `cargo test`, tests the scripts.
+
+The image is built for linux/arm64, what the fleets run on; amd64 is off by default, as in the fleets'
+`images/pins.yaml`, and `PLATFORMS: amd64 arm64` in release.yml builds both into one image.
+
+By hand (Actions, release, Run workflow: a member, since a dispatch takes `actions: write`), from main, with
+main's scripts:
+
+```sh
+gh workflow run release.yml -f version=v0.1.1 -f publish=true   # release an existing tag; it is not moved
+gh workflow run release.yml -f version=v0.1.2                   # dry run: gates and builds HEAD as v0.1.2, publishes nothing
+```
+
+The first is for a tag pushed before release.yml existed: it checks the tag out and runs its gates with the CI
+scripts of main. v0.1.1 is the first release with an image; v0.1.0 cannot be built as tagged (it has no
+`tacplus.lock` and its `Cargo.lock` is stale, #20), so it has none.
+
 ## Proto
 
 [`services/oauth.proto`](../../proto/services/oauth.proto)

@@ -1,0 +1,170 @@
+name: release
+
+# On a version tag vX.Y.Z: run the gates on the tag, in the build image its own tacplus.lock pins
+# (ci/release-gates.sh), publish ghcr.io/tacplus-dev/oauth:X.Y.Z for the PLATFORMS below (ci/release-image.sh),
+# move the line tag X.Y when this is the line's highest release (ci/release-tags.sh), and create the GitHub
+# release with the commits since the previous release (ci/release-notes.sh), marked Latest only when it is the
+# highest release (ci/release-plan.sh). A pre-release (vX.Y.Z-rc.N) publishes only its own tag. Fleets pin X.Y
+# (tacplus-dev/tacplus#180). Modelled on tacplus-dev/llmproxy's and tacplus-dev/kernel's release.yml; how to cut
+# a release: README.md, Releasing.
+#
+# By hand (workflow_dispatch), from main, with the scripts of main:
+#   publish: true   releases an existing tag, one pushed before this workflow was (v0.1.1): the tag is checked
+#                   out, its gates run, and it is published as if just pushed. The tag is never moved.
+#   publish: false  a dry run of a version not tagged yet: HEAD is tagged in the checkout only, gated and built,
+#                   the image tags and notes that release would get are printed, and nothing is published.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. v0.1.1 (an existing tag to publish) or v0.1.2 (a dry run of HEAD)"
+        required: true
+      publish:
+        description: "Publish this existing tag (off: a dry run of a new version at HEAD, nothing published)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One release at a time, so of two tags on one line the later run sees the other before it moves X.Y.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+  MODE: ${{ github.event_name != 'workflow_dispatch' && 'push' || inputs.publish && 'publish' || 'dry-run' }}
+  # The commit released: the tag's when publishing an existing tag; else the workflow's own (the pushed tag, or
+  # main's HEAD for a dry run).
+  SOURCE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && format('refs/tags/{0}', inputs.version) || github.sha }}
+  # The architectures the image is built for, as the fleets' images/pins.yaml `platforms`: arm64, what the fleets
+  # run on. amd64 is off to save a second build (Jody, 2026-10-29: tacplus-dev/roadmap
+  # decisions/deployments-per-cluster-2026-10-26.md, the addendum); "amd64 arm64" builds both, one image.
+  PLATFORMS: arm64
+  # The launcher every service image runs under (Dockerfile), built from source at this commit: its release v0.1.0.
+  LAUNCHER_COMMIT: 0e139cac8c43e9c98508052337d147eee0e8d493
+
+jobs:
+  gates:
+    runs-on: ubuntu-24.04
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE }}
+          # Every tag: whether the version may be released from this checkout depends on the releases made.
+          fetch-depth: 0
+      # The CI scripts of the workflow's commit: a tag made before they existed is released with them.
+      - uses: actions/checkout@v4
+        with:
+          path: .release-ci
+          sparse-checkout: /ci/
+          sparse-checkout-cone-mode: false
+      - name: The commit to release
+        id: source
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+          .release-ci/ci/release-plan.sh "$VERSION" "$MODE" "$RUNNER_TEMP/notes.md" >/dev/null
+          echo "revision=$(git rev-parse HEAD)" | tee -a "$GITHUB_OUTPUT"
+      - name: Gates, in the build image the release pins
+        env:
+          # Read-only (this job's permissions): tacplus reads the dependencies' repositories through the GitHub API.
+          GH_TOKEN: ${{ github.token }}
+        run: .release-ci/ci/release-gates.sh . "$RUNNER_TEMP/home"
+
+  release:
+    needs: gates
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    env:
+      REVISION: ${{ needs.gates.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE }}
+          # Every tag: the line tag and the notes depend on the releases already made.
+          fetch-depth: 0
+      # The CI scripts of the workflow's commit, as in the gates.
+      - uses: actions/checkout@v4
+        with:
+          path: .release-ci
+          sparse-checkout: /ci/
+          sparse-checkout-cone-mode: false
+      - name: Tags and notes
+        id: plan
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+          [[ "$(git rev-parse HEAD)" == "$REVISION" ]] || { echo "$VERSION moved since its gates ran"; exit 1; }
+          .release-ci/ci/release-plan.sh "$VERSION" "$MODE" "$RUNNER_TEMP/notes.md" | tee -a "$GITHUB_OUTPUT"
+          echo "mode: $MODE, platforms: $PLATFORMS, revision: $REVISION"
+          cat "$RUNNER_TEMP/notes.md"
+      - run: .release-ci/ci/tacplus.sh build
+      - name: oauth
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
+        run: |
+          set -euo pipefail
+          # prost-wkt-types' build script runs protoc.
+          sudo apt-get update -qq && sudo apt-get install -y -qq gcc-aarch64-linux-gnu protobuf-compiler
+          targets=()
+          for arch in $PLATFORMS; do
+            case "$arch" in
+              amd64) targets+=(x86_64-unknown-linux-gnu) ;;
+              arm64) targets+=(aarch64-unknown-linux-gnu) ;;
+              *) echo "unsupported architecture $arch" >&2; exit 1 ;;
+            esac
+          done
+          rustup toolchain install stable --profile minimal --target "$(IFS=,; echo "${targets[*]}")"
+          rustup default stable
+          cargo build --release --locked "${targets[@]/#/--target=}"
+      - uses: actions/checkout@v4
+        with:
+          repository: tacplus-dev/launcher
+          ref: ${{ env.LAUNCHER_COMMIT }}
+          path: target/launcher-src
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: target/launcher-src/go.mod
+          cache: false
+      - name: launcher
+        working-directory: target/launcher-src
+        run: |
+          for arch in $PLATFORMS; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags="-s -w" -o "../launcher/launcher-linux-$arch" .
+          done
+      # The Dockerfile's apt-get runs on each target architecture.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: env.MODE != 'dry-run'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image
+        env:
+          TAGS: ${{ steps.plan.outputs.tags }}
+        run: |
+          set -euo pipefail
+          [[ $MODE != dry-run ]] || TAGS=""
+          # shellcheck disable=SC2086 # the tags are words
+          .release-ci/ci/release-image.sh "${VERSION#v}" $TAGS
+          [[ $MODE == dry-run ]] || docker buildx imagetools inspect "$IMAGE:${VERSION#v}"
+      - name: GitHub release
+        if: env.MODE != 'dry-run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FLAG: ${{ steps.plan.outputs.flag }}
+        run: gh release create "$VERSION" --verify-tag --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md" "$FLAG"

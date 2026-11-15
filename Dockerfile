@@ -10,7 +10,8 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION
 
-LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+LABEL org.opencontainers.image.source="https://github.com/tacplus-dev/oauth" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.authors="Jody Scott <jody@thescottsweb.com>" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}" \

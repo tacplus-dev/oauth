@@ -18,7 +18,18 @@ the looper then marks it `promoted` or `declined` here with the date.
   (#5; blocked on tacplus-dev/looper#12)" names a blocker closed 2026-10-29; #5 now waits on
   tacplus-dev/looper#115 and tacplus-dev/looper#112 (its `Blocked-by:` lines). #25 fixes the same line in
   STATE.md. Proposed: "(#5; blocked on tacplus-dev/looper#115 and tacplus-dev/looper#112)". 2026-11-15: looper#115
-  closed (2026-11-15T03:16Z), so the line should now read "(#5; blocked on tacplus-dev/looper#112)".
+  closed (2026-11-15T03:16Z), so the line should now read "(#5; blocked on tacplus-dev/looper#112)". Later on
+  2026-11-15: looper#112 closed too and #5's release.yml is landing, so the line is done once #5 closes; "Now"
+  should then read "Released v0.1.x (`ghcr.io/tacplus-dev/oauth`, line tag 0.1)".
+- **One launcher pin for the release images and the fleets** (2026-11-15, #5): `.github/workflows/release.yml`
+  builds the launcher from source at `LAUNCHER_COMMIT` (0e139ca, launcher's release v0.1.0), and
+  fleet-seatrials' `images/pins.yaml` pins `launcher_commit: c575e14`. Two pins of one binary drift; kernel#7
+  proposed the same. Proposal: the fleets' pin becomes a launcher release line (tacplus#180) and each service's
+  release.yml pins the same release, or the release image takes the launcher from its own published image.
+- **tacplus-dev/looper#17 takes the releases over** (2026-11-15, #5): release.yml departs from "no GitHub
+  Actions" (tacplus-dev/roadmap decisions/ci-on-gitlab-2026-10-27.md, addendum 2026-11-07) because the GitLab
+  build pipeline has no ghcr push credential. When it does, the release moves there and release.yml is retired
+  with the other workflows (looper#18); the scripts under `ci/` are the parts to keep.
 - **ROADMAP.md "Later" line: #9 is done on main** (2026-11-15): "RUSTSEC-2023-0071 (rsa) and RUSTSEC-2026-0387
   (crypto-bigint 0.5) via generated chassis crates (#9; blocked on tacplus-dev/tacplus#186)" names a blocker closed
   2026-10-29 and work that landed: 8c44719 (#20, 2026-11-07) relocked Cargo.lock against the tacplus 2.6.1 chassis,
