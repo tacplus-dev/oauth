@@ -1,6 +1,6 @@
 # State: oauth
 
-Overwritten to stay current (loopers and agents). Last updated: 2026-11-07 by looper (#20).
+Overwritten to stay current (loopers and agents). Last updated: 2026-11-15 by looper (#25).
 
 - **Version / line:** 0.1.1 (line 0.1); tacplus floor 2.6, pinned to 2.6.1 in tacplus.lock (gates pass on 2.6.1)
 - **Works:** OAuth2/OIDC browser flows (Google, Microsoft Entra, Apple form_post, any OIDC IdP) and CLI/device
@@ -9,4 +9,4 @@ Overwritten to stay current (loopers and agents). Last updated: 2026-11-07 by lo
   stable key (#11)
 - **Released / deployed:** source tags v0.1.0 and v0.1.1 (v0.1.1: the 2.6 floor and a relocked Cargo.lock, so `--locked` builds; v0.1.0's lock was stale, #20); no binaries or image yet
 - **Known gaps:** no image (#5); Authorize still takes a list index from ListProviders (PROPOSALS.md)
-- **Blocked on:** #5 on tacplus-dev/looper#12 and #1
+- **Blocked on:** nothing
