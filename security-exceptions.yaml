@@ -1,0 +1,7 @@
+# The security findings this repository accepts (looper-scan: id, reason,
+# decided_by, expires YYYY-MM-DD; an expired entry fails the policy).
+exceptions:
+  - id: DS-0026
+    reason: "No HEALTHCHECK in the Dockerfiles: Kubernetes ignores it (the pod's probes do), and the launcher's gRPC health watch (HEALTH_PORT) kills a deadlocked child (#32)"
+    decided_by: jodydadescott (hub)
+    expires: 2027-05-17
