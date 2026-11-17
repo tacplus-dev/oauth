@@ -18,5 +18,5 @@ contract in the registry lock is `github.com/tacplus-dev/oauth` (public), as in 
 and its dependencies (kernel, chassis) come from their tacplus-dev homes through that registry. `pkg` is
 `com.github.tacplusdev.oauth` (the Rust crate is still `oauth-model`). Removed: `.gitlab-ci.yml` (SeaBeam's
 GitLab pipeline and registry; release CI is #5) and the GitLab package `registry:` block of
-`proto/dependencies.yaml`. `Dockerfile.cross` runs on the public `debian:trixie-slim`; the proto header and
+`proto/dependencies.yaml`. The proto header and
 image labels name Jody Scott and tacplus.dev; examples and tests use example.com names.

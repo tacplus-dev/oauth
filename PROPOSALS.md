@@ -34,7 +34,7 @@ the looper then marks it `promoted` or `declined` here with the date.
   reports them uncounted. Raised here for Jody to take to tacplus-dev/looper.
 - **looper-scan: scan the image the Dockerfile builds, not its `FROM` tags by name** (2026-11-17, #29, #30; a
   tacplus-dev/looper change): Trivy reads the Dockerfiles' base images by name, so a build stage that ships
-  nothing (`Dockerfile.cross`'s `rust:trixie`, 2695 findings) counts like the release base. A fix the Dockerfile
+  nothing (the `rust:trixie` builder of the local cross-build file #29 deletes, 2695 findings) counts like the release base. A fix the Dockerfile
   applies (`apt-get upgrade`) cannot clear a finding either, until Docker Hub rebuilds the tag. Proposal: scan the
   final stage's built image (or only the final stage's base), as a release's SBOM already reads the built image.
 
