@@ -37,5 +37,8 @@ the looper then marks it `promoted` or `declined` here with the date.
   nothing (`Dockerfile.cross`'s `rust:trixie`, 2695 findings) counts like the release base. A fix the Dockerfile
   applies (`apt-get upgrade`) cannot clear a finding either, until Docker Hub rebuilds the tag. Proposal: scan the
   final stage's built image (or only the final stage's base), as a release's SBOM already reads the built image.
+  2026-11-17 (#30): its `base_images` also skips any `FROM` that holds a `$`, so the release `Dockerfile`'s base
+  (`FROM ${BASE_IMAGE}`, its default in `ARG BASE_IMAGE=`) is not scanned at all: the trixie-slim findings came
+  from `Dockerfile.cross` alone. Reading an `ARG`'s default in its place would scan the base oauth ships.
 
 ## Promoted / declined
