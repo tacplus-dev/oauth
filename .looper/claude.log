@@ -1,0 +1,141 @@
+= init
+> Bash git log --oneline -3 && git diff --stat && git diff src/nonce.rs | head -150; gh issue view 82 --repo tacplus-dev/cloud --json state,closedAt,title; head -60 /builds/tacplus-dev/looper/looper-runs/20261120T130520Z-issue-31/security/summary.md
+< d269b08 PROPOSALS.md: the nightly scan's proposals (looper) 19afce6 PROPOSALS.md: the nightly scan's proposals (looper) 04f6c5b PROPOSALS.md: the nightly scan's proposals (looper)  PROPOSALS.md | 11 ++++++++++-  src/nonce.rs | 61 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-----  2 files ...
+= thinking_tokens
+= thinking_tokens
+> Bash git diff PROPOSALS.md; gh issue view 82 --repo tacplus-dev/cloud --comments | tail -30
+< diff --git a/PROPOSALS.md b/PROPOSALS.md index 0a28c56..08b48d3 100644 --- a/PROPOSALS.md +++ b/PROPOSALS.md @@ -33,7 +33,16 @@ the looper then marks it `promoted` or `declined` here with the date.    matches by rule id, so it would also accept a real finding later. Every Rust service's tests will t...
+Blocker closed; the new build image has `standing`/`test`. Commit and build.
+> Bash git add src/nonce.rs && git commit -q -m "nonce: seal with Aes256Gcm::generate_nonce  CodeQL read the zero initializer of the OsRng-filled nonce buffer as a hard-coded nonce (rust/hard-coded-cryptographic-value, #31). generate_nonce draws the same 12 random bytes from OsRng, so the wire format (nonc...
+< 93d909d PROPOSALS.md: the test-code rule is looper#179, the location-scoped exception looper#182 (#31) 9f23be0 nonce: seal with Aes256Gcm::generate_nonce d269b08 PROPOSALS.md: the nightly scan's proposals (looper) 1032
+> ToolSearch {"query":"select:Monitor","max_results":1}
+< 
+> Bash until ! kill -0 1032 2>/dev/null; do sleep 20; done; tail -15 /tmp/build31.log
+= background_tasks_changed
+= task_started
+< Command running in background with ID: bop0vxh1m. Output is being written to: /builds/looper/oauth/homes/looper-31/tmp/claude-61000/-builds-looper-oauth-issues-31/3bd68517-a554-4a56-adfa-c4072cd7c653/tasks/bop0vxh1m.output. You will be notified when it completes. To check interim output, use Read on...
+Meanwhile, the trace check (rule 13):
+> Bash /usr/local/bin/looper-trace check 2>&1 | tail -15
+< looper-trace: /builds/looper/oauth/issues/31 handler src/auth.rs:992 mint_callback_tokens (inbound: req)   causal src/auth.rs:1099 mint_user_token: carries the inbound trace_id FINDING untested src/auth.rs:992: mint_callback_tokens makes causal downstream calls (mint_user_token) but no test asserts ...
+Same as before (tracked as #16). Waiting for the build.
+> Monitor until ! kill -0 1032 2>/dev/null; do sleep 15; done; echo done; tail -8 /tmp/build31.log
+= permission_denied
+< This Bash command contains multiple operations. The following parts require approval: kill -0 1032, tail -8 /tmp/build31.log
+> Bash tail -5 /tmp/build31.log
+< [2026-11-20T13:05:51Z] checkpoint of #31 (a build) pushed to looper/oauth-31:  4 files changed, 479 insertions(+), 6 deletions(-) [2026-11-20T13:05:51Z] build requested: oauth 93d909d, the gates full (no gates.yaml) the build job https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067 of oauth 9...
+= thinking_tokens
+= thinking_tokens
+> Bash git status --short; git log --oneline -3 origin/looper/oauth-31; git diff --stat main origin/looper/oauth-31
+< 6ea1169 looper: work in progress on #31 (a build) 93d909d PROPOSALS.md: the test-code rule is looper#179, the location-scoped exception looper#182 (#31) 9f23be0 nonce: seal with Aes256Gcm::generate_nonce  .looper/claude.log |  10 ++  .looper/prompt.md  | 403 +++++++++++++++++++++++++++++++++++++++++...
+The extra files are the looper's own run record, which it adds to checkpoints. Waiting on the build.
+> Bash sleep 540; tail -4 /tmp/build31.log
+< <tool_use_error>Blocked: sleep 540 followed by: tail -4 /tmp/build31.log. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use...
+= thinking_tokens
+= thinking_tokens
+> Monitor until grep -qE '^verdict|exit|no runner|no verdict' /tmp/build31.log; do sleep 15; done; grep -E 'verdict|build times' /tmp/build31.log
+= permission_denied
+< This Bash command contains multiple operations. The following parts require approval: grep -qE '^verdict|exit|no runner|no verdict' /tmp/build31.log, grep -E 'verdict|build times' /tmp/build31.log
+> Bash until grep -qE '^verdict|no runner|no verdict' /tmp/build31.log; do sleep 15; done; grep -E 'verdict|build times' /tmp/build31.log
+= task_started
+= task_notification
+< verdict: failure: security: 43 security finding(s) the policy fails: src/apple.rs:private-key:104, src/auth.rs:private-key:1273, tests/fixtures/ed25519-ca.key build times: https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067: queued 8 s, ran 536 s
+= task_updated
+= task_notification
+= background_tasks_changed
+> Bash cat /tmp/build31.log | tail -40; ls /builds/tacplus-dev/looper/looper-runs/20261120T130520Z-issue-31/ /builds/tacplus-dev/looper/looper-runs/20261120T130520Z-issue-31/security
+< [2026-11-20T13:05:51Z] checkpoint of #31 (a build) pushed to looper/oauth-31:  4 files changed, 479 insertions(+), 6 deletions(-) [2026-11-20T13:05:51Z] build requested: oauth 93d909d, the gates full (no gates.yaml) the build job https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067 of oauth 9...
+> Bash cd /builds/tacplus-dev/looper/looper-runs/20261120T130520Z-issue-31 && ls -R builds | head; cat builds.log | tail -20; jq '.[0]' security/findings.json; jq '[.[]|{s:.standing,t:.test,b:.blocking}]|group_by(.)|map({k:.[0],n:length})' security/findings.json
+< builds: 20261120T130551Z-1995128294.started 20261120T130551Z-1995128294.taken 20261120T130551Z-1995128294.wait [2026-11-20T13:05:54Z] started a build of oauth 93d909d (the gates full) for its model: https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067 {   "tool": "gitleaks",   "kind": "secret...
+= thinking_tokens
+= thinking_tokens
+> Bash which glab; curl -s -o /dev/null -w '%{http_code}\n' https://gitlab.com/api/v4/projects/tacplus-dev%2Fbuild/pipelines/3094172067/jobs; curl -s https://gitlab.com/api/v4/projects/tacplus-dev%2Fbuild/pipelines/3094172067/jobs | jq -r '.[]|"\(.id) \(.name) \(.status)"' 2>/dev/null | head
+< /usr/local/bin/glab 404
+= thinking_tokens
+= thinking_tokens
+The build came back red again on the same 43 standing findings. I'm checking whether the new build image actually ran, or whether the base commit just has no published findings yet.
+> Bash glab api "projects/tacplus-dev%2Fbuild/pipelines/3094172067/jobs" 2>&1 | jq -r '.[]|"\(.id) \(.name) \(.status)"' 2>&1 | head
+< jq: error (at <stdin>:1): Cannot index string with string "status" jq: parse error: Invalid numeric literal at line 1, column 40
+> Bash glab api "projects/tacplus-dev%2Fbuild/pipelines/3094172067/jobs" 2>&1 | head -c 400; echo; /usr/local/bin/repo-looper --help 2>&1 | head -40
+< {"message":"404 Project Not Found"}glab: 404 Project Not Found (HTTP 404)  repo-looper: the looper of one tacplus-dev repository. It runs in the looper container, as jobs of the GitLab looper pipeline, and only while the repository has work: a job per issue, its report, and a manager per repository,...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash grep -n -i 'standing\|published' /usr/local/bin/looper-scan | head -40; git -C /builds/looper/oauth/issues/31 log -3 --format='%h %cI %s' main
+< 41:# tool, rule and file, up to its count) is standing, reported and not failed, 104:       looper-scan local DIR         the same checks on a checkout (and DIR's generated/ under BUILD_OUT), nothing published 105:       looper-scan report            the run's findings, published as the repository's...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash sed -n 30,50p /usr/local/bin/looper-scan; sed -n 795,830p /usr/local/bin/looper-scan; sed -n 1185,1210p /usr/local/bin/looper-scan
+< # # The policy: a secret fails, and so does a HIGH or CRITICAL finding with a # fix (a fixed version, or our own code: a SAST finding outside test code, # looper#179, which is listed, never failing), unless an unexpired # exception names it; an exception that has expired, or says less than an id, # ...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Read /builds/looper/oauth/issues/31/PROPOSALS.md
+< 25	  (crypto-bigint 0.5) via generated chassis crates (#9; blocked on tacplus-dev/tacplus#186)" names a blocker closed 26	  2026-10-29 and work that landed: 8c44719 (#20, 2026-11-07) relocked Cargo.lock against the tacplus 2.6.1 chassis, 27	  which is on aws-lc-rs; rsa, crypto-bigint and elliptic-cu...
+> Edit /builds/looper/oauth/issues/31/PROPOSALS.md
+< The file /builds/looper/oauth/issues/31/PROPOSALS.md has been updated successfully.
+> Bash git add PROPOSALS.md && git commit -q -m "PROPOSALS.md: a land's base without published findings compares with its nearest published ancestor (#31)  Main's head is the nightly scan's PROPOSALS.md commit, which no build publishes, so every land on it fails on main's standing findings.  Co-Authored-By...
+< e80d4b1 PROPOSALS.md: a land's base without published findings compares with its nearest published ancestor (#31) 93d909d PROPOSALS.md: the test-code rule is looper#179, the location-scoped exception looper#182 (#31) 9f23be0 nonce: seal with Aes256Gcm::generate_nonce d269b08 PROPOSALS.md: the nightl...
+Now a comment on the issue, then the back-off.
+> Bash gh issue comment 31 --repo tacplus-dev/oauth --body "tacplus-dev/cloud#82 is closed, and its outcome confirms the build image now has looper#179/#180. I built again, and the build is still red on main's 43 standing findings, for a new reason.  **Committed on \`looper/oauth-31\`** (on main d269b08), ...
+< ok
+> Bash /usr/local/bin/repo-looper --repo oauth --issue 31 --wait-until 2026-11-21T12:00:00Z "Committed 9f23be0 (nonce: seal with Aes256Gcm::generate_nonce + tests), 93d909d+e80d4b1 (PROPOSALS: looper#179/#182; new: base without published findings compares with nearest published ancestor) on main d269b08. B...
+< [2026-11-20T13:16:35Z] checkpoint of #31 (waiting until 2026-11-21T12:00:00Z) pushed to looper/oauth-31:  4 files changed, 581 insertions(+), 6 deletions(-) [2026-11-20T13:16:35Z] #31 waits until 2026-11-21T12:00:00Z. Your run ends here: end your reply now. Its next run starts then, or sooner when s...
+Issue #31 is still not landed: the build is red again, on main's 43 old security findings (#22, #23, #26, #27), not on anything this change adds. The issue now waits until 2026-11-21T12:00Z.
+
+**Why it is still red:** tacplus-dev/cloud#82 is closed, so the build now uses the new security scanner. That scanner excuses a finding only if main's base commit has published findings, and only a build of that exact commit publishes them. The base is d269b08, the nightly scan's PROPOSALS.md commit pushed at 09:54Z today. That was after the nightly build and before the new scanner was in place, so nothing has published findings for it. Build: https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067.
+
+**Committed on `looper/oauth-31`**, on main d269b08:
+- **9f23be0:** `StateCodec::seal` now draws its nonce with `Aes256Gcm::generate_nonce(&mut OsRng)`. The format is the same (12-byte nonce, then ciphertext). Two new tests in `src/nonce.rs` check that a state in that format still opens and that each seal adds a fresh nonce.
+- **93d909d:** PROPOSALS.md records that the test-code rule is tacplus-dev/looper#179 and the location-scoped exception is #182.
+- **e80d4b1:** a new proposal in PROPOSALS.md. The same failure will come back whenever the nightly scan pushes a commit after the nightly build. It proposes that a base with no findings compare with its nearest ancestor that has them, if the commits in between touch only planning files.
+
+**Trace check (rule 13):** this change touches no handler. `looper-trace check` reads `mint_callback_tokens` (`src/auth.rs:992`); its call to `mint_user_token` carries the `trace_id`, but no test asserts it. That gap is already tracked as #16.
+
+I posted this status on the issue.
+
+**Left for the next run:**
+1. After tomorrow's nightly, rebuild, and land if it is green.
+2. Once it merges, run `just gates` on main, then tag and push `v0.1.2`. Main has only planning commits since v0.1.1, and there are no release branches.
+3. Close #31 once a nightly shows no blocking CodeQL finding.
+4. If `src/nonce.rs:106` is still reported then, add Jody's exception with `where: src/nonce.rs`, `decided_by: jodydadescott`, `expires: 2026-12-31`.
+= success: Issue #31 is still not landed: the build is red again, on main's 43 old security findings (#22, #23, #26, #27), not on anything this change adds. The issue now waits until 2026-11-21T12:00Z.
+
+**Why it is still red:** tacplus-dev/cloud#82 is closed, so the build now uses the new security scanner. That scanner excuses a finding only if main's base commit has published findings, and only a build of that exact commit publishes them. The base is d269b08, the nightly scan's PROPOSALS.md commit pushed at 09:54Z today. That was after the nightly build and before the new scanner was in place, so nothing has published findings for it. Build: https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067.
+
+**Committed on `looper/oauth-31`**, on main d269b08:
+- **9f23be0:** `StateCodec::seal` now draws its nonce with `Aes256Gcm::generate_nonce(&mut OsRng)`. The format is the same (12-byte nonce, then ciphertext). Two new tests in `src/nonce.rs` check that a state in that format still opens and that each seal adds a fresh nonce.
+- **93d909d:** PROPOSALS.md records that the test-code rule is tacplus-dev/looper#179 and the location-scoped exception is #182.
+- **e80d4b1:** a new proposal in PROPOSALS.md. The same failure will come back whenever the nightly scan pushes a commit after the nightly build. It proposes that a base with no findings compare with its nearest ancestor that has them, if the commits in between touch only planning files.
+
+**Trace check (rule 13):** this change touches no handler. `looper-trace check` reads `mint_callback_tokens` (`src/auth.rs:992`); its call to `mint_user_token` carries the `trace_id`, but no test asserts it. That gap is already tracked as #16.
+
+I posted this status on the issue.
+
+**Left for the next run:**
+1. After tomorrow's nightly, rebuild, and land if it is green.
+2. Once it merges, run `just gates` on main, then tag and push `v0.1.2`. Main has only planning commits since v0.1.1, and there are no release branches.
+3. Close #31 once a nightly shows no blocking CodeQL finding.
+4. If `src/nonce.rs:106` is still reported then, add Jody's exception with `where: src/nonce.rs`, `decided_by: jodydadescott`, `expires: 2026-12-31`.
+= usage: {"claude-opus-5-5":{"inputTokens":48,"outputTokens":8554,"cacheReadInputTokens":1239755,"cacheCreationInputTokens":53339,"webSearchRequests":0,"costUSD":0.845935,"contextWindow":1000000,"maxOutputTokens":128000,"thinkingTokens":1840,"canonicalModel":"claude-opus-5-5","provider":"firstParty","costBasis":"list"}}
