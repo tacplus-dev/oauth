@@ -48,5 +48,14 @@ the looper then marks it `promoted` or `declined` here with the date.
   nothing (`Dockerfile.cross`'s `rust:trixie`, 2695 findings) counts like the release base. A fix the Dockerfile
   applies (`apt-get upgrade`) cannot clear a finding either, until Docker Hub rebuilds the tag. Proposal: scan the
   final stage's built image (or only the final stage's base), as a release's SBOM already reads the built image.
+- **looper-scan: a land's base without a build of its own compares with its nearest published ancestor**
+  (2026-11-20, #31; a tacplus-dev/looper change): a land marks main's findings standing only when its base commit
+  has published findings (looper#180), and only a build of that commit publishes them. The nightly scan pushes its
+  PROPOSALS.md commit to main after the nightly build (d269b08, 09:54Z on 2026-11-20), so main's head is a commit no
+  build has published, and every land on it fails on all of main's findings until the next nightly builds it:
+  build https://gitlab.com/tacplus-dev/build/-/pipelines/3094172067 of #31 failed on the 43 standing findings for
+  that reason. Proposal: when the base has none, compare with the nearest ancestor that has, if the commits between
+  them touch only the planning files (or the nightly scan's commit, which changes no code, publishes its parent's
+  findings under its own sha).
 
 ## Promoted / declined
