@@ -33,7 +33,16 @@ the looper then marks it `promoted` or `declined` here with the date.
   matches by rule id, so it would also accept a real finding later. Every Rust service's tests will trip the same
   rules. Proposal: looper-scan keeps CodeQL's (and the other SAST tools') findings in test code (`#[cfg(test)]`
   modules, `tests/`, `*_test.go`, `src/test/`) aside, the way it sets the generated tree aside (looper#108), and
-  reports them uncounted. Raised here for Jody to take to tacplus-dev/looper.
+  reports them uncounted. Raised here for Jody to take to tacplus-dev/looper. 2026-11-17: accepted by Jody (#31),
+  filed as tacplus-dev/looper#179 (SAST findings in test code listed, never blocking).
+- **looper-scan: an exception scoped to a location** (2026-11-17, #31; a tacplus-dev/looper change): Jody's decision
+  on #31 grants an exception for `src/nonce.rs:106` only, "scoped to that location", but looper-scan matches an
+  exception by finding id alone (`id`, `reason`, `decided_by`, `expires`), and a CodeQL finding's id is its rule
+  (`rust/hard-coded-cryptographic-value`): any entry would accept every such finding in the repository, a real
+  hard-coded nonce included. Proposal: an optional `where` key (a path, or path:line) that an entry must also match.
+  #31 rewrote the nonce (`Aes256Gcm::generate_nonce`), which should leave no literal for CodeQL to flag, so oauth
+  may not need it; the next nightly says. 2026-11-18: done as tacplus-dev/looper#182 (an optional `where`, a path
+  or a glob).
 - **looper-scan: scan the image the Dockerfile builds, not its `FROM` tags by name** (2026-11-17, #29, #30; a
   tacplus-dev/looper change): Trivy reads the Dockerfiles' base images by name, so a build stage that ships
   nothing (`Dockerfile.cross`'s `rust:trixie`, 2695 findings) counts like the release base. A fix the Dockerfile
