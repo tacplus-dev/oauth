@@ -1,5 +1,5 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
+    aead::{Aead, AeadCore, KeyInit, OsRng},
     Aes256Gcm,
 };
 use base64::Engine;
@@ -103,12 +103,11 @@ impl StateCodec {
     pub fn seal(&self, payload: &StatePayload) -> String {
         let plaintext = serde_json::to_vec(payload).unwrap();
 
-        let mut nonce_bytes = [0u8; 12];
-        OsRng.fill_bytes(&mut nonce_bytes);
-        let ciphertext = self.cipher.encrypt(&nonce_bytes.into(), plaintext.as_ref()).unwrap();
+        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let ciphertext = self.cipher.encrypt(&nonce, plaintext.as_ref()).unwrap();
 
         // Prepend nonce to ciphertext
-        let mut out = nonce_bytes.to_vec();
+        let mut out = nonce.to_vec();
         out.extend_from_slice(&ciphertext);
 
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&out)
@@ -158,4 +157,56 @@ pub fn generate_code_verifier() -> String {
     let mut b = [0u8; 32];
     OsRng.fill_bytes(&mut b);
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn payload() -> StatePayload {
+        StatePayload {
+            provider: ProviderKey {
+                owner: crate::providers::ProviderOwner::Fleet,
+                issuer: "https://idp.example.com".to_string(),
+                client_id: "client".to_string(),
+            },
+            callback_url: "https://app.example.com/cb".to_string(),
+            code_verifier: "verifier".to_string(),
+            created_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
+            session_id: Some("session".to_string()),
+            given_name: None,
+            family_name: None,
+        }
+    }
+
+    /// A state in the wire format (a 12-byte nonce, then the AES-256-GCM
+    /// ciphertext, URL-safe base64), as states sealed before the nonce came
+    /// from `generate_nonce`, still opens.
+    #[test]
+    fn opens_a_state_in_the_wire_format() {
+        let codec = StateCodec::new(&[], "", 300);
+        let nonce_bytes = [7u8; 12];
+        let plaintext = serde_json::to_vec(&payload()).unwrap();
+        let mut sealed = nonce_bytes.to_vec();
+        sealed.extend_from_slice(&codec.cipher.encrypt(&nonce_bytes.into(), plaintext.as_ref()).unwrap());
+        let state = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&sealed);
+
+        let opened = codec.decode(&state).unwrap();
+        assert_eq!(opened.callback_url, "https://app.example.com/cb");
+        assert_eq!(opened.session_id.as_deref(), Some("session"));
+    }
+
+    /// Each seal draws a fresh 12-byte nonce and prepends it to the ciphertext.
+    #[test]
+    fn seal_prepends_a_fresh_nonce() {
+        let codec = StateCodec::new(&[], "", 300);
+        let p = payload();
+        let a = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(codec.seal(&p)).unwrap();
+        let b = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(codec.seal(&p)).unwrap();
+        assert_ne!(a[..12], b[..12]);
+
+        let nonce_buf: [u8; 12] = a[..12].try_into().unwrap();
+        let plaintext = codec.cipher.decrypt(&nonce_buf.into(), &a[12..]).unwrap();
+        assert_eq!(plaintext, serde_json::to_vec(&p).unwrap());
+    }
 }
