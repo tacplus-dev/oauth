@@ -10,3 +10,4 @@ Append-only: add entries at the end, never edit or remove one (CI enforces it). 
 - 2026-11-08 looper issue Pin the build: floor 2.6 and a committed tacplus.lock, so the build pipeline and its security checks run on this repository (#21, abc418b)
 - 2026-11-21 looper release v0.1.2 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.2)
 - 2026-11-22 looper issue CodeQL fails the security checks on 14 false positives: literal nonces in #[cfg(test)] code, an OsRng-filled nonce buffer, a test's panic message (#31)
+- 2026-11-22 looper release v0.1.3 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.3)
