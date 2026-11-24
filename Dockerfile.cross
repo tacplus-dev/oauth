@@ -1,6 +1,7 @@
 # Multi-stage build: compile Rust for linux/arm64, then create runtime image.
-# Used for local development builds.
-FROM --platform=linux/arm64 rust:trixie AS builder
+# Used for local development builds. Every base is pinned by digest, as in the
+# release Dockerfile (#36).
+FROM --platform=linux/arm64 rust:trixie@sha256:1f65e0abcce9b449f9533df5994f2a62391059196c481a09b8e1b522dd6d75af AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
@@ -23,7 +24,7 @@ RUN cargo build --release
 
 # ---- Runtime image ----
 # The public base, as in the release Dockerfile.
-FROM --platform=linux/arm64 debian:trixie-slim
+FROM --platform=linux/arm64 debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
 
 ARG BUILD_DATE
 ARG VCS_REF

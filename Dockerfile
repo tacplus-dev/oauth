@@ -2,8 +2,10 @@
 # Layers the pre-built oauth binary onto a minimal runtime image.
 
 # The base is a build argument: a fleet may hand in its own hardened base, the
-# default is the public one (no private registry in a public contract's repo).
-ARG BASE_IMAGE=debian:trixie-slim
+# default is the public one (no private registry in a public contract's repo),
+# pinned by digest, never a floating tag, so a rebuild of a commit ships the base
+# that was scanned (#36); nightly maintenance moves the digest (tacplus-dev/looper#234).
+ARG BASE_IMAGE=debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
 FROM ${BASE_IMAGE}
 
 ARG BUILD_DATE
