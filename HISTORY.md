@@ -16,3 +16,4 @@ Append-only: add entries at the end, never edit or remove one (CI enforces it). 
 - 2026-11-23 looper issue Pinned images behind their lines: relock (tacplus.lock: tacplus 2.6.13 → 2.6.14, and 1 more) (#34)
 - 2026-11-24 looper issue Release image base pinned by digest, not the floating tag (#36)
 - 2026-11-25 looper release v0.1.6 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.6)
+- 2026-11-25 looper issue Cargo.lock: url 2.5.8 has RUSTSEC-2026-0592 (stack overflow in Url::origin on nested blob: URLs); relock to 2.5.9 (#35)
