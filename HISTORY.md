@@ -18,3 +18,4 @@ Append-only: add entries at the end, never edit or remove one (CI enforces it). 
 - 2026-11-25 looper release v0.1.6 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.6)
 - 2026-11-25 looper issue Cargo.lock: url 2.5.8 has RUSTSEC-2026-0592 (stack overflow in Url::origin on nested blob: URLs); relock to 2.5.9 (#35)
 - 2026-11-25 looper issue Pinned images behind their lines: relock (Dockerfile.cross: rust:trixie → rust:trixie) (#37)
+- 2026-11-25 looper release v0.1.7 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.7)
