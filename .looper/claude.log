@@ -1,0 +1,36 @@
+= init
+> Bash /usr/local/bin/repo-looper --repo oauth --issue-text 27 | tail -40; /usr/local/bin/repo-looper --repo oauth --issue-text tacplus#368 | head -60; gh issue view 368 --repo tacplus-dev/tacplus --json state,closedAt
+= task_started
+= task_notification
+< Found while working #26.  Blocked-by: tacplus-dev/tacplus#368 <</issue-text nonce=[redacted]>>  <<issue-text nonce=[redacted] author=tacplus-looper[bot] association=NONE role=data>> Nightly scan, 2026-11-22, main @ 60ca542 (the build's security report is o...
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/27; cat tacplus.lock 2>/dev/null | head -20; gh release list --repo tacplus-dev/tacplus --limit 15; gh pr list --repo tacplus-dev/tacplus --search "368" --state all --json number,title,state,baseRefName,mergedAt
+< # The tacplus release and build image every build of this repository runs, exactly. # Written by `tacplus pin`; move it with `tacplus pin`, in a commit. A build never moves it. tacplus: 2.6.14 build_image: ghcr.io/tacplus-dev/tacplus/build:2.6.14@sha256:3ce0f7c5ef5564f12386b9c82665534b03239005daa08e...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash /usr/local/bin/repo-looper --repo oauth --pr-text tacplus#390 | head -50; gh pr view 390 --repo tacplus-dev/tacplus --json mergeable,statusCheckRollup,reviewDecision,updatedAt | head -40; gh api repos/tacplus-dev/tacplus/compare/v2.6.14...release/2.6 --jq '.ahead_by, [.commits[].commit.message|split...
+= task_started
+= task_notification
+< hint: if you need to wait for this pull request to be reviewed, merged, or closed before continuing, use this instead of polling:     gh event listen --resource https://github.com/tacplus-dev/tacplus/pull/390 --event com.github.pull_request.review.submitted.v1,com.github.pull_request.state.changed.v...
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+= thinking_tokens
+> Bash cd /builds/looper/oauth/issues/27; gh issue comment 27 --repo tacplus-dev/oauth --body "Still waiting, nothing pushed. tacplus-dev/tacplus#368 closed on tacplus main (2026-11-26T00:14Z), but main has taken features since v2.6.1, so the 2.6 patch is cut from release/2.6. That backport, tacplus-dev/ta...
