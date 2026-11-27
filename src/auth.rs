@@ -836,6 +836,35 @@ fn exchange_status(e: ExchangeError) -> tonic::Status {
     }
 }
 
+/// The status MintCallbackTokens answers for a failed kernel MintUserToken,
+/// logged.
+///
+/// Kernel refusing the session (a sign-in no tenant claims is
+/// PERMISSION_DENIED) is the caller's to act on, not an internal error: its
+/// code and message pass through, and the gateway maps them to a 4xx. Kernel
+/// unreachable stays UNAVAILABLE; anything else is INTERNAL.
+fn kernel_mint_status(e: tonic::Status) -> tonic::Status {
+    use tonic::Code;
+    match e.code() {
+        Code::PermissionDenied
+        | Code::Unauthenticated
+        | Code::FailedPrecondition
+        | Code::InvalidArgument
+        | Code::NotFound => {
+            info!(code = ?e.code(), error = %e.message(), "kernel MintUserToken refused the session");
+            tonic::Status::new(e.code(), e.message())
+        }
+        Code::Unavailable => {
+            warn!(error = %e, "kernel MintUserToken failed: kernel unavailable");
+            tonic::Status::unavailable(format!("kernel token mint failed: {}", e.message()))
+        }
+        _ => {
+            warn!(error = %e, "kernel MintUserToken failed");
+            tonic::Status::internal(format!("kernel token mint failed: {e}"))
+        }
+    }
+}
+
 /// The OPA claims for an "already authenticated" CLI re-auth, read from the
 /// caller's Schematic token.
 ///
@@ -1098,10 +1127,7 @@ impl AuthHandler for AuthImpl {
         let mint_resp = self.sm.s2s().kernel().mint_client()
             .mint_user_token(idp_mint_request(&subject, claims.clone(), &req.trace_id))
             .await
-            .map_err(|e| {
-                warn!(error = %e, "kernel MintUserToken failed");
-                tonic::Status::internal(format!("kernel token mint failed: {e}"))
-            })?
+            .map_err(kernel_mint_status)?
             .into_inner();
 
         // 8. Compute expires_in from the tokens.
@@ -1274,7 +1300,7 @@ mod idp_token_verification_tests {
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7k1HsdAkjUtBG428\n\
 QH39rQVnir+rMuH2d6biVXBV2ZShRANCAAQOxMIoQW+QyI3WkD4Er9S43V/BK+F+\n\
 vtvE2Lrd3RM3DB/PzXNv36i967AX9G2Z+iS938JmBiFHZGwVnizguCe9\n\
------END PRIVATE KEY-----\n";
+-----END PRIVATE KEY-----\n"; // gitleaks:allow (test-only fixture key)
 
     pub(super) const TEST_PUBLIC_PEM: &str = "-----BEGIN PUBLIC KEY-----\n\
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDsTCKEFvkMiN1pA+BK/UuN1fwSvh\n\
@@ -3614,5 +3640,54 @@ mod entra_signin_tests {
         let client = OidcClient::new(&[p], &[], 3600, "").await.unwrap();
         let (iss, _) = client.expected_claims(0).unwrap();
         assert_eq!(iss, "https://127.0.0.1:1/common/v2.0");
+    }
+}
+
+#[cfg(test)]
+mod kernel_mint_status_tests {
+    //! What MintCallbackTokens answers when kernel's MintUserToken fails: a
+    //! refusal the caller can act on keeps kernel's code and message (the
+    //! gateway maps it to a 4xx); kernel unreachable stays UNAVAILABLE; the
+    //! rest is INTERNAL.
+    use super::*;
+
+    const REASON: &str = "entitlements policy returned no namespace for this caller";
+
+    #[test]
+    fn a_refusal_keeps_kernels_code_and_message() {
+        for code in [
+            tonic::Code::PermissionDenied,
+            tonic::Code::Unauthenticated,
+            tonic::Code::FailedPrecondition,
+            tonic::Code::InvalidArgument,
+            tonic::Code::NotFound,
+        ] {
+            let status = kernel_mint_status(tonic::Status::new(code, REASON));
+            assert_eq!(status.code(), code, "got {status:?}");
+            assert_eq!(status.message(), REASON, "got {status:?}");
+        }
+    }
+
+    #[test]
+    fn kernel_unavailable_stays_unavailable() {
+        let status = kernel_mint_status(tonic::Status::unavailable("connection refused"));
+        assert_eq!(status.code(), tonic::Code::Unavailable, "got {status:?}");
+        assert!(status.message().contains("connection refused"), "got {status:?}");
+    }
+
+    #[test]
+    fn anything_else_is_internal() {
+        for code in [
+            tonic::Code::Internal,
+            tonic::Code::Unknown,
+            tonic::Code::DeadlineExceeded,
+            tonic::Code::ResourceExhausted,
+            tonic::Code::Unimplemented,
+            tonic::Code::DataLoss,
+        ] {
+            let status = kernel_mint_status(tonic::Status::new(code, "boom"));
+            assert_eq!(status.code(), tonic::Code::Internal, "{code:?}: got {status:?}");
+            assert!(status.message().contains("kernel token mint failed"), "got {status:?}");
+        }
     }
 }
