@@ -26,3 +26,4 @@ Append-only: add entries at the end, never edit or remove one (CI enforces it). 
 - 2026-11-28 looper issue Trace: mint_callback_tokens drops trace_id on the CLI CompleteNonce, and no test asserts trace_id on its downstream calls (#16)
 - 2026-11-28 looper issue Trace: broker_session's daemon refresh mints with an empty trace_id and no unrelated marker (#19)
 - 2026-11-28 looper issue Trace: broker_cli_auth drops the inbound trace_id on the CompleteNonce sent to kernel (#17)
+- 2026-11-28 looper release v0.1.11 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.11)
