@@ -64,5 +64,13 @@ the looper then marks it `promoted` or `declined` here with the date.
   The handler tests (`entra_signin_tests::the_callback_trace_id_arrives_on_*`) are the real check. Proposal, for
   tacplus-dev/looper: let looper-trace follow a call through a trait object whose implementation calls a generated
   client, or a send on a generated bidi handle, so the nightly scan sees these again.
+- **A ClaimMatcher on Entra's `tid` does not match on the cached re-auth path** (2026-11-28, #40): since tacplus
+  2.6.16 (tacplus#284) `tid` is a Schematic claim, and kernel stamps the token's own tenant's tid and drops the
+  IdP's at mint (kernel#32). A fresh Entra login still hands OPA the directory's `tid`, but `reauth_claims` reads
+  the claims back off the Schematic token, which no longer carries it, so a tenant routed by a `ClaimMatcher`
+  with `claim_key: "tid"` resolves on the first login and not on the re-auth. `hd`, `email` and the `origin_`
+  claims are unaffected. Proposal: kernel keeps the relayed IdP `tid` as `origin_tid` (oauth already forwards
+  `origin_*`), and oauth's matcher docs name `origin_tid` for Entra; or ClaimMatcher refuses `tid` as a key. A
+  kernel contract change, so not made here.
 
 ## Promoted / declined
