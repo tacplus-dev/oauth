@@ -57,5 +57,12 @@ the looper then marks it `promoted` or `declined` here with the date.
   that reason. Proposal: when the base has none, compare with the nearest ancestor that has, if the commits between
   them touch only the planning files (or the nightly scan's commit, which changes no code, publishes its parent's
   findings under its own sha).
+- **looper-trace cannot see oauth's kernel calls** (2026-11-03, #16): the Auth handlers now reach kernel through
+  the `Kernel` seam in src/auth.rs (`self.kernel.mint_user_token`, `self.kernel.broker_send`), so a handler test can
+  run them against a recording kernel. `looper-trace check` reads only direct calls on a generated client, so it
+  lists no handler here (`verdict: pass (0 handlers)`); it never saw the `BrokerStreamBidiHandle` sends either.
+  The handler tests (`entra_signin_tests::the_callback_trace_id_arrives_on_*`) are the real check. Proposal, for
+  tacplus-dev/looper: let looper-trace follow a call through a trait object whose implementation calls a generated
+  client, or a send on a generated bidi handle, so the nightly scan sees these again.
 
 ## Promoted / declined
