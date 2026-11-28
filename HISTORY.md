@@ -21,3 +21,4 @@ Append-only: add entries at the end, never edit or remove one (CI enforces it). 
 - 2026-11-25 looper release v0.1.7 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.7)
 - 2026-11-27 looper issue MintCallbackTokens answers HTTP 500 for a refusal: kernel's status (a user no tenant claims: PERMISSION_DENIED) is flattened to INTERNAL (#38)
 - 2026-11-28 looper issue RUSTSEC-2023-0071 (rsa, no fix) and RUSTSEC-2026-0387 (crypto-bigint 0.5) via generated chassis crates (#9)
+- 2026-11-28 looper release v0.1.9 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.9)
