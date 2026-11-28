@@ -56,11 +56,7 @@ dependencies = [
 name = "am"
 version = "0.1.0"
 dependencies = [
- "base64 0.21.7",
- "diskstore",
  "oauth-model-types",
- "prost",
- "tokio",
  "tonic",
  "tracing",
 ]
@@ -79,14 +75,6 @@ name = "anyhow"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
-
-[[package]]
-name = "approval"
-version = "1.0.0"
-dependencies = [
- "sha2 0.11.1",
- "tonic",
-]
 
 [[package]]
 name = "asn1-rs"
@@ -307,19 +295,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "c2d"
-version = "0.1.0"
-dependencies = [
- "hyper",
- "hyper-util",
- "tokio",
- "tokio-stream",
- "tonic",
- "tower",
- "tracing",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -376,17 +351,6 @@ checksum = "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad"
 dependencies = [
  "crypto-common 0.1.6",
  "inout",
-]
-
-[[package]]
-name = "client_im"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "oauth-model-types",
- "tokio",
- "tonic",
- "tracing",
 ]
 
 [[package]]
@@ -708,7 +672,6 @@ dependencies = [
  "bzip2",
  "flate2",
  "log",
- "oauth-model-types",
  "serde",
  "serde_json",
  "tokio",
@@ -1005,9 +968,6 @@ version = "0.1.0"
 dependencies = [
  "logger",
  "oauth-model-types",
- "serde",
- "serde_json",
- "serde_yaml",
 ]
 
 [[package]]
@@ -1017,23 +977,18 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.22.1",
- "futures",
  "hyper",
- "hyper-util",
  "jwk",
  "oauth-model-types",
- "prost",
  "regex",
  "serde",
  "serde_json",
  "serde_yaml",
  "servicemanager",
  "spiffe",
- "thiserror 1.0.69",
  "token",
  "tokio",
  "tokio-stream",
- "tokio-util",
  "tonic",
  "tower",
  "tower-http",
@@ -1231,22 +1186,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
-name = "httpclient"
-version = "1.0.0"
-dependencies = [
- "base64 0.21.7",
- "log",
- "oauth-model-types",
- "reqwest",
- "rustls",
- "rustls-pemfile",
- "serde",
- "serde_json",
- "tokio",
- "webpki-roots 0.26.11",
-]
-
-[[package]]
 name = "httpdate"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1299,7 +1238,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots 1.0.11",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -1333,12 +1272,9 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "socket2",
- "system-configuration",
  "tokio",
- "tower-layer",
  "tower-service",
  "tracing",
- "windows-registry",
 ]
 
 [[package]]
@@ -1510,10 +1446,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ip"
-version = "0.1.0"
-
-[[package]]
 name = "ipconfig"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1633,11 +1565,9 @@ dependencies = [
 name = "jwk"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
  "ed25519-dalek",
  "key",
  "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -1650,7 +1580,6 @@ dependencies = [
  "pem",
  "pkcs8",
  "rand 0.8.8",
- "serde",
  "serde_json",
  "signature",
 ]
@@ -1704,11 +1633,9 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 name = "logger"
 version = "1.0.0"
 dependencies = [
- "chrono",
  "oauth-model-types",
  "once_cell",
  "regex",
- "serde",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -1897,50 +1824,33 @@ name = "oauth-model"
 version = "1.0.0"
 dependencies = [
  "am",
- "approval",
  "async-trait",
  "aws-lc-rs",
- "axum",
  "base64 0.21.7",
- "c2d",
- "client_im",
  "collection",
  "diskstore",
  "futures",
  "grpcconfig",
  "grpcserver",
  "healthreporter",
- "httpclient",
- "ip",
- "jwk",
- "key",
- "logger",
  "oauth-model-types",
- "prost",
  "rand 0.8.8",
  "regex",
- "reqwest",
  "rmcp",
  "rustls",
  "rustls-pemfile",
- "schemars",
  "serde",
  "serde_json",
  "service_im",
  "servicemanager",
  "spiffe",
- "tags",
- "tinyvec",
  "token",
  "tokio",
  "tokio-rustls",
  "tokio-stream",
- "tokio-util",
  "tonic",
  "tonic-health",
- "tonic-prost",
  "tracing",
- "x509",
  "x509-cert",
 ]
 
@@ -1949,19 +1859,13 @@ name = "oauth-model-types"
 version = "1.0.0"
 dependencies = [
  "base64 0.21.7",
- "bytes",
- "hex",
- "hmac 0.13.0",
  "pbjson",
- "pbjson-types",
  "prost",
- "prost-types",
  "prost-wkt-types",
  "regex",
  "serde",
  "serde_json",
  "serde_yaml",
- "sha2 0.11.1",
  "toml",
  "tonic",
  "tonic-prost",
@@ -2034,33 +1938,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "898bac3fa00d0ba57a4e8289837e965baa2dee8c3749f3b11d45a64b4223d9c3"
 dependencies = [
  "base64 0.22.1",
- "serde",
-]
-
-[[package]]
-name = "pbjson-build"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af22d08a625a2213a78dbb0ffa253318c5c79ce3133d32d296655a7bdfb02095"
-dependencies = [
- "heck",
- "itertools",
- "prost",
- "prost-types",
-]
-
-[[package]]
-name = "pbjson-types"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e748e28374f10a330ee3bb9f29b828c0ac79831a32bab65015ad9b661ead526"
-dependencies = [
- "bytes",
- "chrono",
- "pbjson",
- "pbjson-build",
- "prost",
- "prost-build",
  "serde",
 ]
 
@@ -2511,7 +2388,6 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "futures-core",
- "futures-util",
  "http",
  "http-body",
  "http-body-util",
@@ -2532,16 +2408,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
- "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
  "web-sys",
- "webpki-roots 1.0.11",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -2892,20 +2766,12 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "chrono",
- "ed25519-dalek",
- "grpcconfig",
  "hex",
  "hmac 0.13.0",
- "key",
  "oauth-model-types",
- "prost",
- "prost-wkt-types",
- "rand 0.8.8",
  "reqwest",
- "serde",
  "serde_json",
  "sha2 0.11.1",
- "token",
  "tokio",
  "tonic",
  "tracing",
@@ -2919,7 +2785,6 @@ version = "0.1.0"
 dependencies = [
  "jwk",
  "oauth-model-types",
- "prost",
  "rustls",
  "rustls-pemfile",
  "spiffe",
@@ -2928,17 +2793,6 @@ dependencies = [
  "tonic",
  "tracing",
  "x509-parser",
-]
-
-[[package]]
-name = "sha1"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
-dependencies = [
- "cfg-if",
- "cpufeatures 0.3.1",
- "digest 0.11.3",
 ]
 
 [[package]]
@@ -2993,9 +2847,6 @@ name = "signature"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d567dcbaf0049cb8ac2608a76cd95ff9e4412e1899d389ee400918ca7537f5"
-dependencies = [
- "rand_core 0.10.1",
-]
 
 [[package]]
 name = "simd-adler32"
@@ -3149,15 +3000,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
 
 [[package]]
-name = "tags"
-version = "0.1.0"
-dependencies = [
- "oauth-model-types",
- "once_cell",
- "regex",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3300,7 +3142,6 @@ dependencies = [
 name = "token"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
  "chrono",
  "ed25519-dalek",
  "jwk",
@@ -3858,19 +3699,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-streams"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
-dependencies = [
- "futures-util",
- "js-sys",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "wasmparser"
 version = "0.244.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3900,15 +3728,6 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
-dependencies = [
- "webpki-roots 1.0.11",
 ]
 
 [[package]]
@@ -4191,25 +4010,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
 
 [[package]]
-name = "x509"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "const-oid",
- "der",
- "ed25519-dalek",
- "key",
- "pem",
- "rand 0.8.8",
- "rustls",
- "serde",
- "signature",
- "spiffe",
- "spki",
- "x509-cert",
-]
-
-[[package]]
 name = "x509-cert"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4217,8 +4017,6 @@ checksum = "105ef4642d9cb137ef83d623d0e4bf08b8adf69e9918ca904a174adb6d3d038b"
 dependencies = [
  "const-oid",
  "der",
- "sha1",
- "signature",
  "spki",
  "tls_codec",
 ]

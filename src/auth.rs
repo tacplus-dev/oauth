@@ -908,10 +908,13 @@ fn kernel_mint_status(e: tonic::Status) -> tonic::Status {
 /// Kernel copied the login's claims onto the token (every claim that is not a
 /// Schematic payload type, and the origin_-prefixed IdP ones), and clones them
 /// through refresh→access→service. All of them are handed back, so OPA sees the
-/// same claims as on the fresh login (origin_iss, provider_iss, hd, tid,
+/// same claims as on the fresh login (origin_iss, provider_iss, hd,
 /// groups, ...) and resolves the same tenant and namespace. Schematic's own
 /// claims (iss, namespace, entitlements, azp, typ, ...) are left out, as
-/// kernel's claim copy leaves them out; `sub` is the token's subject.
+/// kernel's claim copy leaves them out; `sub` is the token's subject. `tid` is
+/// one of them since tacplus 2.6.16 (tacplus#284, kernel#32): the tid of the
+/// token's own tenant, stamped by kernel, which drops the IdP's `tid` (Entra's
+/// directory) at mint, so the token never carries the login's.
 fn reauth_claims(token: &token::Token, subject: &str) -> prost_wkt_types::Struct {
     let mut fields: HashMap<String, prost_wkt_types::Value> = token
         .claims()
@@ -3625,9 +3628,10 @@ mod entra_signin_tests {
     }
 
     /// The cached re-auth reads the login's claims back off the Schematic
-    /// token kernel minted, so a claim-matched tenant (Google `hd`, Entra
-    /// `tid`, both on `provider_iss`) resolves on that path too. Schematic's own
-    /// claims are not handed back to OPA as if they came from the IdP.
+    /// token kernel minted, so a claim-matched tenant (Google `hd` on
+    /// `provider_iss`) resolves on that path too. Schematic's own claims are
+    /// not handed back to OPA as if they came from the IdP: `tid` among them,
+    /// kernel's tid of the token's tenant, not the Entra directory's.
     #[test]
     fn the_reauth_path_forwards_the_login_claims_from_the_schematic_token() {
         let mut t = token::Token::new();
@@ -3637,12 +3641,12 @@ mod entra_signin_tests {
         t.set_token_use("refresh").unwrap();
         t.set_azp("oauth").unwrap();
         t.set_entitlements(&["KERNEL_ANY"]).unwrap();
+        t.set_tid("k7x2m9qa").unwrap();
         for (k, v) in [
             ("typ", json!("refresh")),
             ("origin_iss", json!(issuer_for(TID))),
             ("origin_sub", json!(ENTRA_SUB)),
             ("provider_iss", json!("https://login.microsoftonline.com/common/v2.0")),
-            ("tid", json!(TID)),
             ("hd", json!("contoso.example")),
             ("email", json!(EMAIL)),
             ("groups", json!(["admins"])),
@@ -3659,14 +3663,13 @@ mod entra_signin_tests {
         );
         assert_eq!(string_claim(&claims, "origin_iss"), Some(issuer_for(TID).as_str()));
         assert_eq!(string_claim(&claims, "origin_sub"), Some(ENTRA_SUB));
-        assert_eq!(string_claim(&claims, "tid"), Some(TID));
         assert_eq!(string_claim(&claims, "hd"), Some("contoso.example"));
         assert_eq!(string_claim(&claims, "email"), Some(EMAIL));
         assert!(matches!(
             claims.fields["groups"].kind.as_ref(),
             Some(Kind::ListValue(l)) if l.values.len() == 1
         ));
-        for schematic in ["iss", "namespace", "token_use", "azp", "entitlements", "typ"] {
+        for schematic in ["iss", "namespace", "token_use", "azp", "entitlements", "typ", "tid"] {
             assert!(!claims.fields.contains_key(schematic), "{schematic} must not be forwarded");
         }
     }
