@@ -27,3 +27,4 @@ Append-only: add entries at the end, never edit or remove one (CI enforces it). 
 - 2026-11-28 looper issue Trace: broker_session's daemon refresh mints with an empty trace_id and no unrelated marker (#19)
 - 2026-11-28 looper issue Trace: broker_cli_auth drops the inbound trace_id on the CompleteNonce sent to kernel (#17)
 - 2026-11-28 looper release v0.1.11 (https://github.com/tacplus-dev/oauth/releases/tag/v0.1.11)
+- 2026-11-28 looper issue Pinned images behind their lines: relock (tacplus.lock: tacplus 2.6.14 → 2.6.16, and 1 more) (#40)
